@@ -8,8 +8,106 @@ from fpdf import FPDF
 from datetime import date
 
 _HERE = pathlib.Path(__file__).parent
+LOGO_PATH = _HERE / "logo.png"
+LOGO_NO_SLOGAN_PATH = _HERE / "logo_no_slogan.png"
 
-st.set_page_config(page_title="Blend Calculator", layout="wide")
+st.set_page_config(page_title="Sapling Blend Calculator", layout="wide")
+
+# ── Brand colours ──────────────────────────────────────────────────────────
+ORANGE = "#ff4f00"
+DARK_GREY = "#191919"
+MED_GREY = "#4d4d4d"
+ORANGE_RGB = (255, 79, 0)
+DARK_GREY_RGB = (25, 25, 25)
+MED_GREY_RGB = (77, 77, 77)
+
+# Light tints derived from brand colours (for backgrounds)
+ORANGE_LIGHT = "#fff3eb"     # very soft orange wash
+ORANGE_FILL_RGB = (255, 243, 235)
+GREY_LIGHT_RGB = (245, 245, 245)
+
+st.markdown(f"""
+<style>
+    /* ── Force white background everywhere ── */
+    .stApp, .main .block-container,
+    [data-testid="stAppViewContainer"],
+    [data-testid="stHeader"] {{
+        background-color: #ffffff !important;
+    }}
+
+    /* ── Sidebar — white with subtle left border ── */
+    section[data-testid="stSidebar"] {{
+        background-color: #ffffff !important;
+        border-right: 2px solid {ORANGE} !important;
+    }}
+    section[data-testid="stSidebar"] h1,
+    section[data-testid="stSidebar"] h2,
+    section[data-testid="stSidebar"] h3 {{
+        color: {DARK_GREY} !important;
+    }}
+    section[data-testid="stSidebar"] .stMarkdown p,
+    section[data-testid="stSidebar"] label {{
+        color: {MED_GREY} !important;
+    }}
+
+    /* ── Headings ── */
+    h1, h2, h3 {{ color: {DARK_GREY} !important; }}
+    p, li, span, label {{ color: {MED_GREY}; }}
+
+    /* ── Metric values in brand orange ── */
+    [data-testid="stMetricValue"] {{
+        color: {ORANGE} !important;
+    }}
+    [data-testid="stMetricLabel"] {{
+        color: {MED_GREY} !important;
+    }}
+
+    /* ── Buttons ── */
+    .stDownloadButton > button {{
+        background-color: {ORANGE} !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 6px !important;
+    }}
+    .stDownloadButton > button:hover {{
+        background-color: {DARK_GREY} !important;
+        color: #ffffff !important;
+    }}
+
+    /* ── Expander ── */
+    .streamlit-expanderHeader {{
+        color: {MED_GREY} !important;
+    }}
+
+    /* ── Divider — thin orange ── */
+    hr {{
+        border-color: {ORANGE} !important;
+        opacity: 0.4 !important;
+    }}
+
+    /* ── Slider ── */
+    .stSlider [role="slider"] {{
+        background-color: {ORANGE} !important;
+    }}
+
+    /* ── Dataframe / table header ── */
+    [data-testid="stDataFrame"] th {{
+        background-color: {ORANGE} !important;
+        color: #ffffff !important;
+    }}
+
+    /* ── Number inputs & text inputs ── */
+    .stNumberInput input, .stTextInput input {{
+        border-color: #dddddd !important;
+        color: {DARK_GREY} !important;
+        background-color: #ffffff !important;
+    }}
+    .stNumberInput input:focus, .stTextInput input:focus {{
+        border-color: {ORANGE} !important;
+        box-shadow: 0 0 0 1px {ORANGE} !important;
+    }}
+</style>
+""", unsafe_allow_html=True)
 
 
 # ── Load materials ──────────────────────────────────────────────────────────
@@ -27,7 +125,15 @@ df = load_materials()
 NUTRIENTS = [c for c in df.columns if c not in ["Material", "Type", "Cost (R/ton)"]]
 COMPOST_NAME = "Manure Compost"
 
-st.title("Blend Calculator")
+# ── Header with logo ───────────────────────────────────────────────────────
+logo_col, title_col = st.columns([2, 3])
+with logo_col:
+    st.image(str(LOGO_PATH), width=320)
+with title_col:
+    st.markdown(
+        f"<h1 style='margin-bottom:0; color:{DARK_GREY}'>Blend Calculator</h1>",
+        unsafe_allow_html=True,
+    )
 
 # ── Sidebar: material selection ─────────────────────────────────────────────
 st.sidebar.header("Raw Materials")
@@ -276,13 +382,31 @@ with st.expander("Save & Export"):
         pdf.add_page()
         pdf.set_auto_page_break(auto=True, margin=20)
 
-        # Title
-        pdf.set_font("Helvetica", "B", 18)
+        # Logo + Title header
+        logo_h = 37
+        if LOGO_NO_SLOGAN_PATH.exists():
+            pdf.image(str(LOGO_NO_SLOGAN_PATH), x=10, y=10, h=logo_h)
+        elif LOGO_PATH.exists():
+            pdf.image(str(LOGO_PATH), x=10, y=10, h=logo_h)
+        pdf.set_xy(55, 14)
+        pdf.set_font("Helvetica", "B", 22)
+        pdf.set_text_color(*DARK_GREY_RGB)
         pdf.cell(0, 12, "Blend Recipe", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_xy(55, 28)
+        pdf.set_font("Helvetica", "", 10)
+        pdf.set_text_color(*MED_GREY_RGB)
+        pdf.cell(0, 5, "Fertilise Smarter, Grow Stronger", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_y(10 + logo_h + 6)
+
+        # Accent line in brand orange
+        pdf.set_draw_color(*ORANGE_RGB)
+        pdf.set_line_width(0.8)
+        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+        pdf.ln(6)
 
         # Meta info
         pdf.set_font("Helvetica", "", 10)
-        pdf.set_text_color(100, 100, 100)
+        pdf.set_text_color(*MED_GREY_RGB)
         meta_parts = [f"Date: {date.today().strftime('%Y-%m-%d')}"]
         if blend_name:
             meta_parts.insert(0, f"Blend: {blend_name}")
@@ -291,13 +415,14 @@ with st.expander("Save & Export"):
         if farm:
             meta_parts.append(f"Farm: {farm}")
         pdf.cell(0, 6, "  |  ".join(meta_parts), new_x="LMARGIN", new_y="NEXT")
-        pdf.set_text_color(0, 0, 0)
         pdf.ln(4)
 
         # KPI summary
         pdf.set_font("Helvetica", "B", 11)
+        pdf.set_text_color(*DARK_GREY_RGB)
         pdf.cell(0, 8, "Summary", new_x="LMARGIN", new_y="NEXT")
         pdf.set_font("Helvetica", "", 10)
+        pdf.set_text_color(*MED_GREY_RGB)
         kpi_items = [
             f"Batch size: {batch:,} kg",
             f"Compost: {compost_pct:.1f}%",
@@ -314,75 +439,84 @@ with st.expander("Save & Export"):
 
         if is_relaxed:
             pdf.set_font("Helvetica", "I", 9)
-            pdf.set_text_color(180, 80, 0)
+            pdf.set_text_color(*ORANGE_RGB)
             pdf.cell(
                 0, 5,
                 f"Note: Targets relaxed to {relaxed_scale * 100:.1f}% of requested levels.",
                 new_x="LMARGIN", new_y="NEXT",
             )
-            pdf.set_text_color(0, 0, 0)
             pdf.ln(2)
 
-        # Recipe table
-        pdf.set_font("Helvetica", "B", 11)
-        pdf.cell(0, 8, "Recipe", new_x="LMARGIN", new_y="NEXT")
+        # ── Helper: branded table ──
+        def pdf_table(title, columns, widths, rows):
+            pdf.set_font("Helvetica", "B", 11)
+            pdf.set_text_color(*DARK_GREY_RGB)
+            pdf.cell(0, 8, title, new_x="LMARGIN", new_y="NEXT")
 
+            # Header row — orange background, white text
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.set_fill_color(*ORANGE_RGB)
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_draw_color(*ORANGE_RGB)
+            for label, w in zip(columns, widths):
+                pdf.cell(w, 6, label, border=1, fill=True)
+            pdf.ln()
+
+            # Data rows — alternating white / light grey
+            pdf.set_font("Helvetica", "", 9)
+            pdf.set_draw_color(220, 220, 220)
+            for i, row_vals in enumerate(rows):
+                if i % 2 == 1:
+                    pdf.set_fill_color(*GREY_LIGHT_RGB)
+                    fill = True
+                else:
+                    pdf.set_fill_color(255, 255, 255)
+                    fill = True
+                pdf.set_text_color(*DARK_GREY_RGB)
+                for val, w in zip(row_vals, widths):
+                    pdf.cell(w, 5, val, border="LR", fill=fill)
+                pdf.ln()
+
+            # Bottom border
+            pdf.set_draw_color(*ORANGE_RGB)
+            pdf.set_line_width(0.4)
+            total_w = sum(widths)
+            pdf.line(pdf.l_margin, pdf.get_y(), pdf.l_margin + total_w, pdf.get_y())
+            pdf.ln(4)
+
+        # Recipe table
         recipe_cols = ["Material", "Type", "kg", "% of Blend", "Cost (R)"]
         col_widths = [60, 35, 25, 25, 25]
-
-        # Header
-        pdf.set_font("Helvetica", "B", 9)
-        pdf.set_fill_color(230, 230, 230)
-        for label, w in zip(recipe_cols, col_widths):
-            pdf.cell(w, 6, label, border=1, fill=True)
-        pdf.ln()
-
-        # Rows
-        pdf.set_font("Helvetica", "", 9)
+        recipe_rows = []
         for _, r in result.iterrows():
-            vals = [
+            recipe_rows.append([
                 str(r["Material"]),
                 str(r["Type"]),
                 f"{r['kg']:.1f}",
                 f"{r['% of Blend']:.1f}",
                 f"{r['Cost (R)']:.2f}",
-            ]
-            for val, w in zip(vals, col_widths):
-                pdf.cell(w, 5, val, border=1)
-            pdf.ln()
-        pdf.ln(4)
+            ])
+        pdf_table("Recipe", recipe_cols, col_widths, recipe_rows)
 
         # Nutrient analysis table
-        pdf.set_font("Helvetica", "B", 11)
-        pdf.cell(0, 8, "Nutrient Analysis", new_x="LMARGIN", new_y="NEXT")
-
         nut_cols = ["Nutrient", "Target %", "Actual %", "Diff", "kg per ton"]
         nut_widths = [30, 25, 25, 25, 25]
-
-        pdf.set_font("Helvetica", "B", 9)
-        pdf.set_fill_color(230, 230, 230)
-        for label, w in zip(nut_cols, nut_widths):
-            pdf.cell(w, 6, label, border=1, fill=True)
-        pdf.ln()
-
-        pdf.set_font("Helvetica", "", 9)
+        nut_rows = []
         for _, r in comp_df.iterrows():
-            vals = [
+            nut_rows.append([
                 str(r["Nutrient"]),
                 f"{r['Target %']:.3f}",
                 f"{r['Actual %']:.3f}",
                 f"{r['Diff']:.3f}",
                 f"{r['kg per ton']:.2f}",
-            ]
-            for val, w in zip(vals, nut_widths):
-                pdf.cell(w, 5, val, border=1)
-            pdf.ln()
+            ])
+        pdf_table("Nutrient Analysis", nut_cols, nut_widths, nut_rows)
 
         # Footer
         pdf.ln(8)
         pdf.set_font("Helvetica", "I", 8)
-        pdf.set_text_color(140, 140, 140)
-        pdf.cell(0, 5, "Generated by Blend Calculator", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_text_color(*MED_GREY_RGB)
+        pdf.cell(0, 5, "Generated by Sapling Blend Calculator", new_x="LMARGIN", new_y="NEXT")
 
         buf = io.BytesIO()
         pdf.output(buf)
