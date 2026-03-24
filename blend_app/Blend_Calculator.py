@@ -5,7 +5,7 @@ from scipy.optimize import linprog
 from shared import (
     apply_styles, show_header, load_materials, build_pdf, save_blend,
     sa_notation_to_pct, pct_to_sa_notation, suggest_price,
-    DARK_GREY, MED_GREY, ORANGE, COMPOST_NAME,
+    DARK_GREY, MED_GREY, COMPOST_NAME,
 )
 
 st.set_page_config(page_title="Sapling Blend Calculator", layout="wide")
