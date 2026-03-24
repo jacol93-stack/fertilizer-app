@@ -1,7 +1,10 @@
+import pathlib
 import streamlit as st
 import pandas as pd
 import numpy as np
 from scipy.optimize import linprog
+
+_HERE = pathlib.Path(__file__).parent
 
 st.set_page_config(page_title="Blend Calculator", layout="wide")
 
@@ -9,7 +12,7 @@ st.set_page_config(page_title="Blend Calculator", layout="wide")
 # ── Load materials ──────────────────────────────────────────────────────────
 @st.cache_data
 def load_materials():
-    df = pd.read_excel("materials.xlsx")
+    df = pd.read_excel(_HERE / "materials.xlsx")
     df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
     for col in df.columns:
         if col not in ["Material", "Type"]:
