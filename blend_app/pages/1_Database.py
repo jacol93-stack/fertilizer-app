@@ -12,9 +12,7 @@ from shared import (
 
 st.set_page_config(page_title="Database — Sapling", layout="wide")
 apply_styles()
-show_header()
-
-st.subheader("Database")
+show_header("Database")
 
 
 # ── Helper: display a blend card ───────────────────────────────────────────

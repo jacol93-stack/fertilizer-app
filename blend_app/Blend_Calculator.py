@@ -4,8 +4,8 @@ import numpy as np
 from scipy.optimize import linprog
 from shared import (
     apply_styles, show_header, load_materials, build_pdf, save_blend,
-    sa_notation_to_pct, pct_to_sa_notation,
-    DARK_GREY, MED_GREY, COMPOST_NAME,
+    sa_notation_to_pct, pct_to_sa_notation, suggest_price,
+    DARK_GREY, MED_GREY, ORANGE, COMPOST_NAME,
 )
 
 st.set_page_config(page_title="Sapling Blend Calculator", layout="wide")
@@ -242,6 +242,78 @@ st.dataframe(active_df, use_container_width=True, hide_index=True)
 with st.expander("All other nutrients (from compost & materials)"):
     st.dataframe(passive_df, use_container_width=True, hide_index=True)
 
+# ── Pricing Suggestion ─────────────────────────────────────────────────────
+st.divider()
+st.subheader("Suggested Selling Price")
+
+suggestion = suggest_price(actual_n, actual_p, actual_k, compost_pct)
+
+if suggestion is None:
+    st.info("No historical blend data available for pricing suggestions.")
+else:
+    w = suggestion.get("weights", {})
+    w_note = (f"N: R{w.get('N',0):,.0f}/%  ·  "
+              f"P: R{w.get('P',0):,.0f}/%  ·  "
+              f"K: R{w.get('K',0):,.0f}/%" if w else "")
+
+    if suggestion["method"] == "tight":
+        st.caption(
+            f"Based on **{suggestion['found']}** similar blends "
+            f"(within R500 cost-weighted nutrient distance)  \n"
+            f"Nutrient weights from current material prices — {w_note}"
+        )
+    elif suggestion["method"] == "widened":
+        st.caption(
+            f"Based on **{suggestion['found']}** broadly similar blends "
+            f"(within R1,000 — widened due to few close matches)  \n"
+            f"Nutrient weights from current material prices — {w_note}"
+        )
+    else:
+        st.caption(
+            f"No close matches found — estimate from regression model "
+            f"using all historical blends  \n"
+            f"Nutrient weights from current material prices — {w_note}"
+        )
+
+    pc1, pc2, pc3, pc4 = st.columns(4)
+    pc1.metric("Your Cost", f"R {cost_per_ton:,.0f}")
+    pc2.metric("Low", f"R {suggestion['low']:,.0f}",
+               delta=f"R {suggestion['low'] - cost_per_ton:,.0f} margin",
+               delta_color="normal")
+    pc3.metric("Mid", f"R {suggestion['mid']:,.0f}",
+               delta=f"R {suggestion['mid'] - cost_per_ton:,.0f} margin",
+               delta_color="normal")
+    pc4.metric("High", f"R {suggestion['high']:,.0f}",
+               delta=f"R {suggestion['high'] - cost_per_ton:,.0f} margin",
+               delta_color="normal")
+
+    if suggestion.get("regression"):
+        reg = suggestion["regression"]
+        st.caption(
+            f"Model estimate: **R {reg['predicted']:,.0f}**/ton  "
+            f"(R {reg['r_per_weighted_npk']:,.0f} per weighted NPK unit, "
+            f"R {reg['r_per_compost_pct']:,.0f} per % compost)"
+        )
+
+    if suggestion["comparables"]:
+        with st.expander(f"View {len(suggestion['comparables'])} comparable blends"):
+            comp_rows = []
+            for c in suggestion["comparables"]:
+                comp_rows.append({
+                    "Blend": c["blend_name"],
+                    "Client": c["client"],
+                    "Price (R/ton)": f"R {c['price']:,.0f}",
+                    "Cost (R/ton)": f"R {c['cost']:,.0f}",
+                    "Distance (R)": f"R {c.get('distance', 0):,.0f}",
+                    "Compost %": f"{c['compost_pct']}%",
+                    "N%": f"{c['npk']['N']:.1f}",
+                    "P%": f"{c['npk']['P']:.1f}",
+                    "K%": f"{c['npk']['K']:.1f}",
+                    "Date": c["date"],
+                })
+            st.dataframe(pd.DataFrame(comp_rows), use_container_width=True,
+                         hide_index=True)
+
 # ── Save / Export ───────────────────────────────────────────────────────────
 st.divider()
 
@@ -288,6 +360,7 @@ with st.expander("Save & Export"):
                 blend_name, client, farm, batch, compost_pct, cost_per_ton,
                 total_cost, selling_price, margin, is_relaxed, relaxed_scale,
                 recipe_rows, nutrient_rows, sa_notation=sa_label,
+                pricing_suggestion=suggestion,
             )
             filename = f"{blend_name}_{client}.pdf".replace(" ", "_")
             st.download_button("Download PDF", pdf_bytes, filename, "application/pdf")
