@@ -1,45 +1,102 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from scipy.optimize import linprog
 from shared import (
-    apply_styles, show_header, load_materials, build_pdf, save_blend,
+    apply_styles, show_header, show_mobile_nav, load_materials, load_materials_with_markup,
+    build_pdf, save_blend,
     sa_notation_to_pct, pct_to_sa_notation, suggest_price,
+    run_optimizer, find_closest_blend,
     DARK_GREY, MED_GREY, COMPOST_NAME,
 )
+from auth import require_auth, logout_button, is_admin
 
 st.set_page_config(page_title="Sapling Blend Calculator", layout="wide")
 apply_styles()
 
-df = load_materials()
+# ── Auth ──────────────────────────────────────────────────────────────────
+name, role, username = require_auth()
+logout_button()
+show_mobile_nav("Blend_Calculator")
+
+df = load_materials_with_markup(role)
 NUTRIENTS = [c for c in df.columns if c not in ["Material", "Type", "Cost (R/ton)"]]
+
+# ── Persist widget values across page navigation ─────────────────────────
+if "bc_data" not in st.session_state:
+    st.session_state["bc_data"] = {}
+
+_DEFAULT_MATS = {
+    "Urea 46%", "MAP 33%", "DAP",
+    "KCL (Potassium Chloride)", "Gypsum",
+    "KAN 28%", "Calcitic Lime",
+}
+
+# Restore saved material selections before widgets render
+for _, row in df.iterrows():
+    name = row["Material"]
+    if name == COMPOST_NAME:
+        continue
+    wkey = f"mat_{name}"
+    if wkey not in st.session_state and wkey in st.session_state["bc_data"]:
+        st.session_state[wkey] = st.session_state["bc_data"][wkey]
+
+# Restore other BC widget keys
+for _k in ["bc_batch", "bc_compost", "bc_input_mode", "bc_blend_name",
+            "bc_client", "bc_farm", "bc_selling_price",
+            "intl_N", "intl_P", "intl_K", "sa_n", "sa_p", "sa_k", "sa_total"]:
+    if _k not in st.session_state and _k in st.session_state["bc_data"]:
+        st.session_state[_k] = st.session_state["bc_data"][_k]
+for nut in [c for c in df.columns if c not in ["Material", "Type", "Cost (R/ton)", "N", "P", "K"]]:
+    _k = f"bc_sec_{nut}"
+    if _k not in st.session_state and _k in st.session_state["bc_data"]:
+        st.session_state[_k] = st.session_state["bc_data"][_k]
+
+def _save_bc_state():
+    """Snapshot current widget values into the persistent mirror."""
+    _bc = st.session_state["bc_data"]
+    for _, row in df.iterrows():
+        name = row["Material"]
+        if name == COMPOST_NAME:
+            continue
+        wkey = f"mat_{name}"
+        if wkey in st.session_state:
+            _bc[wkey] = st.session_state[wkey]
+    for _k in ["bc_batch", "bc_compost", "bc_input_mode", "bc_blend_name",
+                "bc_client", "bc_farm", "bc_selling_price",
+                "intl_N", "intl_P", "intl_K", "sa_n", "sa_p", "sa_k", "sa_total"]:
+        if _k in st.session_state:
+            _bc[_k] = st.session_state[_k]
+    for nut in [c for c in df.columns if c not in ["Material", "Type", "Cost (R/ton)", "N", "P", "K"]]:
+        _k = f"bc_sec_{nut}"
+        if _k in st.session_state:
+            _bc[_k] = st.session_state[_k]
 
 # ── Header with logo ───────────────────────────────────────────────────────
 show_header()
 
-# ── Sidebar: material selection ─────────────────────────────────────────────
-st.sidebar.header("Raw Materials")
-
+# ── Sidebar: material selection (admin only) ──────────────────────────────
 compost_mask = df["Material"] == COMPOST_NAME
 other_materials = df[~compost_mask]
 
-st.sidebar.markdown(f"**Base:** {COMPOST_NAME} (always included)")
-st.sidebar.divider()
+if is_admin():
+    st.sidebar.header("Raw Materials")
+    st.sidebar.markdown(f"**Base:** {COMPOST_NAME} (always included)")
+    st.sidebar.divider()
 
-enabled = {}
-for mat_type in sorted(other_materials["Type"].unique()):
-    group = other_materials[other_materials["Type"] == mat_type]
-    st.sidebar.subheader(mat_type)
-    for _, row in group.iterrows():
-        name = row["Material"]
-        default = name in [
-            "Urea 46%", "MAP 33%", "DAP",
-            "KCL (Potassium Chloride)", "Gypsum",
-            "KAN 28%", "Calcitic Lime",
-        ]
-        enabled[name] = st.sidebar.checkbox(name, value=default, key=f"mat_{name}")
+    enabled = {}
+    for mat_type in sorted(other_materials["Type"].unique()):
+        group = other_materials[other_materials["Type"] == mat_type]
+        st.sidebar.subheader(mat_type)
+        for _, row in group.iterrows():
+            mat_name = row["Material"]
+            default = mat_name in _DEFAULT_MATS
+            enabled[mat_name] = st.sidebar.checkbox(mat_name, value=default,
+                                                     key=f"mat_{mat_name}")
+    selected_names = [COMPOST_NAME] + [n for n, on in enabled.items() if on]
+else:
+    # Agents use all default materials — no selection UI
+    selected_names = [COMPOST_NAME] + list(_DEFAULT_MATS)
 
-selected_names = [COMPOST_NAME] + [n for n, on in enabled.items() if on]
 df_use = df[df["Material"].isin(selected_names)].reset_index(drop=True)
 compost_idx = df_use.index[df_use["Material"] == COMPOST_NAME][0]
 
@@ -48,8 +105,9 @@ col_targets, col_settings = st.columns([3, 1])
 
 with col_settings:
     st.subheader("Settings")
-    batch = st.number_input("Batch size (kg)", value=1000, step=100, min_value=100)
-    min_compost_pct = st.slider("Min compost %", 0, 95, 50, 5)
+    batch = st.number_input("Batch size (kg)", value=1000, step=100, min_value=100,
+                            key="bc_batch")
+    min_compost_pct = st.slider("Min compost %", 0, 95, 50, 5, key="bc_compost")
 
 primary = ["N", "P", "K"]
 secondary = [n for n in NUTRIENTS if n not in primary]
@@ -59,7 +117,7 @@ with col_targets:
     input_mode = st.radio(
         "Input format",
         ["International (NPK %)", "SA Local (ratio & total)"],
-        horizontal=True,
+        horizontal=True, key="bc_input_mode",
     )
 
     targets = {}
@@ -107,7 +165,7 @@ with col_targets:
             with cols[i % 5]:
                 targets[nut] = st.number_input(
                     nut, value=None, step=0.1, min_value=0.0, max_value=100.0,
-                    format="%.3f", placeholder="0.000",
+                    format="%.3f", placeholder="0.000", key=f"bc_sec_{nut}",
                 )
 
 st.divider()
@@ -117,51 +175,9 @@ active_targets = {n: v for n, v in targets.items() if v is not None and v > 0}
 
 if not active_targets:
     st.info("Set at least one nutrient target above to calculate a blend.")
+    _save_bc_state()
     st.stop()
 
-
-def run_optimizer(target_dict, df_mat, batch_size, c_idx, min_pct):
-    n_mats = len(df_mat)
-    c = np.zeros(n_mats)
-    c[c_idx] = -1
-
-    A_eq, b_eq = [], []
-    for nut, target_pct in target_dict.items():
-        A_eq.append((df_mat[nut] / 100).to_numpy())
-        b_eq.append(target_pct / 100 * batch_size)
-    A_eq.append(np.ones(n_mats))
-    b_eq.append(batch_size)
-
-    A_ub = np.zeros((1, n_mats))
-    A_ub[0, c_idx] = -1
-    b_ub = np.array([-min_pct / 100 * batch_size])
-
-    bounds = [(0, batch_size)] * n_mats
-    return linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=np.array(A_eq),
-                   b_eq=np.array(b_eq), bounds=bounds)
-
-
-def find_closest_blend(target_dict, df_mat, batch_size, c_idx, min_pct):
-    lo, hi, best_res, best_scale = 0.0, 1.0, None, 0.0
-    for _ in range(30):
-        mid = (lo + hi) / 2
-        scaled = {n: v * mid for n, v in target_dict.items()}
-        res = run_optimizer(scaled, df_mat, batch_size, c_idx, min_pct)
-        if res.success:
-            best_res, best_scale, lo = res, mid, mid
-        else:
-            hi = mid
-    if best_res is None:
-        lo2, hi2 = 0.0, 1.0
-        for _ in range(30):
-            mid = (lo2 + hi2) / 2
-            scaled = {n: v * mid for n, v in target_dict.items()}
-            res = run_optimizer(scaled, df_mat, batch_size, c_idx, 0)
-            if res.success:
-                best_res, best_scale, lo2 = res, mid, mid
-            else:
-                hi2 = mid
-    return best_res, best_scale
 
 
 res = run_optimizer(active_targets, df_use, batch, compost_idx, min_compost_pct)
@@ -180,6 +196,7 @@ if not res.success:
             "achieve these nutrient targets. Try enabling more materials or "
             "adjusting your targets."
         )
+        _save_bc_state()
         st.stop()
 
 # ── Results ─────────────────────────────────────────────────────────────────
@@ -207,15 +224,24 @@ actual_k = (result["K"] / 100 * result["kg"]).sum() / batch * 100 if "K" in resu
 sa_label = pct_to_sa_notation(actual_n, actual_p, actual_k)
 
 st.subheader("Blend Result")
-k1, k2, k3, k4, k5 = st.columns(5)
-k1.metric("SA Notation", sa_label)
-k2.metric("Compost", f"{compost_pct:.1f}%")
-k3.metric("Chemical", f"{100 - compost_pct:.1f}%")
-k4.metric("Cost / ton", f"R {cost_per_ton:,.0f}")
-k5.metric("Batch cost", f"R {total_cost:,.0f}")
 
-recipe_df = result[["Material", "Type", "kg", "% of Blend", "Cost (R)"]]
-st.dataframe(recipe_df, use_container_width=True, hide_index=True)
+intl_label = f"N {actual_n:.1f}%  |  P {actual_p:.1f}%  |  K {actual_k:.1f}%"
+
+st.markdown(
+    f"**SA Notation:** {sa_label}  \n"
+    f"**International:** {intl_label}  \n"
+    f"**Compost:** {compost_pct:.1f}%"
+)
+
+if is_admin():
+    k1, k2 = st.columns(2)
+    k1.metric("Cost / ton", f"R {cost_per_ton:,.0f}")
+    k2.metric("Batch cost", f"R {total_cost:,.0f}")
+
+    recipe_df = result[["Material", "Type", "kg", "% of Blend", "Cost (R)"]]
+    st.dataframe(recipe_df, use_container_width=True, hide_index=True)
+else:
+    st.metric("Estimated Price / ton", f"R {cost_per_ton:,.0f}")
 
 # Nutrient comparison
 st.subheader("Nutrient Analysis")
@@ -242,50 +268,52 @@ st.dataframe(active_df, use_container_width=True, hide_index=True)
 with st.expander("All other nutrients (from compost & materials)"):
     st.dataframe(passive_df, use_container_width=True, hide_index=True)
 
-# ── Pricing Suggestion ─────────────────────────────────────────────────────
-st.divider()
-st.subheader("Suggested Selling Price")
+# ── Pricing Suggestion (admin only) ───────────────────────────────────────
+suggestion = None
+if is_admin():
+    st.divider()
+    st.subheader("Suggested Selling Price")
 
-suggestion = suggest_price(actual_n, actual_p, actual_k, compost_pct)
+    suggestion = suggest_price(actual_n, actual_p, actual_k, compost_pct)
 
-if suggestion is None:
-    st.info("No historical blend data available for pricing suggestions.")
-else:
-    w = suggestion.get("weights", {})
-    w_note = (f"N: R{w.get('N',0):,.0f}/%  ·  "
-              f"P: R{w.get('P',0):,.0f}/%  ·  "
-              f"K: R{w.get('K',0):,.0f}/%" if w else "")
-
-    if suggestion["method"] == "tight":
-        st.caption(
-            f"Based on **{suggestion['found']}** similar blends "
-            f"(within R500 cost-weighted nutrient distance)  \n"
-            f"Nutrient weights from current material prices — {w_note}"
-        )
-    elif suggestion["method"] == "widened":
-        st.caption(
-            f"Based on **{suggestion['found']}** broadly similar blends "
-            f"(within R1,000 — widened due to few close matches)  \n"
-            f"Nutrient weights from current material prices — {w_note}"
-        )
+    if suggestion is None:
+        st.info("No historical blend data available for pricing suggestions.")
     else:
-        st.caption(
-            f"No close matches found — estimate from regression model "
-            f"using all historical blends  \n"
-            f"Nutrient weights from current material prices — {w_note}"
-        )
+        w = suggestion.get("weights", {})
+        w_note = (f"N: R{w.get('N',0):,.0f}/%  ·  "
+                  f"P: R{w.get('P',0):,.0f}/%  ·  "
+                  f"K: R{w.get('K',0):,.0f}/%" if w else "")
 
-    pc1, pc2, pc3, pc4 = st.columns(4)
-    pc1.metric("Your Cost", f"R {cost_per_ton:,.0f}")
-    pc2.metric("Low", f"R {suggestion['low']:,.0f}",
-               delta=f"R {suggestion['low'] - cost_per_ton:,.0f} margin",
-               delta_color="normal")
-    pc3.metric("Mid", f"R {suggestion['mid']:,.0f}",
-               delta=f"R {suggestion['mid'] - cost_per_ton:,.0f} margin",
-               delta_color="normal")
-    pc4.metric("High", f"R {suggestion['high']:,.0f}",
-               delta=f"R {suggestion['high'] - cost_per_ton:,.0f} margin",
-               delta_color="normal")
+        if suggestion["method"] == "tight":
+            st.caption(
+                f"Based on **{suggestion['found']}** similar blends "
+                f"(within R500 cost-weighted nutrient distance)  \n"
+                f"Nutrient weights from current material prices — {w_note}"
+            )
+        elif suggestion["method"] == "widened":
+            st.caption(
+                f"Based on **{suggestion['found']}** broadly similar blends "
+                f"(within R1,000 — widened due to few close matches)  \n"
+                f"Nutrient weights from current material prices — {w_note}"
+            )
+        else:
+            st.caption(
+                f"No close matches found — estimate from regression model "
+                f"using all historical blends  \n"
+                f"Nutrient weights from current material prices — {w_note}"
+            )
+
+        pc1, pc2, pc3, pc4 = st.columns(4)
+        pc1.metric("Your Cost", f"R {cost_per_ton:,.0f}")
+        pc2.metric("Low", f"R {suggestion['low']:,.0f}",
+                   delta=f"R {suggestion['low'] - cost_per_ton:,.0f} margin",
+                   delta_color="normal")
+        pc3.metric("Mid", f"R {suggestion['mid']:,.0f}",
+                   delta=f"R {suggestion['mid'] - cost_per_ton:,.0f} margin",
+                   delta_color="normal")
+        pc4.metric("High", f"R {suggestion['high']:,.0f}",
+                   delta=f"R {suggestion['high'] - cost_per_ton:,.0f} margin",
+                   delta_color="normal")
 
     if suggestion.get("regression"):
         reg = suggestion["regression"]
@@ -317,84 +345,133 @@ else:
 # ── Save / Export ───────────────────────────────────────────────────────────
 st.divider()
 
-with st.expander("Save & Export"):
+# Prepare data for PDF and saving
+recipe_rows = []
+for _, r in result.iterrows():
+    recipe_rows.append([
+        str(r["Material"]), str(r["Type"]),
+        f"{r['kg']:.1f}", f"{r['% of Blend']:.1f}", f"{r['Cost (R)']:.2f}",
+    ])
+
+nutrient_rows = []
+for _, r in comp_df.iterrows():
+    nutrient_rows.append([
+        str(r["Nutrient"]), f"{r['Target %']:.3f}",
+        f"{r['Actual %']:.3f}", f"{r['Diff']:.3f}", f"{r['kg per ton']:.2f}",
+    ])
+
+recipe_json = []
+for _, r in result.iterrows():
+    recipe_json.append({
+        "material": str(r["Material"]),
+        "type": str(r["Type"]),
+        "kg": round(float(r["kg"]), 2),
+        "pct": round(float(r["% of Blend"]), 1),
+        "cost": round(float(r["Cost (R)"]), 2),
+    })
+nutrient_json = []
+for _, r in comp_df.iterrows():
+    nutrient_json.append({
+        "nutrient": str(r["Nutrient"]),
+        "target": round(float(r["Target %"]), 3),
+        "actual": round(float(r["Actual %"]), 3),
+        "diff": round(float(r["Diff"]), 3),
+        "kg_per_ton": round(float(r["kg per ton"]), 2),
+    })
+target_json = {n: v for n, v in targets.items() if v is not None and v > 0}
+
+if is_admin():
+    # ── Admin: full save & export ─────────────────────────────────────────
+    with st.expander("Save & Export"):
+        col1, col2 = st.columns(2)
+        with col1:
+            blend_name = st.text_input("Blend name *", placeholder="e.g. Citrus 3-1-5",
+                                       key="bc_blend_name")
+            client = st.text_input("Client *", placeholder="e.g. Smith Farms",
+                                   key="bc_client")
+        with col2:
+            farm = st.text_input("Farm", placeholder="Optional", key="bc_farm")
+            selling_price = st.number_input("Selling price (R/ton)", value=0.0, step=100.0,
+                                             key="bc_selling_price")
+
+        margin = selling_price - cost_per_ton if selling_price > 0 else None
+
+        if margin is not None:
+            st.metric("Margin", f"R {margin:,.0f} / ton")
+
+        can_save = bool(blend_name and client)
+        if not can_save:
+            st.warning("Blend name and Client are required to save or download.")
+
+        btn_cols = st.columns(2)
+        with btn_cols[0]:
+            if can_save:
+                pdf_bytes = build_pdf(
+                    blend_name, client, farm, batch, compost_pct, cost_per_ton,
+                    total_cost, selling_price, margin, is_relaxed, relaxed_scale,
+                    recipe_rows, nutrient_rows, sa_notation=sa_label,
+                    pricing_suggestion=suggestion,
+                )
+                filename = f"{blend_name}_{client}.pdf".replace(" ", "_")
+                st.download_button("Download PDF", pdf_bytes, filename,
+                                   "application/pdf")
+
+        with btn_cols[1]:
+            if can_save and st.button("Save to Database"):
+                try:
+                    save_blend(
+                        blend_name, client, farm, batch, min_compost_pct,
+                        selling_price, cost_per_ton, target_json,
+                        recipe_json, nutrient_json, selected_names,
+                        created_by=username,
+                    )
+                    st.success("Blend saved!")
+                except Exception as e:
+                    st.error(f"Failed to save: {e}")
+else:
+    # ── Agent: required fields, auto-save, no raw costs in PDF ────────────
+    st.subheader("Save Blend")
     col1, col2 = st.columns(2)
     with col1:
-        blend_name = st.text_input("Blend name *", placeholder="e.g. Citrus 3-1-5")
-        client = st.text_input("Client *", placeholder="e.g. Smith Farms")
+        blend_name = st.text_input("Blend name *", placeholder="e.g. Citrus 3-1-5",
+                                   key="bc_blend_name")
+        client = st.text_input("Client *", placeholder="e.g. Smith Farms",
+                               key="bc_client")
     with col2:
-        farm = st.text_input("Farm", placeholder="Optional")
-        selling_price = st.number_input("Selling price (R/ton)", value=0.0, step=100.0)
+        farm = st.text_input("Farm *", placeholder="e.g. Greenfield Estate",
+                             key="bc_farm")
 
-    margin = selling_price - cost_per_ton if selling_price > 0 else None
-
-    if margin is not None:
-        st.metric("Margin", f"R {margin:,.0f} / ton")
-
-    # Check required fields
-    can_save = bool(blend_name and client)
+    can_save = bool(blend_name and client and farm)
     if not can_save:
-        st.warning("Blend name and Client are required to save or download.")
+        st.warning("Blend name, Client, and Farm are required.")
 
-    # Prepare data for PDF and saving
-    recipe_rows = []
-    for _, r in result.iterrows():
-        recipe_rows.append([
-            str(r["Material"]), str(r["Type"]),
-            f"{r['kg']:.1f}", f"{r['% of Blend']:.1f}", f"{r['Cost (R)']:.2f}",
-        ])
+    if can_save:
+        # Agent PDF — no recipe details, no raw costs
+        agent_nutrient_rows = [
+            [str(r["Nutrient"]), f"{r['Target %']:.3f}",
+             f"{r['Actual %']:.3f}", f"{r['Diff']:.3f}", f"{r['kg per ton']:.2f}"]
+            for _, r in comp_df.iterrows()
+        ]
+        pdf_bytes = build_pdf(
+            blend_name, client, farm, batch, compost_pct, cost_per_ton,
+            total_cost, 0, None, is_relaxed, relaxed_scale,
+            [], agent_nutrient_rows, sa_notation=sa_label,
+        )
+        filename = f"{blend_name}_{client}.pdf".replace(" ", "_")
+        st.download_button("Download PDF", pdf_bytes, filename,
+                           "application/pdf")
 
-    nutrient_rows = []
-    for _, r in comp_df.iterrows():
-        nutrient_rows.append([
-            str(r["Nutrient"]), f"{r['Target %']:.3f}",
-            f"{r['Actual %']:.3f}", f"{r['Diff']:.3f}", f"{r['kg per ton']:.2f}",
-        ])
-
-    btn_cols = st.columns(2)
-
-    # PDF download
-    with btn_cols[0]:
-        if can_save:
-            pdf_bytes = build_pdf(
-                blend_name, client, farm, batch, compost_pct, cost_per_ton,
-                total_cost, selling_price, margin, is_relaxed, relaxed_scale,
-                recipe_rows, nutrient_rows, sa_notation=sa_label,
-                pricing_suggestion=suggestion,
-            )
-            filename = f"{blend_name}_{client}.pdf".replace(" ", "_")
-            st.download_button("Download PDF", pdf_bytes, filename, "application/pdf")
-
-    # Save to database
-    with btn_cols[1]:
-        if can_save and st.button("Save to Database"):
-            # Build JSON-friendly data for storage
-            recipe_json = []
-            for _, r in result.iterrows():
-                recipe_json.append({
-                    "material": str(r["Material"]),
-                    "type": str(r["Type"]),
-                    "kg": round(float(r["kg"]), 2),
-                    "pct": round(float(r["% of Blend"]), 1),
-                    "cost": round(float(r["Cost (R)"]), 2),
-                })
-            nutrient_json = []
-            for _, r in comp_df.iterrows():
-                nutrient_json.append({
-                    "nutrient": str(r["Nutrient"]),
-                    "target": round(float(r["Target %"]), 3),
-                    "actual": round(float(r["Actual %"]), 3),
-                    "diff": round(float(r["Diff"]), 3),
-                    "kg_per_ton": round(float(r["kg per ton"]), 2),
-                })
-            target_json = {n: v for n, v in targets.items() if v is not None and v > 0}
-
+        # Auto-save
+        if st.button("Save to Database", key="agent_save_blend"):
             try:
                 save_blend(
                     blend_name, client, farm, batch, min_compost_pct,
-                    selling_price, cost_per_ton, target_json,
+                    0, cost_per_ton, target_json,
                     recipe_json, nutrient_json, selected_names,
+                    created_by=username,
                 )
                 st.success("Blend saved!")
             except Exception as e:
                 st.error(f"Failed to save: {e}")
+
+_save_bc_state()

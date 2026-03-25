@@ -2,16 +2,38 @@ import json
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import bcrypt
 from shared import (
-    apply_styles, show_header, build_pdf, pct_to_sa_notation,
+    apply_styles, show_header, show_mobile_nav, build_pdf, build_soil_pdf, pct_to_sa_notation,
     sa_notation_to_pct, fetch_blends, fetch_all_blends, restore_blends,
-    update_blend, delete_blend, fetch_unique_clients, fetch_unique_farms,
+    update_blend, delete_blend, soft_delete_blend,
+    fetch_unique_clients, fetch_unique_farms,
     fetch_blends_by_client, fetch_blends_by_farm,
-    ORANGE, DARK_GREY, MED_GREY,
+    fetch_soil_analyses, fetch_all_soil_analyses,
+    delete_soil_analysis, soft_delete_soil_analysis,
+    load_soil_norms, load_materials, load_markups, save_markup,
+    fetch_all_users, create_user, update_user, delete_user,
+    NUTRIENTS_SOIL, ORANGE, DARK_GREY, MED_GREY,
 )
+from auth import require_auth, logout_button, is_admin, reload_auth
 
 st.set_page_config(page_title="Database — Sapling", layout="wide")
 apply_styles()
+
+# ── Auth ──────────────────────────────────────────────────────────────────
+auth_name, role, username = require_auth()
+logout_button()
+show_mobile_nav("Database")
+
+# Agents cannot access Database page — hide it completely
+if role == "sales_agent":
+    st.markdown(
+        "<style>[data-testid='stSidebarNav'] li:nth-child(1) {display: none;}</style>",
+        unsafe_allow_html=True,
+    )
+    st.warning("You do not have access to the Database page.")
+    st.stop()
+
 show_header("Database")
 
 
@@ -25,12 +47,20 @@ def blend_card(blend, prefix=""):
     farm = blend.get("farm") or ""
     cost = blend.get("cost_per_ton") or 0
 
+    created_by = blend.get("created_by") or ""
+    deleted_by = blend.get("deleted_by") or ""
+    deleted_at = blend.get("deleted_at") or ""
+
     header = f"**{name}**"
     if client:
         header += f"  |  {client}"
     if farm:
         header += f"  |  {farm}"
     header += f"  |  R {cost:,.0f}/ton  |  {created}"
+    if created_by:
+        header += f"  |  by {created_by}"
+    if deleted_at:
+        header += f"  |  DELETED by {deleted_by}"
 
     with st.expander(header):
         recipe = blend.get("recipe") or []
@@ -81,44 +111,47 @@ def blend_card(blend, prefix=""):
 
         with bc2:
             if st.button("Reprint PDF", key=f"pdf_{key_prefix}"):
-                batch_size = blend.get("batch_size") or 1000
-                selling_price = float(blend.get("selling_price") or 0)
-                cost_pt = float(blend.get("cost_per_ton") or 0)
-                total_kg = sum(r.get("kg", 0) for r in recipe)
-                total_cost = sum(r.get("cost", 0) for r in recipe)
-                compost_kg = sum(r.get("kg", 0) for r in recipe
-                                 if r.get("material") == "Manure Compost")
-                compost_pct = (compost_kg / total_kg * 100) if total_kg > 0 else 0
-                margin = selling_price - cost_pt if selling_price > 0 else None
+                try:
+                    batch_size = blend.get("batch_size") or 1000
+                    selling_price = float(blend.get("selling_price") or 0)
+                    cost_pt = float(blend.get("cost_per_ton") or 0)
+                    total_kg = sum(r.get("kg", 0) for r in recipe)
+                    total_cost = sum(r.get("cost", 0) for r in recipe)
+                    compost_kg = sum(r.get("kg", 0) for r in recipe
+                                     if r.get("material") == "Manure Compost")
+                    compost_pct = (compost_kg / total_kg * 100) if total_kg > 0 else 0
+                    margin = selling_price - cost_pt if selling_price > 0 else None
 
-                recipe_rows = [
-                    [r.get("material", ""), r.get("type", ""),
-                     f"{r.get('kg', 0):.1f}", f"{r.get('pct', 0):.1f}",
-                     f"{r.get('cost', 0):.2f}"]
-                    for r in recipe
-                ]
-                nutrient_rows = [
-                    [n.get("nutrient", ""), f"{n.get('target', 0):.3f}",
-                     f"{n.get('actual', 0):.3f}", f"{n.get('diff', 0):.3f}",
-                     f"{n.get('kg_per_ton', 0):.2f}"]
-                    for n in nutrients
-                ]
+                    recipe_rows = [
+                        [r.get("material", ""), r.get("type", ""),
+                         f"{r.get('kg', 0):.1f}", f"{r.get('pct', 0):.1f}",
+                         f"{r.get('cost', 0):.2f}"]
+                        for r in recipe
+                    ] if recipe else []
+                    nutrient_rows = [
+                        [n.get("nutrient", ""), f"{n.get('target', 0):.3f}",
+                         f"{n.get('actual', 0):.3f}", f"{n.get('diff', 0):.3f}",
+                         f"{n.get('kg_per_ton', 0):.2f}"]
+                        for n in nutrients
+                    ] if nutrients else []
 
-                nut_map = {n.get("nutrient"): n.get("actual", 0) for n in nutrients}
-                sa_nota = pct_to_sa_notation(
-                    nut_map.get("N", 0), nut_map.get("P", 0), nut_map.get("K", 0)
-                )
-                pdf_bytes = build_pdf(
-                    new_name, new_client, new_farm, batch_size,
-                    compost_pct, cost_pt, total_cost, selling_price,
-                    margin, False, 1.0, recipe_rows, nutrient_rows,
-                    sa_notation=sa_nota,
-                )
-                dl_name = f"{new_name or 'blend'}_{new_client or 'unknown'}.pdf".replace(" ", "_")
-                st.download_button(
-                    "Download PDF", pdf_bytes, dl_name,
-                    "application/pdf", key=f"dl_{key_prefix}",
-                )
+                    nut_map = {n.get("nutrient"): n.get("actual", 0) for n in nutrients}
+                    sa_nota = pct_to_sa_notation(
+                        nut_map.get("N", 0), nut_map.get("P", 0), nut_map.get("K", 0)
+                    ) if nutrients else ""
+                    pdf_bytes = build_pdf(
+                        new_name or "Unnamed", new_client or "", new_farm or "",
+                        batch_size, compost_pct, cost_pt, total_cost, selling_price,
+                        margin, False, 1.0, recipe_rows, nutrient_rows,
+                        sa_notation=sa_nota,
+                    )
+                    dl_name = f"{new_name or 'blend'}_{new_client or 'unknown'}.pdf".replace(" ", "_")
+                    st.download_button(
+                        "Download PDF", pdf_bytes, dl_name,
+                        "application/pdf", key=f"dl_{key_prefix}",
+                    )
+                except Exception as e:
+                    st.error(f"Could not generate PDF: {e}")
 
         with bc3:
             if st.button("Delete", key=f"del_{key_prefix}"):
@@ -128,8 +161,8 @@ def blend_card(blend, prefix=""):
 
 
 # ── Tabs ────────────────────────────────────────────────────────────────────
-tab_search, tab_clients, tab_farms, tab_nutrients, tab_backup = st.tabs(
-    ["Search", "By Client", "By Farm", "By Nutrients", "Backup"]
+tab_search, tab_clients, tab_farms, tab_nutrients, tab_soil, tab_users, tab_markup, tab_backup = st.tabs(
+    ["Search", "By Client", "By Farm", "By Nutrients", "Soil Analyses", "Users", "Markups", "Backup"]
 )
 
 # ── Search tab ──────────────────────────────────────────────────────────────
@@ -269,18 +302,342 @@ with tab_nutrients:
     else:
         st.info("Set at least one nutrient value to search.")
 
+# ── Soil Analyses tab ──────────────────────────────────────────────────────
+with tab_soil:
+    soil_search = st.text_input("Search soil analyses",
+                                 placeholder="Search by customer, farm, or crop...",
+                                 key="soil_search")
+    analyses = fetch_soil_analyses(soil_search if soil_search else None)
+
+    if not analyses:
+        st.info("No soil analyses found.")
+    else:
+        st.caption(f"{len(analyses)} analysis/analyses")
+
+        for sa in analyses:
+            sa_id = sa["id"]
+            created = datetime.fromisoformat(sa["created_at"]).strftime("%Y-%m-%d %H:%M")
+            cust = sa.get("customer") or "Unknown"
+            farm_sa = sa.get("farm") or ""
+            field_sa = sa.get("field") or ""
+            crop_sa = sa.get("crop") or ""
+            cost = sa.get("total_cost_ha") or 0
+            sa_created_by = sa.get("created_by") or ""
+            sa_deleted_by = sa.get("deleted_by") or ""
+            sa_deleted_at = sa.get("deleted_at") or ""
+
+            header = f"**{cust}**"
+            if farm_sa:
+                header += f"  |  {farm_sa}"
+            if field_sa:
+                header += f"  |  {field_sa}"
+            if crop_sa:
+                header += f"  |  {crop_sa}"
+            header += f"  |  R{cost:,.0f}/ha  |  {created}"
+            if sa_created_by:
+                header += f"  |  by {sa_created_by}"
+            if sa_deleted_at:
+                header += f"  |  DELETED by {sa_deleted_by}"
+
+            with st.expander(header):
+                # Soil values
+                sv = sa.get("soil_values") or {}
+                if sv:
+                    st.markdown("**Soil Values**")
+                    sv_df = pd.DataFrame([
+                        {"Parameter": k, "Value": v} for k, v in sv.items()
+                    ])
+                    st.dataframe(sv_df, use_container_width=True, hide_index=True)
+
+                # Nutrient targets
+                nt = sa.get("nutrient_targets") or []
+                if nt:
+                    with st.expander("Nutrient Targets"):
+                        nt_df = pd.DataFrame(nt)
+                        st.dataframe(nt_df, use_container_width=True, hide_index=True)
+
+                # Products
+                prods = sa.get("products") or []
+                if prods:
+                    st.markdown("**Products / Blend**")
+                    prod_df = pd.DataFrame([{
+                        "Product": p.get("product", ""),
+                        "Method": p.get("method", ""),
+                        "Timing": p.get("timing", ""),
+                        "Kg/Ha": f"{p.get('kg_ha', 0):.0f}",
+                        "Price/Ha": f"R{p.get('price_ha', 0):,.2f}",
+                        "Price/Ton": f"R{p.get('price_per_ton', 0):,.2f}",
+                    } for p in prods])
+                    st.dataframe(prod_df, use_container_width=True, hide_index=True)
+
+                # Ratio results
+                rr = sa.get("ratio_results") or []
+                if rr:
+                    with st.expander("Nutrient Ratios"):
+                        rr_df = pd.DataFrame(rr)
+                        st.dataframe(rr_df, use_container_width=True, hide_index=True)
+
+                # Actions
+                st.markdown("---")
+                ac1, ac2 = st.columns(2)
+
+                # Reprint PDF
+                with ac1:
+                    if st.button("Reprint PDF", key=f"sa_pdf_{sa_id}"):
+                        try:
+                            norms = load_soil_norms()
+                            plants_pf = None
+                            if sa.get("pop_per_ha") and sa.get("field_area_ha"):
+                                plants_pf = int(sa["pop_per_ha"] * sa["field_area_ha"])
+                            pdf_bytes = build_soil_pdf(
+                                customer=cust,
+                                farm=farm_sa,
+                                field=field_sa,
+                                crop_name=crop_sa,
+                                cultivar=sa.get("cultivar") or crop_sa,
+                                yield_target=sa.get("yield_target") or 0,
+                                yield_unit=sa.get("yield_unit") or "",
+                                pop_per_ha=sa.get("pop_per_ha"),
+                                plants_per_field=plants_pf,
+                                field_area_ha=sa.get("field_area_ha"),
+                                agent_name=sa.get("agent_name") or "",
+                                agent_cell=sa.get("agent_cell") or "",
+                                agent_email=sa.get("agent_email") or "",
+                                lab_name=sa.get("lab_name") or "",
+                                analysis_date=sa.get("analysis_date") or "",
+                                soil_values=sv,
+                                nutrient_targets=nt,
+                                ratio_results=rr,
+                                products=prods,
+                                total_cost_ha=cost,
+                                norms=norms,
+                            )
+                            dl_name = f"Recommendation_{cust}_{crop_sa}.pdf".replace(" ", "_")
+                            st.download_button(
+                                "Download PDF", pdf_bytes, dl_name,
+                                "application/pdf", key=f"sa_dl_{sa_id}",
+                            )
+                        except Exception as e:
+                            st.error(f"PDF error: {e}")
+
+                # Delete
+                with ac2:
+                    if st.button("Delete", key=f"sa_del_{sa_id}"):
+                        delete_soil_analysis(sa_id)
+                        st.success("Deleted!")
+                        st.rerun()
+
+# ── Users tab ──────────────────────────────────────────────────────────────
+with tab_users:
+    st.markdown("**User Management**")
+
+    users = fetch_all_users()
+    if users:
+        user_display = []
+        for u in users:
+            user_display.append({
+                "Username": u["username"],
+                "Name": u["name"],
+                "Email": u.get("email") or "",
+                "Phone": u.get("phone") or "",
+                "Company": u.get("company") or "",
+                "Role": u["role"],
+                "Created": datetime.fromisoformat(u["created_at"]).strftime("%Y-%m-%d")
+                    if u.get("created_at") else "",
+            })
+        st.dataframe(pd.DataFrame(user_display), use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+    st.markdown("**Add New User**")
+
+    uc1, uc2 = st.columns(2)
+    with uc1:
+        new_username = st.text_input("Username *", placeholder="e.g. jsmith",
+                                      key="new_username")
+        new_name = st.text_input("Full name *", placeholder="e.g. John Smith",
+                                  key="new_fullname")
+        new_email = st.text_input("Email", placeholder="e.g. john@example.com",
+                                   key="new_email")
+    with uc2:
+        new_phone = st.text_input("Phone", placeholder="e.g. 082 123 4567",
+                                   key="new_phone")
+        new_company = st.text_input("Company", placeholder="e.g. AgriCo Resellers",
+                                     key="new_company")
+        new_role = st.selectbox("Role", ["sales_agent", "admin"], key="new_role")
+
+    new_password = st.text_input("Password *", type="password", key="new_password")
+
+    if st.button("Create User", key="create_user_btn"):
+        if not new_username or not new_name or not new_password:
+            st.warning("Username, full name, and password are required.")
+        elif any(u["username"] == new_username for u in users):
+            st.error(f"Username '{new_username}' already exists.")
+        else:
+            pw_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+            try:
+                create_user(new_username, new_name, new_email, new_phone,
+                           new_company, new_role, pw_hash)
+                reload_auth()
+                st.success(f"User '{new_username}' created!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Failed to create user: {e}")
+
+    # Edit / Delete existing users
+    if users:
+        st.markdown("---")
+        st.markdown("**Edit / Delete User**")
+        user_names = [u["username"] for u in users]
+        edit_user = st.selectbox("Select user", user_names, key="edit_user_select")
+
+        if edit_user:
+            u = next(u for u in users if u["username"] == edit_user)
+            eu1, eu2 = st.columns(2)
+            with eu1:
+                ed_name = st.text_input("Full name", value=u["name"], key="ed_name")
+                ed_email = st.text_input("Email", value=u.get("email") or "",
+                                          key="ed_email")
+                ed_phone = st.text_input("Phone", value=u.get("phone") or "",
+                                          key="ed_phone")
+            with eu2:
+                ed_company = st.text_input("Company", value=u.get("company") or "",
+                                            key="ed_company")
+                ed_role = st.selectbox("Role",
+                                       ["sales_agent", "admin"],
+                                       index=0 if u["role"] == "sales_agent" else 1,
+                                       key="ed_role")
+                ed_password = st.text_input("New password (leave blank to keep)",
+                                             type="password", key="ed_password")
+
+            bc1, bc2 = st.columns(2)
+            with bc1:
+                if st.button("Update User", key="update_user_btn"):
+                    updates = {
+                        "name": ed_name,
+                        "email": ed_email or None,
+                        "phone": ed_phone or None,
+                        "company": ed_company or None,
+                        "role": ed_role,
+                    }
+                    if ed_password:
+                        updates["password_hash"] = bcrypt.hashpw(
+                            ed_password.encode(), bcrypt.gensalt()).decode()
+                    try:
+                        update_user(edit_user, updates)
+                        reload_auth()
+                        st.success(f"User '{edit_user}' updated!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Failed to update: {e}")
+
+            with bc2:
+                if edit_user != username:  # Can't delete yourself
+                    if st.button("Delete User", key="delete_user_btn"):
+                        try:
+                            delete_user(edit_user)
+                            reload_auth()
+                            st.success(f"User '{edit_user}' deleted!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Failed to delete: {e}")
+                else:
+                    st.caption("Cannot delete your own account.")
+
+# ── Materials & Markups tab ────────────────────────────────────────────────
+with tab_markup:
+    st.markdown("**Raw Materials & Agent Markups**")
+    st.caption(
+        "Edit materials, costs, and nutrient content directly. "
+        "Set markup % per material — agents see Base Cost x (1 + Markup %). "
+        "Add or remove rows as needed. Click **Save Changes** to persist."
+    )
+
+    from shared import save_materials
+
+    mat_df = load_materials()
+    markups = load_markups()
+
+    # Build editable dataframe with markup column
+    edit_df = mat_df.copy()
+    edit_df.insert(3, "Markup %", edit_df["Material"].map(markups).fillna(0))
+    edit_df.insert(4, "Agent Price (R/ton)",
+                   edit_df["Cost (R/ton)"] * (1 + edit_df["Markup %"] / 100))
+
+    # Column config for the editor
+    col_config = {
+        "Material": st.column_config.TextColumn("Material", required=True),
+        "Type": st.column_config.SelectboxColumn(
+            "Type", options=sorted(mat_df["Type"].unique().tolist()),
+            required=True,
+        ),
+        "Cost (R/ton)": st.column_config.NumberColumn(
+            "Base Cost (R/ton)", min_value=0, format="R%.2f", required=True,
+        ),
+        "Markup %": st.column_config.NumberColumn(
+            "Markup %", min_value=0, format="%.1f",
+        ),
+        "Agent Price (R/ton)": st.column_config.NumberColumn(
+            "Agent Price (R/ton)", format="R%.2f", disabled=True,
+        ),
+    }
+    # Nutrient columns
+    nutrient_cols = [c for c in mat_df.columns if c not in ["Material", "Type", "Cost (R/ton)"]]
+    for nc in nutrient_cols:
+        col_config[nc] = st.column_config.NumberColumn(nc, min_value=0, format="%.4f")
+
+    edited = st.data_editor(
+        edit_df,
+        column_config=col_config,
+        num_rows="dynamic",
+        use_container_width=True,
+        hide_index=True,
+        key="materials_editor",
+    )
+
+    if st.button("Save Changes", key="save_materials_btn"):
+        # Separate markup data from material data
+        new_markups = {}
+        for _, row in edited.iterrows():
+            mat_name = row.get("Material")
+            if mat_name:
+                m_pct = row.get("Markup %", 0) or 0
+                if m_pct > 0:
+                    new_markups[mat_name] = m_pct
+
+        # Save markups to Supabase
+        for mat_name, m_pct in new_markups.items():
+            save_markup(mat_name, m_pct)
+        # Clear markups for removed materials
+        for old_mat in markups:
+            if old_mat not in new_markups:
+                save_markup(old_mat, 0)
+
+        # Save materials to Supabase (drop markup columns)
+        save_df = edited.drop(columns=["Markup %", "Agent Price (R/ton)"], errors="ignore")
+        save_df = save_df.dropna(subset=["Material"])  # remove empty rows
+
+        try:
+            save_materials(save_df)
+            load_markups.clear()
+            st.success(f"Saved {len(save_df)} materials and {len(new_markups)} markups.")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Failed to save: {e}")
+
 # ── Backup tab ──────────────────────────────────────────────────────────────
 with tab_backup:
     st.markdown("**Download Backup**")
     st.caption("Export all blends as a JSON file. IDs are included so restoring won't create duplicates.")
 
     if st.button("Generate Backup"):
-        all_data = fetch_all_blends()
-        backup_json = json.dumps(all_data, indent=2, default=str)
+        all_blends = fetch_all_blends()
+        all_soil = fetch_all_soil_analyses()
+        backup = {"blends": all_blends, "soil_analyses": all_soil}
+        backup_json = json.dumps(backup, indent=2, default=str)
         st.download_button(
-            f"Download backup ({len(all_data)} blends)",
+            f"Download backup ({len(all_blends)} blends, {len(all_soil)} soil analyses)",
             backup_json,
-            f"blends_backup_{datetime.now().strftime('%Y%m%d')}.json",
+            f"sapling_backup_{datetime.now().strftime('%Y%m%d')}.json",
             "application/json",
             key="backup_dl",
         )
