@@ -9,8 +9,8 @@ from datetime import date
 from supabase import create_client
 
 _HERE = pathlib.Path(__file__).parent
-LOGO_PATH = _HERE / "logo.png"
-LOGO_NO_SLOGAN_PATH = _HERE / "logo_no_slogan.png"
+LOGO_PATH = _HERE / "assets" / "logo.png"
+LOGO_NO_SLOGAN_PATH = _HERE / "assets" / "logo_no_slogan.png"
 
 COMPOST_NAME = "Manure Compost"
 
@@ -87,53 +87,294 @@ GREY_LIGHT_RGB = (245, 245, 245)
 def apply_styles():
     st.markdown(f"""
     <style>
+        /* ── Import professional font ────────────────────────── */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        /* ── Base ────────────────────────────────────────────── */
+        html, body, .stApp, [data-testid="stAppViewContainer"] {{
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+        }}
         .stApp, .main .block-container,
         [data-testid="stAppViewContainer"],
         [data-testid="stHeader"] {{
-            background-color: #ffffff !important;
+            background-color: #f8f9fa !important;
         }}
+        .main .block-container {{
+            max-width: 1200px !important;
+            padding-top: 2rem !important;
+        }}
+
+        /* ── Dark sidebar ────────────────────────────────────── */
         section[data-testid="stSidebar"] {{
-            background-color: #ffffff !important;
-            border-right: 2px solid {ORANGE} !important;
+            background: linear-gradient(180deg, {DARK_GREY} 0%, #2a2a2a 100%) !important;
+            border-right: none !important;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.15);
         }}
         section[data-testid="stSidebar"] h1,
         section[data-testid="stSidebar"] h2,
         section[data-testid="stSidebar"] h3 {{
-            color: {DARK_GREY} !important;
+            color: #ffffff !important;
+            font-weight: 600 !important;
+            letter-spacing: -0.01em;
         }}
         section[data-testid="stSidebar"] .stMarkdown p,
-        section[data-testid="stSidebar"] label {{
-            color: {MED_GREY} !important;
+        section[data-testid="stSidebar"] label,
+        section[data-testid="stSidebar"] .stCaption p {{
+            color: #b0b0b0 !important;
         }}
-        h1, h2, h3 {{ color: {DARK_GREY} !important; }}
-        p, li, span, label {{ color: {MED_GREY}; }}
-        [data-testid="stMetricValue"] {{ color: {ORANGE} !important; }}
-        [data-testid="stMetricLabel"] {{ color: {MED_GREY} !important; }}
+        section[data-testid="stSidebar"] input {{
+            background-color: #333333 !important;
+            border-color: #444444 !important;
+            color: #ffffff !important;
+        }}
+        section[data-testid="stSidebar"] input:focus {{
+            border-color: {ORANGE} !important;
+            box-shadow: 0 0 0 1px {ORANGE} !important;
+        }}
+        section[data-testid="stSidebar"] .stCheckbox label span {{
+            color: #cccccc !important;
+        }}
+        section[data-testid="stSidebar"] hr {{
+            border-color: #444444 !important;
+            opacity: 0.6 !important;
+        }}
+        /* sidebar nav links */
+        section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a {{
+            color: #cccccc !important;
+        }}
+        section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a:hover {{
+            color: {ORANGE} !important;
+        }}
+        section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a[aria-selected="true"] {{
+            color: {ORANGE} !important;
+            font-weight: 600;
+        }}
+        /* sidebar selectbox / dropdown */
+        section[data-testid="stSidebar"] [data-baseweb="select"] {{
+            background-color: #333333 !important;
+        }}
+        section[data-testid="stSidebar"] [data-baseweb="select"] * {{
+            color: #ffffff !important;
+            background-color: transparent !important;
+        }}
+
+        /* ── Typography ──────────────────────────────────────── */
+        h1 {{
+            color: {DARK_GREY} !important;
+            font-weight: 700 !important;
+            letter-spacing: -0.02em;
+            font-size: 1.8rem !important;
+        }}
+        h2 {{
+            color: {DARK_GREY} !important;
+            font-weight: 600 !important;
+            letter-spacing: -0.01em;
+            font-size: 1.3rem !important;
+            border-bottom: 2px solid {ORANGE};
+            padding-bottom: 0.4rem;
+            margin-bottom: 1rem !important;
+        }}
+        h3 {{
+            color: {MED_GREY} !important;
+            font-weight: 600 !important;
+            font-size: 1.1rem !important;
+        }}
+        p, li, span, label {{
+            color: {MED_GREY};
+            font-size: 0.92rem;
+        }}
+
+        /* ── Metrics ─────────────────────────────────────────── */
+        [data-testid="stMetricValue"] {{
+            color: {ORANGE} !important;
+            font-weight: 700 !important;
+            font-size: 1.6rem !important;
+        }}
+        [data-testid="stMetricLabel"] {{
+            color: {MED_GREY} !important;
+            font-weight: 500 !important;
+            text-transform: uppercase;
+            font-size: 0.75rem !important;
+            letter-spacing: 0.05em;
+        }}
+        [data-testid="stMetricDelta"] {{
+            font-weight: 500 !important;
+        }}
+        /* Metric card wrapper */
+        [data-testid="stMetric"] {{
+            background: #ffffff;
+            border: 1px solid #e8e8e8;
+            border-radius: 10px;
+            padding: 1rem 1.2rem !important;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        }}
+
+        /* ── Buttons ─────────────────────────────────────────── */
         .stDownloadButton > button, .stButton > button {{
             background-color: {ORANGE} !important;
             color: #ffffff !important;
             border: none !important;
-            border-radius: 6px !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+            font-size: 0.88rem !important;
+            padding: 0.5rem 1.2rem !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 2px 6px rgba(255,79,0,0.25) !important;
+            letter-spacing: 0.01em;
         }}
         .stDownloadButton > button:hover, .stButton > button:hover {{
             background-color: {DARK_GREY} !important;
             color: #ffffff !important;
+            box-shadow: 0 2px 8px rgba(25,25,25,0.3) !important;
+            transform: translateY(-1px);
         }}
-        .streamlit-expanderHeader {{ color: {MED_GREY} !important; }}
-        hr {{ border-color: {ORANGE} !important; opacity: 0.4 !important; }}
-        .stSlider [role="slider"] {{ background-color: {ORANGE} !important; }}
-        [data-testid="stDataFrame"] th {{
-            background-color: {ORANGE} !important;
-            color: #ffffff !important;
+        .stDownloadButton > button:active, .stButton > button:active {{
+            transform: translateY(0);
         }}
-        .stNumberInput input, .stTextInput input {{
-            border-color: #dddddd !important;
+
+        /* ── Inputs ──────────────────────────────────────────── */
+        .stNumberInput input, .stTextInput input, .stDateInput input {{
+            border: 1.5px solid #e0e0e0 !important;
+            border-radius: 8px !important;
             color: {DARK_GREY} !important;
             background-color: #ffffff !important;
+            padding: 0.5rem 0.75rem !important;
+            font-size: 0.9rem !important;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }}
-        .stNumberInput input:focus, .stTextInput input:focus {{
+        .stNumberInput input:focus, .stTextInput input:focus, .stDateInput input:focus {{
             border-color: {ORANGE} !important;
-            box-shadow: 0 0 0 1px {ORANGE} !important;
+            box-shadow: 0 0 0 3px rgba(255,79,0,0.12) !important;
+        }}
+        /* Input labels */
+        .stNumberInput label, .stTextInput label, .stSelectbox label,
+        .stDateInput label, .stSlider label {{
+            font-weight: 500 !important;
+            color: {MED_GREY} !important;
+            font-size: 0.85rem !important;
+        }}
+
+        /* ── Radio buttons & checkboxes ──────────────────────── */
+        .stRadio [role="radiogroup"] label {{
+            background: #ffffff;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 0.4rem 1rem !important;
+            margin-right: 0.5rem;
+            transition: all 0.15s ease;
+        }}
+        .stRadio [role="radiogroup"] label:has(input:checked) {{
+            background: {ORANGE} !important;
+            border-color: {ORANGE} !important;
+            color: #ffffff !important;
+        }}
+        .stRadio [role="radiogroup"] label:has(input:checked) p,
+        .stRadio [role="radiogroup"] label:has(input:checked) span {{
+            color: #ffffff !important;
+        }}
+
+        /* ── Tabs ────────────────────────────────────────────── */
+        .stTabs [data-baseweb="tab-list"] {{
+            gap: 0;
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 4px;
+            border: 1px solid #e8e8e8;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }}
+        .stTabs [data-baseweb="tab"] {{
+            border-radius: 8px;
+            padding: 0.5rem 1.2rem;
+            font-weight: 500;
+            color: {MED_GREY};
+            border: none;
+            background: transparent;
+        }}
+        .stTabs [aria-selected="true"] {{
+            background: {ORANGE} !important;
+            color: #ffffff !important;
+            font-weight: 600;
+            box-shadow: 0 2px 6px rgba(255,79,0,0.2);
+        }}
+        .stTabs [data-baseweb="tab-highlight"],
+        .stTabs [data-baseweb="tab-border"] {{
+            display: none !important;
+        }}
+
+        /* ── Expanders ───────────────────────────────────────── */
+        .streamlit-expanderHeader {{
+            color: {MED_GREY} !important;
+            font-weight: 500 !important;
+            font-size: 0.92rem !important;
+            background: #ffffff;
+            border-radius: 8px;
+        }}
+        [data-testid="stExpander"] {{
+            background: #ffffff;
+            border: 1px solid #e8e8e8 !important;
+            border-radius: 10px !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            overflow: hidden;
+        }}
+        [data-testid="stExpander"] details {{
+            border: none !important;
+        }}
+
+        /* ── Data tables ─────────────────────────────────────── */
+        [data-testid="stDataFrame"] {{
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }}
+
+        /* ── Dividers ────────────────────────────────────────── */
+        hr {{
+            border: none !important;
+            height: 1px !important;
+            background: linear-gradient(90deg, transparent, #e0e0e0, transparent) !important;
+            margin: 1.5rem 0 !important;
+            opacity: 1 !important;
+        }}
+
+        /* ── Sliders ─────────────────────────────────────────── */
+        .stSlider [role="slider"] {{
+            background-color: {ORANGE} !important;
+        }}
+        .stSlider [data-baseweb="slider"] div[role="progressbar"] > div {{
+            background-color: {ORANGE} !important;
+        }}
+
+        /* ── Alerts / Info boxes ──────────────────────────────── */
+        .stAlert {{
+            border-radius: 10px !important;
+            border: none !important;
+            font-size: 0.9rem;
+        }}
+
+        /* ── Selectbox ───────────────────────────────────────── */
+        [data-baseweb="select"] > div {{
+            border-radius: 8px !important;
+            border-color: #e0e0e0 !important;
+        }}
+        [data-baseweb="select"] > div:focus-within {{
+            border-color: {ORANGE} !important;
+            box-shadow: 0 0 0 3px rgba(255,79,0,0.12) !important;
+        }}
+
+        /* ── Scrollbar ───────────────────────────────────────── */
+        ::-webkit-scrollbar {{
+            width: 6px;
+            height: 6px;
+        }}
+        ::-webkit-scrollbar-track {{
+            background: transparent;
+        }}
+        ::-webkit-scrollbar-thumb {{
+            background: #ccc;
+            border-radius: 3px;
+        }}
+        ::-webkit-scrollbar-thumb:hover {{
+            background: {ORANGE};
         }}
 
         /* ── Mobile bottom nav bar ─────────────────────────── */
@@ -143,32 +384,38 @@ def apply_styles():
                 bottom: 0;
                 left: 0;
                 right: 0;
-                background: #ffffff;
-                border-top: 2px solid {ORANGE};
+                background: {DARK_GREY};
+                border-top: none;
                 display: flex;
                 justify-content: space-around;
                 align-items: center;
                 z-index: 999999;
-                padding: 6px 0 env(safe-area-inset-bottom, 6px);
+                padding: 8px 0 env(safe-area-inset-bottom, 8px);
+                box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
             }}
             .mobile-nav a {{
                 text-decoration: none;
-                color: {MED_GREY};
-                font-size: 0.72rem;
+                color: #999999;
+                font-size: 0.7rem;
                 text-align: center;
                 padding: 4px 2px;
                 flex: 1;
                 line-height: 1.2;
+                font-weight: 500;
+                transition: color 0.15s ease;
             }}
             .mobile-nav a.active {{
                 color: {ORANGE};
                 font-weight: 700;
             }}
+            .mobile-nav a:hover {{
+                color: {ORANGE};
+            }}
             .mobile-nav a span.nav-icon {{
                 font-size: 1.3rem;
                 display: block;
+                margin-bottom: 2px;
             }}
-            /* add padding at bottom so content isn't hidden behind nav */
             .main .block-container {{
                 padding-bottom: 80px !important;
             }}
@@ -197,7 +444,7 @@ def show_mobile_nav(current_page="Blend_Calculator"):
     for key, href, icon, label in pages:
         cls = ' class="active"' if key == current_page else ""
         links.append(
-            f'<a href="{href}"{cls}><span class="nav-icon">{icon}</span>{label}</a>'
+            f'<a href="{href}" target="_self"{cls}><span class="nav-icon">{icon}</span>{label}</a>'
         )
     st.markdown(
         f'<div class="mobile-nav">{"".join(links)}</div>',
@@ -206,14 +453,39 @@ def show_mobile_nav(current_page="Blend_Calculator"):
 
 
 def show_header(title="Blend Calculator"):
-    logo_col, title_col = st.columns([2, 3])
-    with logo_col:
-        st.image(str(LOGO_PATH), width=320)
-    with title_col:
-        st.markdown(
-            f"<h1 style='margin-bottom:0; color:{DARK_GREY}'>{title}</h1>",
-            unsafe_allow_html=True,
-        )
+    st.markdown(f"""
+    <div style="
+        display: flex;
+        align-items: center;
+        gap: 1.2rem;
+        padding: 0.6rem 1.5rem;
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #e8e8e8;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        margin-bottom: 1.5rem;
+        min-height: 94px;
+    ">
+        <img src="data:image/png;base64,{_logo_base64()}" style="height: 80px; width: auto;" />
+        <div>
+            <h1 style="margin:0; padding:0; font-size:1.5rem; color:{DARK_GREY}; border:none; letter-spacing:-0.02em">{title}</h1>
+            <p style="margin:0; padding:0; font-size:0.8rem; color:#999; letter-spacing:0.02em">Fertilise Smarter, Grow Stronger</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+LOGO_ICON_PATH = _HERE / "assets" / "logo_icon_only.png"
+
+def _logo_base64():
+    """Return base64-encoded logo for inline HTML embedding."""
+    import base64
+    # Prefer the tight-cropped icon, then no-slogan, then full logo
+    for p in [LOGO_ICON_PATH, LOGO_NO_SLOGAN_PATH, LOGO_PATH]:
+        if p.exists():
+            with open(p, "rb") as f:
+                return base64.b64encode(f.read()).decode()
+    return ""
 
 
 # ── Supabase ───────────────────────────────────────────────────────────────
@@ -361,6 +633,45 @@ def load_materials_with_markup(role="admin"):
     return df
 
 
+# ── Default material selections (admin → agent) ─────────────────────────
+
+_HARDCODED_DEFAULTS = {
+    "Urea 46%", "MAP 33%", "DAP",
+    "KCL (Potassium Chloride)", "Gypsum",
+    "KAN 28%", "Calcitic Lime",
+}
+
+
+@st.cache_data(ttl=120)
+def _load_default_materials_cached():
+    """Load admin-set default material names from Supabase (cached).
+    Falls back to hardcoded defaults if the table/row doesn't exist."""
+    try:
+        sb = get_supabase()
+        result = sb.table("default_materials").select("materials").execute()
+        if result.data and result.data[0].get("materials"):
+            return list(result.data[0]["materials"])
+    except Exception:
+        pass
+    return list(_HARDCODED_DEFAULTS)
+
+
+def load_default_materials():
+    """Return the admin-set default materials as a set."""
+    return set(_load_default_materials_cached())
+
+
+def save_default_materials(material_names):
+    """Persist the admin's selected default materials to Supabase.
+    Uses a single row with id=1 (upsert)."""
+    sb = get_supabase()
+    sb.table("default_materials").upsert({
+        "id": 1,
+        "materials": list(material_names),
+    }).execute()
+    _load_default_materials_cached.clear()
+
+
 # ── Blend CRUD ────────────────────────────────────────────────────────────
 
 def save_blend(blend_name, client, farm, batch_size, min_compost_pct,
@@ -465,6 +776,37 @@ def fetch_blends_by_farm(farm_name):
     sb = get_supabase()
     result = (sb.table("blends").select("*")
               .eq("farm", farm_name)
+              .order("created_at", desc=True).execute())
+    return result.data
+
+
+def fetch_unique_agents():
+    """Return sorted list of unique created_by usernames (non-null)."""
+    sb = get_supabase()
+    blend_rows = sb.table("blends").select("created_by").not_.is_("created_by", "null").execute()
+    soil_rows = sb.table("soil_analyses").select("created_by").not_.is_("created_by", "null").execute()
+    agents = set()
+    for r in blend_rows.data:
+        if r["created_by"]:
+            agents.add(r["created_by"])
+    for r in soil_rows.data:
+        if r["created_by"]:
+            agents.add(r["created_by"])
+    return sorted(agents)
+
+
+def fetch_blends_by_agent(agent_username):
+    sb = get_supabase()
+    result = (sb.table("blends").select("*")
+              .eq("created_by", agent_username)
+              .order("created_at", desc=True).execute())
+    return result.data
+
+
+def fetch_soil_by_agent(agent_username):
+    sb = get_supabase()
+    result = (sb.table("soil_analyses").select("*")
+              .eq("created_by", agent_username)
               .order("created_at", desc=True).execute())
     return result.data
 
@@ -794,11 +1136,11 @@ def build_pdf(blend_name, client, farm, batch, compost_pct, cost_per_ton,
                 intl_parts.append("0.0")
         if len(intl_parts) == 3:
             kpi_items.append(f"International: N {intl_parts[0]}% - P {intl_parts[1]}% - K {intl_parts[2]}%")
-    kpi_items += [
-        f"Batch size: {batch:,} kg",
-        f"Compost: {compost_pct:.1f}%",
-        f"Chemical: {100 - compost_pct:.1f}%",
-    ]
+    kpi_items.append(f"Batch size: {batch:,} kg")
+    if recipe_data:
+        # Only show compost/chemical breakdown for admin (who gets recipe_data)
+        kpi_items.append(f"Compost: {compost_pct:.1f}%")
+        kpi_items.append(f"Chemical: {100 - compost_pct:.1f}%")
     for item in kpi_items:
         pdf.cell(0, 5, item, new_x="LMARGIN", new_y="NEXT")
     pdf.ln(4)
@@ -1019,7 +1361,7 @@ def build_pdf(blend_name, client, farm, batch, compost_pct, cost_per_ton,
 
 # ── Soil Analysis helpers ─────────────────────────────────────────────────
 
-SOIL_NORMS_PATH = _HERE / "soil_norms.xlsx"
+SOIL_NORMS_PATH = _HERE / "data" / "soil_norms.xlsx"
 
 NUTRIENTS_SOIL = ["N", "P", "K", "Ca", "Mg", "S", "Fe", "B", "Mn", "Zn", "Mo", "Cu"]
 
@@ -1308,7 +1650,7 @@ def build_soil_pdf(customer, farm, field, crop_name, cultivar, yield_target,
                    lab_name, analysis_date,
                    soil_values, nutrient_targets, ratio_results,
                    products, total_cost_ha,
-                   norms=None, total_cost_field=None):
+                   norms=None, total_cost_field=None, role="admin"):
     """Build a Fertilizer Recommendation Report PDF with visual analysis.
 
     Args:
@@ -1703,11 +2045,15 @@ def build_soil_pdf(customer, farm, field, crop_name, cultivar, yield_target,
     info_box(margin, box_y, "Customer", [
         ("Name", customer), ("Farm", farm), ("Field", field),
     ])
-    info_box(margin + box_w + 3, box_y, "Field Info", [
-        ("Pop/Ha", f"{pop_per_ha:,}" if pop_per_ha else ""),
-        ("Plants/Field", f"{plants_per_field:,}" if plants_per_field else ""),
+    field_info = [
         ("Yield Target", f"{yield_target} {yield_unit}" if yield_target else ""),
-    ])
+        ("Pop/Ha", f"{pop_per_ha:,}" if pop_per_ha else ""),
+    ]
+    if plants_per_field:
+        field_info.append(("Plants/Field", f"{plants_per_field:,}"))
+    if field_area_ha:
+        field_info.append(("Field Size", f"{field_area_ha} ha"))
+    info_box(margin + box_w + 3, box_y, "Field Info", field_info)
     info_box(margin + 2 * (box_w + 3), box_y, "Agent", [
         ("Name", agent_name), ("Cell No", agent_cell), ("E-mail", agent_email),
     ])
@@ -1803,9 +2149,14 @@ def build_soil_pdf(customer, farm, field, crop_name, cultivar, yield_target,
     pdf.cell(content_w, 6, "Products", align="C")
     prod_y += 7
 
-    prod_cols = ["Product", "Application Method", "Application Time",
-                 "Kg Per Ha", "Price Per Ton", "Price Per Ha"]
-    prod_widths = [60, 45, 40, 35, 40, 40]
+    if role == "admin":
+        prod_cols = ["Product", "Application Method", "Application Time",
+                     "Kg Per Ha", "Price Per Ton", "Price Per Ha"]
+        prod_widths = [60, 45, 40, 35, 40, 40]
+    else:
+        prod_cols = ["Product", "Application Method", "Application Time",
+                     "Kg Per Ha", "Price Per Ha"]
+        prod_widths = [100, 45, 40, 35, 40]
 
     pdf.set_xy(margin, prod_y)
     pdf.set_fill_color(*ORANGE_RGB)
@@ -1820,12 +2171,19 @@ def build_soil_pdf(customer, farm, field, crop_name, cultivar, yield_target,
         pdf.set_xy(margin, prod_y)
         pdf.set_text_color(*DARK_GREY_RGB)
         pdf.set_fill_color(*GREY_LIGHT_RGB) if i % 2 == 1 else pdf.set_fill_color(255, 255, 255)
-        vals = [
-            str(p.get("product", "")), str(p.get("method", "")),
-            str(p.get("timing", "")), f"{p.get('kg_ha', 0):.2f}",
-            f"R{p.get('price_per_ton', 0):,.2f}",
-            f"R{p.get('price_ha', 0):,.2f}",
-        ]
+        if role == "admin":
+            vals = [
+                str(p.get("product", "")), str(p.get("method", "")),
+                str(p.get("timing", "")), f"{p.get('kg_ha', 0):.2f}",
+                f"R{p.get('price_per_ton', 0):,.2f}",
+                f"R{p.get('price_ha', 0):,.2f}",
+            ]
+        else:
+            vals = [
+                str(p.get("product", "")), str(p.get("method", "")),
+                str(p.get("timing", "")), f"{p.get('kg_ha', 0):.2f}",
+                f"R{p.get('price_ha', 0):,.2f}",
+            ]
         for val, w in zip(vals, prod_widths):
             pdf.cell(w, 5, val, fill=True, align="C")
         prod_y += 5

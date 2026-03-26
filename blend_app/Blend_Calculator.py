@@ -6,6 +6,7 @@ from shared import (
     build_pdf, save_blend,
     sa_notation_to_pct, pct_to_sa_notation, suggest_price,
     run_optimizer, find_closest_blend,
+    load_default_materials, save_default_materials,
     DARK_GREY, MED_GREY, COMPOST_NAME,
 )
 from auth import require_auth, logout_button, is_admin
@@ -25,11 +26,7 @@ NUTRIENTS = [c for c in df.columns if c not in ["Material", "Type", "Cost (R/ton
 if "bc_data" not in st.session_state:
     st.session_state["bc_data"] = {}
 
-_DEFAULT_MATS = {
-    "Urea 46%", "MAP 33%", "DAP",
-    "KCL (Potassium Chloride)", "Gypsum",
-    "KAN 28%", "Calcitic Lime",
-}
+_ADMIN_DEFAULTS = load_default_materials()
 
 # Restore saved material selections before widgets render
 for _, row in df.iterrows():
@@ -89,13 +86,21 @@ if is_admin():
         st.sidebar.subheader(mat_type)
         for _, row in group.iterrows():
             mat_name = row["Material"]
-            default = mat_name in _DEFAULT_MATS
+            default = mat_name in _ADMIN_DEFAULTS
             enabled[mat_name] = st.sidebar.checkbox(mat_name, value=default,
                                                      key=f"mat_{mat_name}")
     selected_names = [COMPOST_NAME] + [n for n, on in enabled.items() if on]
+
+    # Persist admin selections as the default set for agents
+    current_enabled = {n for n, on in enabled.items() if on}
+    if current_enabled != _ADMIN_DEFAULTS:
+        try:
+            save_default_materials(current_enabled)
+        except Exception:
+            pass  # non-critical — silently skip
 else:
-    # Agents use all default materials — no selection UI
-    selected_names = [COMPOST_NAME] + list(_DEFAULT_MATS)
+    # Agents use admin-set defaults — no selection UI
+    selected_names = [COMPOST_NAME] + list(_ADMIN_DEFAULTS)
 
 df_use = df[df["Material"].isin(selected_names)].reset_index(drop=True)
 compost_idx = df_use.index[df_use["Material"] == COMPOST_NAME][0]
@@ -227,11 +232,17 @@ st.subheader("Blend Result")
 
 intl_label = f"N {actual_n:.1f}%  |  P {actual_p:.1f}%  |  K {actual_k:.1f}%"
 
-st.markdown(
-    f"**SA Notation:** {sa_label}  \n"
-    f"**International:** {intl_label}  \n"
-    f"**Compost:** {compost_pct:.1f}%"
-)
+if is_admin():
+    st.markdown(
+        f"**SA Notation:** {sa_label}  \n"
+        f"**International:** {intl_label}  \n"
+        f"**Compost:** {compost_pct:.1f}%"
+    )
+else:
+    st.markdown(
+        f"**SA Notation:** {sa_label}  \n"
+        f"**International:** {intl_label}"
+    )
 
 if is_admin():
     k1, k2 = st.columns(2)

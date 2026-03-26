@@ -4,10 +4,10 @@ import numpy as np
 from datetime import date
 from shared import (
     apply_styles, show_header, show_mobile_nav, load_materials, load_materials_with_markup,
-    load_soil_norms,
+    load_soil_norms, fetch_user,
     classify_soil_value, calculate_nutrient_targets, evaluate_ratios,
     build_soil_pdf, run_optimizer, find_closest_blend,
-    save_soil_analysis,
+    save_soil_analysis, load_default_materials,
     NUTRIENTS_SOIL, CLASSIFICATION_COLOURS,
     SOIL_NORMS_PATH, DARK_GREY, MED_GREY, ORANGE, COMPOST_NAME,
     sa_notation_to_pct, pct_to_sa_notation,
@@ -28,7 +28,7 @@ show_header("Soil Analysis & Recommendations")
 if not SOIL_NORMS_PATH.exists():
     st.error(
         f"Soil norms file not found at `{SOIL_NORMS_PATH}`. "
-        "Please ensure `soil_norms.xlsx` is in the blend_app folder."
+        "Please ensure `soil_norms.xlsx` is in the blend_app/data folder."
     )
     st.stop()
 
@@ -42,8 +42,8 @@ materials_df = load_materials_with_markup(role)
 # Streamlit deletes widget keys when the widget isn't rendered. We keep a
 # mirror dict "sa_data" that survives navigation and restore from it.
 _SA_KEYS = [
-    "customer_name", "farm_name", "field_name", "field_area", "pop_per_ha",
-    "selected_crop", "yield_target", "cultivar",
+    "customer_name", "farm_name", "field_name",
+    "selected_crop", "cultivar",
     "agent_name", "agent_cell", "agent_email", "lab_name", "analysis_date",
     "soil_pH (H2O)", "soil_pH (KCl)", "soil_Org C", "soil_CEC", "soil_Clay",
     "soil_N (total)", "soil_P (Bray-1)", "soil_K", "soil_Ca", "soil_Mg", "soil_S",
@@ -70,12 +70,19 @@ def _save_sa_state():
 
 # ── Sidebar: Agent info ───────────────────────────────────────────────────
 st.sidebar.header("Agent Info")
-# Auto-populate agent name for sales agents
-_default_agent = auth_name if role == "sales_agent" else ""
+
+# Load user profile once per session for prepopulation
+if "_user_profile" not in st.session_state:
+    st.session_state["_user_profile"] = fetch_user(username) or {}
+_profile = st.session_state["_user_profile"]
+
+_default_agent = _profile.get("name") or auth_name
+_default_cell = _profile.get("phone") or ""
+_default_email = _profile.get("email") or "info@saplingfertilizer.co.za"
+
 agent_name = st.sidebar.text_input("Agent name", value=_default_agent, key="agent_name")
-agent_cell = st.sidebar.text_input("Cell number", value="", key="agent_cell")
-agent_email = st.sidebar.text_input("Email", value="info@saplingfertilizer.co.za",
-                                     key="agent_email")
+agent_cell = st.sidebar.text_input("Cell number", value=_default_cell, key="agent_cell")
+agent_email = st.sidebar.text_input("Email", value=_default_email, key="agent_email")
 
 st.sidebar.divider()
 st.sidebar.header("Lab Info")
@@ -91,48 +98,18 @@ st.sidebar.caption(
 )
 
 
-# ── Load test data helper ─────────────────────────────────────────────────
-with st.expander("Load test data (development only)"):
-    if st.button("Fill test data", key="load_test"):
-        test_vals = {
-            "customer_name": "Ikhwezi Agro Holdings", "farm_name": "Greenfield Estate",
-            "field_name": "Block A", "field_area": 10.0, "pop_per_ha": 80000,
-            "soil_pH (H2O)": 6.5, "soil_pH (KCl)": 5.8, "soil_Org C": 1.5,
-            "soil_CEC": 12.0, "soil_Clay": 20.0,
-            "soil_N (total)": 25.0, "soil_P (Bray-1)": 18.0, "soil_K": 150.0,
-            "soil_Ca": 800.0, "soil_Mg": 200.0, "soil_S": 15.0,
-            "soil_micro_Fe": 50.0, "soil_micro_B": 0.8, "soil_micro_Mn": 30.0,
-            "soil_micro_Zn": 3.0, "soil_micro_Mo": 0.1, "soil_micro_Cu": 2.0,
-            "soil_na": 30.0,
-        }
-        for k, v in test_vals.items():
-            st.session_state[k] = v
-            st.session_state["sa_data"][k] = v
-        st.rerun()
-
 # ═════════════════════════════════════════════════════════════════════════════
 # Section 1: Customer & Field Info
 # ═════════════════════════════════════════════════════════════════════════════
 st.subheader("Customer & Field Info")
 
-col_cust, col_field, col_crop = st.columns(3)
+col_cust, col_crop = st.columns(2)
 
 with col_cust:
     customer_name = st.text_input("Customer name *", placeholder="e.g. Ikhwezi Agro Holdings",
                                    key="customer_name")
     farm_name = st.text_input("Farm", placeholder="e.g. Farm 1", key="farm_name")
     field_name = st.text_input("Field", placeholder="e.g. Block A", key="field_name")
-
-with col_field:
-    field_area = st.number_input("Field size (ha)", value=None, min_value=0.1,
-                                  step=1.0, format="%.1f", placeholder="e.g. 10.0",
-                                  key="field_area")
-    pop_per_ha = st.number_input("Plants per ha", value=None, min_value=0,
-                                  step=100, placeholder="e.g. 7500", key="pop_per_ha")
-    plants_per_field = None
-    if field_area and pop_per_ha:
-        plants_per_field = int(pop_per_ha * field_area)
-        st.metric("Plants per field", f"{plants_per_field:,}")
 
 with col_crop:
     crop_list = crop_df["Crop"].tolist()
@@ -144,17 +121,42 @@ with col_crop:
         yield_unit = str(crop_row["Yield_Unit"])
         crop_type = str(crop_row["Type"])
 
-        st.caption(f"{crop_type} — default {default_yield} {yield_unit}")
-        yield_target = st.number_input(
-            f"Yield target ({yield_unit})", value=default_yield,
-            min_value=0.1, step=1.0, format="%.1f", key="yield_target",
-        )
+        pop_val = crop_row.get("Pop_Per_Ha", 0)
+        norm_pop = int(pop_val) if pop_val and pop_val > 0 else None
+
+        # When crop changes, push new defaults into session state and rerun
+        last_crop = st.session_state.get("_last_crop_for_pop", "")
+        if selected_crop != last_crop:
+            st.session_state["_last_crop_for_pop"] = selected_crop
+            st.session_state["yield_target"] = default_yield
+            if norm_pop:
+                st.session_state["pop_per_ha"] = norm_pop
+            else:
+                st.session_state.pop("pop_per_ha", None)
+            st.rerun()
+
         cultivar = st.text_input("Cultivar", placeholder=f"e.g. {selected_crop}",
                                   key="cultivar")
+
+        c1, c2 = st.columns(2)
+        with c1:
+            yield_target = st.number_input(
+                f"Yield target ({yield_unit})",
+                min_value=0.1, step=1.0, format="%.1f", key="yield_target",
+            )
+        with c2:
+            pop_per_ha = st.number_input("Plants per ha", min_value=0,
+                                          step=100, placeholder="e.g. 7500", key="pop_per_ha")
+            if norm_pop:
+                st.caption(f"Norm: {norm_pop:,}/ha")
     else:
         yield_target = None
         yield_unit = ""
         cultivar = ""
+        pop_per_ha = None
+
+field_area = None
+plants_per_field = None
 
 st.divider()
 
@@ -361,19 +363,10 @@ n_target = targets_dict.get("N", 0)
 p_target = targets_dict.get("P", 0)
 k_target = targets_dict.get("K", 0)
 
-m1, m2, m3, m4 = st.columns(4)
+m1, m2, m3 = st.columns(3)
 m1.metric("N target", f"{n_target:.1f} kg/ha")
 m2.metric("P target", f"{p_target:.1f} kg/ha")
 m3.metric("K target", f"{k_target:.1f} kg/ha")
-
-# NPK ratio for blend calculator
-total_npk = n_target + p_target + k_target
-if total_npk > 0:
-    n_pct = n_target / total_npk * 100
-    p_pct = p_target / total_npk * 100
-    k_pct = k_target / total_npk * 100
-    sa_label = pct_to_sa_notation(n_pct, p_pct, k_pct)
-    m4.metric("NPK Ratio", sa_label)
 
 st.divider()
 
@@ -410,24 +403,23 @@ if product_mode == "Auto-blend (use Blend Calculator)":
         blend_app_rate = st.number_input("Application rate (kg/ha)", value=1000.0,
                                           min_value=0.0, step=50.0, key="blend_app_rate")
 
-    # Read material selection from Blend Calculator state, fall back to defaults
-    _DEFAULT_MATS = {
-        "Urea 46%", "MAP 33%", "DAP",
-        "KCL (Potassium Chloride)", "Gypsum", "KAN 28%", "Calcitic Lime",
-    }
-    bc_data = st.session_state.get("bc_data", {})
-    selected_mats = [COMPOST_NAME]
-    for _, row in materials_df.iterrows():
-        name = row["Material"]
-        if name == COMPOST_NAME:
-            continue
-        wkey = f"mat_{name}"
-        # Use BC selection if available, otherwise use defaults
-        if wkey in bc_data:
-            if bc_data[wkey]:
+    # Read material selection: admins use BC state / defaults, agents use admin-set defaults
+    _ADMIN_DEFAULTS = load_default_materials()
+    if is_admin():
+        bc_data = st.session_state.get("bc_data", {})
+        selected_mats = [COMPOST_NAME]
+        for _, row in materials_df.iterrows():
+            name = row["Material"]
+            if name == COMPOST_NAME:
+                continue
+            wkey = f"mat_{name}"
+            if wkey in bc_data:
+                if bc_data[wkey]:
+                    selected_mats.append(name)
+            elif name in _ADMIN_DEFAULTS:
                 selected_mats.append(name)
-        elif name in _DEFAULT_MATS:
-            selected_mats.append(name)
+    else:
+        selected_mats = [COMPOST_NAME] + list(_ADMIN_DEFAULTS)
     df_mat = materials_df[materials_df["Material"].isin(selected_mats)].reset_index(drop=True)
 
     # Auto-run optimizer whenever inputs change
@@ -475,29 +467,68 @@ if product_mode == "Auto-blend (use Blend Calculator)":
 
                 # Populate products from blend result
                 st.session_state.products = []
-                for _, row in result.iterrows():
-                    mat_name = row["Material"]
-                    kg_in_batch = row["kg"]
-                    kg_ha = kg_in_batch / blend_batch * blend_app_rate
-                    cost_ton = float(row.get("Cost (R/ton)", 0))
-                    price_ha = kg_ha * cost_ton / 1000
 
-                    nutrients_provided = {}
-                    for nut in NUTRIENTS_SOIL:
-                        if nut in row.index:
-                            nutrients_provided[nut] = round(
-                                kg_ha * float(row[nut]) / 100, 2)
-                        else:
-                            nutrients_provided[nut] = 0
+                if is_admin():
+                    # Admin sees individual raw materials
+                    for _, row in result.iterrows():
+                        mat_name = row["Material"]
+                        kg_in_batch = row["kg"]
+                        kg_ha = kg_in_batch / blend_batch * blend_app_rate
+                        cost_ton = float(row.get("Cost (R/ton)", 0))
+                        price_ha = kg_ha * cost_ton / 1000
+
+                        nutrients_provided = {}
+                        for nut in NUTRIENTS_SOIL:
+                            if nut in row.index:
+                                nutrients_provided[nut] = round(
+                                    kg_ha * float(row[nut]) / 100, 2)
+                            else:
+                                nutrients_provided[nut] = 0
+
+                        st.session_state.products.append({
+                            "product": mat_name,
+                            "method": "Broadcast",
+                            "timing": "Pre-plant",
+                            "kg_ha": round(kg_ha, 2),
+                            "price_ha": round(price_ha, 2),
+                            "price_per_ton": cost_ton,
+                            "nutrients": nutrients_provided,
+                        })
+                else:
+                    # Agent sees a single consolidated blend product
+                    total_kg_ha = 0
+                    total_price_ha = 0
+                    total_nutrients = {nut: 0.0 for nut in NUTRIENTS_SOIL}
+                    for _, row in result.iterrows():
+                        kg_in_batch = row["kg"]
+                        kg_ha = kg_in_batch / blend_batch * blend_app_rate
+                        cost_ton = float(row.get("Cost (R/ton)", 0))
+                        price_ha = kg_ha * cost_ton / 1000
+                        total_kg_ha += kg_ha
+                        total_price_ha += price_ha
+                        for nut in NUTRIENTS_SOIL:
+                            if nut in row.index:
+                                total_nutrients[nut] += kg_ha * float(row[nut]) / 100
+
+                    # Compute SA and international notation for the blend
+                    actual_n = (result["N"] / 100 * result["kg"]).sum() / blend_batch * 100 if "N" in result.columns else 0
+                    actual_p = (result["P"] / 100 * result["kg"]).sum() / blend_batch * 100 if "P" in result.columns else 0
+                    actual_k = (result["K"] / 100 * result["kg"]).sum() / blend_batch * 100 if "K" in result.columns else 0
+                    sa_label = pct_to_sa_notation(actual_n, actual_p, actual_k)
+                    intl_label = f"N {actual_n:.1f}% - P {actual_p:.1f}% - K {actual_k:.1f}%"
+                    blend_product_name = f"Custom Blend {sa_label} ({intl_label})"
+
+                    total_nutrients = {k: round(v, 2) for k, v in total_nutrients.items()}
+                    cost_per_ton = total_price_ha / total_kg_ha * 1000 if total_kg_ha > 0 else 0
 
                     st.session_state.products.append({
-                        "product": mat_name,
+                        "product": blend_product_name,
                         "method": "Broadcast",
                         "timing": "Pre-plant",
-                        "kg_ha": round(kg_ha, 2),
-                        "price_ha": round(price_ha, 2),
-                        "price_per_ton": cost_ton,
-                        "nutrients": nutrients_provided,
+                        "kg_ha": round(total_kg_ha, 2),
+                        "price_ha": round(total_price_ha, 2),
+                        "price_per_ton": round(cost_per_ton, 2),
+                        "nutrients": total_nutrients,
                     })
 
 # ── Manual product entry ─────────────────────────────────────────────────
@@ -588,14 +619,16 @@ if st.session_state.products:
 
     prod_display = []
     for p in st.session_state.products:
-        prod_display.append({
+        row_data = {
             "Product": p["product"],
             "Method": p["method"],
             "Timing": p["timing"],
             "Kg/Ha": f"{p['kg_ha']:.0f}",
             "Price/Ha": f"R{p['price_ha']:,.2f}",
-            "Price/Ton": f"R{p.get('price_per_ton', 0):,.2f}",
-        })
+        }
+        if is_admin():
+            row_data["Price/Ton"] = f"R{p.get('price_per_ton', 0):,.2f}"
+        prod_display.append(row_data)
     st.dataframe(pd.DataFrame(prod_display), use_container_width=True, hide_index=True)
 
     # Remove product buttons (only in manual mode)
@@ -689,6 +722,7 @@ if can_export:
         products=st.session_state.get("products", []),
         total_cost_ha=total_cost_ha,
         norms=norms,
+        role=role,
     )
     filename = (f"Recommendation_{customer_name}_{selected_crop}"
                 .replace(" ", "_") + ".pdf")
