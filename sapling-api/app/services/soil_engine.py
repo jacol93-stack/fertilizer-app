@@ -4,6 +4,21 @@ NUTRIENTS_SOIL = ["N", "P", "K", "Ca", "Mg", "S", "Fe", "B", "Mn", "Zn", "Mo", "
 
 SOIL_CLASSIFICATIONS = ["Very Low", "Low", "Optimal", "High", "Very High"]
 
+NUTRIENT_GROUP_MAP = {
+    "N":  "N",
+    "P":  "P",
+    "K":  "cations",
+    "Ca": "cations",
+    "Mg": "cations",
+    "S":  "cations",
+    "Fe": "micro",
+    "B":  "micro",
+    "Mn": "micro",
+    "Zn": "micro",
+    "Mo": "micro",
+    "Cu": "micro",
+}
+
 
 def classify_soil_value(value, param_name, sufficiency_rows, crop_override_rows=None):
     """Classify a soil analysis value against sufficiency thresholds.
@@ -54,16 +69,35 @@ def classify_soil_value(value, param_name, sufficiency_rows, crop_override_rows=
         return "Very High"
 
 
-def get_adjustment_factor(classification, adjustment_rows):
+def get_adjustment_factor(classification, adjustment_rows, nutrient=None):
     """Look up adjustment factor for a soil classification level.
 
     Args:
         classification: string like "Very Low", "Low", etc.
         adjustment_rows: list of dicts from adjustment_factors table
+        nutrient: optional nutrient name to look up group-specific factor
     """
     if not classification:
         return 1.0
-    row = next((r for r in adjustment_rows if r["classification"] == classification), None)
+
+    # Try group-specific lookup first
+    if nutrient:
+        group = NUTRIENT_GROUP_MAP.get(nutrient)
+        if group:
+            row = next(
+                (r for r in adjustment_rows
+                 if r["classification"] == classification
+                 and r.get("nutrient_group") == group),
+                None,
+            )
+            if row:
+                return float(row["factor"])
+
+    # Fallback: match by classification only (backward compat)
+    row = next(
+        (r for r in adjustment_rows if r["classification"] == classification),
+        None,
+    )
     if not row:
         return 1.0
     return float(row["factor"])
@@ -101,7 +135,7 @@ def calculate_nutrient_targets(crop_name, yield_target, soil_values,
             soil_val = soil_values.get(nut)
 
         classification = classify_soil_value(soil_val, soil_param, sufficiency_rows, crop_override_rows)
-        factor = get_adjustment_factor(classification, adjustment_rows)
+        factor = get_adjustment_factor(classification, adjustment_rows, nutrient=nut)
         adjusted = round(base_req * factor, 2)
 
         results.append({
@@ -120,10 +154,12 @@ def calculate_nutrient_targets(crop_name, yield_target, soil_values,
 def adjust_targets_for_ratios(targets, ratio_results, soil_values, ratio_rows):
     """Adjust nutrient targets to correct imbalanced soil ratios.
 
-    Uses a hybrid sufficiency + BCSR approach:
+    Sufficiency-first approach:
     - Start with sufficiency-based targets (already calculated)
     - Check each ratio against ideal ranges
-    - If a ratio is off, increase the deficient nutrient's target
+    - If a ratio is off, prefer reducing the over-supplied nutrient
+    - Only increase a nutrient if it is NOT already High/Very High
+    - Exception: P:Zn — always boost Zn because high P blocks Zn uptake
 
     Args:
         targets: list of dicts from calculate_nutrient_targets()
@@ -132,13 +168,23 @@ def adjust_targets_for_ratios(targets, ratio_results, soil_values, ratio_rows):
         ratio_rows: list of dicts from ideal_ratios table
 
     Returns:
-        Updated targets list with Ratio_Adjustment and Adjusted_Target_kg_ha fields added
+        Updated targets list with ratio adjustment fields added
     """
     # Build lookup: nutrient name -> target dict
     target_map = {t["Nutrient"]: t for t in targets}
 
+    HIGH_CLASSIFICATIONS = {"High", "Very High"}
+
+    def is_high(nutrient):
+        """Check if a nutrient's soil classification is High or Very High."""
+        t = target_map.get(nutrient)
+        return t is not None and t.get("Classification") in HIGH_CLASSIFICATIONS
+
     # Track adjustments: {nutrient: [(reason, extra_kg_ha), ...]}
+    # Positive extra = increase, negative extra = reduction
     adjustments: dict[str, list[tuple[str, float]]] = {}
+    # Track ratio warnings when we can't correct via fertilizer
+    warnings: dict[str, list[str]] = {}
 
     def sv(key):
         v = soil_values.get(key)
@@ -150,6 +196,82 @@ def adjust_targets_for_ratios(targets, ratio_results, soil_values, ratio_rows):
     k = sv("K")
     na = sv("Na")
 
+    def _ratio_adjust_pair(ratio_name, actual, ideal_min, ideal_max,
+                           numerator_nut, denominator_nut):
+        """Handle a ratio imbalance between two nutrients (A:B ratio).
+
+        Calculates the exact kg/ha adjustment needed to move the fertilizer
+        application ratio toward the ideal midpoint.
+
+        Prefers reducing the over-supplied nutrient. Only increases a nutrient
+        if it is NOT already High/Very High. If neither is possible, warns.
+
+        For A:B below ideal: either reduce B or increase A.
+        For A:B above ideal: either reduce A or increase B.
+        """
+        ideal_mid = (ideal_min + ideal_max) / 2
+        below = actual < ideal_min
+        reason_dir = "below" if below else "above"
+        reason = f"{ratio_name} {actual:.1f} {reason_dir} ideal {ideal_min}-{ideal_max}"
+
+        # Determine which to increase/reduce based on direction
+        if below:
+            increase_nut, reduce_nut = numerator_nut, denominator_nut
+        else:
+            increase_nut, reduce_nut = denominator_nut, numerator_nut
+
+        # Calculate exact adjustment needed
+        # Current applied: num_target / denom_target = actual ratio of application
+        num_t = target_map.get(numerator_nut, {}).get("Target_kg_ha", 0)
+        den_t = target_map.get(denominator_nut, {}).get("Target_kg_ha", 0)
+
+        # Strategy 1: reduce the over-supplied nutrient
+        if reduce_nut in target_map:
+            current = target_map[reduce_nut]["Target_kg_ha"]
+            if current > 0:
+                # Calculate what reduce_nut target should be to hit ideal_mid
+                other = target_map.get(increase_nut, {}).get("Target_kg_ha", 0)
+                if other > 0:
+                    if reduce_nut == denominator_nut:
+                        # A:B ratio — reduce B so A/B = ideal_mid → B = A / ideal_mid
+                        ideal_reduce = other / ideal_mid
+                    else:
+                        # A:B ratio — reduce A so A/B = ideal_mid → A = B * ideal_mid
+                        ideal_reduce = other * ideal_mid
+                    reduction = round(current - ideal_reduce, 2)
+                    # Cap: never reduce by more than 50% of current target
+                    reduction = min(reduction, current * 0.5)
+                    if reduction > 0:
+                        adjustments.setdefault(reduce_nut, []).append(
+                            (f"{reason} — reducing {reduce_nut}", -reduction)
+                        )
+                        return
+
+        # Strategy 2: increase the deficient nutrient (only if not already high)
+        if not is_high(increase_nut) and increase_nut in target_map:
+            current = target_map[increase_nut]["Target_kg_ha"]
+            other = target_map.get(reduce_nut, {}).get("Target_kg_ha", 0)
+            if current >= 0 and other > 0:
+                if increase_nut == numerator_nut:
+                    # A:B ratio — increase A so A/B = ideal_mid → A = B * ideal_mid
+                    ideal_increase = other * ideal_mid
+                else:
+                    # A:B ratio — increase B so A/B = ideal_mid → B = A / ideal_mid
+                    ideal_increase = other / ideal_mid
+                extra = round(ideal_increase - current, 2)
+                # Cap: never more than double current target
+                extra = min(extra, max(current, 1.0))
+                if extra > 0:
+                    adjustments.setdefault(increase_nut, []).append(
+                        (reason, extra)
+                    )
+                    return
+
+        # Neither action possible — warn
+        warnings.setdefault(increase_nut, []).append(
+            f"{reason} — soil {increase_nut} already {target_map.get(increase_nut, {}).get('Classification', 'High')}, monitor via tissue testing"
+        )
+
     for rr in ratio_results:
         ratio_name = rr["Ratio"]
         actual = rr["Actual"]
@@ -160,111 +282,103 @@ def adjust_targets_for_ratios(targets, ratio_results, soil_values, ratio_rows):
         if status == "Ideal":
             continue
 
-        # Get the current target for the nutrient that needs correction
-        # Strategy: if ratio A:B is below ideal, increase A; if above ideal, increase B
-
-        if ratio_name == "Ca:Mg" and status == "Below ideal":
-            # Ca too low relative to Mg — increase Ca target
-            if "Ca" in target_map:
-                current = target_map["Ca"]["Target_kg_ha"]
-                # Aim for midpoint of ideal ratio
-                ideal_mid = (ideal_min + ideal_max) / 2
-                if mg and mg > 0 and actual > 0:
-                    correction_factor = min(ideal_mid / actual, 2.0)  # Cap at 2x
-                    extra = round(current * (correction_factor - 1), 2)
-                    if extra > 0:
-                        adjustments.setdefault("Ca", []).append(
-                            (f"Ca:Mg ratio {actual:.1f} below ideal {ideal_min}-{ideal_max}", extra)
-                        )
-
-        elif ratio_name == "Ca:Mg" and status == "Above ideal":
-            # Mg too low relative to Ca — increase Mg target
-            if "Mg" in target_map:
-                current = target_map["Mg"]["Target_kg_ha"]
-                ideal_mid = (ideal_min + ideal_max) / 2
-                if ca and ca > 0 and actual > 0:
-                    correction_factor = min(actual / ideal_mid, 2.0)
-                    extra = round(current * (correction_factor - 1), 2)
-                    if extra > 0:
-                        adjustments.setdefault("Mg", []).append(
-                            (f"Ca:Mg ratio {actual:.1f} above ideal {ideal_min}-{ideal_max}", extra)
-                        )
+        if ratio_name == "Ca:Mg" and status in ("Below ideal", "Above ideal"):
+            _ratio_adjust_pair("Ca:Mg", actual, ideal_min, ideal_max,
+                               numerator_nut="Ca", denominator_nut="Mg")
 
         elif ratio_name == "Ca:K" and status == "Below ideal":
-            # Ca too low relative to K — increase Ca
-            if "Ca" in target_map:
-                current = target_map["Ca"]["Target_kg_ha"]
-                extra = round(current * 0.25, 2)  # 25% boost
-                adjustments.setdefault("Ca", []).append(
-                    (f"Ca:K ratio {actual:.1f} below ideal {ideal_min}-{ideal_max}", extra)
-                )
+            _ratio_adjust_pair("Ca:K", actual, ideal_min, ideal_max,
+                               numerator_nut="Ca", denominator_nut="K")
 
         elif ratio_name == "Mg:K" and status == "Below ideal":
-            # Mg too low relative to K — increase Mg
-            if "Mg" in target_map:
-                current = target_map["Mg"]["Target_kg_ha"]
-                extra = round(current * 0.25, 2)
-                adjustments.setdefault("Mg", []).append(
-                    (f"Mg:K ratio {actual:.1f} below ideal {ideal_min}-{ideal_max}", extra)
-                )
+            _ratio_adjust_pair("Mg:K", actual, ideal_min, ideal_max,
+                               numerator_nut="Mg", denominator_nut="K")
 
         elif ratio_name == "P:Zn" and status == "Above ideal":
-            # P too high relative to Zn — increase Zn (common in high-P soils)
+            # Exception: always boost Zn — high P physically blocks Zn uptake
             if "Zn" in target_map:
-                current = target_map["Zn"]["Target_kg_ha"]
-                extra = round(max(current * 0.5, 0.5), 2)  # At least 0.5 kg/ha extra Zn
+                current_zn = target_map["Zn"]["Target_kg_ha"]
+                current_p = target_map.get("P", {}).get("Target_kg_ha", 0)
+                if current_p > 0 and ideal_mid > 0:
+                    ideal_zn = current_p / ideal_mid
+                    extra = round(max(ideal_zn - current_zn, 0.5), 2)
+                else:
+                    extra = round(max(current_zn * 0.5, 0.5), 2)
                 adjustments.setdefault("Zn", []).append(
-                    (f"P:Zn ratio {actual:.1f} above ideal {ideal_min}-{ideal_max}", extra)
+                    (f"P:Zn ratio {actual:.1f} above ideal {ideal_min}-{ideal_max} — high P blocks Zn uptake", extra)
                 )
 
         elif ratio_name == "N:S" and status == "Above ideal":
-            # N too high relative to S — increase S
-            if "S" in target_map:
-                current = target_map["S"]["Target_kg_ha"]
-                extra = round(max(current * 0.3, 2.0), 2)
-                adjustments.setdefault("S", []).append(
-                    (f"N:S ratio {actual:.1f} above ideal {ideal_min}-{ideal_max}", extra)
+            # N:S high — increase S to match N. Never reduce N (not bankable).
+            reason = f"N:S ratio {actual:.1f} above ideal {ideal_min}-{ideal_max}"
+            n_target = target_map.get("N", {}).get("Target_kg_ha", 0)
+            if not is_high("S") and "S" in target_map and n_target > 0:
+                current_s = target_map["S"]["Target_kg_ha"]
+                ideal_s = n_target / ideal_mid
+                extra = round(ideal_s - current_s, 2)
+                extra = min(extra, max(current_s, 2.0))  # Cap
+                if extra > 0:
+                    adjustments.setdefault("S", []).append((reason, extra))
+            else:
+                warnings.setdefault("S", []).append(
+                    f"{reason} — soil S already {target_map.get('S', {}).get('Classification', 'High')}, monitor via tissue testing"
                 )
 
         elif ratio_name == "K:Na" and status == "Below ideal":
-            # K too low relative to Na — increase K to displace Na
-            if "K" in target_map:
-                current = target_map["K"]["Target_kg_ha"]
-                extra = round(current * 0.3, 2)
-                adjustments.setdefault("K", []).append(
-                    (f"K:Na ratio {actual:.1f} below ideal {ideal_min}-{ideal_max}", extra)
-                )
+            # K too low relative to Na — always increase K (Na displacement)
+            if "K" in target_map and na and na > 0:
+                current_k = target_map["K"]["Target_kg_ha"]
+                ideal_k = na * ideal_mid  # K needed relative to soil Na
+                extra = round(ideal_k - current_k, 2)
+                extra = min(extra, max(current_k, 5.0))  # Cap
+                if extra > 0:
+                    adjustments.setdefault("K", []).append(
+                        (f"K:Na ratio {actual:.1f} below ideal {ideal_min}-{ideal_max}", extra)
+                    )
 
-        # Base saturation corrections
+        # Base saturation corrections — these already use exact calculations
         elif ratio_name == "Ca base sat." and status == "Below ideal":
-            if "Ca" in target_map:
+            if "Ca" in target_map and not is_high("Ca"):
                 current = target_map["Ca"]["Target_kg_ha"]
                 shortfall_pct = ideal_min - actual
-                # Roughly: each 1% base sat increase needs ~(CEC * 200.4 / 100) mg/kg Ca
                 if cec and cec > 0:
                     extra_mg_kg = shortfall_pct * cec * 200.4 / 100
-                    extra_kg_ha = round(extra_mg_kg * 2 / 1000, 2)  # ~2 million kg soil per ha top 20cm
-                    extra_kg_ha = min(extra_kg_ha, current * 2)  # Cap
+                    extra_kg_ha = round(extra_mg_kg * 2 / 1000, 2)
+                    extra_kg_ha = min(extra_kg_ha, current * 2)
                     if extra_kg_ha > 0:
                         adjustments.setdefault("Ca", []).append(
                             (f"Ca base sat. {actual:.1f}% below ideal {ideal_min}%", extra_kg_ha)
                         )
+            elif is_high("Ca"):
+                warnings.setdefault("Ca", []).append(
+                    f"Ca base sat. {actual:.1f}% below ideal {ideal_min}% — soil Ca already High, lime may help"
+                )
 
         elif ratio_name == "K base sat." and status == "Below ideal":
-            if "K" in target_map:
+            if "K" in target_map and not is_high("K"):
                 current = target_map["K"]["Target_kg_ha"]
-                extra = round(current * 0.3, 2)
-                adjustments.setdefault("K", []).append(
-                    (f"K base sat. {actual:.1f}% below ideal {ideal_min}%", extra)
-                )
+                shortfall_pct = ideal_min - actual
+                if cec and cec > 0:
+                    extra_mg_kg = shortfall_pct * cec * 390.98 / 100  # K equivalent weight
+                    extra_kg_ha = round(extra_mg_kg * 2 / 1000, 2)
+                    extra_kg_ha = min(extra_kg_ha, current * 2)
+                    if extra_kg_ha > 0:
+                        adjustments.setdefault("K", []).append(
+                            (f"K base sat. {actual:.1f}% below ideal {ideal_min}%", extra_kg_ha)
+                        )
 
         elif ratio_name == "Mg base sat." and status == "Below ideal":
-            if "Mg" in target_map:
+            if "Mg" in target_map and not is_high("Mg"):
                 current = target_map["Mg"]["Target_kg_ha"]
-                extra = round(current * 0.25, 2)
-                adjustments.setdefault("Mg", []).append(
-                    (f"Mg base sat. {actual:.1f}% below ideal {ideal_min}%", extra)
-                )
+                shortfall_pct = ideal_min - actual
+                if cec and cec > 0:
+                    extra_mg_kg = shortfall_pct * cec * 121.56 / 100  # Mg equivalent weight
+                    extra_kg_ha = round(extra_mg_kg * 2 / 1000, 2)
+                    extra_kg_ha = min(extra_kg_ha, current * 2)
+                    if extra_kg_ha > 0:
+                        adjustments.setdefault("Mg", []).append(
+                            (f"Mg base sat. {actual:.1f}% below ideal {ideal_min}%", extra_kg_ha)
+                        )
 
     # Apply adjustments to targets
     updated = []
@@ -274,10 +388,18 @@ def adjust_targets_for_ratios(targets, ratio_results, soil_values, ratio_rows):
         adj_list = adjustments.get(nut, [])
         total_extra = sum(extra for _, extra in adj_list)
         reasons = [reason for reason, _ in adj_list]
+        warn_list = warnings.get(nut, [])
+
+        # N must never be reduced by ratio adjustments — it's not bankable
+        if nut == "N" and total_extra < 0:
+            total_extra = 0
+            reasons = []
 
         new_t["Ratio_Adjustment_kg_ha"] = round(total_extra, 2)
         new_t["Ratio_Reasons"] = reasons
-        new_t["Final_Target_kg_ha"] = round(t["Target_kg_ha"] + total_extra, 2)
+        new_t["Ratio_Warnings"] = warn_list
+        final = round(t["Target_kg_ha"] + total_extra, 2)
+        new_t["Final_Target_kg_ha"] = max(final, 0)  # Never go negative
         updated.append(new_t)
 
     return updated
