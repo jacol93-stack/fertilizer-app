@@ -46,6 +46,10 @@ class OptimizeRequest(BaseModel):
         default="compost", max_length=20,
         description="'compost' = compost-based blend, 'chemical' = pure chemical with filler (admin only)"
     )
+    priorities: dict[str, str] | None = Field(
+        None,
+        description="Nutrient priorities: {nutrient: 'must_match' | 'flexible'}. If null, all treated equally."
+    )
 
     @model_validator(mode="after")
     def validate_targets_non_negative(self):
@@ -92,6 +96,8 @@ class OptimizeResponse(BaseModel):
     batch_size: float
     min_compost_pct: float
     missed_targets: list[MissedTarget] = []
+    priority_result: dict | None = None
+    contact_sapling: bool = False
 
 
 class BlendSave(BaseModel):
@@ -101,6 +107,7 @@ class BlendSave(BaseModel):
     field_id: str | None = None
     client: str | None = Field(None, max_length=200)
     farm: str | None = Field(None, max_length=200)
+    field: str | None = Field(None, max_length=200)
     batch_size: float = Field(1000, gt=0, le=100_000)
     min_compost_pct: float = Field(0, ge=0, le=100)
     selling_price: float = Field(0, ge=0, le=100_000_000)
@@ -119,6 +126,7 @@ class BlendOut(BaseModel):
     field_id: str | None = None
     client: str | None = None
     farm: str | None = None
+    field: str | None = None
     batch_size: float | None = None
     min_compost_pct: float | None = None
     selling_price: float | None = None
@@ -333,7 +341,41 @@ def optimize_blend(
             detail=f"Nutrient column {e} not found in materials data. Check target names.",
         )
 
-    if not res.success:
+    priority_result = None
+    contact_sapling = False
+
+    if not res.success and body.priorities:
+        # Priority-aware optimization
+        from app.services.optimizer import run_priority_optimizer
+        res, priority_result = run_priority_optimizer(
+            targets, body.priorities, df, body.batch_size, c_idx, min_compost,
+        )
+        if res is None or not priority_result.get("feasible"):
+            # Even with priorities, no feasible blend
+            contact_sapling = True
+            # Try to get a partial result for display
+            res, scale = find_closest_blend(targets, df, body.batch_size, c_idx, min_compost)
+            exact = False
+            if res is None or not res.success:
+                # Return empty result with contact_sapling flag
+                return OptimizeResponse(
+                    success=True,
+                    exact=False,
+                    scale=0,
+                    recipe=[],
+                    nutrients=[NutrientRow(nutrient=n, target=v, actual=0, diff=-v, kg_per_ton=0) for n, v in targets.items()],
+                    cost_per_ton=0,
+                    sa_notation="",
+                    batch_size=body.batch_size,
+                    min_compost_pct=body.min_compost_pct,
+                    priority_result=priority_result,
+                    contact_sapling=True,
+                )
+        else:
+            exact = len(priority_result.get("compromised", [])) == 0
+            scale = priority_result.get("scale", 1.0)
+
+    elif not res.success:
         exact = False
         res, scale = find_closest_blend(targets, df, body.batch_size, c_idx, min_compost)
         if scale >= 0.999:
@@ -342,8 +384,8 @@ def optimize_blend(
         if res is None or not res.success:
             raise HTTPException(
                 status_code=422,
-                detail="Optimizer could not find a feasible blend with the given materials and targets. "
-                       "Try reducing nutrient targets or adding more materials.",
+                detail="This blend cannot be achieved with the available materials. "
+                       "Try adjusting nutrient priorities to find the best possible match.",
             )
 
     amounts = res.x.tolist()
@@ -374,6 +416,18 @@ def optimize_blend(
         mat_result = sb.table("materials").select("*").execute()
         materials_df = pd.DataFrame(mat_result.data) if mat_result.data else pd.DataFrame()
 
+        # Fetch quotes with pricing for comparables
+        all_quotes = []
+        try:
+            q_result = sb.table("quotes").select(
+                "quote_number, client_name, quoted_price, status, request_data, created_at"
+            ).not_.is_("quoted_price", "null").execute()
+            # Get agent names for display
+            if q_result.data:
+                all_quotes = q_result.data
+        except Exception:
+            pass
+
         pricing = suggest_price(
             actual_n=npk.get("N", 0),
             actual_p=npk.get("P", 0),
@@ -381,6 +435,7 @@ def optimize_blend(
             compost_pct=body.min_compost_pct,
             all_blends=all_blends,
             materials_df=materials_df,
+            all_quotes=all_quotes,
         )
     except Exception:
         pass  # Pricing is best-effort
@@ -454,6 +509,8 @@ def optimize_blend(
         batch_size=body.batch_size,
         min_compost_pct=body.min_compost_pct,
         missed_targets=missed_targets,
+        priority_result=priority_result,
+        contact_sapling=contact_sapling,
     )
     # Strip cost fields for non-admin users
     return _strip_costs(response.model_dump(), user.role == "admin")
