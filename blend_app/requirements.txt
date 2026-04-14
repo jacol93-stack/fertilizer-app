@@ -1,7 +1,0 @@
-streamlit
-pandas
-numpy
-scipy
-openpyxl
-fpdf2
-supabase
