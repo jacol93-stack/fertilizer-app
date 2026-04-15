@@ -200,11 +200,12 @@ def adjust_targets_for_ratios(targets, ratio_results, soil_values, ratio_rows):
                            numerator_nut, denominator_nut):
         """Handle a ratio imbalance between two nutrients (A:B ratio).
 
-        Calculates the exact kg/ha adjustment needed to move the fertilizer
-        application ratio toward the ideal midpoint.
-
-        Prefers reducing the over-supplied nutrient. Only increases a nutrient
-        if it is NOT already High/Very High. If neither is possible, warns.
+        Sufficiency-first principle:
+        - If sufficiency already penalised a nutrient (factor < 1), don't
+          reduce it further via ratios — sufficiency handled the oversupply.
+        - Only reduce a nutrient that sufficiency scored as Optimal (factor 1).
+        - Only increase a nutrient if it is NOT already High/Very High.
+        - If neither action is possible, warn instead.
 
         For A:B below ideal: either reduce B or increase A.
         For A:B above ideal: either reduce A or increase B.
@@ -220,23 +221,22 @@ def adjust_targets_for_ratios(targets, ratio_results, soil_values, ratio_rows):
         else:
             increase_nut, reduce_nut = denominator_nut, numerator_nut
 
-        # Calculate exact adjustment needed
-        # Current applied: num_target / denom_target = actual ratio of application
-        num_t = target_map.get(numerator_nut, {}).get("Target_kg_ha", 0)
-        den_t = target_map.get(denominator_nut, {}).get("Target_kg_ha", 0)
+        def _sufficiency_already_reduced(nutrient):
+            """True if sufficiency already penalised this nutrient (factor < 1)."""
+            t = target_map.get(nutrient)
+            return t is not None and t.get("Factor", 1) < 1
 
         # Strategy 1: reduce the over-supplied nutrient
-        if reduce_nut in target_map:
+        # BUT only if sufficiency hasn't already reduced it — don't double-punish
+        if (reduce_nut in target_map
+                and not _sufficiency_already_reduced(reduce_nut)):
             current = target_map[reduce_nut]["Target_kg_ha"]
             if current > 0:
-                # Calculate what reduce_nut target should be to hit ideal_mid
                 other = target_map.get(increase_nut, {}).get("Target_kg_ha", 0)
                 if other > 0:
                     if reduce_nut == denominator_nut:
-                        # A:B ratio — reduce B so A/B = ideal_mid → B = A / ideal_mid
                         ideal_reduce = other / ideal_mid
                     else:
-                        # A:B ratio — reduce A so A/B = ideal_mid → A = B * ideal_mid
                         ideal_reduce = other * ideal_mid
                     reduction = round(current - ideal_reduce, 2)
                     # Cap: never reduce by more than 50% of current target
@@ -253,10 +253,8 @@ def adjust_targets_for_ratios(targets, ratio_results, soil_values, ratio_rows):
             other = target_map.get(reduce_nut, {}).get("Target_kg_ha", 0)
             if current >= 0 and other > 0:
                 if increase_nut == numerator_nut:
-                    # A:B ratio — increase A so A/B = ideal_mid → A = B * ideal_mid
                     ideal_increase = other * ideal_mid
                 else:
-                    # A:B ratio — increase B so A/B = ideal_mid → B = A / ideal_mid
                     ideal_increase = other / ideal_mid
                 extra = round(ideal_increase - current, 2)
                 # Cap: never more than double current target
@@ -299,8 +297,9 @@ def adjust_targets_for_ratios(targets, ratio_results, soil_values, ratio_rows):
             if "Zn" in target_map:
                 current_zn = target_map["Zn"]["Target_kg_ha"]
                 current_p = target_map.get("P", {}).get("Target_kg_ha", 0)
-                if current_p > 0 and ideal_mid > 0:
-                    ideal_zn = current_p / ideal_mid
+                pzn_mid = (ideal_min + ideal_max) / 2
+                if current_p > 0 and pzn_mid > 0:
+                    ideal_zn = current_p / pzn_mid
                     extra = round(max(ideal_zn - current_zn, 0.5), 2)
                 else:
                     extra = round(max(current_zn * 0.5, 0.5), 2)
@@ -312,9 +311,10 @@ def adjust_targets_for_ratios(targets, ratio_results, soil_values, ratio_rows):
             # N:S high — increase S to match N. Never reduce N (not bankable).
             reason = f"N:S ratio {actual:.1f} above ideal {ideal_min}-{ideal_max}"
             n_target = target_map.get("N", {}).get("Target_kg_ha", 0)
+            ns_mid = (ideal_min + ideal_max) / 2
             if not is_high("S") and "S" in target_map and n_target > 0:
                 current_s = target_map["S"]["Target_kg_ha"]
-                ideal_s = n_target / ideal_mid
+                ideal_s = n_target / ns_mid
                 extra = round(ideal_s - current_s, 2)
                 extra = min(extra, max(current_s, 2.0))  # Cap
                 if extra > 0:
@@ -326,9 +326,10 @@ def adjust_targets_for_ratios(targets, ratio_results, soil_values, ratio_rows):
 
         elif ratio_name == "K:Na" and status == "Below ideal":
             # K too low relative to Na — always increase K (Na displacement)
+            kna_mid = (ideal_min + ideal_max) / 2
             if "K" in target_map and na and na > 0:
                 current_k = target_map["K"]["Target_kg_ha"]
-                ideal_k = na * ideal_mid  # K needed relative to soil Na
+                ideal_k = na * kna_mid  # K needed relative to soil Na
                 extra = round(ideal_k - current_k, 2)
                 extra = min(extra, max(current_k, 5.0))  # Cap
                 if extra > 0:
@@ -394,6 +395,20 @@ def adjust_targets_for_ratios(targets, ratio_results, soil_values, ratio_rows):
         if nut == "N" and total_extra < 0:
             total_extra = 0
             reasons = []
+
+        # Safety net: cap total stacked reductions at 50% of base target.
+        # This should rarely trigger now that _ratio_adjust_pair skips
+        # nutrients already penalised by sufficiency, but prevents edge cases.
+        base = t["Target_kg_ha"]
+        if total_extra < 0 and base > 0:
+            max_reduction = base * 0.5
+            if abs(total_extra) > max_reduction:
+                total_extra = -max_reduction
+                warn_list = list(warn_list)  # copy
+                warn_list.append(
+                    f"Ratio adjustments capped — {nut} kept at "
+                    f"{round(base - max_reduction, 1)} kg/ha (50% of sufficiency target)"
+                )
 
         new_t["Ratio_Adjustment_kg_ha"] = round(total_extra, 2)
         new_t["Ratio_Reasons"] = reasons

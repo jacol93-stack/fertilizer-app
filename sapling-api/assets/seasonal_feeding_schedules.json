@@ -1,0 +1,1773 @@
+{
+  "_metadata": {
+    "title": "Seasonal Fertilizer Feeding Schedules for Lowveld Commercial Crops",
+    "region": "Lowveld, Mpumalanga / Limpopo, South Africa (subtropical)",
+    "climate_zone": "Subtropical, summer rainfall 600-1200mm, mild winters, hot summers",
+    "typical_soils": "Granite-derived sandy loams (Hutton, Clovelly forms) and gabbro-derived clay soils (Shortlands, Arcadia). Generally low in P, Zn, B. Variable K status.",
+    "common_micronutrient_deficiencies": ["Zn", "B", "Fe (on calcareous/high-pH soils)", "Mn (sandy soils)", "Mo (acid soils)"],
+    "version": "1.0",
+    "compiled_date": "2026-03-26",
+    "confidence_notes": "Nutrient split percentages are synthesised from SA extension literature (Fertasa Handbook 7th ed, CRI guidelines, SAMAC, SAAGA, SASRI, ARC-ITSC, Haifa crop guides) and cross-referenced with international sources (UF-IFAS, Australian macadamia industry, FAO). Where exact SA percentage data was unavailable, values are derived from phenological demand curves and clearly noted. All percentages should be validated against local leaf/soil analysis.",
+    "sources": [
+      "Fertasa Fertilizer Handbook, 7th Edition (2016)",
+      "Fertasa Chapter 5.8.1 - Macadamias (Hawksworth & Sheard, 2021)",
+      "Fertasa Chapter 5.8.2 - Pecan Nuts (Schmidt, 2023)",
+      "CRI - Handbook for Fertilisation of Citrus in South Africa",
+      "SAMAC - Macadamia fertilisation guidelines",
+      "SAAGA Yearbooks (various years)",
+      "SASRI Crop Nutrition / MyCanesim / OptiFert",
+      "ARC-ITSC Banana, Mango, Litchi production guidelines",
+      "Haifa Group Crop Guides (citrus, banana, avocado, potato, sugarcane)",
+      "ICL Crop Guides",
+      "FAO - Fertilizer use by crop in South Africa (2005)",
+      "UF-IFAS Florida Citrus Production Guide (2025-2026)",
+      "Kynoch technical bulletins",
+      "Omnia Nutriology technical notes"
+    ]
+  },
+
+  "crops": {
+
+    "citrus": {
+      "crop_name": "Citrus",
+      "subtypes": ["Valencia oranges", "Navel oranges", "Lemons", "Soft citrus / Mandarins", "Grapefruit"],
+      "crop_type": "perennial_tree",
+      "typical_total_nutrients_kg_per_ha": {
+        "notes": "Mature bearing tree, 40-60 t/ha yield. Adjust by cultivar and yield target.",
+        "N": {"min": 180, "max": 300},
+        "P": {"min": 20, "max": 40, "as_P2O5_min": 46, "as_P2O5_max": 92},
+        "K": {"min": 150, "max": 280, "as_K2O_min": 180, "as_K2O_max": 336},
+        "Ca": {"min": 40, "max": 80},
+        "Mg": {"min": 20, "max": 40},
+        "S": {"min": 15, "max": 30}
+      },
+
+      "growth_stages": [
+        {
+          "stage_id": 1,
+          "stage_name": "Winter dormancy / Root flush",
+          "months": ["Jun", "Jul"],
+          "description": "Reduced aboveground activity. Root flush occurs in warmer Lowveld winters. Pre-bud-break preparation.",
+          "nutrient_split_pct": {
+            "N": 5,
+            "P": 5,
+            "K": 5,
+            "Ca": 5,
+            "Mg": 5,
+            "Zn": 0,
+            "B": 0
+          },
+          "recommended_applications": 1,
+          "application_methods": ["broadcast", "fertigation"],
+          "notes": "Light maintenance. In Lowveld, winters are mild so some root activity continues. Avoid heavy N which may delay flowering."
+        },
+        {
+          "stage_id": 2,
+          "stage_name": "Bud break / Spring flush",
+          "months": ["Aug", "Sep"],
+          "description": "Vegetative spring flush and flower bud development. High demand for N and micronutrients.",
+          "nutrient_split_pct": {
+            "N": 25,
+            "P": 20,
+            "K": 10,
+            "Ca": 10,
+            "Mg": 15,
+            "Zn": 40,
+            "B": 35
+          },
+          "recommended_applications": 2,
+          "application_methods": ["fertigation", "broadcast", "foliar_spray"],
+          "notes": "Critical Zn + B foliar spray at bud break. First major N application. Two-thirds of annual fertilizer should be applied from bud break through fruit set (CRI guideline)."
+        },
+        {
+          "stage_id": 3,
+          "stage_name": "Flowering / Fruit set",
+          "months": ["Sep", "Oct", "Nov"],
+          "description": "Bloom, pollination, and initial fruit set. Cell division in fruitlets. High Ca and B demand.",
+          "nutrient_split_pct": {
+            "N": 30,
+            "P": 30,
+            "K": 15,
+            "Ca": 30,
+            "Mg": 25,
+            "Zn": 20,
+            "B": 35
+          },
+          "recommended_applications": 3,
+          "application_methods": ["fertigation", "foliar_spray"],
+          "notes": "Peak N demand period. Ca foliar sprays reduce rind disorders. B supports pollen viability and fruit set. This is the most critical fertilization window."
+        },
+        {
+          "stage_id": 4,
+          "stage_name": "Fruit development (cell enlargement)",
+          "months": ["Nov", "Dec", "Jan", "Feb"],
+          "description": "Rapid fruit growth phase. K demand rises sharply for fruit sizing and sugar accumulation.",
+          "nutrient_split_pct": {
+            "N": 25,
+            "P": 25,
+            "K": 40,
+            "Ca": 35,
+            "Mg": 30,
+            "Zn": 25,
+            "B": 20
+          },
+          "recommended_applications": 4,
+          "application_methods": ["fertigation"],
+          "notes": "Shift emphasis from N to K. Coincides with Lowveld rainy season - leaching risk on sandy soils, increase split frequency. Excessive late N causes rind disorders (creasing, granulation) and delays colour break."
+        },
+        {
+          "stage_id": 5,
+          "stage_name": "Maturation / Colour break",
+          "months": ["Mar", "Apr", "May"],
+          "description": "Fruit maturation, sugar accumulation, acid decline, colour development. Varies by cultivar.",
+          "nutrient_split_pct": {
+            "N": 10,
+            "P": 15,
+            "K": 25,
+            "Ca": 15,
+            "Mg": 20,
+            "Zn": 10,
+            "B": 5
+          },
+          "recommended_applications": 2,
+          "application_methods": ["fertigation"],
+          "notes": "Reduce N to avoid delayed maturity and rind quality issues. Maintain K for internal quality. Valencia harvest Apr-Oct; Navels May-Aug; Lemons year-round; Mandarins Apr-Jul; Grapefruit Mar-Aug."
+        },
+        {
+          "stage_id": 6,
+          "stage_name": "Post-harvest / Recovery",
+          "months": ["May", "Jun"],
+          "description": "After fruit removal. Reserve replenishment before winter. Applies to early-harvested cultivars.",
+          "nutrient_split_pct": {
+            "N": 5,
+            "P": 5,
+            "K": 5,
+            "Ca": 5,
+            "Mg": 5,
+            "Zn": 5,
+            "B": 5
+          },
+          "recommended_applications": 1,
+          "application_methods": ["broadcast", "fertigation"],
+          "notes": "Light post-harvest application for Navels and Mandarins. Valencias may still have fruit on tree. Soil sampling period Feb-Apr for leaf analysis."
+        }
+      ],
+
+      "cultivar_adjustments": {
+        "Valencia_oranges": {
+          "harvest_window": "Apr-Oct",
+          "notes": "Long hanging period means fruit and next-season flowers overlap. Maintain K longer. Higher total N requirement.",
+          "N_adjustment_pct": 110,
+          "K_adjustment_pct": 110
+        },
+        "Navel_oranges": {
+          "harvest_window": "May-Aug",
+          "notes": "Sensitive to creasing - avoid late N. Ca sprays critical. Lower K requirement than Valencia.",
+          "N_adjustment_pct": 90,
+          "K_adjustment_pct": 90
+        },
+        "Lemons": {
+          "harvest_window": "Year-round (peak Feb-Jul)",
+          "notes": "Multiple flowering flushes. More even N distribution throughout year. Higher total N.",
+          "N_adjustment_pct": 120,
+          "K_adjustment_pct": 100
+        },
+        "Soft_citrus_mandarins": {
+          "harvest_window": "Apr-Jul",
+          "notes": "Very sensitive to rind quality. Reduce N from Jan onwards. Extra Ca and K for rind integrity.",
+          "N_adjustment_pct": 85,
+          "K_adjustment_pct": 105
+        },
+        "Grapefruit": {
+          "harvest_window": "Mar-Aug",
+          "notes": "Large fruit size demands more K. Less sensitive to late N than oranges.",
+          "N_adjustment_pct": 100,
+          "K_adjustment_pct": 115
+        }
+      },
+
+      "age_factors": {
+        "years_to_first_bearing": 3,
+        "years_to_full_bearing": 8,
+        "stages": [
+          {
+            "age_category": "Young non-bearing",
+            "year_range": "1-3",
+            "nutrient_pct_of_mature": 25,
+            "notes": "Focus on N for canopy establishment. Minimal P and K. Frequent light applications. 4-6 applications per growing season."
+          },
+          {
+            "age_category": "Intermediate",
+            "year_range": "4-6",
+            "nutrient_pct_of_mature": 55,
+            "notes": "Transitioning to bearing. Increase K as fruiting begins. Start full micronutrient programme."
+          },
+          {
+            "age_category": "Full bearing",
+            "year_range": "7+",
+            "nutrient_pct_of_mature": 100,
+            "notes": "Full programme. Adjust annually based on yield expectation and leaf analysis."
+          }
+        ]
+      },
+
+      "micronutrient_programme": [
+        {
+          "nutrient": "Zn",
+          "timing": "Aug (bud break), repeat Oct",
+          "method": "foliar_spray",
+          "product_example": "ZnSO4 0.5% or chelated Zn",
+          "notes": "Critical for leaf expansion and fruit set. Lowveld soils universally low in Zn."
+        },
+        {
+          "nutrient": "B",
+          "timing": "Aug-Sep (pre-bloom to full bloom)",
+          "method": "foliar_spray",
+          "product_example": "Solubor 100g/100L",
+          "notes": "Supports pollen germination and tube growth. Do not exceed recommended rate - B toxicity risk."
+        },
+        {
+          "nutrient": "Mn",
+          "timing": "Sep-Oct (spring flush)",
+          "method": "foliar_spray",
+          "product_example": "MnSO4 0.3%",
+          "notes": "Deficiency common on sandy soils above pH 6.5."
+        },
+        {
+          "nutrient": "Fe",
+          "timing": "Aug-Sep",
+          "method": "soil_drench",
+          "product_example": "Fe-EDDHA chelate",
+          "notes": "Only required on calcareous or high-pH soils. Foliar Fe is poorly translocated."
+        },
+        {
+          "nutrient": "Ca",
+          "timing": "Oct-Jan (fruit set through cell enlargement)",
+          "method": "foliar_spray",
+          "product_example": "CaCl2 0.5% or Ca(NO3)2",
+          "notes": "3-4 applications. Reduces creasing and albedo breakdown. Critical for Navels and Mandarins."
+        },
+        {
+          "nutrient": "Cu",
+          "timing": "As part of copper fungicide programme",
+          "method": "foliar_spray",
+          "product_example": "Copper oxychloride",
+          "notes": "Usually adequate from fungicide sprays. Monitor if no copper fungicides used."
+        }
+      ],
+
+      "special_notes": [
+        "Lowveld summer rainfall (Oct-Mar) causes significant N leaching on sandy soils - increase split frequency during this period.",
+        "Fertigation is the preferred method in modern Lowveld orchards (micro-sprinkler or drip). Split N into weekly or biweekly applications during peak demand.",
+        "Avoid late N application (after Feb for Navels, after Mar for Valencias) to prevent rind disorders and delayed colour break.",
+        "Soil pH management: target pH(KCl) 5.5-6.5. Lime applications in autumn/winter if needed.",
+        "Leaf sampling: collect 4-7 month old spring flush leaves in Mar-Apr for analysis.",
+        "Source confidence: HIGH - based on CRI and Fertasa guidelines with extensive SA research backing."
+      ]
+    },
+
+    "macadamia": {
+      "crop_name": "Macadamia",
+      "subtypes": ["Beaumont (695)", "Nelmak 2", "A4", "A16", "814", "816", "842", "849"],
+      "crop_type": "perennial_tree",
+      "typical_total_nutrients_kg_per_ha": {
+        "notes": "Mature bearing orchard, 3.5 t NIS/ha yield target (SAMAC average). Adjust proportionally for higher/lower yields.",
+        "N": {"min": 60, "max": 120},
+        "P": {"min": 8, "max": 20, "as_P2O5_min": 18, "as_P2O5_max": 46},
+        "K": {"min": 70, "max": 150, "as_K2O_min": 84, "as_K2O_max": 180},
+        "Ca": {"min": 30, "max": 60},
+        "Mg": {"min": 5, "max": 15},
+        "S": {"min": 15, "max": 25}
+      },
+
+      "growth_stages": [
+        {
+          "stage_id": 1,
+          "stage_name": "Post-harvest recovery / Flower initiation",
+          "months": ["Apr", "May", "Jun"],
+          "description": "After nut fall. Flower initiation triggered by cooler temps and shorter days. Reserve building.",
+          "nutrient_split_pct": {
+            "N": 20,
+            "P": 15,
+            "K": 15,
+            "Ca": 10,
+            "Mg": 15,
+            "Zn": 10,
+            "B": 10
+          },
+          "recommended_applications": 2,
+          "application_methods": ["broadcast", "fertigation"],
+          "notes": "First N application at flower initiation (Apr). Important for adequate raceme development. N:K ratio 1:1 to 1:1.25."
+        },
+        {
+          "stage_id": 2,
+          "stage_name": "Inflorescence development",
+          "months": ["Jun", "Jul"],
+          "description": "Raceme elongation. Winter period with reduced root activity.",
+          "nutrient_split_pct": {
+            "N": 10,
+            "P": 10,
+            "K": 10,
+            "Ca": 10,
+            "Mg": 10,
+            "Zn": 15,
+            "B": 20
+          },
+          "recommended_applications": 1,
+          "application_methods": ["fertigation", "foliar_spray"],
+          "notes": "Second N application in Jun. B foliar critical for flower quality. Lowveld winters mild enough for continued root uptake."
+        },
+        {
+          "stage_id": 3,
+          "stage_name": "Flowering / Nut set",
+          "months": ["Aug", "Sep", "Oct"],
+          "description": "Main flowering Aug-Sep. Nut set Sep-Oct. Root flush coincides. High B and Ca demand.",
+          "nutrient_split_pct": {
+            "N": 15,
+            "P": 20,
+            "K": 15,
+            "Ca": 25,
+            "Mg": 20,
+            "Zn": 25,
+            "B": 35
+          },
+          "recommended_applications": 2,
+          "application_methods": ["fertigation", "foliar_spray"],
+          "notes": "B and Ca foliar sprays at flowering. Avoid excessive N which promotes vegetative flush at expense of nut set. Root flush = good uptake opportunity."
+        },
+        {
+          "stage_id": 4,
+          "stage_name": "Rapid nut growth / Shell hardening",
+          "months": ["Nov", "Dec"],
+          "description": "Shell development and hardening. Premature nut drop period. Kernel starts filling.",
+          "nutrient_split_pct": {
+            "N": 20,
+            "P": 25,
+            "K": 20,
+            "Ca": 25,
+            "Mg": 25,
+            "Zn": 25,
+            "B": 20
+          },
+          "recommended_applications": 2,
+          "application_methods": ["fertigation"],
+          "notes": "Nov application critical (Fertasa). Coincides with rainy season - leaching risk. Support through premature nut drop phase."
+        },
+        {
+          "stage_id": 5,
+          "stage_name": "Oil accumulation / Nut maturation",
+          "months": ["Jan", "Feb", "Mar"],
+          "description": "Kernel oil accumulation phase. Determines kernel recovery (KR%). High K and N demand.",
+          "nutrient_split_pct": {
+            "N": 35,
+            "P": 30,
+            "K": 40,
+            "Ca": 30,
+            "Mg": 30,
+            "Zn": 25,
+            "B": 15
+          },
+          "recommended_applications": 3,
+          "application_methods": ["fertigation"],
+          "notes": "Jan application critical for KR% (170g N/tree increased KR by 1-1.5% in SA trials). Highest K demand period. Leaf N declines during oil accumulation - supplement. This is peak rainy season, split applications to reduce leaching."
+        }
+      ],
+
+      "age_factors": {
+        "years_to_first_bearing": 4,
+        "years_to_full_bearing": 10,
+        "stages": [
+          {
+            "age_category": "Young non-bearing",
+            "year_range": "1-3",
+            "nutrient_pct_of_mature": 20,
+            "notes": "N only for first 2 years. Start K from year 3 at N:K 1:1. Foliar micronutrients from year 1. Avoid excess P - macadamias are P-sensitive (Proteaceae family)."
+          },
+          {
+            "age_category": "Early bearing",
+            "year_range": "4-6",
+            "nutrient_pct_of_mature": 45,
+            "notes": "First crops. Gradually increase K ratio to N:K 1:1.25. Begin full nutrient programme."
+          },
+          {
+            "age_category": "Intermediate",
+            "year_range": "7-9",
+            "nutrient_pct_of_mature": 75,
+            "notes": "Increasing yields. Adjust K upward - N:K ratio moves to 1:1.5 as crop load increases."
+          },
+          {
+            "age_category": "Full bearing",
+            "year_range": "10+",
+            "nutrient_pct_of_mature": 100,
+            "notes": "Full programme. N:K ratio 1:1.25 to 1:1.5 depending on crop load."
+          }
+        ]
+      },
+
+      "micronutrient_programme": [
+        {
+          "nutrient": "B",
+          "timing": "Jul (pre-bloom) and Sep (at nut set)",
+          "method": "foliar_spray",
+          "product_example": "Solubor 75g/100L",
+          "notes": "Most critical micronutrient for macadamias. Supports flower quality and nut retention."
+        },
+        {
+          "nutrient": "Zn",
+          "timing": "Aug-Sep (spring flush) and Nov",
+          "method": "foliar_spray",
+          "product_example": "ZnSO4 0.5% or Zn chelate",
+          "notes": "Lowveld soils typically low in available Zn."
+        },
+        {
+          "nutrient": "Fe",
+          "timing": "Sep-Nov (active growth)",
+          "method": "soil_drench",
+          "product_example": "Fe-EDDHA chelate 30-50g/tree",
+          "notes": "CRITICAL for macadamias (SAMAC). Fe deficiency = sparse leaf cover and dieback. Lowveld granite soils can be Fe-responsive. Soil application preferred."
+        },
+        {
+          "nutrient": "Cu",
+          "timing": "Oct, Jan",
+          "method": "foliar_spray",
+          "product_example": "CuSO4 0.1% or copper oxychloride",
+          "notes": "Required on sandy soils. Also has fungicidal benefit."
+        },
+        {
+          "nutrient": "Ca",
+          "timing": "Sep-Dec (shell development)",
+          "method": "foliar_spray",
+          "product_example": "CaCl2 or Ca chelate",
+          "notes": "Important for shell integrity. Macadamias require LOW soil Ca compared to most crops but adequate Ca for shell."
+        }
+      ],
+
+      "special_notes": [
+        "Macadamias are sensitive to P oversupply (Proteaceae-related root system). Keep P applications modest; rely on soil analysis.",
+        "Fe is the most limiting micronutrient for macadamias - monitor closely, especially on high-pH patches.",
+        "N:K ratio is critical: 1:1 for young trees, moving to 1:1.25 to 1:1.5 for bearing trees.",
+        "Lowveld summer rainfall causes significant N leaching - split N into 6-10 applications through fertigation.",
+        "Leaf sampling: collect mature, current-season leaves in Apr-May after nut fall.",
+        "Soil sampling every 2 years, leaf sampling annually (SAMAC recommendation).",
+        "Mulching with nut husks is common and contributes significant K - account for this in fertilizer calculations.",
+        "Source confidence: HIGH - SAMAC and Fertasa Chapter 5.8.1 provide detailed SA-specific data."
+      ]
+    },
+
+    "avocado": {
+      "crop_name": "Avocado (Hass)",
+      "subtypes": ["Hass", "Fuerte", "Ryan", "Pinkerton"],
+      "crop_type": "perennial_tree",
+      "typical_total_nutrients_kg_per_ha": {
+        "notes": "Mature Hass, 15-20 t/ha yield. Hass removes approx 4kg N, 0.8kg P, 8kg K per tonne fruit.",
+        "N": {"min": 150, "max": 300},
+        "P": {"min": 30, "max": 60, "as_P2O5_min": 69, "as_P2O5_max": 138},
+        "K": {"min": 200, "max": 400, "as_K2O_min": 240, "as_K2O_max": 480},
+        "Ca": {"min": 40, "max": 80},
+        "Mg": {"min": 15, "max": 30},
+        "S": {"min": 10, "max": 20}
+      },
+
+      "growth_stages": [
+        {
+          "stage_id": 1,
+          "stage_name": "Post-harvest recovery / Floral induction",
+          "months": ["Jun", "Jul", "Aug"],
+          "description": "After Hass harvest (May-Sep). Floral induction driven by cool temperatures. Reserve replenishment.",
+          "nutrient_split_pct": {
+            "N": 15,
+            "P": 10,
+            "K": 10,
+            "Ca": 10,
+            "Mg": 10,
+            "Zn": 10,
+            "B": 15
+          },
+          "recommended_applications": 2,
+          "application_methods": ["broadcast", "fertigation"],
+          "notes": "Post-harvest N application to replenish reserves. Approx 25% of annual N applied before flowering (Haifa guideline). Do not over-apply N - can disrupt floral induction."
+        },
+        {
+          "stage_id": 2,
+          "stage_name": "Flowering",
+          "months": ["Aug", "Sep", "Oct"],
+          "description": "Panicle emergence and bloom. Synchronous A/B flowering types. Very high B demand. No soil fertilizer during active bloom.",
+          "nutrient_split_pct": {
+            "N": 10,
+            "P": 15,
+            "K": 10,
+            "Ca": 15,
+            "Mg": 15,
+            "Zn": 20,
+            "B": 35
+          },
+          "recommended_applications": 1,
+          "application_methods": ["foliar_spray"],
+          "notes": "SAAGA: No soil fertilizer during flowering and early fruit set - it stimulates vegetative growth that competes with fruit. B and Zn foliar sprays at flowering. K foliar can assist."
+        },
+        {
+          "stage_id": 3,
+          "stage_name": "Fruit set / Early fruit development",
+          "months": ["Oct", "Nov", "Dec"],
+          "description": "Fruit set after bloom. Heavy physiological fruit drop is normal (>99% of flowers). Cell division phase.",
+          "nutrient_split_pct": {
+            "N": 25,
+            "P": 25,
+            "K": 20,
+            "Ca": 25,
+            "Mg": 25,
+            "Zn": 25,
+            "B": 25
+          },
+          "recommended_applications": 3,
+          "application_methods": ["fertigation"],
+          "notes": "Resume soil/fertigation applications after initial fruit set. Peak N demand begins. Ca important for fruit quality. Start of rainy season - leaching risk."
+        },
+        {
+          "stage_id": 4,
+          "stage_name": "Fruit development / Oil accumulation",
+          "months": ["Jan", "Feb", "Mar"],
+          "description": "Rapid fruit growth. Oil accumulation determines maturity. Very high K demand. Overlaps with vegetative summer flush.",
+          "nutrient_split_pct": {
+            "N": 30,
+            "P": 30,
+            "K": 40,
+            "Ca": 30,
+            "Mg": 30,
+            "Zn": 25,
+            "B": 15
+          },
+          "recommended_applications": 3,
+          "application_methods": ["fertigation"],
+          "notes": "Highest nutrient demand period. K:N ratio should favour K heavily. Mid-summer P and K application boosts current crop and initiates next season's inflorescences. Peak rainy season - frequent splits essential."
+        },
+        {
+          "stage_id": 5,
+          "stage_name": "Maturation / Pre-harvest",
+          "months": ["Apr", "May"],
+          "description": "Final oil accumulation. Hass harvest begins when dry matter >23%. Fruit hangs on tree.",
+          "nutrient_split_pct": {
+            "N": 20,
+            "P": 20,
+            "K": 20,
+            "Ca": 20,
+            "Mg": 20,
+            "Zn": 20,
+            "B": 10
+          },
+          "recommended_applications": 2,
+          "application_methods": ["fertigation"],
+          "notes": "Maintain nutrition as fruit hangs. Hass can be harvested over extended period (May-Sep in Lowveld). Transition to post-harvest programme for early-picked blocks."
+        }
+      ],
+
+      "age_factors": {
+        "years_to_first_bearing": 3,
+        "years_to_full_bearing": 8,
+        "stages": [
+          {
+            "age_category": "Young non-bearing",
+            "year_range": "1-3",
+            "nutrient_pct_of_mature": 20,
+            "notes": "SAAGA: Do not fertilise newly planted trees until first leaf flush is complete and tree is established. Then light N only. Protect from sunburn."
+          },
+          {
+            "age_category": "Early bearing",
+            "year_range": "4-6",
+            "nutrient_pct_of_mature": 50,
+            "notes": "First crops. Increase K proportionally. Alternate bearing pattern may begin - adjust N in 'on' vs 'off' years."
+          },
+          {
+            "age_category": "Full bearing",
+            "year_range": "7+",
+            "nutrient_pct_of_mature": 100,
+            "notes": "Full programme. Alternate bearing management: increase N in 'off' year to promote flowering; moderate N in 'on' year."
+          }
+        ]
+      },
+
+      "micronutrient_programme": [
+        {
+          "nutrient": "B",
+          "timing": "Aug (pre-bloom), Oct (fruit set), Jan",
+          "method": "foliar_spray",
+          "product_example": "Solubor 50-75g/100L",
+          "notes": "Critical for pollen tube growth and fruit retention. Multiple applications needed."
+        },
+        {
+          "nutrient": "Zn",
+          "timing": "Aug-Sep (spring flush), Nov",
+          "method": "foliar_spray",
+          "product_example": "ZnSO4 0.5% or Zn chelate",
+          "notes": "Deficiency very common in Lowveld. Affects leaf size and fruit set."
+        },
+        {
+          "nutrient": "Fe",
+          "timing": "Sep-Nov",
+          "method": "soil_drench",
+          "product_example": "Fe-EDDHA chelate",
+          "notes": "Required on calcareous soils. Lowveld granite soils generally adequate but monitor."
+        },
+        {
+          "nutrient": "Ca",
+          "timing": "Oct-Feb (4-6 sprays during fruit development)",
+          "method": "foliar_spray",
+          "product_example": "CaCl2 or Ca chelate",
+          "notes": "Reduces postharvest disorders (grey pulp, vascular browning). Multiple applications needed."
+        }
+      ],
+
+      "special_notes": [
+        "Avocados are VERY sensitive to chloride (Cl-). Use sulphate-based K sources (K2SO4 or KNO3), not KCl/MOP.",
+        "Phytophthora root rot is endemic in Lowveld avocado orchards - healthy roots are essential for nutrient uptake. Phosphonate (phosphorous acid) trunk injections support root health but are not a P fertilizer substitute.",
+        "Hass leaf analysis: sample 6-8 month old leaves in Feb-Apr. Optimal leaf N for Hass is 2.2-2.6% (higher than Fuerte).",
+        "Alternate bearing is the primary management challenge. Nutrition programme should account for 'on' and 'off' years.",
+        "Mulching is standard practice (10-15cm). Contributes nutrients as it decomposes - factor into fertilizer calculations.",
+        "Irrigation method: micro-sprinklers or drip. Fertigation is highly effective and preferred for split applications.",
+        "Source confidence: HIGH - SAAGA yearbooks provide extensive SA-specific research data."
+      ]
+    },
+
+    "pecan": {
+      "crop_name": "Pecan",
+      "subtypes": ["Wichita", "Western Schley", "Choctaw", "Navaho", "Ukulinga"],
+      "crop_type": "perennial_tree",
+      "typical_total_nutrients_kg_per_ha": {
+        "notes": "Mature bearing orchard, 2-4 t/ha. Based on Fertasa Chapter 5.8.2 and Georgia pecan guidelines adapted for SA.",
+        "N": {"min": 80, "max": 180},
+        "P": {"min": 15, "max": 35, "as_P2O5_min": 34, "as_P2O5_max": 80},
+        "K": {"min": 60, "max": 120, "as_K2O_min": 72, "as_K2O_max": 144},
+        "Ca": {"min": 30, "max": 60},
+        "Mg": {"min": 10, "max": 20},
+        "S": {"min": 8, "max": 15}
+      },
+
+      "growth_stages": [
+        {
+          "stage_id": 1,
+          "stage_name": "Dormancy / Pre-bud-break",
+          "months": ["Jun", "Jul"],
+          "description": "Deciduous dormancy. Lowveld has mild winters so dormancy is shallow. Pre-season soil preparation.",
+          "nutrient_split_pct": {
+            "N": 0,
+            "P": 10,
+            "K": 5,
+            "Ca": 5,
+            "Mg": 5,
+            "Zn": 0,
+            "B": 0
+          },
+          "recommended_applications": 0,
+          "application_methods": ["broadcast"],
+          "notes": "No active uptake. If broadcast P or lime is needed, apply during dormancy for incorporation. Soil sampling period."
+        },
+        {
+          "stage_id": 2,
+          "stage_name": "Bud break / Leaf expansion",
+          "months": ["Aug", "Sep"],
+          "description": "Bud swell and leaf emergence. Catkin (male flower) development. First root flush. High Zn demand.",
+          "nutrient_split_pct": {
+            "N": 25,
+            "P": 20,
+            "K": 15,
+            "Ca": 15,
+            "Mg": 20,
+            "Zn": 40,
+            "B": 30
+          },
+          "recommended_applications": 2,
+          "application_methods": ["broadcast", "fertigation", "foliar_spray"],
+          "notes": "First N application 3 weeks after bud break (Fertasa). Critical Zn foliar: spray when leaf buds are 50mm long with ZnSO4 or ZnO. Repeat 2-3 times at 2-3 week intervals."
+        },
+        {
+          "stage_id": 3,
+          "stage_name": "Pollination / Nut set",
+          "months": ["Oct", "Nov"],
+          "description": "Female flower receptivity, wind pollination, initial nut set. B critical for pollination.",
+          "nutrient_split_pct": {
+            "N": 20,
+            "P": 20,
+            "K": 15,
+            "Ca": 20,
+            "Mg": 20,
+            "Zn": 25,
+            "B": 35
+          },
+          "recommended_applications": 2,
+          "application_methods": ["fertigation", "foliar_spray"],
+          "notes": "B foliar spray. Continue Zn programme. N and K via fertigation. Shell development begins."
+        },
+        {
+          "stage_id": 4,
+          "stage_name": "Shell hardening / Water stage",
+          "months": ["Dec", "Jan"],
+          "description": "Shell hardens. Liquid endosperm (water stage). Nut sizing. High K and Ca demand.",
+          "nutrient_split_pct": {
+            "N": 20,
+            "P": 20,
+            "K": 25,
+            "Ca": 25,
+            "Mg": 20,
+            "Zn": 20,
+            "B": 20
+          },
+          "recommended_applications": 2,
+          "application_methods": ["fertigation"],
+          "notes": "Peak rainy season. Split applications to reduce leaching. K important for nut sizing."
+        },
+        {
+          "stage_id": 5,
+          "stage_name": "Kernel fill / Oil accumulation",
+          "months": ["Feb", "Mar"],
+          "description": "Kernel fills shell cavity. Oil accumulation. Determines kernel quality and percentage fill.",
+          "nutrient_split_pct": {
+            "N": 25,
+            "P": 20,
+            "K": 30,
+            "Ca": 25,
+            "Mg": 25,
+            "Zn": 10,
+            "B": 10
+          },
+          "recommended_applications": 2,
+          "application_methods": ["fertigation"],
+          "notes": "Critical period for kernel quality. Adequate N and K essential for % kernel fill. Leaf N:K ratio target 2:1 (Georgia research). Reduce N after March to harden off growth before winter."
+        },
+        {
+          "stage_id": 6,
+          "stage_name": "Shuck split / Harvest / Post-harvest",
+          "months": ["Apr", "May"],
+          "description": "Nut maturation, shuck opening, harvest. Leaf senescence and nutrient retranslocation.",
+          "nutrient_split_pct": {
+            "N": 10,
+            "P": 10,
+            "K": 10,
+            "Ca": 10,
+            "Mg": 10,
+            "Zn": 5,
+            "B": 5
+          },
+          "recommended_applications": 1,
+          "application_methods": ["fertigation", "broadcast"],
+          "notes": "Light post-harvest application. Focus on reserve building. Alternate bearing tendency - adjust N for 'on'/'off' years."
+        }
+      ],
+
+      "age_factors": {
+        "years_to_first_bearing": 5,
+        "years_to_full_bearing": 12,
+        "stages": [
+          {
+            "age_category": "Young non-bearing",
+            "year_range": "1-4",
+            "nutrient_pct_of_mature": 15,
+            "notes": "Fertasa: Many SA producers avoid fertilization first 2 years after planting (if soil remediation done). Year 1: 250g LAN split into 10 applications Aug-Mar. Year 2: 500g LAN. Foliar Zn from year 1."
+          },
+          {
+            "age_category": "Early bearing",
+            "year_range": "5-8",
+            "nutrient_pct_of_mature": 40,
+            "notes": "First crops small. Gradually increase programme. Begin K applications."
+          },
+          {
+            "age_category": "Intermediate",
+            "year_range": "9-12",
+            "nutrient_pct_of_mature": 70,
+            "notes": "Increasing yields. Full micronutrient programme. Alternate bearing may begin."
+          },
+          {
+            "age_category": "Full bearing",
+            "year_range": "12+",
+            "nutrient_pct_of_mature": 100,
+            "notes": "Full programme. 5-10 applications from bud break to post-harvest (Fertasa). Adjust for alternate bearing."
+          }
+        ]
+      },
+
+      "micronutrient_programme": [
+        {
+          "nutrient": "Zn",
+          "timing": "Aug (buds 50mm), repeat 2-3 times at 2-3 week intervals",
+          "method": "foliar_spray",
+          "product_example": "NZN 150ml/100L or ZnO 200g/100L",
+          "notes": "MOST critical micronutrient for pecans. Lowveld soils universally low. Rosette/little-leaf if deficient. Apply EVERY year."
+        },
+        {
+          "nutrient": "B",
+          "timing": "Every 2 years, Oct",
+          "method": "foliar_spray",
+          "product_example": "Borax 100g/100L or Solubor 75g/100L",
+          "notes": "Fertasa: spray every 2 years. Supports pollination and nut fill."
+        },
+        {
+          "nutrient": "Ni",
+          "timing": "Sep-Oct (early season)",
+          "method": "foliar_spray",
+          "product_example": "NiSO4 or Ni chelate",
+          "notes": "Unique to pecans - Ni deficiency causes mouse-ear disorder. Relatively new finding. Low rates effective."
+        },
+        {
+          "nutrient": "Mn",
+          "timing": "Sep-Oct",
+          "method": "foliar_spray",
+          "product_example": "MnSO4 0.3%",
+          "notes": "Deficiency on sandy alkaline soils."
+        }
+      ],
+
+      "special_notes": [
+        "Pecans are deciduous - Lowveld's mild winters mean shorter dormancy than temperate areas. Bud break often early Aug.",
+        "Zinc is the single most important micronutrient issue for pecans in the Lowveld.",
+        "Nickel (Ni) is uniquely required by pecans - monitor for mouse-ear symptoms.",
+        "Alternate bearing is a major issue. In 'off' years, reduce N by 20-30%. In 'on' years, maintain full N.",
+        "Leaf N:K ratio target of 2:1 (based on Georgia high-yielding tree research, adapted for SA).",
+        "Deep soils (>1.5m) preferred. Lowveld granite soils often suitable. Waterlogging fatal.",
+        "Fertigation or micro-sprinkler irrigation standard in Lowveld. 5-10 split applications during growing season.",
+        "Leaf sampling: mid-terminal leaflet pairs from non-fruiting shoots, July (mid-season in SA corresponds to dormancy - use Feb-Mar for SA).",
+        "Source confidence: HIGH for Zn/general nutrition (Fertasa Ch 5.8.2). MODERATE for exact % splits (adapted from US data and SA phenology)."
+      ]
+    },
+
+    "mango": {
+      "crop_name": "Mango",
+      "subtypes": ["Tommy Atkins", "Kent", "Keitt", "Sensation", "Zill", "Heidi"],
+      "crop_type": "perennial_tree",
+      "typical_total_nutrients_kg_per_ha": {
+        "notes": "Mature bearing tree, 10-20 t/ha. Highly variable with cultivar and management. Removal approx 1.5kg N, 0.2kg P, 2kg K per tonne fruit.",
+        "N": {"min": 80, "max": 200},
+        "P": {"min": 15, "max": 35, "as_P2O5_min": 34, "as_P2O5_max": 80},
+        "K": {"min": 100, "max": 250, "as_K2O_min": 120, "as_K2O_max": 300},
+        "Ca": {"min": 30, "max": 60},
+        "Mg": {"min": 10, "max": 25},
+        "S": {"min": 8, "max": 15}
+      },
+
+      "growth_stages": [
+        {
+          "stage_id": 1,
+          "stage_name": "Post-harvest / Vegetative flush",
+          "months": ["Feb", "Mar", "Apr"],
+          "description": "After harvest (Jan-Mar for most cultivars). Vegetative flush for next season's bearing wood.",
+          "nutrient_split_pct": {
+            "N": 35,
+            "P": 25,
+            "K": 15,
+            "Ca": 15,
+            "Mg": 20,
+            "Zn": 30,
+            "B": 15
+          },
+          "recommended_applications": 2,
+          "application_methods": ["broadcast", "fertigation"],
+          "notes": "MOST important fertilization period for mangoes. Post-harvest N and K to replenish reserves and promote flush that will bear next season's flowers. International and SA research agree on this timing."
+        },
+        {
+          "stage_id": 2,
+          "stage_name": "Floral induction / Rest period",
+          "months": ["May", "Jun", "Jul"],
+          "description": "Cool dry period triggers flower induction. Trees must be stressed (dry, cool). Minimal vegetative growth.",
+          "nutrient_split_pct": {
+            "N": 0,
+            "P": 5,
+            "K": 10,
+            "Ca": 5,
+            "Mg": 5,
+            "Zn": 10,
+            "B": 10
+          },
+          "recommended_applications": 0,
+          "application_methods": [],
+          "notes": "AVOID N application - it promotes vegetative flush instead of flowering. Withhold irrigation and fertilizer to promote floral induction. Light K if needed via fertigation."
+        },
+        {
+          "stage_id": 3,
+          "stage_name": "Panicle emergence / Flowering",
+          "months": ["Jul", "Aug", "Sep"],
+          "description": "Flower panicle emergence and bloom. B critical for pollen viability. P important for energy transfer.",
+          "nutrient_split_pct": {
+            "N": 10,
+            "P": 25,
+            "K": 15,
+            "Ca": 15,
+            "Mg": 15,
+            "Zn": 20,
+            "B": 35
+          },
+          "recommended_applications": 2,
+          "application_methods": ["foliar_spray", "fertigation"],
+          "notes": "Light N only. P is the key nutrient during bloom (energy transfer, panicle development). B foliar critical for pollen tube growth. Ca foliar for fruit quality."
+        },
+        {
+          "stage_id": 4,
+          "stage_name": "Fruit set / Fruit development",
+          "months": ["Sep", "Oct", "Nov", "Dec"],
+          "description": "Fruit set, marble stage, rapid cell division and enlargement. High K demand for fruit sizing and sugar.",
+          "nutrient_split_pct": {
+            "N": 30,
+            "P": 30,
+            "K": 40,
+            "Ca": 40,
+            "Mg": 35,
+            "Zn": 25,
+            "B": 25
+          },
+          "recommended_applications": 4,
+          "application_methods": ["fertigation", "foliar_spray"],
+          "notes": "Peak nutrient demand. K drives fruit sizing and sugar accumulation. Ca prevents internal breakdown (jelly seed, soft nose). Rainy season begins - split applications. Avoid excessive late N - causes internal fruit breakdown (IFB)."
+        },
+        {
+          "stage_id": 5,
+          "stage_name": "Maturation / Harvest",
+          "months": ["Dec", "Jan", "Feb"],
+          "description": "Fruit maturation, colour development. Harvest timing varies by cultivar (Nov-Mar).",
+          "nutrient_split_pct": {
+            "N": 25,
+            "P": 15,
+            "K": 20,
+            "Ca": 25,
+            "Mg": 25,
+            "Zn": 15,
+            "B": 15
+          },
+          "recommended_applications": 2,
+          "application_methods": ["fertigation"],
+          "notes": "Maintain K for fruit quality. Reduce N to avoid delayed maturity and IFB risk. Ca foliar continues. Overlaps with start of post-harvest for early cultivars."
+        }
+      ],
+
+      "age_factors": {
+        "years_to_first_bearing": 3,
+        "years_to_full_bearing": 8,
+        "stages": [
+          {
+            "age_category": "Young non-bearing",
+            "year_range": "1-3",
+            "nutrient_pct_of_mature": 20,
+            "notes": "N-focused for canopy development. Light P and K. Monthly applications during growing season (Sep-Apr)."
+          },
+          {
+            "age_category": "Early bearing",
+            "year_range": "4-6",
+            "nutrient_pct_of_mature": 50,
+            "notes": "First crops. Increase K. Begin full micronutrient programme. Manage alternate bearing from start."
+          },
+          {
+            "age_category": "Full bearing",
+            "year_range": "7+",
+            "nutrient_pct_of_mature": 100,
+            "notes": "Full programme. Adjust for alternate bearing. Heavy crop years may need 20% more K."
+          }
+        ]
+      },
+
+      "micronutrient_programme": [
+        {
+          "nutrient": "B",
+          "timing": "Jul-Aug (pre-bloom), Sep (at fruit set)",
+          "method": "foliar_spray",
+          "product_example": "Solubor 50g/100L",
+          "notes": "Critical for pollen viability and fruit retention."
+        },
+        {
+          "nutrient": "Zn",
+          "timing": "Mar-Apr (post-harvest flush), Sep",
+          "method": "foliar_spray",
+          "product_example": "ZnSO4 0.5%",
+          "notes": "Important for leaf development and next season's flowering."
+        },
+        {
+          "nutrient": "Ca",
+          "timing": "Oct-Jan (4-6 applications during fruit development)",
+          "method": "foliar_spray",
+          "product_example": "CaCl2 0.5%",
+          "notes": "Reduces jelly seed and soft nose disorders. Critical quality factor."
+        },
+        {
+          "nutrient": "Fe",
+          "timing": "Sep-Nov",
+          "method": "soil_drench",
+          "product_example": "Fe-EDDHA chelate",
+          "notes": "Required on calcareous soils only."
+        }
+      ],
+
+      "special_notes": [
+        "Mango flowering is triggered by cool, dry conditions. AVOID nitrogen and irrigation during floral induction (May-Jul in Lowveld).",
+        "Internal Fruit Breakdown (IFB) including jelly seed and soft nose is the major quality issue - linked to excessive N, low Ca, and high vigour.",
+        "Alternate bearing is pronounced. Nutrition strategy differs between 'on' and 'off' years.",
+        "Post-harvest fertilization is the MOST critical application timing (international consensus).",
+        "Lowveld is ideal mango climate but anthracnose pressure is high in wet years - copper sprays contribute to Cu nutrition.",
+        "Leaf sampling: mid-shoot, fully expanded leaves from non-fruiting terminals. Sample in Jan-Feb (SA timing).",
+        "Source confidence: MODERATE - Limited SA-specific detailed schedules. Adapted from international (India, Australia, Mexico, Florida) research and local practice."
+      ]
+    },
+
+    "litchi": {
+      "crop_name": "Litchi",
+      "subtypes": ["Mauritius (Tai So)", "HLH McLean", "Wai Chee", "Fay Zee Siu"],
+      "crop_type": "perennial_tree",
+      "typical_total_nutrients_kg_per_ha": {
+        "notes": "Mature bearing orchard, 5-15 t/ha. Removal approx 2kg N, 0.3kg P, 3kg K per tonne fruit.",
+        "N": {"min": 80, "max": 180},
+        "P": {"min": 15, "max": 30, "as_P2O5_min": 34, "as_P2O5_max": 69},
+        "K": {"min": 100, "max": 200, "as_K2O_min": 120, "as_K2O_max": 240},
+        "Ca": {"min": 30, "max": 50},
+        "Mg": {"min": 10, "max": 20},
+        "S": {"min": 8, "max": 15}
+      },
+
+      "growth_stages": [
+        {
+          "stage_id": 1,
+          "stage_name": "Post-harvest flush / Vegetative growth",
+          "months": ["Feb", "Mar", "Apr"],
+          "description": "After harvest (Dec-Feb). Vegetative flush for next season's bearing wood. May have 1-3 flush cycles.",
+          "nutrient_split_pct": {
+            "N": 35,
+            "P": 25,
+            "K": 15,
+            "Ca": 10,
+            "Mg": 20,
+            "Zn": 30,
+            "B": 15
+          },
+          "recommended_applications": 3,
+          "application_methods": ["fertigation", "broadcast"],
+          "notes": "Major fertilization period. N drives flush growth that will bear next season's flowers. 8 equal split applications recommended Sep-Apr for young trees; bearing trees concentrated post-harvest."
+        },
+        {
+          "stage_id": 2,
+          "stage_name": "Floral induction / Dormancy",
+          "months": ["May", "Jun", "Jul"],
+          "description": "Cool dry period triggers floral induction. Trees need stress (cold + dry). Restrict N to prevent winter flushing.",
+          "nutrient_split_pct": {
+            "N": 0,
+            "P": 5,
+            "K": 5,
+            "Ca": 5,
+            "Mg": 5,
+            "Zn": 5,
+            "B": 10
+          },
+          "recommended_applications": 0,
+          "application_methods": [],
+          "notes": "RESTRICT N between panicle emergence and fruit set to reduce excessive winter flushing. This is critical for litchi flowering. Withhold irrigation if possible."
+        },
+        {
+          "stage_id": 3,
+          "stage_name": "Panicle emergence / Flowering",
+          "months": ["Jul", "Aug", "Sep"],
+          "description": "Flower panicle development and bloom. Cool conditions needed. B, Zn, Ca important.",
+          "nutrient_split_pct": {
+            "N": 5,
+            "P": 15,
+            "K": 10,
+            "Ca": 15,
+            "Mg": 15,
+            "Zn": 20,
+            "B": 35
+          },
+          "recommended_applications": 1,
+          "application_methods": ["foliar_spray"],
+          "notes": "Light foliar nutrition only. B and Zn foliar sprays critical. Avoid soil N - promotes vegetative flush at expense of flowers."
+        },
+        {
+          "stage_id": 4,
+          "stage_name": "Fruit set / Fruit development",
+          "months": ["Sep", "Oct", "Nov"],
+          "description": "Fruit set and rapid growth. Second fruit drop period. K demand rises sharply. High Ca for skin quality.",
+          "nutrient_split_pct": {
+            "N": 20,
+            "P": 25,
+            "K": 35,
+            "Ca": 35,
+            "Mg": 30,
+            "Zn": 25,
+            "B": 25
+          },
+          "recommended_applications": 3,
+          "application_methods": ["fertigation", "foliar_spray"],
+          "notes": "60-70% of annual K applied between full bloom and after second fruit drop (SA literature). 20% of annual N applied at fruit set. Ca and B foliar for fruit quality and skin integrity."
+        },
+        {
+          "stage_id": 5,
+          "stage_name": "Fruit maturation / Harvest",
+          "months": ["Nov", "Dec", "Jan"],
+          "description": "Fruit colouring, sugar accumulation, harvest. Skin cracking risk if irregular water/nutrition.",
+          "nutrient_split_pct": {
+            "N": 40,
+            "P": 30,
+            "K": 35,
+            "Ca": 35,
+            "Mg": 30,
+            "Zn": 20,
+            "B": 15
+          },
+          "recommended_applications": 3,
+          "application_methods": ["fertigation"],
+          "notes": "High nutrient demand as fruit ripens and post-harvest flush begins simultaneously. K for sugar and colour. Ca to reduce skin cracking. Overlaps with start of post-harvest recovery for early-harvested blocks. Rainy season - split applications."
+        }
+      ],
+
+      "age_factors": {
+        "years_to_first_bearing": 4,
+        "years_to_full_bearing": 10,
+        "stages": [
+          {
+            "age_category": "Young non-bearing",
+            "year_range": "1-4",
+            "nutrient_pct_of_mature": 20,
+            "notes": "8 equal split applications Sep-Apr. N focus. Light P and K. Slow-growing tree - patience required."
+          },
+          {
+            "age_category": "Early bearing",
+            "year_range": "5-7",
+            "nutrient_pct_of_mature": 45,
+            "notes": "First crops. Increase K. Begin full micronutrient programme."
+          },
+          {
+            "age_category": "Full bearing",
+            "year_range": "8+",
+            "nutrient_pct_of_mature": 100,
+            "notes": "Full programme. Erratic bearing is common - adjust nutrition to manage."
+          }
+        ]
+      },
+
+      "micronutrient_programme": [
+        {
+          "nutrient": "B",
+          "timing": "Jul-Aug (pre-bloom), Oct (fruit set)",
+          "method": "foliar_spray",
+          "product_example": "Borax 1g/L or Solubor 0.75g/L",
+          "notes": "Poor fruit set linked to B deficiency (SA research). Apply every season."
+        },
+        {
+          "nutrient": "Zn",
+          "timing": "Feb-Mar (post-harvest flush), Aug",
+          "method": "foliar_spray",
+          "product_example": "ZnO 2g/L",
+          "notes": "Apply every 2 years as per SA guidelines, or annually if deficient."
+        },
+        {
+          "nutrient": "Ca",
+          "timing": "Oct-Dec (during fruit development)",
+          "method": "foliar_spray",
+          "product_example": "CaCl2 0.5%",
+          "notes": "Reduces skin cracking at maturity."
+        },
+        {
+          "nutrient": "Cu",
+          "timing": "Feb-Mar (post-harvest)",
+          "method": "foliar_spray",
+          "product_example": "Copper oxychloride",
+          "notes": "Disease management sprays contribute to Cu nutrition."
+        }
+      ],
+
+      "special_notes": [
+        "Litchi flowering is HIGHLY dependent on adequate cold exposure. Lowveld is marginal for some cultivars - Mauritius/Tai So most reliable.",
+        "Winter flushing (vegetative growth instead of flowers) is the primary production problem. Restrict N from Apr-Aug.",
+        "Skin cracking at harvest linked to irregular watering and low Ca. Maintain consistent irrigation during fruit development.",
+        "Litchis prefer acidic soils pH(KCl) 5.0-5.5. Avoid over-liming.",
+        "Mulching is very beneficial - litchis have shallow root systems.",
+        "Leaf sampling: fully expanded subterminal leaves from last summer flush, sample Mar-Apr.",
+        "Source confidence: MODERATE - SA-specific data from ARC-ITSC and industry advisors. Some percentages adapted from Australian litchi research."
+      ]
+    },
+
+    "banana": {
+      "crop_name": "Banana",
+      "subtypes": ["Williams (Cavendish)", "Grand Naine", "Chinese Cavendish"],
+      "crop_type": "perennial_herb",
+      "typical_total_nutrients_kg_per_ha": {
+        "notes": "Mature plantation, 40-60 t/ha. Continuous production cycle. Removal approx 1.8kg N, 0.2kg P, 5kg K per tonne fruit.",
+        "N": {"min": 200, "max": 400},
+        "P": {"min": 25, "max": 50, "as_P2O5_min": 57, "as_P2O5_max": 115},
+        "K": {"min": 300, "max": 600, "as_K2O_min": 360, "as_K2O_max": 720},
+        "Ca": {"min": 20, "max": 40},
+        "Mg": {"min": 30, "max": 60},
+        "S": {"min": 10, "max": 20}
+      },
+
+      "growth_stages": [
+        {
+          "stage_id": 1,
+          "stage_name": "Vegetative growth (pseudostem development)",
+          "months": ["Sep", "Oct", "Nov", "Dec"],
+          "description": "Active leaf emergence and pseudostem growth. Spring-summer flush. Sucker selection. High N demand.",
+          "nutrient_split_pct": {
+            "N": 35,
+            "P": 35,
+            "K": 25,
+            "Ca": 25,
+            "Mg": 30,
+            "Zn": 35,
+            "B": 30
+          },
+          "recommended_applications": 8,
+          "application_methods": ["fertigation", "broadcast"],
+          "notes": "Continuous crop - stages overlap. Fortnightly applications typical. ~500g N/tree and ~750g K/tree per annum (ARC-ITSC). N drives leaf production (target 12-14 functional leaves at flowering)."
+        },
+        {
+          "stage_id": 2,
+          "stage_name": "Flower initiation / Bunch emergence",
+          "months": ["Jan", "Feb", "Mar"],
+          "description": "Inflorescence initiated in corm ~6 months before emergence. Bunch pushes through pseudostem. K demand increases.",
+          "nutrient_split_pct": {
+            "N": 25,
+            "P": 25,
+            "K": 30,
+            "Ca": 25,
+            "Mg": 25,
+            "Zn": 25,
+            "B": 30
+          },
+          "recommended_applications": 6,
+          "application_methods": ["fertigation"],
+          "notes": "Flower initiation is internal - occurs months before visible bunch emergence. Maintain N for continued leaf production. K becoming dominant. Peak rainy season - leaching risk high."
+        },
+        {
+          "stage_id": 3,
+          "stage_name": "Fruit fill / Bunch development",
+          "months": ["Mar", "Apr", "May", "Jun"],
+          "description": "Finger filling. K demand highest. Determines bunch weight and finger size.",
+          "nutrient_split_pct": {
+            "N": 20,
+            "P": 20,
+            "K": 30,
+            "Ca": 25,
+            "Mg": 25,
+            "Zn": 20,
+            "B": 20
+          },
+          "recommended_applications": 6,
+          "application_methods": ["fertigation"],
+          "notes": "K is the dominant nutrient. K:N ratio in fruit is approximately 3:1. Maintain fortnightly applications. End of rainy season reduces leaching risk."
+        },
+        {
+          "stage_id": 4,
+          "stage_name": "Maturation / Harvest / Ratoon",
+          "months": ["Jul", "Aug"],
+          "description": "Fruit maturation, harvest. Ratoon sucker grows simultaneously. Reduced winter uptake but N needed for ratoon.",
+          "nutrient_split_pct": {
+            "N": 20,
+            "P": 20,
+            "K": 15,
+            "Ca": 25,
+            "Mg": 20,
+            "Zn": 20,
+            "B": 20
+          },
+          "recommended_applications": 4,
+          "application_methods": ["fertigation", "broadcast"],
+          "notes": "In Lowveld, production is year-round but slows in winter. Continue feeding ratoon sucker. Reduce frequency in cool months. Banana is a continuous crop - all stages present simultaneously in a block."
+        }
+      ],
+
+      "age_factors": {
+        "years_to_first_bearing": 1,
+        "years_to_full_bearing": 2,
+        "notes_on_continuous_cropping": "Bananas are replanted every 5-8 years (Lowveld). Each pseudostem is annual but the mat/corm is perennial.",
+        "stages": [
+          {
+            "age_category": "Establishment (plant crop)",
+            "year_range": "0-1",
+            "nutrient_pct_of_mature": 50,
+            "notes": "500-800 kg/ha P2O5 at planting (soil incorporation). Then 20-40g P per plant fortnightly Dec-Mar. N and K from 3 months after planting."
+          },
+          {
+            "age_category": "First ratoon onwards",
+            "year_range": "1+",
+            "nutrient_pct_of_mature": 100,
+            "notes": "Full programme from first ratoon. Production is essentially continuous."
+          }
+        ]
+      },
+
+      "micronutrient_programme": [
+        {
+          "nutrient": "Zn",
+          "timing": "Oct, Jan (during active growth)",
+          "method": "foliar_spray",
+          "product_example": "ZnSO4 0.5%",
+          "notes": "Deficiency causes bunchy-top-like symptoms and small leaves."
+        },
+        {
+          "nutrient": "B",
+          "timing": "Nov, Feb",
+          "method": "foliar_spray",
+          "product_example": "Solubor 50g/100L",
+          "notes": "Deficiency causes deformed fruit and leaf distortion."
+        },
+        {
+          "nutrient": "Mg",
+          "timing": "Year-round via fertigation",
+          "method": "fertigation",
+          "product_example": "MgSO4 (Epsom salt)",
+          "notes": "Bananas have very high Mg demand. Blue/purple leaf discolouration if deficient."
+        },
+        {
+          "nutrient": "Ca",
+          "timing": "Year-round",
+          "method": "fertigation",
+          "product_example": "Ca(NO3)2",
+          "notes": "Important for cell wall strength and fruit quality."
+        }
+      ],
+
+      "special_notes": [
+        "Banana is a CONTINUOUS crop - all growth stages are present simultaneously in a commercial block. Nutrient programme must account for this overlap.",
+        "K is the dominant nutrient (K:N ratio approximately 1.5:1 to 2:1 in total annual applications).",
+        "Fortnightly or weekly fertigation is standard practice in Lowveld (Hazyview, Kiepersol, Nelspruit areas).",
+        "Wind damage is a major risk in Lowveld. Well-nourished plants (especially K) are more wind-resistant.",
+        "Nematode damage reduces nutrient uptake efficiency. Integrate nematode management with nutrition.",
+        "Lowveld frost risk: banana fields below 500m altitude may experience occasional frost damage. Nutrition recovery after frost requires extra N.",
+        "Feedlot manure at 10kg/tree every 2 years is common practice as micronutrient and organic matter source.",
+        "Source confidence: MODERATE-HIGH - ARC-ITSC guidelines plus industry practice in Lowveld."
+      ]
+    },
+
+    "potato": {
+      "crop_name": "Potato",
+      "subtypes": ["Fresh market", "Processing (chips/crisps)", "Seed"],
+      "crop_type": "annual",
+      "typical_total_nutrients_kg_per_ha": {
+        "notes": "Irrigated production, 40-60 t/ha target. Lowveld is a winter/spring planting region for potatoes.",
+        "N": {"min": 150, "max": 250},
+        "P": {"min": 30, "max": 60, "as_P2O5_min": 69, "as_P2O5_max": 138},
+        "K": {"min": 150, "max": 300, "as_K2O_min": 180, "as_K2O_max": 360},
+        "Ca": {"min": 20, "max": 40},
+        "Mg": {"min": 15, "max": 25},
+        "S": {"min": 10, "max": 20}
+      },
+
+      "growth_stages": [
+        {
+          "stage_id": 1,
+          "stage_name": "Pre-plant / Planting",
+          "months": ["Apr", "May"],
+          "description": "Soil preparation, base fertilizer application, planting. Lowveld plants in autumn/early winter for winter crop.",
+          "nutrient_split_pct": {
+            "N": 40,
+            "P": 70,
+            "K": 50,
+            "Ca": 40,
+            "Mg": 50,
+            "Zn": 30,
+            "B": 30
+          },
+          "recommended_applications": 1,
+          "application_methods": ["band_placement", "broadcast"],
+          "notes": "Base dressing at planting: 60-70% of P, 40-50% of K band-placed. N split to reduce leaching. In Lowveld, autumn planting avoids extreme heat and captures cool growing season."
+        },
+        {
+          "stage_id": 2,
+          "stage_name": "Emergence / Vegetative growth",
+          "months": ["May", "Jun", "Jul"],
+          "description": "Sprout emergence, canopy development. First hilling. N critical for canopy establishment.",
+          "nutrient_split_pct": {
+            "N": 25,
+            "P": 15,
+            "K": 15,
+            "Ca": 20,
+            "Mg": 20,
+            "Zn": 30,
+            "B": 25
+          },
+          "recommended_applications": 2,
+          "application_methods": ["fertigation", "side_dressing"],
+          "notes": "Side-dress N at first hilling. Fastest N uptake rate occurs between tuber initiation and early bulking (20-30 days after emergence)."
+        },
+        {
+          "stage_id": 3,
+          "stage_name": "Tuber initiation / Early bulking",
+          "months": ["Jul", "Aug"],
+          "description": "Stolon tips swell to form tubers. Flowering begins. Transition from vegetative to reproductive. Critical period.",
+          "nutrient_split_pct": {
+            "N": 20,
+            "P": 10,
+            "K": 20,
+            "Ca": 25,
+            "Mg": 20,
+            "Zn": 25,
+            "B": 25
+          },
+          "recommended_applications": 2,
+          "application_methods": ["fertigation"],
+          "notes": "Peak daily demand: 4.5 kg/ha N, 0.3 kg/ha P, 6.0 kg/ha K during bulking. Onset of flowering is morphological indicator of bulking start. Ca critical for tuber quality (reduces internal brown spot)."
+        },
+        {
+          "stage_id": 4,
+          "stage_name": "Tuber bulking",
+          "months": ["Aug", "Sep"],
+          "description": "Main yield formation. Tubers accumulate starch rapidly. Highest K demand.",
+          "nutrient_split_pct": {
+            "N": 10,
+            "P": 5,
+            "K": 10,
+            "Ca": 10,
+            "Mg": 5,
+            "Zn": 10,
+            "B": 15
+          },
+          "recommended_applications": 1,
+          "application_methods": ["fertigation"],
+          "notes": "Reduce N to avoid delayed maturity and poor skin set. K supports starch accumulation. Processing potatoes need lower reducing sugars - excessive late N increases sugars."
+        },
+        {
+          "stage_id": 5,
+          "stage_name": "Maturation / Skin set / Harvest",
+          "months": ["Sep", "Oct"],
+          "description": "Canopy senescence, tuber skin set, harvest. Desiccation may be applied.",
+          "nutrient_split_pct": {
+            "N": 5,
+            "P": 0,
+            "K": 5,
+            "Ca": 5,
+            "Mg": 5,
+            "Zn": 5,
+            "B": 5
+          },
+          "recommended_applications": 0,
+          "application_methods": [],
+          "notes": "No fertilizer applied. Allow skin to set. Excessive N delays maturity and impairs storage quality. Irrigation management critical for skin set."
+        }
+      ],
+
+      "subtype_adjustments": {
+        "fresh_market": {
+          "notes": "Standard programme. Emphasis on tuber appearance (smooth skin, no defects). Ca important for skin quality.",
+          "N_adjustment_pct": 100,
+          "K_adjustment_pct": 100
+        },
+        "processing_chips_crisps": {
+          "notes": "Lower N to reduce reducing sugars (causes dark chips). Higher K for starch content. Avoid late N applications.",
+          "N_adjustment_pct": 85,
+          "K_adjustment_pct": 115
+        },
+        "seed": {
+          "notes": "Moderate N for medium-sized tubers. Dense planting for more seed-size tubers.",
+          "N_adjustment_pct": 80,
+          "K_adjustment_pct": 90
+        }
+      },
+
+      "micronutrient_programme": [
+        {
+          "nutrient": "Zn",
+          "timing": "At planting (soil) and Jun-Jul (foliar)",
+          "method": "band_placement_and_foliar",
+          "product_example": "ZnSO4 soil or Zn chelate foliar",
+          "notes": "Lowveld soils commonly Zn-deficient. Critical for early growth."
+        },
+        {
+          "nutrient": "B",
+          "timing": "At planting and at tuber initiation (Jul)",
+          "method": "soil_and_foliar",
+          "product_example": "Borax soil-applied or Solubor foliar",
+          "notes": "Reduces hollow heart and internal brown spot."
+        },
+        {
+          "nutrient": "Mn",
+          "timing": "Jun-Aug (foliar)",
+          "method": "foliar_spray",
+          "product_example": "MnSO4 0.3%",
+          "notes": "Deficiency on sandy alkaline soils. Causes interveinal chlorosis."
+        },
+        {
+          "nutrient": "Ca",
+          "timing": "At planting through tuber initiation",
+          "method": "band_placement",
+          "product_example": "Gypsum or Ca(NO3)2",
+          "notes": "Critical for tuber quality. Do not rely on lime alone - Ca must be in tuber zone. Reduces internal brown spot."
+        }
+      ],
+
+      "special_notes": [
+        "Lowveld potato production is primarily a winter/spring crop (plant Apr-May, harvest Sep-Oct) to avoid extreme heat.",
+        "Irrigation: centre pivot or drip. Fertigation through drip is increasingly common.",
+        "Processing potatoes: reduce total N by 15-20% to lower reducing sugars and improve fry colour.",
+        "Seed potatoes: moderate N for smaller tubers with more tuber set.",
+        "Band placement of P at planting is critical - P immobile in soil, must be in root zone.",
+        "Avoid KCl (MOP) if soil Cl is high - use K2SO4 or KNO3. High Cl can affect tuber quality.",
+        "Lowveld sandy soils have low CEC - split N and K applications to reduce leaching.",
+        "Source confidence: MODERATE - Potato SA guidelines exist but detailed Lowveld-specific schedules adapted from general irrigated potato production guidelines (Fertasa, UF-IFAS, UMN)."
+      ]
+    },
+
+    "sugarcane": {
+      "crop_name": "Sugarcane",
+      "subtypes": ["Plant crop", "Ratoon crop"],
+      "crop_type": "perennial_grass",
+      "typical_total_nutrients_kg_per_ha": {
+        "notes": "SASRI recommendations. Varies by soil type, organic matter, crop cycle. Irrigated Lowveld production 80-120 t cane/ha.",
+        "N_plant_crop": {"min": 60, "max": 140},
+        "N_ratoon_crop": {"min": 100, "max": 200},
+        "P": {"min": 20, "max": 45, "as_P2O5_min": 46, "as_P2O5_max": 103},
+        "K": {"min": 80, "max": 180, "as_K2O_min": 96, "as_K2O_max": 216},
+        "Ca": {"min": 25, "max": 50},
+        "Mg": {"min": 15, "max": 30},
+        "S": {"min": 15, "max": 25}
+      },
+
+      "growth_stages_plant_crop": [
+        {
+          "stage_id": 1,
+          "stage_name": "Planting / Germination / Establishment",
+          "months": ["Aug", "Sep", "Oct"],
+          "description": "Sett planting, bud germination, primary root development. P critical for root establishment.",
+          "nutrient_split_pct": {
+            "N": 30,
+            "P": 60,
+            "K": 25,
+            "Ca": 30,
+            "Mg": 30
+          },
+          "recommended_applications": 1,
+          "application_methods": ["band_placement", "broadcast"],
+          "notes": "Plant crop gets lower N than ratoon (SASRI: 60-140 kg N/ha). Band-place P near sett. N at planting or shortly after emergence. Lowveld: spring planting preferred."
+        },
+        {
+          "stage_id": 2,
+          "stage_name": "Tillering",
+          "months": ["Nov", "Dec", "Jan"],
+          "description": "Tiller formation from primary shoots. Rapid canopy expansion. N and K critical for tiller number and vigour.",
+          "nutrient_split_pct": {
+            "N": 40,
+            "P": 25,
+            "K": 30,
+            "Ca": 25,
+            "Mg": 25
+          },
+          "recommended_applications": 1,
+          "application_methods": ["side_dressing", "fertigation"],
+          "notes": "Second N application at tillering (if split). K supports robust shoot development. Rainy season - leaching risk on sandy soils."
+        },
+        {
+          "stage_id": 3,
+          "stage_name": "Grand growth / Stalk elongation",
+          "months": ["Jan", "Feb", "Mar", "Apr"],
+          "description": "Rapid stalk elongation. Over 50% of total nutrient uptake occurs during this phase. Biomass accumulation peak.",
+          "nutrient_split_pct": {
+            "N": 25,
+            "P": 10,
+            "K": 30,
+            "Ca": 25,
+            "Mg": 25
+          },
+          "recommended_applications": 1,
+          "application_methods": ["fertigation"],
+          "notes": "Peak nutrient demand period. Uptake follows biomass accumulation curve. N:P:K absorption ratio approximately 2:1:2. If fertigation available, additional K application beneficial."
+        },
+        {
+          "stage_id": 4,
+          "stage_name": "Maturation / Ripening",
+          "months": ["May", "Jun", "Jul", "Aug"],
+          "description": "Sucrose accumulation. N uptake declines. Shift to K for sugar storage.",
+          "nutrient_split_pct": {
+            "N": 5,
+            "P": 5,
+            "K": 15,
+            "Ca": 20,
+            "Mg": 20
+          },
+          "recommended_applications": 0,
+          "application_methods": [],
+          "notes": "No N application - delays ripening and reduces sucrose %. K supports sucrose accumulation. Chemical ripeners may be used. Withhold irrigation to stress for ripening."
+        }
+      ],
+
+      "growth_stages_ratoon_crop": [
+        {
+          "stage_id": 1,
+          "stage_name": "Ratooning / Regrowth",
+          "months": ["Variable - depends on harvest date"],
+          "description": "Stubble sprouting after harvest. New roots and tillers from stool. Higher N requirement than plant crop.",
+          "nutrient_split_pct": {
+            "N": 35,
+            "P": 50,
+            "K": 25,
+            "Ca": 30,
+            "Mg": 30
+          },
+          "recommended_applications": 1,
+          "application_methods": ["broadcast", "band_placement"],
+          "notes": "SASRI: fertilise ratoons when plants are actively growing and ~0.5m high. N rates 100-200 kg/ha (higher than plant crop). Roots developing rapidly at this stage = efficient uptake."
+        },
+        {
+          "stage_id": 2,
+          "stage_name": "Tillering",
+          "months": ["2-4 months after harvest"],
+          "description": "Tiller proliferation. Same as plant crop but from established root system.",
+          "nutrient_split_pct": {
+            "N": 35,
+            "P": 30,
+            "K": 30,
+            "Ca": 25,
+            "Mg": 25
+          },
+          "recommended_applications": 1,
+          "application_methods": ["side_dressing", "fertigation"],
+          "notes": "Ratoon root system is existing but partially damaged by harvest. N critical for tiller survival and vigour."
+        },
+        {
+          "stage_id": 3,
+          "stage_name": "Grand growth / Stalk elongation",
+          "months": ["4-8 months after harvest"],
+          "description": "Same grand growth pattern as plant crop. >50% of nutrient uptake.",
+          "nutrient_split_pct": {
+            "N": 25,
+            "P": 15,
+            "K": 30,
+            "Ca": 25,
+            "Mg": 25
+          },
+          "recommended_applications": 1,
+          "application_methods": ["fertigation"],
+          "notes": "Peak demand period. If fertigation available, K top-up beneficial. Same demand pattern as plant crop."
+        },
+        {
+          "stage_id": 4,
+          "stage_name": "Maturation / Ripening",
+          "months": ["8-12 months after harvest"],
+          "description": "Sucrose accumulation. Withhold N.",
+          "nutrient_split_pct": {
+            "N": 5,
+            "P": 5,
+            "K": 15,
+            "Ca": 20,
+            "Mg": 20
+          },
+          "recommended_applications": 0,
+          "application_methods": [],
+          "notes": "Same as plant crop maturation. K for sucrose. No N."
+        }
+      ],
+
+      "micronutrient_programme": [
+        {
+          "nutrient": "Zn",
+          "timing": "At planting (soil) or early growth (foliar)",
+          "method": "soil_or_foliar",
+          "product_example": "ZnSO4",
+          "notes": "Deficiency on sandy, low-OM soils. Less commonly an issue than in fruit crops."
+        },
+        {
+          "nutrient": "Si",
+          "timing": "At planting / ratooning",
+          "method": "soil_application",
+          "product_example": "Calcium silicate",
+          "notes": "Silicon is beneficial for sugarcane (not essential). Increases stalk strength and pest/disease resistance. SASRI research supports Si application."
+        },
+        {
+          "nutrient": "Fe",
+          "timing": "If deficiency observed",
+          "method": "foliar_spray",
+          "product_example": "FeSO4",
+          "notes": "Rare in Lowveld acid soils but can occur on calcareous patches."
+        }
+      ],
+
+      "special_notes": [
+        "SASRI's OptiFert tool provides site-specific N, P, K recommendations based on soil analysis, crop cycle, and region.",
+        "Plant crop vs ratoon: ratoon N is 20-60 kg/ha HIGHER than plant crop (SASRI). Ratoon P may be lower if soil P is maintained.",
+        "Lowveld irrigated cane typically uses furrow or centre pivot irrigation. Fertigation through drip is increasing in new plantings.",
+        "Sugarcane in Lowveld is harvested year-round on 12-month cycles. Ratoon timing is therefore variable.",
+        "Soil organic matter strongly influences N recommendation - soils with >4% OM need less N (SASRI).",
+        "K is critical for sucrose accumulation. Lowveld clay soils (gabbro-derived) may fix K - soil analysis essential.",
+        "Trash management: retaining harvest residue returns significant K and reduces erosion. Account for nutrient cycling from trash.",
+        "Si application (calcium silicate) is increasingly recommended by SASRI for improved stalk strength and eldana resistance.",
+        "N:P:K absorption ratio approximately 2:1:2 (SASRI/FAO).",
+        "Source confidence: HIGH - SASRI provides the most comprehensive, locally calibrated fertilizer recommendation system in SA agriculture."
+      ]
+    }
+  },
+
+  "lowveld_regional_context": {
+    "climate": {
+      "rainfall": "600-1200mm, >80% falling Oct-Mar",
+      "temperature": "Mean annual 20-23C. Frost rare below 600m altitude. Summer max 32-38C.",
+      "frost_risk": "Low in typical Lowveld (<500m). Moderate at higher elevations (600-900m). Jun-Aug frost window.",
+      "humidity": "High in summer (>70% RH). Lower in winter."
+    },
+    "soils": {
+      "dominant_types": [
+        {"parent_material": "Granite/gneiss", "soil_forms": "Hutton, Clovelly, Griffin", "texture": "Sandy loam to sandy clay loam", "characteristics": "Well-drained, low CEC, acid (pH 4.5-5.5), low P, low Zn, moderate K"},
+        {"parent_material": "Gabbro/norite", "soil_forms": "Shortlands, Arcadia", "texture": "Clay to clay loam", "characteristics": "Higher CEC, K-fixing, better P retention, pH 5.5-6.5, high Fe"},
+        {"parent_material": "Alluvial", "soil_forms": "Oakleaf, Dundee", "texture": "Variable", "characteristics": "River valleys. Variable fertility. Often high potential but flooding risk."}
+      ],
+      "common_deficiencies": ["Zn (universal)", "B (widespread)", "P (sandy soils)", "Mo (very acid soils pH<5)", "Mn (alkaline patches)", "Fe (calcareous soils)"],
+      "ph_range_typical": "4.5-6.5 (KCl)",
+      "notes": "Sandy granite soils dominate and require more frequent split applications due to low CEC and high leaching potential."
+    },
+    "irrigation_methods": {
+      "common": ["Micro-sprinkler (citrus, macadamia, avocado, mango, litchi)", "Drip (all crops, increasing)", "Centre pivot (sugarcane, potato)", "Flood/furrow (sugarcane, declining)"],
+      "fertigation_notes": "Fertigation is the preferred application method for all irrigated tree crops. Allows precise split applications matching crop demand curves. Weekly to fortnightly applications during peak demand."
+    },
+    "general_notes": [
+      "Summer leaching is the primary nutrient loss pathway. Split N and K applications during Oct-Mar.",
+      "Soil acidity management: regular liming required on granite soils. Apply lime in winter for slow incorporation.",
+      "Organic matter is generally low (<2%) in cultivated Lowveld soils. Mulching and cover crops improve nutrient retention.",
+      "Water quality: Lowveld irrigation water is generally good quality but monitor for bicarbonates in borehole water (affects pH and Ca availability)."
+    ]
+  },
+
+  "application_method_guide": {
+    "fertigation": {
+      "description": "Nutrient delivery through irrigation system (drip, micro-sprinkler)",
+      "suited_for": ["N", "K", "Ca", "Mg", "S", "Fe-chelate", "Zn-chelate"],
+      "advantages": "Precise dosing, frequent splits, matches crop demand curve, reduced leaching vs broadcast",
+      "limitations": "Requires soluble fertilizers (more expensive). System maintenance. P can precipitate in hard water."
+    },
+    "broadcast": {
+      "description": "Spreading granular fertilizer on soil surface under tree canopy or across field",
+      "suited_for": ["N", "P", "K", "Ca", "Mg", "S", "Lime", "Gypsum"],
+      "advantages": "Simple, low cost, good for base dressings and slow-release products",
+      "limitations": "Less precise. Surface P immobile. Leaching risk for N and K on sandy soils."
+    },
+    "band_placement": {
+      "description": "Placing fertilizer in a band near planting row or drip line",
+      "suited_for": ["P", "K", "Zn (soil)", "starter blends"],
+      "advantages": "Efficient P placement near roots. Reduces fixation losses.",
+      "limitations": "Equipment needed. Not practical for established tree crops (use fertigation instead)."
+    },
+    "foliar_spray": {
+      "description": "Spraying dilute nutrient solution onto leaf surfaces",
+      "suited_for": ["Zn", "B", "Mn", "Ca", "Fe", "Mg", "urea (low biuret)"],
+      "advantages": "Rapid uptake for acute deficiencies. Effective for immobile micronutrients. Can combine with pest/disease sprays.",
+      "limitations": "Small quantities only. Temporary correction. Phytotoxicity risk if concentration too high. Best applied early morning or late afternoon."
+    },
+    "soil_drench": {
+      "description": "Pouring concentrated nutrient solution around base of tree",
+      "suited_for": ["Fe-EDDHA chelate", "phosphonate (root health)"],
+      "advantages": "Targeted root zone application. Effective for Fe on calcareous soils.",
+      "limitations": "Labour intensive. Only for specific situations."
+    },
+    "side_dressing": {
+      "description": "Applying granular fertilizer in a furrow or band alongside growing crop",
+      "suited_for": ["N", "K"],
+      "advantages": "Good for top-dress N on row crops (sugarcane, potato). Can be mechanised.",
+      "limitations": "Root damage risk if too close. Incorporation needed for urea to prevent volatilisation."
+    }
+  },
+
+  "data_quality_summary": {
+    "high_confidence": [
+      "Citrus - CRI and Fertasa provide comprehensive SA-specific data",
+      "Macadamia - SAMAC and Fertasa Ch 5.8.1 provide detailed SA data",
+      "Sugarcane - SASRI has the most rigorous, locally calibrated system in SA",
+      "Pecan - Fertasa Ch 5.8.2 provides SA-specific guidelines"
+    ],
+    "moderate_confidence": [
+      "Avocado - SAAGA yearbooks provide good data but less detail on % splits",
+      "Banana - ARC-ITSC guidelines plus industry practice; limited published split data",
+      "Potato - Adapted from general irrigated guidelines; Lowveld-specific data limited",
+      "Litchi - ARC-ITSC and some SA research; supplemented with Australian data"
+    ],
+    "lower_confidence": [
+      "Mango - Limited SA-specific published schedules; adapted from international sources (India, Australia, Florida)"
+    ],
+    "notes": "All nutrient split percentages should be treated as STARTING POINTS. Actual programmes must be refined annually based on leaf analysis, soil analysis, yield data, and crop condition. The Lowveld's high summer rainfall and sandy soils mean that leaching losses can be substantial, requiring more frequent split applications than textbook recommendations suggest."
+  }
+}

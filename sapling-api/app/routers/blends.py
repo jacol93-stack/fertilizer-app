@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, model_validator
 
 from app.auth import CurrentUser, get_current_user, require_admin
+from app.pagination import Page, PageParams, apply_page
 from app.rate_limit import limiter
 from app.services.notation import pct_to_sa_notation
 from app.services.optimizer import find_closest_blend, run_optimizer
@@ -64,7 +65,7 @@ class RecipeRow(BaseModel):
     type: str | None = None
     kg: float
     pct: float
-    cost: float
+    cost: float | None = None
 
 
 class NutrientRow(BaseModel):
@@ -89,7 +90,7 @@ class OptimizeResponse(BaseModel):
     scale: float
     recipe: list[RecipeRow]
     nutrients: list[NutrientRow]
-    cost_per_ton: float
+    cost_per_ton: float | None = None
     sa_notation: str
     international_notation: str = ""
     pricing: dict | None = None
@@ -102,6 +103,7 @@ class OptimizeResponse(BaseModel):
 
 class BlendSave(BaseModel):
     blend_name: str = Field("Unnamed", max_length=200)
+    blend_type: str = Field("dry", max_length=20)
     client_id: str | None = None
     farm_id: str | None = None
     field_id: str | None = None
@@ -116,11 +118,16 @@ class BlendSave(BaseModel):
     recipe: list[dict] | None = None
     nutrients: list[dict] | None = None
     selected_materials: list[str] | None = None
+    # Liquid-specific fields
+    tank_volume_l: float | None = None
+    sg_estimate: float | None = None
+    mixing_instructions: list[str] | None = None
 
 
 class BlendOut(BaseModel):
     id: Any
     blend_name: str | None = None
+    blend_type: str | None = "dry"
     client_id: str | None = None
     farm_id: str | None = None
     field_id: str | None = None
@@ -140,6 +147,10 @@ class BlendOut(BaseModel):
     created_at: str | None = None
     deleted_at: str | None = None
     deleted_by: str | None = None
+    # Liquid-specific fields
+    tank_volume_l: float | None = None
+    sg_estimate: float | None = None
+    mixing_instructions: list[str] | None = None
 
     model_config = {"from_attributes": True}
 
@@ -262,7 +273,7 @@ def _build_nutrients(
 
 
 def _audit_log(event_type: str, entity_type: str, entity_id: str, metadata: dict, user_id: str | None = None):
-    """Fire-and-forget audit log via Supabase RPC."""
+    """Fire-and-forget audit log via Supabase RPC. Failures drop to debug."""
     try:
         sb = get_supabase_admin()
         sb.rpc("log_audit_event", {
@@ -272,8 +283,11 @@ def _audit_log(event_type: str, entity_type: str, entity_id: str, metadata: dict
             "p_metadata": metadata,
             "p_user_id": user_id,
         }).execute()
-    except Exception:
-        pass  # Audit logging should never break the request
+    except Exception as _audit_exc:
+        import logging as _logging
+        _logging.getLogger("sapling.audit").debug(
+            "log_audit_event failed: %s", _audit_exc, extra={"event_type": event_type}
+        )
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────
@@ -384,8 +398,9 @@ def optimize_blend(
         if res is None or not res.success:
             raise HTTPException(
                 status_code=422,
-                detail="This blend cannot be achieved with the available materials. "
-                       "Try adjusting nutrient priorities to find the best possible match.",
+                detail="This blend cannot be achieved with the selected materials and "
+                       f"minimum compost of {int(body.min_compost_pct)}%. "
+                       "Try lowering the compost minimum or adjusting your nutrient targets.",
             )
 
     amounts = res.x.tolist()
@@ -549,8 +564,9 @@ def save_blend(
     return BlendOut(**blend)
 
 
-@router.get("/", response_model=list[BlendOut])
+@router.get("/", response_model=Page[dict])
 def list_blends(
+    page: PageParams = Depends(PageParams.as_query),
     search: str | None = Query(None, description="Search blend_name or client text"),
     client_id: str | None = Query(None, description="Filter by client ID"),
     farm_id: str | None = Query(None, description="Filter by farm ID"),
@@ -559,7 +575,7 @@ def list_blends(
 ):
     """List blends. Agents see own saved blends; admins see all."""
     sb = get_supabase_admin()
-    query = sb.table("blends").select("*").order("created_at", desc=True)
+    query = sb.table("blends").select("*", count="exact")
 
     if user.role != "admin":
         query = query.eq("agent_id", user.id).eq("status", "saved").is_("deleted_at", "null")
@@ -575,9 +591,28 @@ def list_blends(
     if field_id:
         query = query.eq("field_id", field_id)
 
+    query = apply_page(query, page, default_order="created_at")
     result = query.execute()
     blends = [BlendOut(**b).model_dump() for b in (result.data or [])]
-    return _strip_costs(blends, user.role == "admin")
+    stripped = _strip_costs(blends, user.role == "admin")
+    return Page.from_list(stripped, page, total=getattr(result, "count", None))
+
+
+# ── Nutrient limits (must be before /{blend_id} catch-all) ───────────
+
+@router.get("/nutrient-limits")
+def get_nutrient_limits(user: CurrentUser = Depends(get_current_user)):
+    """Get nutrient safety limits for liquid blend input validation."""
+    sb = get_supabase_admin()
+    result = sb.table("nutrient_limits").select("nutrient,liquid_max_g_per_l,foliar_max_g_per_l").execute()
+    if result.data:
+        return {row["nutrient"]: {
+            "liquid_max": float(row["liquid_max_g_per_l"]) if row.get("liquid_max_g_per_l") else None,
+            "foliar_max": float(row["foliar_max_g_per_l"]) if row.get("foliar_max_g_per_l") else None,
+        } for row in result.data}
+    # Fallback
+    from app.services.nutrient_limits import _FALLBACK_LIQUID_MAX, _FALLBACK_FOLIAR_MAX
+    return {nut: {"liquid_max": _FALLBACK_LIQUID_MAX.get(nut), "foliar_max": _FALLBACK_FOLIAR_MAX.get(nut)} for nut in _FALLBACK_LIQUID_MAX}
 
 
 # ── Liquid & Foliar (must be before /{blend_id} catch-all) ─────────────
@@ -603,6 +638,72 @@ def list_liquid_products(
         query = query.eq("product_type", product_type)
     result = query.execute()
     return result.data or []
+
+
+# ── Foliar Spray ─────────────────────────────────────────────────────────
+
+FOLIAR_NUTRIENTS = ["n", "p", "k", "ca", "mg", "s", "fe", "b", "mn", "zn", "mo", "cu"]
+
+
+@router.get("/foliar-products")
+def list_foliar_products(
+    nutrients: str | None = Query(None, description="Comma-separated nutrients to filter by (e.g. 'zn,b,mn')"),
+    user: CurrentUser = Depends(get_current_user),
+):
+    """List foliar spray products, optionally filtered by target nutrients.
+
+    When nutrients are specified, only products containing at least one of them
+    are returned, sorted by how many of the selected nutrients they cover (then
+    by total concentration of those nutrients).
+    """
+    sb = get_supabase_admin()
+    products = sb.table("liquid_products").select("*").eq("product_type", "foliar").order("name").execute()
+    product_list = products.data or []
+
+    wanted = [n.strip().lower() for n in nutrients.split(",") if n.strip()] if nutrients else []
+
+    results = []
+    for prod in product_list:
+        breakdown = {}
+        for nut in FOLIAR_NUTRIENTS:
+            val = float(prod.get(nut, 0) or 0)
+            if val > 0:
+                breakdown[nut.upper()] = round(val, 2)
+
+        # Filter: must contain at least one wanted nutrient
+        if wanted:
+            hits = [n for n in wanted if float(prod.get(n, 0) or 0) > 0]
+            if not hits:
+                continue
+            hit_count = len(hits)
+            hit_conc = sum(float(prod.get(n, 0) or 0) for n in hits)
+        else:
+            hit_count = 0
+            hit_conc = 0
+
+        unit = prod.get("analysis_unit", "g/kg")
+        results.append({
+            "name": prod["name"],
+            "nutrients": breakdown,
+            "analysis_unit": unit,
+            "spray_volume_l_ha": prod.get("spray_volume_l_ha"),
+            "dilution_rate": prod.get("dilution_rate"),
+            "target_crops": prod.get("target_crops") or [],
+            "notes": prod.get("notes", ""),
+            "covers": [n.upper() for n in hits] if wanted else [],
+            "_hit_count": hit_count,
+            "_hit_conc": hit_conc,
+        })
+
+    # Sort: most nutrients covered first, then by total concentration
+    if wanted:
+        results.sort(key=lambda r: (-r["_hit_count"], -r["_hit_conc"]))
+
+    for r in results:
+        r.pop("_hit_count", None)
+        r.pop("_hit_conc", None)
+
+    return results
 
 
 @router.get("/{blend_id}")
@@ -732,6 +833,10 @@ class LiquidOptimizeRequest(BaseModel):
     targets: dict[str, float] = Field(..., description="Nutrient targets in g/L")
     selected_materials: list[str] = Field(..., min_length=1)
     tank_volume_l: float = Field(1000, gt=0, le=100_000)
+    priorities: dict[str, str] | None = Field(
+        None,
+        description="Nutrient priorities: {nutrient: 'must_match' | 'flexible'}. If null, all treated equally."
+    )
 
 
 @router.post("/optimize-liquid")
@@ -741,7 +846,7 @@ def optimize_liquid(body: LiquidOptimizeRequest, user: CurrentUser = Depends(get
     Targets are in g/L. Returns recipe with mixing instructions,
     SG estimate, and compatibility warnings.
     """
-    from app.services.liquid_optimizer import optimize_liquid_blend
+    from app.services.liquid_optimizer import optimize_liquid_blend, run_liquid_priority_optimizer
 
     sb = get_supabase_admin()
 
@@ -756,51 +861,25 @@ def optimize_liquid(body: LiquidOptimizeRequest, user: CurrentUser = Depends(get
     compat = sb.table("material_compatibility").select("*").execute()
     compat_rules = compat.data or []
 
-    result = optimize_liquid_blend(
-        targets=body.targets,
-        materials=materials,
-        tank_volume_l=body.tank_volume_l,
-        compatibility_rules=compat_rules,
-    )
+    if body.priorities:
+        # Priority-aware optimization
+        result = run_liquid_priority_optimizer(
+            targets=body.targets,
+            priorities=body.priorities,
+            materials=materials,
+            tank_volume_l=body.tank_volume_l,
+            compatibility_rules=compat_rules,
+        )
+    else:
+        result = optimize_liquid_blend(
+            targets=body.targets,
+            materials=materials,
+            tank_volume_l=body.tank_volume_l,
+            compatibility_rules=compat_rules,
+        )
 
     if not result.get("success"):
         raise HTTPException(400, result.get("error", "Optimization failed"))
 
     return result
 
-
-# ── Foliar Spray ─────────────────────────────────────────────────────────
-
-
-class FoliarRecommendRequest(BaseModel):
-    deficit: dict[str, float] = Field(..., description="Nutrient deficit in kg/ha")
-    crop: str | None = Field(None, max_length=200)
-    max_products: int = Field(3, ge=1, le=10)
-
-
-@router.post("/recommend-foliar")
-def recommend_foliar(body: FoliarRecommendRequest, user: CurrentUser = Depends(get_current_user)):
-    """Recommend foliar spray products to cover a nutrient deficit.
-
-    Deficit is in kg/ha. Returns ranked product recommendations with
-    application rates, dilution, and coverage analysis.
-    """
-    from app.services.foliar_engine import recommend_foliar_products
-
-    sb = get_supabase_admin()
-
-    # Load foliar products
-    products = sb.table("liquid_products").select("*").execute()
-    product_list = products.data or []
-
-    if not product_list:
-        raise HTTPException(404, "No foliar products in catalog")
-
-    result = recommend_foliar_products(
-        deficit=body.deficit,
-        products=product_list,
-        crop=body.crop,
-        max_products=body.max_products,
-    )
-
-    return result

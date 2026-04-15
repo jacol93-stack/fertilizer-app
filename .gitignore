@@ -1,0 +1,32 @@
+# Root-level gitignore for the Sapling monorepo.
+#
+# Sub-projects (sapling-api, sapling-web) have their own .gitignore for
+# language-specific excludes. This file covers the repo root plus things
+# that didn't fit neatly into a sub-project (like deploy/).
+
+# macOS junk
+.DS_Store
+
+# Claude Code local state — never commit IDE/agent settings
+.claude/
+.playwright-mcp/
+
+# Secrets — deploy/.env has the docker-compose environment and MUST NOT ship
+.env
+deploy/.env
+deploy/*.env
+*.env.local
+*.env.production
+
+# Python venvs at the root, just in case
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/

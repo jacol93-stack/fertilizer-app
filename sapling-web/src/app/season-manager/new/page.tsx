@@ -1,0 +1,636 @@
+"use client";
+
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AppShell } from "@/components/app-shell";
+import { ClientSelector } from "@/components/client-selector";
+import { useAuth } from "@/lib/auth-context";
+import { useEffectiveAdmin } from "@/lib/use-effective-role";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
+import { ChevronRight, ChevronLeft, Loader2, Leaf, Check, AlertTriangle } from "lucide-react";
+
+import { BlockEditor } from "@/components/season-manager/block-editor";
+import { ScheduleReview, type BlockInfo, type UserApplication } from "@/components/season-manager/schedule-review";
+import { BlendGroups, type BlendGroupData } from "@/components/season-manager/blend-groups";
+import type { Programme, Block, CropNorm, SoilAnalysis } from "@/lib/season-constants";
+import { emptyBlock } from "@/lib/season-constants";
+
+export default function SeasonBuilderPageWrapper() {
+  return (
+    <Suspense>
+      <SeasonBuilderPage />
+    </Suspense>
+  );
+}
+
+const STEPS = ["Client & Farm", "Blocks", "Schedule", "Blends", "Review"];
+
+function SeasonBuilderPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const handoffProcessed = useRef(false);
+  const isAdmin = useEffectiveAdmin();
+
+  const analysisId = searchParams.get("analysis_id");
+  const urlClientId = searchParams.get("client_id");
+  const urlFarmId = searchParams.get("farm_id");
+  const urlClientName = searchParams.get("client");
+  const urlFarmName = searchParams.get("farm");
+
+  // ── Wizard state ────────────────────────────────────────────────
+  const [wizardStep, setWizardStep] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  // ── Data ────────────────────────────────────────────────────────
+  const [clientId, setClientId] = useState<string>(urlClientId || "");
+  const [farmId, setFarmId] = useState<string>(urlFarmId || "");
+  const [clientName, setClientName] = useState(urlClientName || "");
+  const [farmName, setFarmName] = useState(urlFarmName || "");
+  const [programmeName, setProgrammeName] = useState("");
+  const [season, setSeason] = useState("");
+  const [blocks, setBlocks] = useState<Omit<Block, "id">[]>([emptyBlock()]);
+
+  // Programme ID (created when advancing past step 2)
+  const [programmeId, setProgrammeId] = useState<string | null>(null);
+
+  // Schedule data (from preview-schedule)
+  const [blockInfoData, setBlockInfoData] = useState<BlockInfo[]>([]);
+  const [userApplications, setUserApplications] = useState<UserApplication[]>([]);
+  const [plantingMonths, setPlantingMonths] = useState<Record<string, number>>({});
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+
+  // Blend groups data (from generate)
+  const [blendGroupsData, setBlendGroupsData] = useState<BlendGroupData[]>([]);
+
+  // Reference data
+  const [crops, setCrops] = useState<CropNorm[]>([]);
+  const [availableAnalyses, setAvailableAnalyses] = useState<SoilAnalysis[]>([]);
+  const [clientFarms, setClientFarms] = useState<Array<{ id: string; name: string }>>([]);
+  const [addingFromFarm, setAddingFromFarm] = useState(false);
+
+  // ── Resolve URL params (client/farm IDs → names + blocks) ───────
+  useEffect(() => {
+    if (!urlClientId || analysisId) return;
+    (async () => {
+      try {
+        // Resolve client name
+        const clients = await api.getAll<{ id: string; name: string }>("/api/clients");
+        const client = clients.find((c) => c.id === urlClientId);
+        if (client) {
+          setClientName(client.name);
+          // Load all farms for this client (for multi-farm block adding)
+          const farms = await api.get<Array<{ id: string; name: string }>>(`/api/clients/${urlClientId}/farms`);
+          setClientFarms(farms || []);
+
+          if (urlFarmId) {
+            const farm = farms.find((f) => f.id === urlFarmId);
+            if (farm) setFarmName(farm.name);
+          }
+        }
+      } catch {}
+    })();
+  }, [urlClientId, urlFarmId, analysisId]);
+
+  // ── Load crops ──────────────────────────────────────────────────
+  useEffect(() => {
+    api.get<CropNorm[]>("/api/crop-norms")
+      .then(setCrops)
+      .catch(() => {
+        api.get<CropNorm[]>("/api/crop-norms/admin").then(setCrops).catch(() => {});
+      });
+  }, []);
+
+  // Load analyses and farms when client selected
+  useEffect(() => {
+    if (clientId) {
+      api.getAll<SoilAnalysis>(`/api/soil?client_id=${clientId}`)
+        .then(setAvailableAnalyses)
+        .catch(() => {});
+      api.get<Array<{ id: string; name: string }>>(`/api/clients/${clientId}/farms`)
+        .then(setClientFarms)
+        .catch(() => {});
+    }
+  }, [clientId]);
+
+  // Auto-populate blocks from farm fields
+  useEffect(() => {
+    // Use farmId from state OR from URL params (in case state wasn't set yet)
+    const effectiveFarmId = farmId || searchParams.get("farm_id") || "";
+    if (!effectiveFarmId || analysisId) return;
+    if (!farmId && effectiveFarmId) setFarmId(effectiveFarmId);
+    (async () => {
+      try {
+        const fields = await api.get<Array<Record<string, unknown>>>(`/api/clients/farms/${farmId}/fields`);
+        if (fields && fields.length > 0) {
+          const newBlocks = fields
+            .filter((f) => f.crop)
+            .map((f) => ({
+              name: String(f.name || ""),
+              area_ha: f.size_ha != null ? Number(f.size_ha) : null,
+              crop: String(f.crop || ""),
+              cultivar: String(f.cultivar || ""),
+              yield_target: f.yield_target != null ? Number(f.yield_target) : null,
+              yield_unit: String(f.yield_unit || ""),
+              tree_age: f.tree_age != null ? Number(f.tree_age) : null,
+              pop_per_ha: f.pop_per_ha != null ? Number(f.pop_per_ha) : null,
+              soil_analysis_id: f.latest_analysis_id ? String(f.latest_analysis_id) : null,
+              notes: "",
+            }));
+          if (newBlocks.length > 0) {
+            setBlocks(newBlocks);
+            toast.info(`Pre-filled ${newBlocks.length} block${newBlocks.length !== 1 ? "s" : ""} from farm fields`);
+          }
+        }
+      } catch {}
+    })();
+  }, [farmId]);
+
+  // Add fields from a specific farm as blocks
+  const addBlocksFromFarm = async (fId: string, farmN: string) => {
+    try {
+      const fields = await api.get<Array<Record<string, unknown>>>(`/api/clients/farms/${fId}/fields`);
+      if (!fields || fields.length === 0) {
+        toast.error(`No fields with crops on ${farmN}`);
+        return;
+      }
+      const newBlocks = fields
+        .filter((f) => f.crop)
+        .map((f) => ({
+          name: `${farmN} - ${String(f.name || "")}`,
+          area_ha: f.size_ha != null ? Number(f.size_ha) : null,
+          crop: String(f.crop || ""),
+          cultivar: String(f.cultivar || ""),
+          yield_target: f.yield_target != null ? Number(f.yield_target) : null,
+          yield_unit: String(f.yield_unit || ""),
+          tree_age: f.tree_age != null ? Number(f.tree_age) : null,
+          pop_per_ha: f.pop_per_ha != null ? Number(f.pop_per_ha) : null,
+          soil_analysis_id: f.latest_analysis_id ? String(f.latest_analysis_id) : null,
+          notes: "",
+        }));
+      if (newBlocks.length === 0) {
+        toast.error(`No fields with crops on ${farmN}`);
+        return;
+      }
+      // Add to existing blocks (remove empty default block if present)
+      setBlocks((prev) => {
+        const existing = prev.filter((b) => b.name || b.crop);
+        return [...existing, ...newBlocks];
+      });
+      toast.success(`Added ${newBlocks.length} block${newBlocks.length !== 1 ? "s" : ""} from ${farmN}`);
+      setAddingFromFarm(false);
+    } catch {
+      toast.error("Failed to load fields");
+    }
+  };
+
+  // Auto-generate programme name
+  useEffect(() => {
+    if (clientName && !programmeName) {
+      const year = new Date().getFullYear();
+      setProgrammeName(`${clientName} ${farmName ? `- ${farmName} ` : ""}${year}/${year + 1}`);
+      setSeason(`${year}/${year + 1}`);
+    }
+  }, [clientName, farmName]);
+
+  // Handle handoff from Quick Analysis
+  useEffect(() => {
+    if (handoffProcessed.current || !analysisId) return;
+    handoffProcessed.current = true;
+    (async () => {
+      try {
+        const analysis = await api.get<Record<string, unknown>>(`/api/soil/${analysisId}`);
+        if (analysis.client_id) setClientId(analysis.client_id as string);
+        if (analysis.farm_id) setFarmId(analysis.farm_id as string);
+        if (analysis.customer) setClientName(String(analysis.customer));
+        if (analysis.farm) setFarmName(String(analysis.farm));
+        setBlocks([{
+          name: analysis.field ? String(analysis.field) : "Block 1",
+          area_ha: null,
+          crop: analysis.crop ? String(analysis.crop) : "",
+          cultivar: analysis.cultivar ? String(analysis.cultivar) : "",
+          yield_target: analysis.yield_target ? Number(analysis.yield_target) : null,
+          yield_unit: analysis.yield_unit ? String(analysis.yield_unit) : "",
+          tree_age: null,
+          pop_per_ha: analysis.pop_per_ha ? Number(analysis.pop_per_ha) : null,
+          soil_analysis_id: analysisId,
+          notes: "",
+        }]);
+        setWizardStep(1);
+        toast.info("Pre-filled from soil analysis — review blocks and continue");
+      } catch {
+        toast.error("Could not load analysis");
+      }
+    })();
+  }, [analysisId]);
+
+  // ── Step transitions ────────────────────────────────────────────
+
+  // Step 1→2: Create programme (if not yet created), then preview schedule
+  const handleAdvanceToSchedule = async () => {
+    if (!clientId) {
+      toast.error("Please select a client");
+      return;
+    }
+
+    setSaving(true);
+    setScheduleError(null);
+    try {
+      // Create programme if needed
+      let pid = programmeId;
+      if (!pid) {
+        const validBlocks = blocks.filter((b) => b.crop && b.name);
+        const result = await api.post<Programme>("/api/programmes", {
+          client_id: clientId || null,
+          farm_id: farmId || null,
+          name: programmeName,
+          season,
+          status: "draft",
+          blocks: validBlocks.map((b) => ({
+            name: b.name,
+            area_ha: b.area_ha || null,
+            crop: b.crop,
+            cultivar: b.cultivar || null,
+            yield_target: b.yield_target || null,
+            yield_unit: b.yield_unit || null,
+            tree_age: b.tree_age || null,
+            pop_per_ha: b.pop_per_ha || null,
+            soil_analysis_id: b.soil_analysis_id || null,
+          })),
+        });
+        pid = result.id;
+        setProgrammeId(pid);
+      }
+
+      // Preview schedule — get block info with growth stages
+      const preview = await api.post<{ schedule: unknown[]; block_info: BlockInfo[] }>(
+        `/api/programmes/${pid}/preview-schedule`
+      );
+      setBlockInfoData(preview.block_info);
+      setUserApplications([]);
+      setWizardStep(2);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed";
+      setScheduleError(msg);
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Step 2→3: Generate blends
+  const handleAdvanceToBlends = async () => {
+    if (!programmeId) return;
+    setGenerating(true);
+    try {
+      const generateBody: Record<string, unknown> = {};
+      if (userApplications.length > 0) generateBody.applications = userApplications;
+      if (Object.keys(plantingMonths).length > 0) {
+        generateBody.planting_months = Object.entries(plantingMonths).map(([block_id, month]) => ({ block_id, month }));
+      }
+      const result = await api.post<Record<string, unknown>>(
+        `/api/programmes/${programmeId}/generate`,
+        generateBody
+      );
+
+      // Build blend group display data from the programme detail
+      const prog = await api.get<Record<string, unknown>>(`/api/programmes/${programmeId}`);
+      const blends = (prog.blends || []) as Array<Record<string, unknown>>;
+      const progBlocks = (prog.blocks || []) as Array<Record<string, unknown>>;
+
+      // Group blends by blend_group
+      const groupMap = new Map<string, BlendGroupData>();
+      for (const blend of blends) {
+        const group = String(blend.blend_group || "A");
+        if (!groupMap.has(group)) {
+          const groupBlocks = progBlocks.filter((b) => b.blend_group === group);
+          groupMap.set(group, {
+            group,
+            crops: [...new Set(groupBlocks.map((b) => String(b.crop)))],
+            block_names: groupBlocks.map((b) => String(b.name)),
+            total_area_ha: groupBlocks.reduce((s, b) => s + (Number(b.area_ha) || 0), 0),
+            sa_notation: String(blend.sa_notation || ""),
+            rate_kg_ha: Number(blend.rate_kg_ha) || 0,
+            cost_per_ton: blend.blend_cost_per_ton != null ? Number(blend.blend_cost_per_ton) : undefined,
+            exact: true,
+            recipe: (blend.blend_recipe || []) as BlendGroupData["recipe"],
+            applications: [],
+          });
+        }
+        const gd = groupMap.get(group)!;
+        gd.applications.push({
+          stage_name: String(blend.stage_name || ""),
+          month: Number(blend.application_month) || 1,
+          method: String(blend.method || "broadcast"),
+        });
+      }
+
+      setBlendGroupsData(Array.from(groupMap.values()));
+      setWizardStep(3);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Generation failed");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // Final: navigate to programme detail
+  const handleFinish = (activate: boolean) => {
+    if (!programmeId) return;
+    if (activate) {
+      api.patch(`/api/programmes/${programmeId}`, { status: "active" })
+        .then(() => {
+          toast.success("Programme activated");
+          router.push(`/season-manager/${programmeId}`);
+        })
+        .catch(() => {
+          toast.error("Failed to activate");
+          router.push(`/season-manager/${programmeId}`);
+        });
+    } else {
+      toast.success("Programme saved as draft");
+      router.push(`/season-manager/${programmeId}`);
+    }
+  };
+
+  // ── Validation ──────────────────────────────────────────────────
+  const canNext = () => {
+    if (wizardStep === 0) return !!programmeName && !!clientId;
+    if (wizardStep === 1) return blocks.some((b) => b.crop && b.name && b.soil_analysis_id);
+    if (wizardStep === 2) return userApplications.length > 0;
+    if (wizardStep === 3) return blendGroupsData.length > 0;
+    return true;
+  };
+
+  const handleNext = () => {
+    if (wizardStep === 1) {
+      // Blocks → Schedule: need to create programme + preview
+      handleAdvanceToSchedule();
+    } else if (wizardStep === 2) {
+      // Schedule → Blends: need to generate
+      handleAdvanceToBlends();
+    } else {
+      setWizardStep((s) => s + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (wizardStep === 0) {
+      router.push("/season-manager");
+    } else {
+      setWizardStep((s) => s - 1);
+    }
+  };
+
+  return (
+    <AppShell>
+      <div className="mx-auto max-w-5xl px-4 py-8">
+        {/* Header */}
+        <div className="mb-6 flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-lg bg-orange-50 text-[var(--sapling-orange)]">
+            <Leaf className="size-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--sapling-dark)]">Build New Programme</h1>
+            <p className="text-sm text-[var(--sapling-medium-grey)]">
+              Define blocks, review the feeding schedule, and generate optimized blends
+            </p>
+          </div>
+        </div>
+
+        {/* Step indicator */}
+        <div className="mb-6 flex gap-1 rounded-lg bg-muted p-1">
+          {STEPS.map((s, i) => (
+            <button
+              key={s}
+              onClick={() => i <= wizardStep && setWizardStep(i)}
+              className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                wizardStep === i
+                  ? "bg-white text-[var(--sapling-dark)] shadow-sm"
+                  : i <= wizardStep
+                    ? "cursor-pointer text-[var(--sapling-medium-grey)] hover:text-[var(--sapling-dark)]"
+                    : "cursor-not-allowed text-muted-foreground/50"
+              }`}
+              disabled={i > wizardStep}
+            >
+              {i < wizardStep && <Check className="mr-1 inline size-3 text-green-600" />}
+              {s}
+            </button>
+          ))}
+        </div>
+
+        <Card className="overflow-visible">
+          <CardContent className="pt-6 overflow-visible">
+            {/* ══ Step 0: Client & Farm ══ */}
+            {wizardStep === 0 && (
+              <div className="space-y-5">
+                <ClientSelector
+                  onSelect={(sel) => {
+                    setClientName(sel.client_name);
+                    setFarmName(sel.farm_name);
+                    setClientId(sel.client_id || "");
+                    setFarmId(sel.farm_id || "");
+                  }}
+                  initialClient={clientName}
+                  initialFarm={farmName}
+                />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Programme Name *</Label>
+                    <Input
+                      value={programmeName}
+                      onChange={(e) => setProgrammeName(e.target.value)}
+                      placeholder="e.g. Farm ABC 2026/2027"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Season</Label>
+                    <Input
+                      value={season}
+                      onChange={(e) => setSeason(e.target.value)}
+                      placeholder="e.g. 2026/2027"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ══ Step 1: Blocks ══ */}
+            {wizardStep === 1 && (
+              <div className="space-y-4">
+                <BlockEditor
+                  blocks={blocks}
+                  setBlocks={setBlocks}
+                  crops={crops}
+                  availableAnalyses={availableAnalyses}
+                />
+                {/* Add blocks from another farm */}
+                {clientFarms.length > 0 && (
+                  <div className="border-t pt-4">
+                    {addingFromFarm ? (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-[var(--sapling-dark)]">Add fields from a farm:</p>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {clientFarms.map((f) => (
+                            <button
+                              key={f.id}
+                              type="button"
+                              onClick={() => addBlocksFromFarm(f.id, f.name)}
+                              className="rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:border-[var(--sapling-orange)] hover:bg-orange-50"
+                            >
+                              {f.name}
+                            </button>
+                          ))}
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => setAddingFromFarm(false)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        onClick={() => setAddingFromFarm(true)}
+                        className="w-full"
+                      >
+                        Add Blocks from Another Farm
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ══ Step 2: Schedule Review ══ */}
+            {wizardStep === 2 && (
+              <>
+                {scheduleError && (
+                  <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                    {scheduleError}
+                  </div>
+                )}
+                {blockInfoData.length > 0 ? (
+                  <ScheduleReview
+                    blockInfo={blockInfoData}
+                    onApplicationsChange={setUserApplications}
+                    onPlantingMonthsChange={setPlantingMonths}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="size-6 animate-spin text-[var(--sapling-orange)]" />
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ══ Step 3: Blend Groups ══ */}
+            {wizardStep === 3 && (
+              <BlendGroups blendGroups={blendGroupsData} isAdmin={isAdmin} />
+            )}
+
+            {/* ══ Step 4: Review ══ */}
+            {wizardStep === 4 && (
+              <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-medium uppercase text-muted-foreground">Programme</p>
+                    <p className="text-sm font-medium">{programmeName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium uppercase text-muted-foreground">Season</p>
+                    <p className="text-sm font-medium">{season || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium uppercase text-muted-foreground">Client</p>
+                    <p className="text-sm font-medium">{clientName || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium uppercase text-muted-foreground">Farm</p>
+                    <p className="text-sm font-medium">{farmName || "—"}</p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/30">
+                        <th className="px-3 py-2 text-left font-medium">Block</th>
+                        <th className="px-3 py-2 text-left font-medium">Crop</th>
+                        <th className="px-3 py-2 text-left font-medium">Area</th>
+                        <th className="px-3 py-2 text-left font-medium">Yield</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {blocks.filter((b) => b.crop && b.name).map((b, i) => (
+                        <tr key={i} className="border-b last:border-0">
+                          <td className="px-3 py-2 font-medium">{b.name}</td>
+                          <td className="px-3 py-2">{b.crop} {b.cultivar && `(${b.cultivar})`}</td>
+                          <td className="px-3 py-2">{b.area_ha ? `${b.area_ha} ha` : "—"}</td>
+                          <td className="px-3 py-2">{b.yield_target ? `${b.yield_target} ${b.yield_unit}` : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="rounded-lg bg-green-50 p-4 text-center">
+                  <Check className="mx-auto size-8 text-green-600" />
+                  <p className="mt-2 font-medium text-green-800">
+                    {blendGroupsData.length} optimized blend{blendGroupsData.length !== 1 ? "s" : ""} ready
+                  </p>
+                  <p className="mt-1 text-sm text-green-700">
+                    {userApplications.length} applications across {blocks.filter((b) => b.crop).length} blocks
+                  </p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Navigation */}
+        <div className="mt-6 flex justify-between">
+          <Button variant="outline" onClick={handleBack}>
+            <ChevronLeft className="size-4" />
+            {wizardStep === 0 ? "Cancel" : "Back"}
+          </Button>
+
+          {wizardStep < 4 ? (
+            <Button
+              onClick={handleNext}
+              disabled={!canNext() || saving || generating}
+              className="bg-[var(--sapling-orange)] text-white hover:bg-[var(--sapling-orange)]/90"
+            >
+              {(saving || generating) ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <ChevronRight className="size-4" />
+              )}
+              {wizardStep === 1 ? "Preview Schedule" : wizardStep === 2 ? "Generate Blends" : "Next"}
+            </Button>
+          ) : (
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => handleFinish(false)}>
+                Save as Draft
+              </Button>
+              <Button
+                onClick={() => handleFinish(true)}
+                className="bg-[var(--sapling-orange)] text-white hover:bg-[var(--sapling-orange)]/90"
+              >
+                <Check className="size-4" />
+                Activate Programme
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </AppShell>
+  );
+}

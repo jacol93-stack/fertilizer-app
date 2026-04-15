@@ -390,6 +390,185 @@ def build_pdf(blend_name, client, farm, batch, compost_pct, cost_per_ton,
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+#  build_liquid_pdf — Liquid Blend Recipe PDF
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def build_liquid_pdf(blend_name, client, farm, tank_volume_l, total_dissolved_kg,
+                     sg_estimate, recipe_data, nutrient_data, mixing_instructions=None,
+                     compatibility_warnings=None, exact=True, scale=1.0,
+                     cost_per_ton=0, selling_price=0, company_details=None):
+    cd = company_details or {}
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=20)
+
+    # Header: logo top-right, title + slogan just above orange line
+    logo_h = 50
+    top_margin = 10
+    line_y = top_margin + logo_h + 6
+
+    logo_path = LOGO_NO_SLOGAN_PATH if LOGO_NO_SLOGAN_PATH.exists() else LOGO_PATH
+    if logo_path.exists():
+        pdf.image(str(logo_path), x=200 - logo_h * 1.2, y=top_margin, h=logo_h)
+
+    pdf.set_xy(10, line_y - 17)
+    pdf.set_font("Helvetica", "B", 22)
+    pdf.set_text_color(*DARK_GREY_RGB)
+    pdf.cell(0, 12, "Liquid Blend Recipe", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_x(10)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(*MED_GREY_RGB)
+    pdf.cell(0, 5, "Fertilise Smarter, Grow Stronger", new_x="LMARGIN", new_y="NEXT")
+
+    # Company details (right side, under logo)
+    if cd:
+        cy = line_y - 22
+        pdf.set_font("Helvetica", "", 8)
+        pdf.set_text_color(*MED_GREY_RGB)
+        for line in [
+            cd.get("company_name", ""),
+            f"Reg: {cd['reg_number']}" if cd.get("reg_number") else "",
+            f"VAT: {cd['vat_number']}" if cd.get("vat_number") else "",
+            cd.get("address", ""),
+            cd.get("phone", ""),
+            cd.get("email", ""),
+        ]:
+            if line:
+                pdf.set_xy(130, cy)
+                pdf.cell(70, 3.5, line, align="R")
+                cy += 3.5
+
+    pdf.set_y(line_y)
+
+    # Accent line
+    pdf.set_draw_color(*ORANGE_RGB)
+    pdf.set_line_width(0.8)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(6)
+
+    # Meta info
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(*MED_GREY_RGB)
+    meta_parts = [f"Date: {date.today().strftime('%Y-%m-%d')}"]
+    if blend_name:
+        meta_parts.insert(0, f"Blend: {blend_name}")
+    if client:
+        meta_parts.append(f"Client: {client}")
+    if farm:
+        meta_parts.append(f"Farm: {farm}")
+    pdf.cell(0, 6, "  |  ".join(meta_parts), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+
+    # KPI summary
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_text_color(*DARK_GREY_RGB)
+    pdf.cell(0, 8, "Summary", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(*MED_GREY_RGB)
+    kpi_items = [
+        f"Tank Volume: {tank_volume_l:,.0f} L",
+        f"Total Dissolved: {total_dissolved_kg:,.2f} kg",
+        f"Est. Specific Gravity: {sg_estimate:.3f}",
+    ]
+    for item in kpi_items:
+        pdf.cell(0, 5, item, new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+
+    if not exact and scale < 0.999:
+        pdf.set_font("Helvetica", "I", 9)
+        pdf.set_text_color(*ORANGE_RGB)
+        pdf.cell(
+            0, 5,
+            f"Note: Targets scaled to {scale * 100:.1f}% of requested levels.",
+            new_x="LMARGIN", new_y="NEXT",
+        )
+        pdf.ln(2)
+
+    # Compatibility warnings
+    if compatibility_warnings:
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.set_text_color(200, 0, 0)
+        pdf.cell(0, 6, "Compatibility Warnings", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 9)
+        for w in compatibility_warnings:
+            pdf.cell(0, 5, f"  - {w}", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(2)
+
+    def pdf_table(title, columns, widths, rows):
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.set_text_color(*DARK_GREY_RGB)
+        pdf.cell(0, 8, title, new_x="LMARGIN", new_y="NEXT")
+
+        pdf.set_font("Helvetica", "B", 9)
+        header_y = pdf.get_y()
+        total_w = sum(widths)
+        pdf.set_fill_color(*ORANGE_RGB)
+        pdf.rect(pdf.l_margin, header_y, total_w, 6, "F")
+        pdf.set_text_color(255, 255, 255)
+        for label, w in zip(columns, widths):
+            pdf.cell(w, 6, label)
+        pdf.ln()
+
+        pdf.set_font("Helvetica", "", 9)
+        for i, row_vals in enumerate(rows):
+            row_y = pdf.get_y()
+            if i % 2 == 1:
+                pdf.set_fill_color(*GREY_LIGHT_RGB)
+                pdf.rect(pdf.l_margin, row_y, total_w, 5, "F")
+            pdf.set_text_color(*DARK_GREY_RGB)
+            for val, w in zip(row_vals, widths):
+                pdf.cell(w, 5, val)
+            pdf.ln()
+
+        pdf.set_draw_color(*ORANGE_RGB)
+        pdf.set_line_width(0.4)
+        pdf.line(pdf.l_margin, pdf.get_y(), pdf.l_margin + total_w, pdf.get_y())
+        pdf.ln(4)
+
+    # Recipe table
+    if recipe_data:
+        recipe_cols = ["Material", "kg / tank", "g / L"]
+        if cost_per_ton > 0:
+            recipe_cols.append("Cost (R)")
+            col_widths = [70, 30, 30, 30]
+        else:
+            col_widths = [80, 40, 40]
+        pdf_table("Recipe", recipe_cols, col_widths, recipe_data)
+
+    # Nutrient analysis table
+    if nutrient_data:
+        nut_cols = ["Nutrient", "Target g/L", "Actual g/L", "Diff g/L"]
+        nut_widths = [30, 30, 30, 30]
+        try:
+            targeted_rows = [r for r in nutrient_data if float(r[1]) > 0 or float(r[2]) > 0.001]
+        except (ValueError, IndexError):
+            targeted_rows = nutrient_data
+        pdf_table("Nutrient Analysis", nut_cols, nut_widths, targeted_rows)
+
+    # Mixing instructions
+    if mixing_instructions:
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.set_text_color(*DARK_GREY_RGB)
+        pdf.cell(0, 8, "Mixing Instructions", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 9)
+        pdf.set_text_color(*MED_GREY_RGB)
+        for i, step in enumerate(mixing_instructions, 1):
+            pdf.cell(0, 5, f"  {i}. {step}", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(4)
+
+    # Footer
+    pdf.ln(8)
+    pdf.set_font("Helvetica", "I", 8)
+    pdf.set_text_color(*MED_GREY_RGB)
+    pdf.cell(0, 5, "Generated by Sapling Blend Calculator - Internal Document",
+             new_x="LMARGIN", new_y="NEXT")
+
+    buf = io.BytesIO()
+    pdf.output(buf)
+    return buf.getvalue()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 #  build_soil_pdf — Soil Analysis Report PDF
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1221,6 +1400,629 @@ def build_soil_pdf(customer, farm, field, crop_name, cultivar, yield_target,
             y_cursor += 12
             draw_target_vs_actual(y_cursor, targets_dict, totals_dict,
                                   NUTRIENTS_SOIL)
+
+        page_footer()
+
+    # ═════════════════════════════════════════════════════════════════════
+    buf = io.BytesIO()
+    pdf.output(buf)
+    return buf.getvalue()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  build_diagnostic_soil_pdf — Diagnostic Soil Analysis Report (no targets)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def build_diagnostic_soil_pdf(
+    customer="", farm="", field="",
+    crop_name="", cultivar="", yield_target=0, yield_unit="",
+    agent_name="", agent_cell="", agent_email="",
+    lab_name="", analysis_date="",
+    soil_values=None, classifications=None, ratio_results=None,
+    norms_snapshot=None, soil_thresholds=None,
+):
+    """Build a diagnostic Soil Analysis Report PDF.
+
+    Pure diagnostic — classifications and ratios only, no fertilizer
+    recommendations, no targets, no products, no costs.
+
+    Args:
+        soil_values: dict {param: numeric_value}
+        classifications: dict {param: classification_string}
+        ratio_results: list of dicts from evaluate_ratios()
+        norms_snapshot: raw dict from DB with sufficiency/ratios tables
+        soil_thresholds: dict {param: {very_low_max, low_max, optimal_max, high_max}}
+            — used for unsaved analyses when norms_snapshot is not available
+    """
+    import math
+
+    soil_values = soil_values or {}
+    classifications = classifications or {}
+    ratio_results = ratio_results or []
+
+    pdf = FPDF(orientation="L")
+    pdf.set_auto_page_break(auto=False)
+
+    page_w = 297  # A4 landscape
+    page_h = 210
+    margin = 10
+    content_w = page_w - 2 * margin
+
+    logo_path = LOGO_NO_SLOGAN_PATH if LOGO_NO_SLOGAN_PATH.exists() else LOGO_PATH
+
+    # ── Build threshold lookup for gauge rendering ─────────────────────
+    # Priority: norms_snapshot > soil_thresholds > None
+    thresh_lookup = {}
+    if norms_snapshot and isinstance(norms_snapshot, dict):
+        for row in norms_snapshot.get("sufficiency") or []:
+            param = row.get("parameter", "")
+            thresh_lookup[param] = (
+                float(row.get("very_low_max", 0)),
+                float(row.get("low_max", 0)),
+                float(row.get("optimal_max", 0)),
+                float(row.get("high_max", 0)),
+            )
+    elif soil_thresholds:
+        for param, t in soil_thresholds.items():
+            thresh_lookup[param] = (
+                float(t.get("very_low_max", 0)),
+                float(t.get("low_max", 0)),
+                float(t.get("optimal_max", 0)),
+                float(t.get("high_max", 0)),
+            )
+
+    # ── Shared helpers ─────────────────────────────────────────────────
+
+    def page_header(title):
+        if logo_path.exists():
+            pdf.image(str(logo_path), x=margin, y=8, h=22)
+        pdf.set_font("Helvetica", "B", 16)
+        pdf.set_text_color(*DARK_GREY_RGB)
+        pdf.set_xy(margin + 30, 10)
+        pdf.cell(content_w - 30, 10, title, align="C")
+        pdf.set_draw_color(*ORANGE_RGB)
+        pdf.set_line_width(0.8)
+        pdf.line(margin, 30, page_w - margin, 30)
+
+    def page_footer():
+        pdf.set_font("Helvetica", "I", 7)
+        pdf.set_text_color(*MED_GREY_RGB)
+        pdf.set_xy(margin, page_h - 12)
+        pdf.cell(content_w / 2, 4, "Generated by Sapling")
+        pdf.cell(content_w / 2, 4,
+                 f"Date Printed:  {date.today().strftime('%Y-%m-%d')}",
+                 align="R")
+
+    def section_label(y, text):
+        pdf.set_xy(margin, y)
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_text_color(*DARK_GREY_RGB)
+        pdf.cell(content_w, 5, text, new_x="LMARGIN", new_y="NEXT")
+        pdf.set_draw_color(*ORANGE_RGB)
+        pdf.set_line_width(0.3)
+        pdf.line(margin, y + 5.5, margin + content_w, y + 5.5)
+
+    def info_box(x, y_top, title, items, w=None):
+        box_w = w or (content_w - 6) / 3
+        pdf.set_xy(x, y_top)
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_text_color(*DARK_GREY_RGB)
+        pdf.set_fill_color(*ORANGE_FILL_RGB)
+        pdf.cell(box_w, 6, title, fill=True, align="C",
+                 new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 8)
+        pdf.set_text_color(*MED_GREY_RGB)
+        for label, value in items:
+            pdf.set_x(x)
+            pdf.set_font("Helvetica", "B", 8)
+            pdf.cell(25, 4.5, f"{label}:", new_x="END")
+            pdf.set_font("Helvetica", "", 8)
+            pdf.cell(box_w - 25, 4.5, str(value or ""),
+                     new_x="LMARGIN", new_y="NEXT")
+
+    # ── Gauge-bar drawing ──────────────────────────────────────────────
+
+    def draw_gauge(x, y, w, h, value, thresholds):
+        vl, lo, opt, hi = thresholds
+        max_scale = hi * 1.35 if hi > 0 else 1
+        if value > max_scale:
+            max_scale = value * 1.15
+
+        zones = [
+            (0,   vl,  _CLS_RGB["Very Low"]),
+            (vl,  lo,  _CLS_RGB["Low"]),
+            (lo,  opt, _CLS_RGB["Optimal"]),
+            (opt, hi,  _CLS_RGB["High"]),
+            (hi,  max_scale, _CLS_RGB["Very High"]),
+        ]
+        for z_start, z_end, colour in zones:
+            x0 = x + (z_start / max_scale) * w
+            x1 = x + min(z_end / max_scale, 1.0) * w
+            zw = x1 - x0
+            if zw < 0.2:
+                continue
+            light = _CLS_LIGHT.get(
+                [k for k, v in _CLS_RGB.items() if v == colour][0], colour)
+            pdf.set_fill_color(*light)
+            pdf.set_draw_color(*colour)
+            pdf.set_line_width(0.15)
+            pdf.rect(x0, y, zw, h, "FD")
+
+        ox0 = x + (lo / max_scale) * w
+        ox1 = x + min(opt / max_scale, 1.0) * w
+        pdf.set_draw_color(*_CLS_RGB["Optimal"])
+        pdf.set_line_width(0.5)
+        pdf.rect(ox0, y, ox1 - ox0, h, "D")
+
+        # Scale labels
+        scale_y = y + h + 0.8
+        pdf.set_font("Helvetica", "B", 7)
+        for bv in [vl, lo, opt, hi]:
+            bx = x + (bv / max_scale) * w
+            fmt = ".0f" if bv >= 10 else (".1f" if bv >= 1 else ".2f")
+            pdf.set_draw_color(150, 150, 150)
+            pdf.set_line_width(0.15)
+            pdf.line(bx, y + h, bx, y + h + 1.5)
+            pdf.set_text_color(100, 100, 100)
+            pdf.set_xy(bx - 6, scale_y)
+            pdf.cell(12, 4, f"{bv:{fmt}}", align="C")
+
+        # Value marker
+        marker_x = x + min(value / max_scale, 1.0) * w
+        marker_y = y + h / 2
+        d = h * 0.45
+        pdf.set_fill_color(*DARK_GREY_RGB)
+        pdf.set_draw_color(*DARK_GREY_RGB)
+        pdf.set_line_width(0.1)
+        pdf.polygon([
+            (marker_x, marker_y - d),
+            (marker_x + d * 0.6, marker_y),
+            (marker_x, marker_y + d),
+            (marker_x - d * 0.6, marker_y),
+        ], style="F")
+
+    def draw_gauge_row(y, label, value, thresholds, classification):
+        bar_h = 5
+        row_total = bar_h + 5 + 2
+        lbl_w = 30
+        val_w = 24
+        badge_w = 21
+        gauge_w = content_w - lbl_w - val_w - badge_w - 8
+
+        pdf.set_xy(margin, y)
+        pdf.set_font("Helvetica", "", 8)
+        pdf.set_text_color(*DARK_GREY_RGB)
+        pdf.cell(lbl_w, bar_h, label)
+
+        pdf.set_xy(margin + lbl_w, y)
+        pdf.set_font("Helvetica", "B", 8)
+        colour = _CLS_RGB.get(classification, MED_GREY_RGB)
+        pdf.set_text_color(*colour)
+        val_txt = f"{value:.2f}" if value < 100 else f"{value:.1f}"
+        pdf.cell(val_w, bar_h, val_txt, align="R")
+
+        gauge_x = margin + lbl_w + val_w + 4
+        if thresholds:
+            draw_gauge(gauge_x, y, gauge_w, bar_h, value, thresholds)
+
+        badge_x = margin + content_w - badge_w
+        if classification:
+            colour_b = _CLS_RGB.get(classification, MED_GREY_RGB)
+            pdf.set_fill_color(*colour_b)
+            pdf.rect(badge_x, y + 0.3, badge_w, bar_h - 0.6, "F")
+            pdf.set_font("Helvetica", "B", 6.5)
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_xy(badge_x, y + 0.3)
+            pdf.cell(badge_w, bar_h - 0.6, classification, align="C")
+
+        return row_total
+
+    # ── Ratio range-bar drawing ────────────────────────────────────────
+
+    def draw_ratio_row(y, ratio_name, actual, ideal_min, ideal_max, unit, status,
+                       row_total=None):
+        if row_total is None:
+            row_total = 14
+        bar_h = row_total * 0.43
+        lbl_w = 32
+        val_w = 22
+        badge_w = 24
+        bar_w = content_w - lbl_w - val_w - badge_w - 10
+
+        if ideal_max > 100:
+            scale_max = max(actual * 1.5, ideal_min * 3) if actual > 0 else ideal_min * 3
+        else:
+            scale_max = max(ideal_max * 1.8, actual * 1.3) if actual > 0 else ideal_max * 2
+        if scale_max <= 0:
+            scale_max = 1
+
+        bar_x = margin + lbl_w + val_w + 5
+        bar_y = y
+        scale_y = bar_y + bar_h + 1
+
+        # Background
+        pdf.set_fill_color(235, 235, 235)
+        pdf.rect(bar_x, bar_y, bar_w, bar_h, "F")
+
+        # Ideal zone
+        ix0 = bar_x + (ideal_min / scale_max) * bar_w
+        ix1 = bar_x + min(ideal_max / scale_max, 1.0) * bar_w
+        pdf.set_fill_color(*_CLS_LIGHT["Optimal"])
+        pdf.set_draw_color(*_CLS_RGB["Optimal"])
+        pdf.set_line_width(0.5)
+        pdf.rect(ix0, bar_y, ix1 - ix0, bar_h, "FD")
+
+        # Scale ticks
+        raw_step = scale_max / 5
+        magnitude = 10 ** math.floor(math.log10(raw_step)) if raw_step > 0 else 1
+        nice_steps = [1, 2, 2.5, 5, 10]
+        step = magnitude * min(nice_steps,
+                               key=lambda s: abs(s * magnitude - raw_step))
+        pdf.set_draw_color(180, 180, 180)
+        pdf.set_line_width(0.15)
+        pdf.set_font("Helvetica", "", 7)
+        pdf.set_text_color(130, 130, 130)
+        tick_val = 0
+        while tick_val <= scale_max * 1.01:
+            tx = bar_x + (tick_val / scale_max) * bar_w
+            if tx <= bar_x + bar_w + 0.5:
+                pdf.line(tx, bar_y + bar_h, tx, bar_y + bar_h + 1.5)
+                fmt_t = ".0f" if tick_val >= 10 else (
+                    ".1f" if tick_val >= 1 else ".2f")
+                pdf.set_xy(tx - 6, scale_y)
+                pdf.cell(12, 4, f"{tick_val:{fmt_t}}", align="C")
+            tick_val += step
+
+        # Ideal boundary labels
+        pdf.set_font("Helvetica", "B", 7.5)
+        pdf.set_text_color(*_CLS_RGB["Optimal"])
+        fmt = ".0f" if ideal_min >= 10 else (".1f" if ideal_min >= 1 else ".2f")
+        pdf.set_xy(ix0 - 6, scale_y)
+        pdf.cell(12, 4, f"{ideal_min:{fmt}}", align="C")
+        if ideal_max < 100:
+            pdf.set_xy(ix1 - 6, scale_y)
+            pdf.cell(12, 4, f"{ideal_max:{fmt}}", align="C")
+
+        # Actual value marker
+        marker_x = bar_x + min(actual / scale_max, 1.0) * bar_w
+        status_colour = _STATUS_RGB.get(status, DARK_GREY_RGB)
+        pdf.set_draw_color(*status_colour)
+        pdf.set_line_width(0.7)
+        pdf.line(marker_x, bar_y - 1, marker_x, bar_y + bar_h + 1)
+        d = 1.4
+        cy = bar_y + bar_h / 2
+        pdf.set_fill_color(*status_colour)
+        pdf.polygon([
+            (marker_x, cy - d),
+            (marker_x + d * 0.7, cy),
+            (marker_x, cy + d),
+            (marker_x - d * 0.7, cy),
+        ], style="F")
+
+        # Label
+        pdf.set_xy(margin, y)
+        pdf.set_font("Helvetica", "", 8)
+        pdf.set_text_color(*DARK_GREY_RGB)
+        pdf.cell(lbl_w, bar_h, ratio_name)
+
+        # Value
+        pdf.set_xy(margin + lbl_w, y)
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.set_text_color(*status_colour)
+        val_txt = f"{actual:.1f}" if unit == "%" else f"{actual:.2f}"
+        pdf.cell(val_w, bar_h, val_txt, align="R")
+
+        # Status badge
+        badge_x = margin + content_w - badge_w
+        pdf.set_fill_color(*status_colour)
+        pdf.rect(badge_x, y + 0.5, badge_w, bar_h - 1, "F")
+        pdf.set_font("Helvetica", "B", 7)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_xy(badge_x, y + 0.5)
+        pdf.cell(badge_w, bar_h - 1, status, align="C")
+
+        return row_total
+
+    # ═════════════════════════════════════════════════════════════════════
+    #  PAGE 1 — Cover & Summary
+    # ═════════════════════════════════════════════════════════════════════
+    pdf.add_page()
+    page_header("SOIL ANALYSIS REPORT")
+
+    # Subtitle
+    pdf.set_font("Helvetica", "", 8)
+    pdf.set_text_color(*MED_GREY_RGB)
+    pdf.set_xy(margin, 32)
+    parts = [p for p in [customer, farm, f"Lab: {lab_name}" if lab_name else "",
+                          str(analysis_date) if analysis_date else ""] if p]
+    if parts:
+        pdf.cell(content_w, 4, "  |  ".join(parts), align="C")
+
+    # Info boxes
+    box_w = (content_w - 6) / 3
+    box_y = 38
+
+    info_box(margin, box_y, "Customer", [
+        ("Name", customer), ("Farm", farm), ("Field", field),
+    ], box_w)
+
+    crop_items = []
+    if crop_name:
+        crop_items.append(("Crop", crop_name))
+    if cultivar:
+        crop_items.append(("Cultivar", cultivar))
+    if yield_target:
+        crop_items.append(("Yield Target", f"{yield_target} {yield_unit}"))
+    if crop_items:
+        info_box(margin + box_w + 3, box_y, "Crop Info", crop_items, box_w)
+    else:
+        info_box(margin + box_w + 3, box_y, "Crop Info", [
+            ("Crop", "Not specified"),
+        ], box_w)
+
+    agent_items = [("Name", agent_name)]
+    if agent_cell:
+        agent_items.append(("Cell No", agent_cell))
+    if agent_email:
+        agent_items.append(("E-mail", agent_email))
+    info_box(margin + 2 * (box_w + 3), box_y, "Analysis Details", [
+        ("Lab", lab_name), ("Date", analysis_date),
+    ] + agent_items, box_w)
+
+    # ── Classification summary ─────────────────────────────────────────
+    class_counts = {}
+    for param, cls in classifications.items():
+        if cls:
+            class_counts[cls] = class_counts.get(cls, 0) + 1
+    total_params = sum(class_counts.values())
+
+    summary_y = box_y + 38
+    section_label(summary_y, "Summary")
+    summary_y += 8
+
+    # Parameter count + classification pills
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_text_color(*DARK_GREY_RGB)
+    pdf.set_xy(margin, summary_y)
+    pdf.cell(35, 6, f"{total_params} parameters tested")
+    pill_x = margin + 36
+
+    for cls_name in ["Very Low", "Low", "Optimal", "High", "Very High"]:
+        count = class_counts.get(cls_name, 0)
+        if count == 0:
+            continue
+        pw = 32
+        pdf.set_fill_color(*_CLS_RGB[cls_name])
+        pdf.rect(pill_x, summary_y, pw, 6, "F")
+        pdf.set_font("Helvetica", "B", 7)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_xy(pill_x, summary_y)
+        pdf.cell(pw, 6, f"{count} {cls_name}", align="C")
+        pill_x += pw + 2
+
+    # ── Key Findings ───────────────────────────────────────────────────
+    findings = []
+    deficient = [p for p, c in classifications.items()
+                 if c in ("Very Low", "Low")]
+    elevated = [p for p, c in classifications.items()
+                if c in ("High", "Very High")]
+    ratio_concerns = [r for r in ratio_results
+                      if r.get("Status", r.get("status", "")) != "Ideal"]
+
+    if deficient:
+        findings.append(
+            f"Below optimal ({len(deficient)}): {', '.join(deficient)}")
+    if elevated:
+        findings.append(
+            f"Above optimal ({len(elevated)}): {', '.join(elevated)}")
+    if ratio_concerns:
+        concern_names = []
+        for r in ratio_concerns:
+            name = r.get("Ratio", r.get("ratio_name", ""))
+            status = r.get("Status", r.get("status", ""))
+            concern_names.append(f"{name} ({status.lower()})")
+        findings.append(
+            f"Ratio imbalances ({len(ratio_concerns)}): {', '.join(concern_names)}")
+
+    if not findings:
+        findings.append("All parameters within optimal ranges. Soil in good condition.")
+
+    findings_y = summary_y + 12
+    section_label(findings_y, "Key Findings")
+    findings_y += 9
+
+    box_h = len(findings) * 7 + 4
+    pdf.set_fill_color(250, 250, 250)
+    pdf.set_draw_color(*ORANGE_RGB)
+    pdf.set_line_width(0.4)
+    pdf.rect(margin, findings_y, content_w, box_h, "FD")
+
+    findings_y += 2
+    for finding in findings:
+        pdf.set_xy(margin + 4, findings_y)
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.set_text_color(*ORANGE_RGB)
+        pdf.cell(4, 5, ">")
+        pdf.set_font("Helvetica", "", 8)
+        pdf.set_text_color(*DARK_GREY_RGB)
+        pdf.cell(content_w - 10, 5, finding)
+        findings_y += 7
+
+    # ── Disclaimer ─────────────────────────────────────────────────────
+    disc_y = findings_y + 10
+    if disc_y + 12 < page_h - 18:
+        pdf.set_font("Helvetica", "I", 7)
+        pdf.set_text_color(150, 150, 150)
+        pdf.set_xy(margin, disc_y)
+        pdf.multi_cell(content_w, 4,
+                       "This report presents diagnostic soil analysis findings only. "
+                       "Fertilizer recommendations should be developed through a "
+                       "comprehensive programme tailored to specific crop requirements, "
+                       "soil conditions, and management practices.",
+                       align="C")
+
+    page_footer()
+
+    # ═════════════════════════════════════════════════════════════════════
+    #  PAGE 2 — Soil Classifications (gauge charts)
+    # ═════════════════════════════════════════════════════════════════════
+    if soil_values and thresh_lookup:
+        pdf.add_page()
+        page_header("SOIL HEALTH ANALYSIS")
+
+        general_params = ["pH (H2O)", "pH (KCl)", "Org C", "CEC", "Clay"]
+        macro_params = ["N (total)", "P (Bray-1)", "K", "Ca", "Mg", "S"]
+        micro_params = ["Fe", "Mn", "Zn", "Cu", "B", "Mo", "Na"]
+
+        y_cursor = 34
+
+        for group_label, params in [
+            ("General Soil Properties", general_params),
+            ("Macronutrients", macro_params),
+            ("Micronutrients", micro_params),
+        ]:
+            group_items = []
+            for p in params:
+                val = soil_values.get(p)
+                cls = classifications.get(p, "")
+                thresh = thresh_lookup.get(p)
+                if val is not None and val != "" and cls:
+                    group_items.append((p, float(val), thresh, cls))
+
+            if not group_items:
+                continue
+
+            row_step = 12
+            needed = 7 + len(group_items) * row_step
+            if y_cursor + needed > page_h - 18:
+                page_footer()
+                pdf.add_page()
+                page_header("SOIL HEALTH ANALYSIS (cont.)")
+                y_cursor = 34
+
+            section_label(y_cursor, group_label)
+            y_cursor += 7
+
+            for param, val, thresh, cls in group_items:
+                rh = draw_gauge_row(y_cursor, param, val, thresh, cls)
+                y_cursor += rh
+
+            y_cursor += 1.5
+
+        page_footer()
+
+    # ═════════════════════════════════════════════════════════════════════
+    #  PAGE 3 — Nutrient Ratios
+    # ═════════════════════════════════════════════════════════════════════
+    if ratio_results:
+        pdf.add_page()
+        page_header("NUTRIENT RATIOS")
+
+        pdf.set_font("Helvetica", "", 8)
+        pdf.set_text_color(*MED_GREY_RGB)
+        pdf.set_xy(margin, 32)
+        sub_parts = [p for p in [crop_name, customer,
+                                  f"Lab: {lab_name}" if lab_name else ""] if p]
+        if sub_parts:
+            pdf.cell(content_w, 4, "  |  ".join(sub_parts), align="C")
+
+        y_cursor = 39
+
+        # Ratio summary pills
+        r_counts = {}
+        for r in ratio_results:
+            s = r.get("Status", r.get("status", ""))
+            r_counts[s] = r_counts.get(s, 0) + 1
+
+        pill_x = margin
+        for status_name in ["Below ideal", "Ideal", "Above ideal"]:
+            count = r_counts.get(status_name, 0)
+            if count == 0:
+                continue
+            colour = _STATUS_RGB.get(status_name, DARK_GREY_RGB)
+            pw = 30
+            pdf.set_fill_color(*colour)
+            pdf.rect(pill_x, y_cursor, pw, 5, "F")
+            pdf.set_font("Helvetica", "B", 7)
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_xy(pill_x, y_cursor)
+            pdf.cell(pw, 5, f"{count} {status_name}", align="C")
+            pill_x += pw + 2
+
+        y_cursor += 9
+
+        # Calculate dynamic row height
+        n_ratios = len(ratio_results)
+        avail_h = (page_h - 18) - y_cursor
+        if n_ratios > 0:
+            row_h = max(min(avail_h / n_ratios, 16), 10)
+        else:
+            row_h = 14
+
+        for r in ratio_results:
+            name = r.get("Ratio", r.get("ratio_name", ""))
+            actual = float(r.get("Actual", r.get("actual", 0)))
+            ideal_min = float(r.get("Ideal_Min", r.get("ideal_min", 0)))
+            ideal_max = float(r.get("Ideal_Max", r.get("ideal_max", 0)))
+            unit = r.get("Unit", r.get("unit", ""))
+            status = r.get("Status", r.get("status", ""))
+
+            if y_cursor + row_h > page_h - 18:
+                page_footer()
+                pdf.add_page()
+                page_header("NUTRIENT RATIOS (cont.)")
+                y_cursor = 36
+
+            draw_ratio_row(y_cursor, name, actual, ideal_min, ideal_max,
+                           unit, status, row_total=row_h)
+            y_cursor += row_h
+
+        # Ratio interpretation box
+        below = [r.get("Ratio", r.get("ratio_name", ""))
+                 for r in ratio_results
+                 if r.get("Status", r.get("status", "")) == "Below ideal"]
+        above = [r.get("Ratio", r.get("ratio_name", ""))
+                 for r in ratio_results
+                 if r.get("Status", r.get("status", "")) == "Above ideal"]
+
+        interp = []
+        if below:
+            interp.append(f"Below ideal: {', '.join(below)} "
+                          "- these ratios indicate a nutrient imbalance that "
+                          "may affect availability.")
+        if above:
+            interp.append(f"Above ideal: {', '.join(above)} "
+                          "- monitor these ratios for potential excess.")
+        if not below and not above:
+            interp.append("All ratios within ideal ranges.")
+
+        needed = 10 + len(interp) * 7
+        if y_cursor + needed > page_h - 18:
+            page_footer()
+            pdf.add_page()
+            page_header("NUTRIENT RATIOS (cont.)")
+            y_cursor = 36
+
+        y_cursor += 4
+        section_label(y_cursor, "Interpretation")
+        y_cursor += 9
+
+        int_box_h = len(interp) * 7 + 4
+        pdf.set_fill_color(250, 250, 250)
+        pdf.set_draw_color(*ORANGE_RGB)
+        pdf.set_line_width(0.4)
+        pdf.rect(margin, y_cursor, content_w, int_box_h, "FD")
+
+        y_cursor += 2
+        for line in interp:
+            pdf.set_xy(margin + 4, y_cursor)
+            pdf.set_font("Helvetica", "B", 8)
+            pdf.set_text_color(*ORANGE_RGB)
+            pdf.cell(4, 5, ">")
+            pdf.set_font("Helvetica", "", 8)
+            pdf.set_text_color(*DARK_GREY_RGB)
+            pdf.cell(content_w - 10, 5, line)
+            y_cursor += 7
 
         page_footer()
 

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.auth import CurrentUser, get_current_user, require_admin
+from app.pagination import Page, PageParams, apply_page
 from app.supabase_client import get_supabase_admin
 
 router = APIRouter(tags=["Programmes"])
@@ -72,8 +73,11 @@ def _audit(sb, user: CurrentUser, action: str, record_id: str | None = None, det
             "p_metadata": detail or {},
             "p_user_id": user.id,
         }).execute()
-    except Exception:
-        pass
+    except Exception as _audit_exc:
+        import logging as _logging
+        _logging.getLogger("sapling.audit").debug(
+            "log_audit_event failed: %s", _audit_exc, extra={"event_type": action}
+        )
 
 
 def _check_access(sb, programme_id: str, user: CurrentUser) -> dict:
@@ -223,24 +227,33 @@ def create_programme_from_fields(
 
 @router.get("/")
 def list_programmes(
+    page: PageParams = Depends(PageParams.as_query),
     user: CurrentUser = Depends(get_current_user),
+    client_id: str | None = Query(None, description="Filter by client ID"),
     farm_id: str | None = Query(None, description="Filter by farm ID"),
+    status: str | None = Query(None, description="Filter by programme status"),
 ):
     """List programmes. Agents see own, admins see all."""
     sb = get_supabase_admin()
 
     query = sb.table("programmes").select(
-        "*, programme_blocks(id, name, crop, area_ha, blend_group)"
-    ).is_("deleted_at", "null").order("created_at", desc=True)
+        "*, programme_blocks(id, name, crop, area_ha, blend_group)",
+        count="exact",
+    ).is_("deleted_at", "null")
 
     if user.role != "admin":
         query = query.eq("agent_id", user.id)
 
+    if client_id:
+        query = query.eq("client_id", client_id)
     if farm_id:
         query = query.eq("farm_id", farm_id)
+    if status:
+        query = query.eq("status", status)
 
+    query = apply_page(query, page, default_order="created_at")
     result = query.execute()
-    return result.data or []
+    return Page.from_result(result, page)
 
 
 @router.get("/{programme_id}")
@@ -489,10 +502,24 @@ def preview_schedule(programme_id: str, user: CurrentUser = Depends(get_current_
             except Exception:
                 pass
 
+        # Look up crop type
+        crop_type = "annual"
+        try:
+            ct = sb.table("crop_requirements").select("crop_type").eq("crop", crop).limit(1).execute()
+            if ct.data:
+                crop_type = ct.data[0].get("crop_type", "annual") or "annual"
+            elif base_crop != crop:
+                ct = sb.table("crop_requirements").select("crop_type").eq("crop", base_crop).limit(1).execute()
+                if ct.data:
+                    crop_type = ct.data[0].get("crop_type", "annual") or "annual"
+        except Exception:
+            pass
+
         block_info.append({
             "block_id": b["id"],
             "block_name": b["name"],
             "crop": crop,
+            "crop_type": crop_type,
             "growth_stages": stages,
             "nutrient_targets": b.get("nutrient_targets", []),
             "accepted_methods": accepted_methods,
