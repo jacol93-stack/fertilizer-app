@@ -941,6 +941,7 @@ def record_application(
 
     result = sb.table("programme_applications").insert(data).execute()
     _audit(sb, user, "application_record", programme_id, {"block_id": body.block_id, "status": body.status})
+    app_row = result.data[0] if result.data else None
 
     # Competitor product alert
     if not body.is_sapling_product:
@@ -950,7 +951,23 @@ def record_application(
             "product_type": body.product_type,
         })
 
-    return result.data[0] if result.data else data
+    # Off-programme / rate-deviation detector. Raises a 'suggested'
+    # adjustment if the actual diverges from the plan. The agronomist
+    # reviews via the same adjustments queue.
+    if body.status == "applied" and app_row:
+        try:
+            from app.services.adjustment_detector import detect_off_programme_adjustment
+            detect_off_programme_adjustment(
+                sb,
+                programme_id=programme_id,
+                block_id=body.block_id,
+                application_id=app_row["id"],
+                created_by=user.id,
+            )
+        except Exception:
+            pass  # Non-critical; application is saved regardless
+
+    return app_row if app_row else data
 
 
 @router.get("/{programme_id}/applications")
@@ -1205,6 +1222,58 @@ def delete_blend(
     return {"deleted": True}
 
 
+class ManualPlanRequest(BaseModel):
+    """Bulk replace a programme's blends with a hand-built plan.
+
+    The agent defines each application manually — no auto-generation,
+    no soil-engine scaling. Soil/leaf data (if present) still flows
+    into the validator so the agent gets feedback on their plan, but
+    it doesn't *drive* the plan.
+    """
+    replace_existing: bool = False
+    blends: list[BlendCreate] = Field(..., min_length=1)
+
+
+@router.post("/{programme_id}/manual-plan", status_code=201)
+def manual_plan(
+    programme_id: str,
+    body: ManualPlanRequest,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Write a hand-built plan. Used by the 'start blank' wizard path.
+
+    If replace_existing is True, existing programme_blends are
+    deleted before the new list is inserted — safe because
+    programme_blends is a cache layer derived from blocks + build
+    decisions.
+    """
+    sb = get_supabase_admin()
+    _check_access(sb, programme_id, user)
+
+    if body.replace_existing:
+        # Unlink actual applications from blends we're about to delete
+        sb.table("programme_applications") \
+            .update({"planned_blend_id": None}) \
+            .eq("programme_id", programme_id).execute()
+        sb.table("programme_blends").delete() \
+            .eq("programme_id", programme_id).execute()
+
+    rows = []
+    for b in body.blends:
+        data = b.model_dump(exclude_none=True)
+        data["programme_id"] = programme_id
+        if "blend_nutrients" in data:
+            data["blend_nutrients"] = _sanitize_nutrients(data["blend_nutrients"])
+        rows.append(data)
+
+    inserted = sb.table("programme_blends").insert(rows).execute().data or []
+    _audit(sb, user, "manual_plan", programme_id, {
+        "inserted": len(inserted),
+        "replace_existing": body.replace_existing,
+    })
+    return {"inserted": len(inserted), "blends": inserted}
+
+
 class EditProposal(BaseModel):
     """A set of hypothetical edits to preview against the current plan."""
     updates: list[dict] = Field(default_factory=list)
@@ -1422,6 +1491,23 @@ def rebase_programme(
         raise HTTPException(400, "Nothing to snapshot — programme has no blocks.")
     _audit(sb, user, "programme_rebase", programme_id, {"baseline_id": baseline["id"]})
     return baseline
+
+
+@router.get("/{programme_id}/compare")
+def compare_programme(
+    programme_id: str,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Three-way comparison per block:
+      baseline (frozen at activation) vs current (live plan) vs
+      applied (recorded actuals). Returns per-month diff rows with
+      status (unchanged/edited/added/removed/applied_only) and the
+      list of applied adjustments that attribute each divergence.
+    """
+    from app.services.plan_compare import compare_plan
+    sb = get_supabase_admin()
+    _check_access(sb, programme_id, user)
+    return compare_plan(sb, programme_id)
 
 
 @router.get("/{programme_id}/validate")

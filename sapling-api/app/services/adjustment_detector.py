@@ -204,6 +204,138 @@ def detect_soil_adjustment(
     return None
 
 
+def detect_off_programme_adjustment(
+    sb,
+    programme_id: str,
+    block_id: str | None,
+    application_id: str,
+    created_by: str | None = None,
+) -> dict | None:
+    """Raise a suggested adjustment when an actual application was off-plan:
+
+      * No planned_blend_id set (agent recorded something the plan didn't
+        call for — a corrective spray, extra topdress, whatever).
+      * OR actual_rate_kg_ha differs from the planned rate by more than
+        the variability_margin, meaning the farmer delivered a very
+        different dose than the programme prescribed.
+
+    The proposer (adjustment_proposer) will consume the suggestion and
+    propose how to rebalance the remaining plan — typically by scaling
+    future blends down when nutrients were over-delivered or up when
+    under-delivered.
+    """
+    try:
+        app_r = (
+            sb.table("programme_applications")
+            .select("*")
+            .eq("id", application_id)
+            .limit(1)
+            .execute()
+        )
+        if not app_r.data:
+            return None
+        app = app_r.data[0]
+
+        if app.get("status") and app["status"] != "applied":
+            return None
+
+        actual_rate = float(app.get("actual_rate_kg_ha") or 0)
+        planned_id = app.get("planned_blend_id")
+
+        margin = _load_variability_margin(sb)
+        threshold = margin / 100.0  # e.g. 0.15 for 15%
+
+        off_plan_reason: str | None = None
+        deviation_pct: float | None = None
+        planned_blend: dict | None = None
+
+        if not planned_id:
+            # Truly unplanned action
+            off_plan_reason = "unplanned_application"
+        else:
+            planned = (
+                sb.table("programme_blends")
+                .select("*")
+                .eq("id", planned_id)
+                .limit(1)
+                .execute()
+                .data
+            )
+            if planned:
+                planned_blend = planned[0]
+                planned_rate = float(planned_blend.get("rate_kg_ha") or 0)
+                if planned_rate > 0.01 and actual_rate > 0.01:
+                    deviation_pct = (actual_rate - planned_rate) / planned_rate
+                    if abs(deviation_pct) >= threshold:
+                        off_plan_reason = "rate_deviation"
+
+        if not off_plan_reason:
+            return None
+
+        # Build the trigger snapshot
+        trigger_data = {
+            "application_id": application_id,
+            "reason": off_plan_reason,
+            "product_name": app.get("product_name"),
+            "product_type": app.get("product_type"),
+            "is_sapling_product": app.get("is_sapling_product"),
+            "actual_rate_kg_ha": actual_rate,
+            "method": app.get("method"),
+            "actual_date": app.get("actual_date"),
+        }
+        if planned_blend:
+            trigger_data["planned_blend_id"] = planned_blend["id"]
+            trigger_data["planned_rate_kg_ha"] = planned_blend.get("rate_kg_ha")
+            trigger_data["deviation_pct"] = (
+                round(deviation_pct * 100, 1) if deviation_pct is not None else None
+            )
+            trigger_data["margin_pct_used"] = margin
+
+        # Short human summary for the notes field
+        if off_plan_reason == "unplanned_application":
+            product = app.get("product_name") or "unlabelled product"
+            summary = (
+                f"Off-plan application: {product} at {actual_rate} kg/ha "
+                f"(not in programme)"
+            )
+        else:
+            direction = "over" if (deviation_pct or 0) > 0 else "under"
+            summary = (
+                f"Rate {direction} plan by "
+                f"{abs(deviation_pct or 0) * 100:.0f}% — applied {actual_rate} "
+                f"kg/ha vs planned {planned_blend.get('rate_kg_ha') if planned_blend else '?'}"
+            )
+
+        row = {
+            "programme_id": programme_id,
+            "block_id": block_id or app.get("block_id"),
+            "trigger_type": "off_programme_action",
+            "trigger_id": application_id,
+            "trigger_data": trigger_data,
+            "adjustment_data": {
+                "action": "rebalance_remaining",
+                "reason": off_plan_reason,
+                "deviation_pct": (
+                    round(deviation_pct * 100, 1) if deviation_pct is not None else None
+                ),
+                "summary": summary,
+            },
+            "notes": summary,
+            "created_by": created_by,
+            "status": "suggested",
+        }
+        result = sb.table("programme_adjustments").insert(row).execute()
+        if result.data:
+            logger.info(
+                "off-programme adjustment suggested: programme=%s reason=%s",
+                programme_id, off_plan_reason,
+            )
+            return result.data[0]
+    except Exception as e:
+        logger.warning("detect_off_programme_adjustment failed: %s", e, exc_info=True)
+    return None
+
+
 def detect_leaf_adjustment(
     sb,
     programme_id: str,
