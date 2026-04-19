@@ -279,9 +279,11 @@ def update_programme(
     body: ProgrammeUpdate,
     user: CurrentUser = Depends(get_current_user),
 ):
-    """Update programme metadata."""
+    """Update programme metadata. A status transition draft → active
+    snapshots the programme as the baseline, which every later
+    comparison anchors to."""
     sb = get_supabase_admin()
-    _check_access(sb, programme_id, user)
+    prog_before = _check_access(sb, programme_id, user)
 
     updates = body.model_dump(exclude_none=True)
     if not updates:
@@ -289,6 +291,30 @@ def update_programme(
 
     result = sb.table("programmes").update(updates).eq("id", programme_id).execute()
     _audit(sb, user, "programme_update", programme_id, updates)
+
+    # Snapshot on activation. If a baseline already exists (e.g., re-
+    # activation after a pause), we leave it alone unless nothing exists.
+    becoming_active = (
+        updates.get("status") == "active"
+        and (prog_before.get("status") or "draft") != "active"
+    )
+    if becoming_active:
+        try:
+            from app.services.baseline_manager import (
+                create_baseline,
+                get_current_baseline,
+            )
+            existing = get_current_baseline(sb, programme_id)
+            if not existing:
+                create_baseline(
+                    sb,
+                    programme_id=programme_id,
+                    reason="activation",
+                    created_by=user.id,
+                )
+        except Exception:
+            pass  # Non-critical — activation succeeds regardless
+
     return result.data[0] if result.data else {"id": programme_id}
 
 
@@ -1001,6 +1027,158 @@ def list_adjustments(
         q = q.eq("status", status)
     result = q.order("created_at", desc=True).execute()
     return result.data or []
+
+
+# ── Baselines + plan validation ──────────────────────────────────────────
+
+
+@router.get("/{programme_id}/baseline")
+def get_baseline(programme_id: str, user: CurrentUser = Depends(get_current_user)):
+    """Return the current baseline for this programme, or 404 if none
+    exists (programme hasn't been activated yet)."""
+    from app.services.baseline_manager import get_current_baseline
+    sb = get_supabase_admin()
+    _check_access(sb, programme_id, user)
+    baseline = get_current_baseline(sb, programme_id)
+    if not baseline:
+        raise HTTPException(404, "No baseline yet — activate the programme to snapshot.")
+    return baseline
+
+
+@router.get("/{programme_id}/baselines")
+def list_programme_baselines(
+    programme_id: str,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """List all baselines (activation + any manual rebases) for audit."""
+    from app.services.baseline_manager import list_baselines
+    sb = get_supabase_admin()
+    _check_access(sb, programme_id, user)
+    return list_baselines(sb, programme_id)
+
+
+class ManualRebaseRequest(BaseModel):
+    notes: str | None = None
+
+
+@router.post("/{programme_id}/baseline/rebase", status_code=201)
+def rebase_programme(
+    programme_id: str,
+    body: ManualRebaseRequest | None = None,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Take a new baseline snapshot of the programme's current state,
+    superseding the previous one. Use when the plan has drifted
+    enough that 'what changed since activation' is no longer the
+    useful comparison — e.g., after a big mid-season replan."""
+    from app.services.baseline_manager import create_baseline
+    sb = get_supabase_admin()
+    _check_access(sb, programme_id, user)
+
+    notes = body.notes if body else None
+    baseline = create_baseline(
+        sb,
+        programme_id=programme_id,
+        reason="manual_rebase",
+        created_by=user.id,
+        notes=notes,
+    )
+    if not baseline:
+        raise HTTPException(400, "Nothing to snapshot — programme has no blocks.")
+    _audit(sb, user, "programme_rebase", programme_id, {"baseline_id": baseline["id"]})
+    return baseline
+
+
+@router.get("/{programme_id}/validate")
+def validate_programme(
+    programme_id: str,
+    block_id: str | None = Query(None, description="Validate one block only"),
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Run the plan validator on the current programme state.
+
+    Returns per-nutrient deltas vs the block's nutrient targets,
+    season totals, structural warnings, and any leaf flags from a
+    linked leaf analysis. Useful after an edit to see if the plan
+    still makes agronomic sense.
+
+    If block_id is given, validates just that block. Otherwise
+    validates each block independently and returns a dict of
+    block_id → feedback.
+    """
+    from app.services.plan_validator import validate_plan
+    sb = get_supabase_admin()
+    _check_access(sb, programme_id, user)
+
+    blocks_q = sb.table("programme_blocks").select("*").eq("programme_id", programme_id)
+    if block_id:
+        blocks_q = blocks_q.eq("id", block_id)
+    blocks = blocks_q.execute().data or []
+    if not blocks:
+        raise HTTPException(404, "No blocks found")
+
+    # Pull all blends once, bucket by blend_group for per-block attribution
+    all_blends = (
+        sb.table("programme_blends")
+        .select("*")
+        .eq("programme_id", programme_id)
+        .execute()
+        .data
+    ) or []
+
+    # Recorded applications for this programme
+    apps = (
+        sb.table("programme_applications")
+        .select("*")
+        .eq("programme_id", programme_id)
+        .execute()
+        .data
+    ) or []
+
+    results: dict = {}
+    for b in blocks:
+        group = b.get("blend_group")
+        if group:
+            block_blends = [x for x in all_blends if x.get("blend_group") == group]
+        else:
+            block_blends = []
+        block_apps = [a for a in apps if a.get("block_id") == b["id"]]
+
+        # Best-effort leaf classifications for this block
+        leaf_classifications = None
+        try:
+            leaf = (
+                sb.table("leaf_analyses")
+                .select("classifications, sample_date")
+                .eq("programme_id", programme_id)
+                .eq("block_id", b["id"])
+                .is_("deleted_at", "null")
+                .order("sample_date", desc=True)
+                .limit(1)
+                .execute()
+                .data
+            )
+            if leaf and leaf[0].get("classifications"):
+                leaf_classifications = leaf[0]["classifications"]
+        except Exception:
+            pass
+
+        feedback = validate_plan(
+            plan_blends=block_blends,
+            nutrient_targets=b.get("nutrient_targets"),
+            applications_applied=block_apps,
+            leaf_classifications=leaf_classifications,
+        )
+        results[b["id"]] = {
+            "block_name": b.get("name"),
+            "crop": b.get("crop"),
+            "blend_group": group,
+            **feedback,
+        }
+
+    if block_id:
+        return results.get(block_id) or {}
+    return {"blocks": results}
 
 
 @router.get("/{programme_id}/adjustments/{adj_id}/proposal")
