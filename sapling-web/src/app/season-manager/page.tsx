@@ -12,11 +12,11 @@ import {
 } from "@/components/ui/card";
 import {
   Calendar,
-  Plus,
   Loader2,
   ChevronRight,
   Leaf,
   PencilRuler,
+  Sparkles,
 } from "lucide-react";
 
 import type { Programme } from "@/lib/season-constants";
@@ -81,31 +81,41 @@ function SeasonManagerPage() {
             className="cursor-pointer border-2 border-transparent transition-all hover:border-[var(--sapling-orange)] hover:shadow-md"
             onClick={() => router.push("/season-manager/new")}
           >
-            <CardContent className="flex items-center gap-4 py-6">
+            <CardContent className="flex items-start gap-4 py-6">
               <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-[var(--sapling-orange)]">
-                <Plus className="size-6" />
+                <Sparkles className="size-6" />
               </div>
-              <div>
-                <p className="font-semibold text-[var(--sapling-dark)]">Build New Programme</p>
-                <p className="text-sm text-muted-foreground">
-                  Full builder — upload analysis, define blocks, generate blends
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-[var(--sapling-dark)]">Auto-Generate</p>
+                  <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--sapling-orange)]">
+                    Recommended
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  From soil analysis → nutrient targets → optimized blends, per block
                 </p>
               </div>
             </CardContent>
           </Card>
 
           <Card
-            className="cursor-pointer border-2 border-transparent transition-all hover:border-[var(--sapling-orange)] hover:shadow-md"
+            className="cursor-pointer border-2 border-transparent transition-all hover:border-slate-500 hover:shadow-md"
             onClick={() => router.push("/season-manager/blank")}
           >
-            <CardContent className="flex items-center gap-4 py-6">
+            <CardContent className="flex items-start gap-4 py-6">
               <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
                 <PencilRuler className="size-6" />
               </div>
-              <div>
-                <p className="font-semibold text-[var(--sapling-dark)]">Start Blank Programme</p>
-                <p className="text-sm text-muted-foreground">
-                  Build the plan by hand — soil / leaf data still drives feedback if linked
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-[var(--sapling-dark)]">Build Manually</p>
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-600">
+                    Full control
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Define every application by hand — soil / leaf data drives validation if linked
                 </p>
               </div>
             </CardContent>
