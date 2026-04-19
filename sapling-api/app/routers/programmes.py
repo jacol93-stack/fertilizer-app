@@ -1029,6 +1029,341 @@ def list_adjustments(
     return result.data or []
 
 
+# ── Blend editing (phase B) ──────────────────────────────────────────────
+# Once a programme exists, the agent can edit individual blends directly
+# instead of regenerating. These endpoints cover that. Edits apply
+# directly in both draft and active states — audit log records them so
+# the plan-vs-baseline comparison view can attribute changes.
+# The data-driven adjustment queue is reserved for triggers from new
+# soil/leaf/off-programme data, not manual edits.
+
+
+NUTRIENT_ALLOWED = {"n", "p", "k", "ca", "mg", "s", "fe", "b", "mn", "zn", "mo", "cu"}
+
+
+class BlendCreate(BaseModel):
+    blend_group: str = Field(..., min_length=1, max_length=10)
+    stage_name: str | None = Field(None, max_length=100)
+    application_month: int | None = Field(None, ge=1, le=12)
+    method: str | None = Field(None, max_length=50)
+    rate_kg_ha: float | None = Field(None, ge=0, le=10_000)
+    total_kg: float | None = Field(None, ge=0, le=1_000_000)
+    sa_notation: str | None = Field(None, max_length=100)
+    blend_nutrients: dict[str, float] | None = None
+    blend_recipe: list[dict] | None = None
+    notes: str | None = None
+
+
+class BlendUpdate(BaseModel):
+    blend_group: str | None = Field(None, min_length=1, max_length=10)
+    stage_name: str | None = Field(None, max_length=100)
+    application_month: int | None = Field(None, ge=1, le=12)
+    method: str | None = Field(None, max_length=50)
+    rate_kg_ha: float | None = Field(None, ge=0, le=10_000)
+    total_kg: float | None = Field(None, ge=0, le=1_000_000)
+    sa_notation: str | None = Field(None, max_length=100)
+    blend_nutrients: dict[str, float] | None = None
+    blend_recipe: list[dict] | None = None
+    notes: str | None = None
+
+
+def _sanitize_nutrients(nut: dict[str, float] | None) -> dict[str, float] | None:
+    """Strip unknown keys, coerce to float, drop negatives. Ensures a
+    consumer of blend_nutrients can rely on the shape."""
+    if nut is None:
+        return None
+    out: dict[str, float] = {}
+    for k, v in nut.items():
+        key = k.lower().strip()
+        if key not in NUTRIENT_ALLOWED:
+            continue
+        try:
+            num = float(v)
+        except (TypeError, ValueError):
+            continue
+        if num < 0:
+            continue
+        out[key] = round(num, 3)
+    return out
+
+
+@router.post("/{programme_id}/blends", status_code=201)
+def create_blend(
+    programme_id: str,
+    body: BlendCreate,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Add a new application to a programme. Use for insertions the
+    auto-generator didn't produce — e.g., a corrective foliar spray."""
+    sb = get_supabase_admin()
+    _check_access(sb, programme_id, user)
+
+    data = body.model_dump(exclude_none=True)
+    data["programme_id"] = programme_id
+    if "blend_nutrients" in data:
+        data["blend_nutrients"] = _sanitize_nutrients(data["blend_nutrients"])
+
+    result = sb.table("programme_blends").insert(data).execute()
+    if not result.data:
+        raise HTTPException(500, "Failed to create blend")
+    blend = result.data[0]
+    _audit(sb, user, "blend_add", programme_id, {
+        "blend_id": blend["id"],
+        "blend_group": blend.get("blend_group"),
+        "application_month": blend.get("application_month"),
+    })
+    return blend
+
+
+@router.patch("/{programme_id}/blends/{blend_id}")
+def update_blend(
+    programme_id: str,
+    blend_id: str,
+    body: BlendUpdate,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Edit an existing blend — rate, nutrients, month, method, etc.
+    Audit-logged so the comparison view can highlight manual edits
+    against the baseline."""
+    sb = get_supabase_admin()
+    _check_access(sb, programme_id, user)
+
+    updates = body.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(400, "No fields to update")
+    if "blend_nutrients" in updates:
+        updates["blend_nutrients"] = _sanitize_nutrients(updates["blend_nutrients"])
+
+    # Capture before-state for audit
+    before = (
+        sb.table("programme_blends")
+        .select("*")
+        .eq("id", blend_id)
+        .eq("programme_id", programme_id)
+        .limit(1)
+        .execute()
+        .data
+    )
+    if not before:
+        raise HTTPException(404, "Blend not found")
+
+    result = (
+        sb.table("programme_blends")
+        .update(updates)
+        .eq("id", blend_id)
+        .eq("programme_id", programme_id)
+        .execute()
+    )
+    _audit(sb, user, "blend_update", programme_id, {
+        "blend_id": blend_id,
+        "changed_fields": list(updates.keys()),
+        # Capture the small, useful delta — full snapshots go in audit
+        # only if the changed fields are numeric enough to matter.
+        "before": {k: before[0].get(k) for k in updates.keys() if k in before[0]},
+        "after": {k: updates[k] for k in updates.keys()},
+    })
+    return result.data[0] if result.data else {"id": blend_id}
+
+
+@router.delete("/{programme_id}/blends/{blend_id}")
+def delete_blend(
+    programme_id: str,
+    blend_id: str,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Remove an application from the programme. Hard delete —
+    programme_blends is cache-only, derived from blocks + generate."""
+    sb = get_supabase_admin()
+    _check_access(sb, programme_id, user)
+
+    before = (
+        sb.table("programme_blends")
+        .select("*")
+        .eq("id", blend_id)
+        .eq("programme_id", programme_id)
+        .limit(1)
+        .execute()
+        .data
+    )
+    if not before:
+        raise HTTPException(404, "Blend not found")
+
+    # Break FK: any programme_applications referencing this blend get
+    # their planned_blend_id nulled so the delete doesn't cascade-kill
+    # actual application records.
+    sb.table("programme_applications").update({"planned_blend_id": None}) \
+        .eq("planned_blend_id", blend_id).execute()
+
+    sb.table("programme_blends").delete() \
+        .eq("id", blend_id).eq("programme_id", programme_id).execute()
+
+    _audit(sb, user, "blend_delete", programme_id, {
+        "blend_id": blend_id,
+        "blend_group": before[0].get("blend_group"),
+        "application_month": before[0].get("application_month"),
+    })
+    return {"deleted": True}
+
+
+class EditProposal(BaseModel):
+    """A set of hypothetical edits to preview against the current plan."""
+    updates: list[dict] = Field(default_factory=list)
+    # Each dict: {id: str, ...BlendUpdate fields}
+    deletes: list[str] = Field(default_factory=list)
+    # List of blend IDs to treat as removed
+    creates: list[dict] = Field(default_factory=list)
+    # Each dict: BlendCreate fields; id is assigned '__new_N' for diffing
+
+
+@router.post("/{programme_id}/preview-edit")
+def preview_edit(
+    programme_id: str,
+    body: EditProposal,
+    block_id: str | None = Query(None, description="Constrain preview to a specific block"),
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Apply a set of hypothetical edits in memory and run the validator
+    against the resulting plan, per block. No persistence.
+
+    Returns the same shape as /validate so the UI can render identical
+    feedback panels for current state and proposed state.
+    """
+    from app.services.plan_validator import validate_plan
+    sb = get_supabase_admin()
+    _check_access(sb, programme_id, user)
+
+    blocks_q = sb.table("programme_blocks").select("*").eq("programme_id", programme_id)
+    if block_id:
+        blocks_q = blocks_q.eq("id", block_id)
+    blocks = blocks_q.execute().data or []
+    if not blocks:
+        raise HTTPException(404, "No blocks found")
+
+    all_blends = (
+        sb.table("programme_blends")
+        .select("*")
+        .eq("programme_id", programme_id)
+        .execute()
+        .data
+    ) or []
+
+    # Apply proposed edits to an in-memory copy
+    deletes = set(body.deletes or [])
+    updates_by_id = {u["id"]: u for u in (body.updates or []) if u.get("id")}
+
+    edited_blends: list[dict] = []
+    for b in all_blends:
+        if b["id"] in deletes:
+            continue
+        if b["id"] in updates_by_id:
+            merged = {**b, **{k: v for k, v in updates_by_id[b["id"]].items() if k != "id"}}
+            if "blend_nutrients" in merged:
+                merged["blend_nutrients"] = _sanitize_nutrients(merged["blend_nutrients"])
+            edited_blends.append(merged)
+        else:
+            edited_blends.append(b)
+
+    # Append creates with synthetic IDs for diff clarity
+    for i, new_blend in enumerate(body.creates or []):
+        merged = dict(new_blend)
+        merged["id"] = f"__new_{i}"
+        merged["programme_id"] = programme_id
+        if "blend_nutrients" in merged:
+            merged["blend_nutrients"] = _sanitize_nutrients(merged["blend_nutrients"])
+        edited_blends.append(merged)
+
+    apps = (
+        sb.table("programme_applications")
+        .select("*")
+        .eq("programme_id", programme_id)
+        .execute()
+        .data
+    ) or []
+
+    results: dict = {}
+    for b in blocks:
+        group = b.get("blend_group")
+        # For diff display: current state per block (unchanged), proposed per block (after edits)
+        current_block_blends = [x for x in all_blends if x.get("blend_group") == group] if group else []
+        proposed_block_blends = [x for x in edited_blends if x.get("blend_group") == group] if group else []
+        block_apps = [a for a in apps if a.get("block_id") == b["id"]]
+
+        leaf_classifications = None
+        try:
+            leaf = (
+                sb.table("leaf_analyses")
+                .select("classifications")
+                .eq("programme_id", programme_id)
+                .eq("block_id", b["id"])
+                .is_("deleted_at", "null")
+                .order("sample_date", desc=True)
+                .limit(1)
+                .execute()
+                .data
+            )
+            if leaf and leaf[0].get("classifications"):
+                leaf_classifications = leaf[0]["classifications"]
+        except Exception:
+            pass
+
+        current_fb = validate_plan(
+            plan_blends=current_block_blends,
+            nutrient_targets=b.get("nutrient_targets"),
+            applications_applied=block_apps,
+            leaf_classifications=leaf_classifications,
+        )
+        proposed_fb = validate_plan(
+            plan_blends=proposed_block_blends,
+            nutrient_targets=b.get("nutrient_targets"),
+            applications_applied=block_apps,
+            leaf_classifications=leaf_classifications,
+        )
+        results[b["id"]] = {
+            "block_name": b.get("name"),
+            "crop": b.get("crop"),
+            "blend_group": group,
+            "current": current_fb,
+            "proposed": proposed_fb,
+            "net_change": _summarise_change(current_fb, proposed_fb),
+        }
+
+    if block_id:
+        return results.get(block_id) or {}
+    return {"blocks": results}
+
+
+def _summarise_change(current_fb: dict, proposed_fb: dict) -> dict:
+    """Highlight the nutrients that actually moved under the proposed edit."""
+    changes = []
+    cur_planned = (current_fb.get("season_totals") or {}).get("planned", {})
+    new_planned = (proposed_fb.get("season_totals") or {}).get("planned", {})
+    all_keys = set(cur_planned) | set(new_planned)
+    for k in sorted(all_keys):
+        before = float(cur_planned.get(k, 0.0))
+        after = float(new_planned.get(k, 0.0))
+        diff = round(after - before, 2)
+        if abs(diff) >= 0.05:
+            changes.append({
+                "nutrient": k,
+                "before": round(before, 2),
+                "after": round(after, 2),
+                "delta_kg_ha": diff,
+            })
+    # Warning-count delta signals whether the edit moves things closer
+    # to agronomic sense or further from it.
+    return {
+        "changed_nutrients": changes,
+        "warnings_before": len(current_fb.get("warnings") or []),
+        "warnings_after": len(proposed_fb.get("warnings") or []),
+        "status_change": {
+            "under_before": current_fb["summary"].get("under_target_count"),
+            "under_after": proposed_fb["summary"].get("under_target_count"),
+            "over_before": current_fb["summary"].get("over_target_count"),
+            "over_after": proposed_fb["summary"].get("over_target_count"),
+        },
+    }
+
+
 # ── Baselines + plan validation ──────────────────────────────────────────
 
 
