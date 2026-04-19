@@ -987,12 +987,205 @@ def create_adjustment(
 
 
 @router.get("/{programme_id}/adjustments")
-def list_adjustments(programme_id: str, user: CurrentUser = Depends(get_current_user)):
-    """List all adjustments for a programme."""
+def list_adjustments(
+    programme_id: str,
+    status: str | None = Query(None, description="Filter by status: suggested/approved/applied/rejected"),
+    user: CurrentUser = Depends(get_current_user),
+):
+    """List adjustments for a programme. Filter by review status for
+    the tracker's 'pending review' queue."""
     sb = get_supabase_admin()
     _check_access(sb, programme_id, user)
-    result = sb.table("programme_adjustments").select("*").eq("programme_id", programme_id).order("created_at", desc=True).execute()
+    q = sb.table("programme_adjustments").select("*").eq("programme_id", programme_id)
+    if status:
+        q = q.eq("status", status)
+    result = q.order("created_at", desc=True).execute()
     return result.data or []
+
+
+@router.get("/{programme_id}/adjustments/{adj_id}/proposal")
+def get_adjustment_proposal(
+    programme_id: str,
+    adj_id: str,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Compute a concrete proposal for a suggested adjustment without
+    persisting. Returns per-blend diff + season-total comparison so the
+    agronomist can review before apply (phase 3)."""
+    from app.services.adjustment_proposer import propose_from_adjustment
+    sb = get_supabase_admin()
+    _check_access(sb, programme_id, user)
+
+    # Verify adjustment belongs to this programme
+    adj = (
+        sb.table("programme_adjustments")
+        .select("programme_id")
+        .eq("id", adj_id)
+        .limit(1)
+        .execute()
+    )
+    if not adj.data or adj.data[0]["programme_id"] != programme_id:
+        raise HTTPException(404, "Adjustment not found for this programme")
+
+    return propose_from_adjustment(sb, adj_id)
+
+
+class AdjustmentReview(BaseModel):
+    status: str = Field(..., pattern="^(approved|rejected)$")
+    notes: str | None = None
+
+
+@router.post("/{programme_id}/adjustments/{adj_id}/review")
+def review_adjustment(
+    programme_id: str,
+    adj_id: str,
+    body: AdjustmentReview,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Mark an adjustment approved or rejected. Approving does NOT
+    automatically patch programme_blends — that's the explicit apply
+    step (phase 3). This is the review gate."""
+    from datetime import datetime, timezone
+    sb = get_supabase_admin()
+    _check_access(sb, programme_id, user)
+
+    update = {
+        "status": body.status,
+        "reviewed_at": datetime.now(timezone.utc).isoformat(),
+        "reviewed_by": user.id,
+    }
+    if body.notes:
+        update["notes"] = body.notes
+
+    result = (
+        sb.table("programme_adjustments")
+        .update(update)
+        .eq("id", adj_id)
+        .eq("programme_id", programme_id)
+        .execute()
+    )
+    _audit(sb, user, f"adjustment_{body.status}", programme_id, {"adjustment_id": adj_id})
+    return result.data[0] if result.data else {"id": adj_id}
+
+
+class AdjustmentApply(BaseModel):
+    force: bool = False
+    notes: str | None = None
+
+
+@router.post("/{programme_id}/adjustments/{adj_id}/apply")
+def apply_adjustment(
+    programme_id: str,
+    adj_id: str,
+    body: AdjustmentApply | None = None,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Write the proposed blend changes into programme_blends and mark
+    the adjustment as applied. Also syncs the block's nutrient_targets
+    cache so subsequent /generate calls use the new baseline.
+
+    Refuses to apply a 'suggested' adjustment unless body.force=True,
+    so the review step is the default gate. 'approved' applies freely.
+    Rejected or already-applied adjustments 400.
+    """
+    from datetime import datetime, timezone
+    from app.services.adjustment_proposer import propose_from_adjustment
+
+    sb = get_supabase_admin()
+    _check_access(sb, programme_id, user)
+    force = bool(body and body.force)
+
+    adj_r = (
+        sb.table("programme_adjustments")
+        .select("*")
+        .eq("id", adj_id)
+        .eq("programme_id", programme_id)
+        .limit(1)
+        .execute()
+    )
+    if not adj_r.data:
+        raise HTTPException(404, "Adjustment not found for this programme")
+    adj = adj_r.data[0]
+
+    current_status = adj.get("status") or "suggested"
+    if current_status in ("applied", "rejected"):
+        raise HTTPException(400, f"Adjustment is already {current_status}")
+    if current_status == "suggested" and not force:
+        raise HTTPException(
+            400,
+            "Adjustment is still 'suggested' — review it first, or pass force=true to apply directly.",
+        )
+
+    # Recompute the proposal on fresh data — don't trust a stale client view
+    proposal = propose_from_adjustment(sb, adj_id)
+    affected = proposal.get("affected_blends") or []
+
+    updated_count = 0
+    errors: list[dict] = []
+    for ab in affected:
+        if not ab.get("changed"):
+            continue
+        new_nut = ab["new"]["nutrients"]
+        new_rate = ab["new"]["rate_kg_ha"]
+        update = {
+            "blend_nutrients": {k: round(float(v), 3) for k, v in new_nut.items()},
+            "rate_kg_ha": new_rate,
+        }
+        try:
+            sb.table("programme_blends").update(update).eq("id", ab["id"]).execute()
+            updated_count += 1
+        except Exception as e:
+            errors.append({"blend_id": ab["id"], "error": str(e)[:200]})
+
+    # Sync the block's nutrient_targets cache from the triggering analysis,
+    # so subsequent /generate calls rebuild from the new baseline.
+    trigger_type = adj.get("trigger_type")
+    trigger_id = adj.get("trigger_id")
+    block_id = adj.get("block_id")
+    if trigger_type == "soil_analysis" and trigger_id and block_id:
+        try:
+            sa = (
+                sb.table("soil_analyses")
+                .select("nutrient_targets")
+                .eq("id", trigger_id)
+                .limit(1)
+                .execute()
+            )
+            if sa.data and sa.data[0].get("nutrient_targets"):
+                sb.table("programme_blocks").update({
+                    "nutrient_targets": sa.data[0]["nutrient_targets"],
+                    "soil_analysis_id": trigger_id,
+                }).eq("id", block_id).execute()
+        except Exception as e:
+            errors.append({"context": "sync_block_cache", "error": str(e)[:200]})
+
+    # Mark adjustment as applied
+    now = datetime.now(timezone.utc).isoformat()
+    final_update = {
+        "status": "applied",
+        "applied_at": now,
+        "applied_by": user.id,
+    }
+    if not adj.get("reviewed_at"):
+        final_update["reviewed_at"] = now
+        final_update["reviewed_by"] = user.id
+    if body and body.notes:
+        final_update["notes"] = body.notes
+    sb.table("programme_adjustments").update(final_update).eq("id", adj_id).execute()
+
+    _audit(sb, user, "adjustment_apply", programme_id, {
+        "adjustment_id": adj_id,
+        "blends_updated": updated_count,
+        "errors": len(errors),
+    })
+
+    return {
+        "adjustment_id": adj_id,
+        "status": "applied",
+        "blends_updated": updated_count,
+        "errors": errors,
+        "proposal_summary": proposal.get("summary", {}),
+    }
 
 
 @router.get("/{programme_id}/variance")

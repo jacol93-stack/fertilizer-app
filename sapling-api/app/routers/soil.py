@@ -518,6 +518,24 @@ def create_soil_analysis(body: SoilAnalysisCreate, user: CurrentUser = Depends(g
         except Exception:
             pass  # Non-critical
 
+        # Season tracker: fan out adjustment detection to every active
+        # programme block using this field. Detector handles its own errors.
+        try:
+            from app.services.adjustment_detector import (
+                detect_soil_adjustment,
+                find_programme_blocks_for_analysis,
+            )
+            for link in find_programme_blocks_for_analysis(sb, record["id"]):
+                detect_soil_adjustment(
+                    sb,
+                    programme_id=link["programme_id"],
+                    block_id=link["block_id"],
+                    new_analysis_id=record["id"],
+                    created_by=user.id,
+                )
+        except Exception:
+            pass  # Non-critical; save succeeds regardless
+
     _audit(sb, user, "create", "soil_analyses", record["id"])
     return record
 
@@ -788,6 +806,23 @@ def link_analysis_to_field(
     sb.table("fields").update({
         "latest_analysis_id": analysis_id,
     }).eq("id", body.field_id).execute()
+
+    # Fan out adjustment detection to any programme using this field
+    try:
+        from app.services.adjustment_detector import (
+            detect_soil_adjustment,
+            find_programme_blocks_for_analysis,
+        )
+        for link in find_programme_blocks_for_analysis(sb, analysis_id):
+            detect_soil_adjustment(
+                sb,
+                programme_id=link["programme_id"],
+                block_id=link["block_id"],
+                new_analysis_id=analysis_id,
+                created_by=user.id,
+            )
+    except Exception:
+        pass
 
     _audit(sb, user, "link_field", "soil_analyses", analysis_id, {"field_id": body.field_id})
 

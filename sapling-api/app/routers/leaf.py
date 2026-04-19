@@ -92,27 +92,20 @@ def save_leaf_analysis(body: LeafSaveRequest, user: CurrentUser = Depends(get_cu
     record = result.data[0]
     _audit(sb, user, "leaf_save", record["id"], {"crop": body.crop})
 
-    # If linked to a programme, create an adjustment record
-    if body.programme_id and body.classifications:
-        deficiencies = [k for k, v in body.classifications.items() if v in ("Deficient", "Low")]
-        if deficiencies:
-            try:
-                sb.table("programme_adjustments").insert({
-                    "programme_id": body.programme_id,
-                    "block_id": body.block_id,
-                    "trigger_type": "leaf_analysis",
-                    "trigger_id": record["id"],
-                    "trigger_data": {"crop": body.crop, "deficiencies": deficiencies},
-                    "adjustment_data": {
-                        "action": "foliar_correction_recommended",
-                        "deficient_elements": deficiencies,
-                        "foliar_recommendations": body.foliar_recommendations,
-                    },
-                    "notes": f"Leaf analysis showed deficiencies in {', '.join(deficiencies)}",
-                    "created_by": user.id,
-                }).execute()
-            except Exception:
-                pass  # Adjustment creation is best-effort
+    # If linked to a programme, fire the detector so the adjustment
+    # lands in the review queue with a full classification snapshot.
+    if body.programme_id:
+        try:
+            from app.services.adjustment_detector import detect_leaf_adjustment
+            detect_leaf_adjustment(
+                sb,
+                programme_id=body.programme_id,
+                block_id=body.block_id,
+                new_leaf_id=record["id"],
+                created_by=user.id,
+            )
+        except Exception:
+            pass
 
     return record
 
@@ -187,40 +180,28 @@ def link_to_programme(
         updates["block_id"] = block_id
     sb.table("leaf_analyses").update(updates).eq("id", analysis_id).execute()
 
-    # If there are deficiencies, create programme adjustment with foliar recs
+    # Fire the detector to land a suggested adjustment in the review queue
+    from app.services.adjustment_detector import detect_leaf_adjustment
+    adj = detect_leaf_adjustment(
+        sb,
+        programme_id=programme_id,
+        block_id=block_id,
+        new_leaf_id=analysis_id,
+        created_by=user.id,
+    )
+
     classifications = record.get("classifications") or {}
     deficiencies = [k for k, v in classifications.items() if v in ("Deficient", "Low")]
-
-    if deficiencies:
-        from app.services.leaf_engine import generate_leaf_recommendations
-        recs = generate_leaf_recommendations(
-            crop=record["crop"],
-            classifications=classifications,
-            deficiencies=[{"element": d, "shortfall_pct": 20} for d in deficiencies],
-            programme_id=programme_id,
-        )
-
-        sb.table("programme_adjustments").insert({
-            "programme_id": programme_id,
-            "block_id": block_id,
-            "trigger_type": "leaf_analysis",
-            "trigger_id": analysis_id,
-            "trigger_data": {"crop": record["crop"], "deficiencies": deficiencies},
-            "adjustment_data": {
-                "action": "foliar_correction_recommended",
-                "deficient_elements": deficiencies,
-                "foliar_recommendations": recs.get("foliar_recommendations"),
-            },
-            "notes": f"Leaf analysis linked — deficiencies in {', '.join(deficiencies)}",
-            "created_by": user.id,
-        }).execute()
-
     _audit(sb, user, "leaf_link_programme", analysis_id, {
         "programme_id": programme_id,
         "deficiencies": deficiencies,
     })
 
-    return {"linked": True, "deficiencies_found": len(deficiencies)}
+    return {
+        "linked": True,
+        "deficiencies_found": len(deficiencies),
+        "adjustment_id": adj["id"] if adj else None,
+    }
 
 
 @router.post("/{analysis_id}/delete", status_code=200)

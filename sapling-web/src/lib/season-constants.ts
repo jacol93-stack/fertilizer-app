@@ -145,6 +145,52 @@ export interface ProgrammeAdjustment {
   adjustment_data: unknown;
   notes: string | null;
   created_at: string;
+  status?: "suggested" | "approved" | "applied" | "rejected";
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
+  applied_at?: string | null;
+  applied_by?: string | null;
+}
+
+export interface AdjustmentProposal {
+  adjustment: ProgrammeAdjustment;
+  affected_blends: Array<{
+    id: string;
+    blend_group: string | null;
+    stage_name: string | null;
+    application_month: number | null;
+    method: string | null;
+    is_past: boolean;
+    is_applied: boolean;
+    changed: boolean;
+    old: {
+      rate_kg_ha: number | null;
+      nutrients: Record<string, number>;
+    };
+    new: {
+      rate_kg_ha: number | null;
+      nutrients: Record<string, number>;
+    };
+  }>;
+  summary: {
+    affected_count: number;
+    unchanged_count: number;
+    past_applications?: number;
+    scale_factors?: Record<string, number>;
+    introduced_nutrients?: string[];
+    season_totals?: {
+      old: Record<string, number>;
+      new: Record<string, number>;
+    };
+    reason?: string;
+    kind?: string;
+  };
+  proposed_foliar?: {
+    target_month: number;
+    deficient_elements: string[];
+    excess_elements: string[];
+    recommendations: unknown;
+  };
 }
 
 export interface CropNorm {
