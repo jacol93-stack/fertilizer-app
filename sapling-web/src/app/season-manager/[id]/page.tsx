@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { api } from "@/lib/api";
 import { useEffectiveAdmin } from "@/lib/use-effective-role";
@@ -27,6 +27,8 @@ import {
 import { RecordApplication } from "@/components/season-manager/record-application";
 import { VarianceView } from "@/components/season-manager/variance-view";
 import { AdjustmentsView } from "@/components/season-manager/adjustments-view";
+import { PlanEditor } from "@/components/season-manager/plan-editor";
+import { ComparisonView } from "@/components/season-manager/comparison-view";
 import { STATUS_COLORS, GROUP_COLORS, MONTH_NAMES } from "@/lib/season-constants";
 import type { Programme, Block, ProgrammeBlend } from "@/lib/season-constants";
 
@@ -45,16 +47,30 @@ interface ProgrammeDetail {
   blends: ProgrammeBlend[];
 }
 
-export default function ProgrammeTrackerPage() {
+export default function ProgrammeTrackerPageWrapper() {
+  return (
+    <Suspense>
+      <ProgrammeTrackerPage />
+    </Suspense>
+  );
+}
+
+function ProgrammeTrackerPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isAdmin = useEffectiveAdmin();
   const programmeId = params.id as string;
 
   const [programme, setProgramme] = useState<ProgrammeDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(() => {
+    const t = searchParams.get("tab");
+    return t && ["overview", "edit", "applications", "adjustments", "compare", "variance"].includes(t)
+      ? t
+      : "overview";
+  });
 
   const loadProgramme = () => {
     api.get<ProgrammeDetail>(`/api/programmes/${programmeId}`)
@@ -121,9 +137,11 @@ export default function ProgrammeTrackerPage() {
 
   const tabs = [
     { key: "overview", label: "Overview" },
+    { key: "edit", label: "Edit Plan" },
     { key: "applications", label: "Applications" },
-    { key: "variance", label: "Variance" },
     { key: "adjustments", label: "Adjustments" },
+    { key: "compare", label: "Compare" },
+    { key: "variance", label: "Variance" },
   ];
 
   return (
@@ -320,12 +338,22 @@ export default function ProgrammeTrackerPage() {
           </div>
         )}
 
+        {/* ═══════════ EDIT TAB ═══════════ */}
+        {activeTab === "edit" && (
+          <PlanEditor programmeId={programmeId} onAfterSave={loadProgramme} />
+        )}
+
         {/* ═══════════ APPLICATIONS TAB ═══════════ */}
         {activeTab === "applications" && (
           <RecordApplication
             programmeId={programmeId}
             blocks={programme.blocks as (Block & { id: string })[]}
           />
+        )}
+
+        {/* ═══════════ COMPARE TAB ═══════════ */}
+        {activeTab === "compare" && (
+          <ComparisonView programmeId={programmeId} />
         )}
 
         {/* ═══════════ VARIANCE TAB ═══════════ */}

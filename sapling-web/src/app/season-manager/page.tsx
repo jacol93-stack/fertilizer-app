@@ -16,7 +16,7 @@ import {
   Loader2,
   ChevronRight,
   Leaf,
-  Play,
+  PencilRuler,
 } from "lucide-react";
 
 import type { Programme } from "@/lib/season-constants";
@@ -94,7 +94,22 @@ function SeasonManagerPage() {
             </CardContent>
           </Card>
 
-          {/* Cold Start removed — all programmes go through the unified builder */}
+          <Card
+            className="cursor-pointer border-2 border-transparent transition-all hover:border-[var(--sapling-orange)] hover:shadow-md"
+            onClick={() => router.push("/season-manager/blank")}
+          >
+            <CardContent className="flex items-center gap-4 py-6">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                <PencilRuler className="size-6" />
+              </div>
+              <div>
+                <p className="font-semibold text-[var(--sapling-dark)]">Start Blank Programme</p>
+                <p className="text-sm text-muted-foreground">
+                  Build the plan by hand — soil / leaf data still drives feedback if linked
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {loading ? (
