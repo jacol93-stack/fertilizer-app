@@ -91,12 +91,12 @@ function BlankProgrammePage() {
                 setClientId(sel.client_id || "");
                 setFarmId(sel.farm_id || "");
                 if (!programmeName && sel.client_name) {
-                  const y = new Date().getFullYear();
-                  setProgrammeName(`${sel.client_name} ${sel.farm_name ? `- ${sel.farm_name} ` : ""}${y}/${y + 1}`);
+                  setProgrammeName(sel.farm_name ? `${sel.client_name} — ${sel.farm_name}` : sel.client_name);
                 }
               }}
               initialClient={clientName}
               initialFarm={farmName}
+              showField={false}
             />
 
             <div className="grid gap-4 sm:grid-cols-2">

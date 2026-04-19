@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/card";
 import { ChevronRight, ChevronLeft, Loader2, Leaf, Check, AlertTriangle } from "lucide-react";
 
-import { BlockEditor } from "@/components/season-manager/block-editor";
+import { FieldPicker } from "@/components/season-manager/field-picker";
 import { ScheduleReview, type BlockInfo, type UserApplication } from "@/components/season-manager/schedule-review";
 import { BlendGroups, type BlendGroupData } from "@/components/season-manager/blend-groups";
 import type { Programme, Block, CropNorm, SoilAnalysis } from "@/lib/season-constants";
@@ -76,7 +76,6 @@ function SeasonBuilderPage() {
   const [crops, setCrops] = useState<CropNorm[]>([]);
   const [availableAnalyses, setAvailableAnalyses] = useState<SoilAnalysis[]>([]);
   const [clientFarms, setClientFarms] = useState<Array<{ id: string; name: string }>>([]);
-  const [addingFromFarm, setAddingFromFarm] = useState(false);
 
   // ── Resolve URL params (client/farm IDs → names + blocks) ───────
   useEffect(() => {
@@ -122,82 +121,18 @@ function SeasonBuilderPage() {
     }
   }, [clientId]);
 
-  // Auto-populate blocks from farm fields
-  useEffect(() => {
-    // Use farmId from state OR from URL params (in case state wasn't set yet)
-    const effectiveFarmId = farmId || searchParams.get("farm_id") || "";
-    if (!effectiveFarmId || analysisId) return;
-    if (!farmId && effectiveFarmId) setFarmId(effectiveFarmId);
-    (async () => {
-      try {
-        const fields = await api.get<Array<Record<string, unknown>>>(`/api/clients/farms/${farmId}/fields`);
-        if (fields && fields.length > 0) {
-          const newBlocks = fields
-            .filter((f) => f.crop)
-            .map((f) => ({
-              name: String(f.name || ""),
-              area_ha: f.size_ha != null ? Number(f.size_ha) : null,
-              crop: String(f.crop || ""),
-              cultivar: String(f.cultivar || ""),
-              yield_target: f.yield_target != null ? Number(f.yield_target) : null,
-              yield_unit: String(f.yield_unit || ""),
-              tree_age: f.tree_age != null ? Number(f.tree_age) : null,
-              pop_per_ha: f.pop_per_ha != null ? Number(f.pop_per_ha) : null,
-              soil_analysis_id: f.latest_analysis_id ? String(f.latest_analysis_id) : null,
-              notes: "",
-            }));
-          if (newBlocks.length > 0) {
-            setBlocks(newBlocks);
-            toast.info(`Pre-filled ${newBlocks.length} block${newBlocks.length !== 1 ? "s" : ""} from farm fields`);
-          }
-        }
-      } catch {}
-    })();
-  }, [farmId]);
+  // FieldPicker (step 1) handles loading + auto-selection of the farm's
+  // fields into blocks. No wizard-level useEffect needed.
 
-  // Add fields from a specific farm as blocks
-  const addBlocksFromFarm = async (fId: string, farmN: string) => {
-    try {
-      const fields = await api.get<Array<Record<string, unknown>>>(`/api/clients/farms/${fId}/fields`);
-      if (!fields || fields.length === 0) {
-        toast.error(`No fields with crops on ${farmN}`);
-        return;
-      }
-      const newBlocks = fields
-        .filter((f) => f.crop)
-        .map((f) => ({
-          name: `${farmN} - ${String(f.name || "")}`,
-          area_ha: f.size_ha != null ? Number(f.size_ha) : null,
-          crop: String(f.crop || ""),
-          cultivar: String(f.cultivar || ""),
-          yield_target: f.yield_target != null ? Number(f.yield_target) : null,
-          yield_unit: String(f.yield_unit || ""),
-          tree_age: f.tree_age != null ? Number(f.tree_age) : null,
-          pop_per_ha: f.pop_per_ha != null ? Number(f.pop_per_ha) : null,
-          soil_analysis_id: f.latest_analysis_id ? String(f.latest_analysis_id) : null,
-          notes: "",
-        }));
-      if (newBlocks.length === 0) {
-        toast.error(`No fields with crops on ${farmN}`);
-        return;
-      }
-      // Add to existing blocks (remove empty default block if present)
-      setBlocks((prev) => {
-        const existing = prev.filter((b) => b.name || b.crop);
-        return [...existing, ...newBlocks];
-      });
-      toast.success(`Added ${newBlocks.length} block${newBlocks.length !== 1 ? "s" : ""} from ${farmN}`);
-      setAddingFromFarm(false);
-    } catch {
-      toast.error("Failed to load fields");
-    }
-  };
-
-  // Auto-generate programme name
+  // Auto-generate programme name + season. Name is just client/farm —
+  // the season already lives in its own field, so duplicating it in the
+  // name leaves the two out of sync when the agent edits either.
   useEffect(() => {
     if (clientName && !programmeName) {
+      setProgrammeName(farmName ? `${clientName} — ${farmName}` : clientName);
+    }
+    if (!season) {
       const year = new Date().getFullYear();
-      setProgrammeName(`${clientName} ${farmName ? `- ${farmName} ` : ""}${year}/${year + 1}`);
       setSeason(`${year}/${year + 1}`);
     }
   }, [clientName, farmName]);
@@ -313,7 +248,11 @@ function SeasonBuilderPage() {
       const blends = (prog.blends || []) as Array<Record<string, unknown>>;
       const progBlocks = (prog.blocks || []) as Array<Record<string, unknown>>;
 
-      // Group blends by blend_group
+      // Group blends by blend_group — each saved blend row now carries
+      // its own recipe/notation/rate (one row per application), so the
+      // aggregator pushes a full application record per blend, not a
+      // single per-group summary.
+      const FOLIAR_METHODS = new Set(["foliar", "foliar_spray"]);
       const groupMap = new Map<string, BlendGroupData>();
       for (const blend of blends) {
         const group = String(blend.blend_group || "A");
@@ -324,19 +263,19 @@ function SeasonBuilderPage() {
             crops: [...new Set(groupBlocks.map((b) => String(b.crop)))],
             block_names: groupBlocks.map((b) => String(b.name)),
             total_area_ha: groupBlocks.reduce((s, b) => s + (Number(b.area_ha) || 0), 0),
-            sa_notation: String(blend.sa_notation || ""),
-            rate_kg_ha: Number(blend.rate_kg_ha) || 0,
-            cost_per_ton: blend.blend_cost_per_ton != null ? Number(blend.blend_cost_per_ton) : undefined,
-            exact: true,
-            recipe: (blend.blend_recipe || []) as BlendGroupData["recipe"],
             applications: [],
           });
         }
-        const gd = groupMap.get(group)!;
-        gd.applications.push({
+        const method = String(blend.method || "broadcast");
+        groupMap.get(group)!.applications.push({
           stage_name: String(blend.stage_name || ""),
           month: Number(blend.application_month) || 1,
-          method: String(blend.method || "broadcast"),
+          method,
+          sa_notation: String(blend.sa_notation || ""),
+          rate_kg_ha: Number(blend.rate_kg_ha) || 0,
+          cost_per_ton: blend.blend_cost_per_ton != null ? Number(blend.blend_cost_per_ton) : undefined,
+          recipe: (blend.blend_recipe || []) as NonNullable<BlendGroupData["applications"][number]["recipe"]>,
+          is_foliar: FOLIAR_METHODS.has(method),
         });
       }
 
@@ -448,14 +387,18 @@ function SeasonBuilderPage() {
                   }}
                   initialClient={clientName}
                   initialFarm={farmName}
+                  showField={false}
                 />
+                <p className="-mt-1 text-xs text-muted-foreground">
+                  A programme covers a whole farm. Pick the specific fields (blocks) in the next step.
+                </p>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label>Programme Name *</Label>
                     <Input
                       value={programmeName}
                       onChange={(e) => setProgrammeName(e.target.value)}
-                      placeholder="e.g. Farm ABC 2026/2027"
+                      placeholder="e.g. Farm ABC"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -472,47 +415,15 @@ function SeasonBuilderPage() {
 
             {/* ══ Step 1: Blocks ══ */}
             {wizardStep === 1 && (
-              <div className="space-y-4">
-                <BlockEditor
-                  blocks={blocks}
-                  setBlocks={setBlocks}
-                  crops={crops}
-                  availableAnalyses={availableAnalyses}
-                />
-                {/* Add blocks from another farm */}
-                {clientFarms.length > 0 && (
-                  <div className="border-t pt-4">
-                    {addingFromFarm ? (
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-[var(--sapling-dark)]">Add fields from a farm:</p>
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          {clientFarms.map((f) => (
-                            <button
-                              key={f.id}
-                              type="button"
-                              onClick={() => addBlocksFromFarm(f.id, f.name)}
-                              className="rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:border-[var(--sapling-orange)] hover:bg-orange-50"
-                            >
-                              {f.name}
-                            </button>
-                          ))}
-                        </div>
-                        <Button variant="outline" size="sm" onClick={() => setAddingFromFarm(false)}>
-                          Cancel
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        onClick={() => setAddingFromFarm(true)}
-                        className="w-full"
-                      >
-                        Add Blocks from Another Farm
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
+              <FieldPicker
+                farmId={farmId}
+                farmName={farmName}
+                blocks={blocks}
+                setBlocks={setBlocks}
+                crops={crops}
+                analyses={availableAnalyses}
+                otherFarms={clientFarms}
+              />
             )}
 
             {/* ══ Step 2: Schedule Review ══ */}
@@ -553,6 +464,8 @@ function SeasonBuilderPage() {
                     blockInfo={blockInfoData}
                     onApplicationsChange={setUserApplications}
                     onPlantingMonthsChange={setPlantingMonths}
+                    initialApplications={userApplications}
+                    initialPlantingMonths={plantingMonths}
                   />
                 ) : (
                   <div className="flex items-center justify-center py-12">

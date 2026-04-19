@@ -15,6 +15,36 @@ from app.supabase_client import get_supabase_admin
 FOLIAR_METHODS = {"foliar", "foliar_spray"}
 # Methods that use the dry blend optimizer
 DRY_METHODS = {"broadcast", "band_place", "side_dress", "topdress"}
+# Methods that use liquid concentrates (through-the-system irrigation)
+FERTIGATION_METHODS = {"fertigation"}
+
+
+def filter_materials_for_method(materials_df, method: str | None):
+    """Return the subset of materials that are physically valid for this
+    application method.
+
+    * Dry methods (broadcast/band/side-dress/topdress) → `liquid_compatible`
+      is False (solid granular blends only).
+    * Fertigation → `liquid_compatible` is True (raw inputs the liquid
+      optimizer or pre-made liquid products accept).
+    * Foliar → handled by the proprietary product catalog, not this LP;
+      the caller short-circuits before ever getting here.
+
+    Without this filter the optimizer happily picks liquid chelates for
+    a broadcast blend, or dry urea for a fertigation line — both
+    physically wrong for the method the agronomist selected.
+    """
+    if materials_df is None or len(materials_df) == 0:
+        return materials_df
+    if "liquid_compatible" not in materials_df.columns:
+        return materials_df
+    if method in FERTIGATION_METHODS:
+        return materials_df[materials_df["liquid_compatible"] == True].reset_index(drop=True)  # noqa: E712
+    if method in DRY_METHODS:
+        return materials_df[materials_df["liquid_compatible"] == False].reset_index(drop=True)  # noqa: E712
+    # Unknown/no method — don't guess, return the full set and let the
+    # caller decide what to do.
+    return materials_df
 
 # Per-nutrient CV thresholds for flagging within-group heterogeneity across
 # blocks. Derived from Wilding (1985) soil-variability classification (the
@@ -719,44 +749,54 @@ def generate_block_plans(blocks: list[dict], sb=None) -> list[dict]:
     return block_plans
 
 
-def optimize_blend_for_group(template_items: list[dict], materials_df, batch_size: float, c_idx: int, min_pct: float) -> dict | None:
-    """Run the LP optimizer for a blend group's average nutrient profile.
+def optimize_blend_for_application(
+    item: dict,
+    materials_df,
+    batch_size: float,
+    c_idx: int | None,
+    min_pct: float,
+) -> dict | None:
+    """Run the LP optimizer for a single application's nutrient vector.
 
-    Takes the template items for a group, averages their nutrient profile,
-    converts to percentage targets, and runs the optimizer.
+    One recipe per application: feeding the solver the demand for *this*
+    stage (N/P/K/Ca/Mg/S in kg/ha) and the materials that are valid for
+    the application method the agronomist chose. Foliar items short-
+    circuit (caller handles them separately — they go through the foliar
+    product catalog, not the dry-blend LP).
 
-    Returns dict with recipe, nutrients, cost_per_ton, sa_notation, or None if infeasible.
+    Returns a dict with recipe / nutrients / cost_per_ton / sa_notation /
+    rate_kg_ha, or None if the LP is infeasible (no closest-blend match).
     """
     from app.services.optimizer import run_optimizer, find_closest_blend
     from app.services.notation import pct_to_sa_notation
     from app.services.material_loader import build_recipe, build_nutrients, DB_TO_UPPER
 
-    if not template_items:
+    if not item:
+        return None
+    if item.get("method") in FOLIAR_METHODS:
+        # Foliar lives in the product catalog / protocol table — not the
+        # dry/liquid raw-material LP. Caller decides how to render it.
         return None
 
-    # Calculate average nutrient kg/ha across template items (non-foliar only)
-    non_foliar = [it for it in template_items if it.get("method") not in FOLIAR_METHODS]
-    if not non_foliar:
-        return None
-
-    # Total nutrients across all applications in this group
-    total_nutrients = {}
-    for nut in ["n", "p", "k", "ca", "mg", "s"]:
-        total_nutrients[nut] = sum(item.get(f"{nut}_kg_ha", 0) or 0 for item in non_foliar)
-
-    # Convert kg/ha to percentage targets for a 1000kg blend
-    # We need to figure out the application rate first
-    total_nutrient_kg = sum(total_nutrients.values())
+    # Per-application nutrient demand, kg/ha. Secondaries only count
+    # when they're real targets (> 0.01) to keep the LP unconstrained
+    # otherwise.
+    nutrients_kg_ha = {
+        nut: float(item.get(f"{nut}_kg_ha", 0) or 0)
+        for nut in ["n", "p", "k", "ca", "mg", "s"]
+    }
+    total_nutrient_kg = sum(nutrients_kg_ha.values())
     if total_nutrient_kg < 0.1:
         return None
 
-    # Estimate blend rate: typical blends are 20-35% total nutrients
-    # Use 25% as default → rate = total_nutrients / 0.25
+    # Estimated blend rate — same heuristic as before: typical SA blends
+    # land around 25% total nutrient by mass, so rate ≈ demand / 0.25.
     rate_kg_ha = round(total_nutrient_kg / 0.25)
+    if rate_kg_ha <= 0:
+        return None
 
-    # Convert to percentage targets
-    targets = {}
-    for nut, kg in total_nutrients.items():
+    targets: dict[str, float] = {}
+    for nut, kg in nutrients_kg_ha.items():
         if kg > 0.01:
             pct = kg / rate_kg_ha * 100
             targets[DB_TO_UPPER.get(nut, nut.upper())] = round(pct, 3)
@@ -764,14 +804,21 @@ def optimize_blend_for_group(template_items: list[dict], materials_df, batch_siz
     if not targets:
         return None
 
-    # Run optimizer
+    # Compost floor only applies when compost is actually in the
+    # filtered material set (dry methods). Otherwise set to 0 so the LP
+    # doesn't demand a compost share that's not available.
+    effective_c_idx = c_idx if c_idx is not None else 0
+    effective_min_pct = min_pct if c_idx is not None else 0.0
+
     try:
-        res = run_optimizer(targets, materials_df, batch_size, c_idx, min_pct)
+        res = run_optimizer(targets, materials_df, batch_size, effective_c_idx, effective_min_pct)
         exact = True
         scale = 1.0
         if not res.success:
             exact = False
-            res, scale = find_closest_blend(targets, materials_df, batch_size, c_idx, min_pct)
+            res, scale = find_closest_blend(
+                targets, materials_df, batch_size, effective_c_idx, effective_min_pct,
+            )
             if res is None or not res.success:
                 return None
 
@@ -781,7 +828,11 @@ def optimize_blend_for_group(template_items: list[dict], materials_df, batch_siz
         cost_per_ton = sum(r["cost"] for r in recipe) / (batch_size / 1000) if batch_size else 0
 
         npk = {r["nutrient"]: r["actual"] for r in nutrients if r["nutrient"] in ("N", "P", "K")}
-        secondary = {r["nutrient"]: r["actual"] for r in nutrients if r["nutrient"] not in ("N", "P", "K") and targets.get(r["nutrient"], 0) > 0}
+        secondary = {
+            r["nutrient"]: r["actual"]
+            for r in nutrients
+            if r["nutrient"] not in ("N", "P", "K") and targets.get(r["nutrient"], 0) > 0
+        }
         sa_notation, international = pct_to_sa_notation(
             npk.get("N", 0), npk.get("P", 0), npk.get("K", 0),
             secondary_pcts=secondary if secondary else None,

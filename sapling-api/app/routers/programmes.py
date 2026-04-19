@@ -795,31 +795,86 @@ def generate_programme(
     sb.table("programme_blends").delete().eq("programme_id", programme_id).execute()
 
     # Load materials for blend optimization
-    from app.services.material_loader import load_materials_df, load_default_materials, find_compost_index, COMPOST_NAME
-    from app.services.programme_engine import optimize_blend_for_group
+    from app.services.material_loader import load_materials_df, load_default_materials, find_compost_index
+    from app.services.programme_engine import (
+        FOLIAR_METHODS,
+        filter_materials_for_method,
+        optimize_blend_for_application,
+    )
 
-    default_mats, min_compost = load_default_materials()
-    # Load ALL materials (not just defaults) so optimizer has full selection
+    _, min_compost = load_default_materials()
+    # Load ALL materials (not just defaults) so the optimizer has full
+    # selection across both dry and liquid-compatible inputs.
     materials_df = load_materials_df()
-
-    # Ensure compost is in the material list
-    c_idx_found = find_compost_index(materials_df)
-    c_idx = c_idx_found if c_idx_found is not None else 0
     batch_size = 1000.0
+
+    # Track optimizer outcomes so the UI can surface "no valid materials"
+    # / "solver infeasible" warnings rather than silently returning an
+    # empty recipe.
+    infeasible_applications: list[dict] = []
 
     for group_letter, group_info in result["blend_groups"].items():
         template_items = group_info.get("template_items", [])
 
-        # Run LP optimizer for this group
-        opt_result = optimize_blend_for_group(
-            template_items, materials_df, batch_size, c_idx, min_compost,
-        )
-
+        # Per-application optimization: each stage has its own nutrient
+        # demand and application method, so it gets its own recipe built
+        # from the materials valid for that method. No more one-blend-
+        # for-all.
         for item in template_items:
+            method = item.get("method")
             nutrient_sum = sum(
                 item.get(f"{n}_kg_ha", 0) or 0
                 for n in ["n", "p", "k", "ca", "mg", "s"]
             )
+
+            # Foliar: skip the dry/liquid LP entirely. These go through
+            # the proprietary product catalog (liquid_products with
+            # product_type='foliar') or the crop_foliar_protocol table;
+            # neither is wired into programme-generate yet. Record the
+            # nutrient demand so the UI can render "Foliar — configure
+            # product" instead of a bogus dry blend.
+            if method in FOLIAR_METHODS:
+                blend_data = {
+                    "programme_id": programme_id,
+                    "blend_group": group_letter,
+                    "stage_name": item.get("stage_name"),
+                    "application_month": item.get("month_target"),
+                    "method": method,
+                    "rate_kg_ha": 0,
+                    "total_kg": 0,
+                    "sa_notation": "",
+                    "blend_nutrients": {
+                        n: round(item.get(f"{n}_kg_ha", 0) or 0, 2)
+                        for n in ["n", "p", "k", "ca", "mg", "s", "fe", "b", "mn", "zn", "mo", "cu"]
+                    },
+                    "blend_recipe": None,
+                    "blend_cost_per_ton": None,
+                }
+                sb.table("programme_blends").insert(blend_data).execute()
+                continue
+
+            # Filter material set to what's physically valid for the
+            # chosen method (dry-only for broadcast/band/etc., liquid-
+            # only for fertigation). Compost only applies to dry blends.
+            filtered_df = filter_materials_for_method(materials_df, method)
+            c_idx = find_compost_index(filtered_df) if method in {"broadcast", "band_place", "side_dress", "topdress"} else None
+
+            opt_result = optimize_blend_for_application(
+                item, filtered_df, batch_size, c_idx, min_compost,
+            )
+
+            if opt_result is None and nutrient_sum > 0.01:
+                infeasible_applications.append({
+                    "group": group_letter,
+                    "stage": item.get("stage_name"),
+                    "month": item.get("month_target"),
+                    "method": method,
+                    "reason": (
+                        "no_materials_available" if filtered_df is None or len(filtered_df) == 0
+                        else "solver_infeasible"
+                    ),
+                })
+
             rate = opt_result["rate_kg_ha"] if opt_result else (round(nutrient_sum / 0.25) if nutrient_sum > 0 else 0)
 
             blend_data = {
@@ -827,7 +882,7 @@ def generate_programme(
                 "blend_group": group_letter,
                 "stage_name": item.get("stage_name"),
                 "application_month": item.get("month_target"),
-                "method": item.get("method"),
+                "method": method,
                 "rate_kg_ha": rate,
                 "total_kg": rate * group_info.get("total_area_ha", 0),
                 "sa_notation": opt_result["sa_notation"] if opt_result else "",
@@ -857,12 +912,14 @@ def generate_programme(
         "num_skipped": len(skipped_blocks),
         "heterogeneity_warn": any_heterogeneity_warn,
         "heterogeneity_split": any_heterogeneity_split,
+        "infeasible_applications": len(infeasible_applications),
     })
 
     # Return full programme state + any blocks skipped during generation
     prog_state = get_programme(programme_id, user)
     prog_state["skipped_blocks"] = skipped_blocks
     prog_state["heterogeneity_by_group"] = heterogeneity_by_group
+    prog_state["infeasible_applications"] = infeasible_applications
     return prog_state
 
 

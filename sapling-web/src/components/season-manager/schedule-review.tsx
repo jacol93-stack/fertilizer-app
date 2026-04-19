@@ -67,6 +67,12 @@ interface ScheduleReviewProps {
   blockInfo: BlockInfo[];
   onApplicationsChange: (apps: UserApplication[]) => void;
   onPlantingMonthsChange?: (months: Record<string, number>) => void;
+  // Re-hydrate internal state from the parent on mount so the schedule
+  // survives navigating to the Blends step and back. Parent owns the
+  // canonical state (UserApplication[]), we own the per-block working
+  // copy + UI toggles.
+  initialApplications?: UserApplication[];
+  initialPlantingMonths?: Record<string, number>;
 }
 
 const STAGE_COLORS = [
@@ -108,22 +114,35 @@ function shiftStage(stage: GrowthStage, offset: number): GrowthStage {
   };
 }
 
-export function ScheduleReview({ blockInfo, onApplicationsChange, onPlantingMonthsChange }: ScheduleReviewProps) {
-  // Planting month per block
+export function ScheduleReview({
+  blockInfo,
+  onApplicationsChange,
+  onPlantingMonthsChange,
+  initialApplications,
+  initialPlantingMonths,
+}: ScheduleReviewProps) {
+  // Planting month per block — seed from parent if it has prior state,
+  // otherwise default to each crop's first stage start month.
   const [plantingMonths, setPlantingMonths] = useState<Record<string, number>>(() => {
     const init: Record<string, number> = {};
     for (const bi of blockInfo) {
-      // Default to the first stage's month_start
-      init[bi.block_id] = bi.growth_stages[0]?.month_start || 1;
+      init[bi.block_id] =
+        initialPlantingMonths?.[bi.block_id] ?? (bi.growth_stages[0]?.month_start || 1);
     }
     return init;
   });
 
-  // Track applications per block
+  // Track applications per block — re-hydrate from the flat
+  // UserApplication[] the parent preserves across step navigation.
   const [appsByBlock, setAppsByBlock] = useState<Record<string, Array<{ month: number; method: string }>>>(() => {
     const init: Record<string, Array<{ month: number; method: string }>> = {};
     for (const bi of blockInfo) {
       init[bi.block_id] = [];
+    }
+    for (const a of initialApplications || []) {
+      if (init[a.block_id]) {
+        init[a.block_id].push({ month: a.month, method: a.method });
+      }
     }
     return init;
   });
@@ -144,7 +163,25 @@ export function ScheduleReview({ blockInfo, onApplicationsChange, onPlantingMont
     return Array.from(first);
   }, [blockInfo]);
   const canShareSchedule = blockInfo.length > 1 && sharedMethods.length > 0;
-  const [sharedSchedule, setSharedSchedule] = useState<boolean>(canShareSchedule);
+
+  // If we're re-hydrating from parent state and blocks disagree on apps,
+  // start in per-block mode so we don't clobber the differences. Fresh
+  // mounts (no prior state) default to shared when feasible.
+  const initiallyShared = useMemo(() => {
+    if (!canShareSchedule) return false;
+    if (!initialApplications || initialApplications.length === 0) return true;
+    const byBlock: Record<string, string[]> = {};
+    for (const bi of blockInfo) byBlock[bi.block_id] = [];
+    for (const a of initialApplications) {
+      if (byBlock[a.block_id]) byBlock[a.block_id].push(`${a.month}|${a.method}`);
+    }
+    const sig = (list: string[]) => [...list].sort().join(",");
+    const first = sig(byBlock[blockInfo[0].block_id] || []);
+    return blockInfo.every((bi) => sig(byBlock[bi.block_id] || []) === first);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [sharedSchedule, setSharedSchedule] = useState<boolean>(initiallyShared);
 
   const emitChange = (updated: Record<string, Array<{ month: number; method: string }>>) => {
     const apps: UserApplication[] = [];
