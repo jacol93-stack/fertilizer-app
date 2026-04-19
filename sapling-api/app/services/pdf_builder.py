@@ -396,7 +396,18 @@ def build_pdf(blend_name, client, farm, batch, compost_pct, cost_per_ton,
 def build_liquid_pdf(blend_name, client, farm, tank_volume_l, total_dissolved_kg,
                      sg_estimate, recipe_data, nutrient_data, mixing_instructions=None,
                      compatibility_warnings=None, exact=True, scale=1.0,
-                     cost_per_ton=0, selling_price=0, company_details=None):
+                     cost_per_ton=0, selling_price=0, company_details=None,
+                     sa_notation=None, international_notation=None,
+                     density_kg_per_l=None, nutrient_composition=None,
+                     water_kg=None):
+    """Render a liquid blend recipe PDF.
+
+    The SA-notation arguments (``sa_notation``, ``international_notation``,
+    ``density_kg_per_l``, ``nutrient_composition``, ``water_kg``) are
+    optional — when present, a "Nutrient Composition" block is rendered
+    near the top of the blend section. Older callers that only pass the
+    legacy g/L fields get the original layout.
+    """
     cd = company_details or {}
     pdf = FPDF()
     pdf.add_page()
@@ -459,7 +470,94 @@ def build_liquid_pdf(blend_name, client, farm, tank_volume_l, total_dissolved_kg
     pdf.cell(0, 6, "  |  ".join(meta_parts), new_x="LMARGIN", new_y="NEXT")
     pdf.ln(4)
 
-    # KPI summary
+    # ── Nutrient Composition block ──────────────────────────────────────
+    # Rendered only when the mass-fraction flow supplied the SA-notation
+    # payload. Older g/L-only callers skip straight to the Summary block.
+    # Deliberately NOT labelled "Guaranteed Analysis" or "Act 36" — those
+    # are legal terms reserved for registered products, and custom
+    # agronomist blends are not registered under Act 36.
+    effective_density = density_kg_per_l if density_kg_per_l else sg_estimate
+    if sa_notation or international_notation or nutrient_composition:
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.set_text_color(*DARK_GREY_RGB)
+        pdf.cell(
+            0, 7,
+            "Nutrient Composition (SA Grade)",
+            new_x="LMARGIN", new_y="NEXT",
+        )
+        pdf.ln(1)
+
+        # Large bold SA grade
+        if sa_notation:
+            pdf.set_font("Helvetica", "B", 18)
+            pdf.set_text_color(*ORANGE_RGB)
+            pdf.cell(0, 9, str(sa_notation), new_x="LMARGIN", new_y="NEXT")
+
+        # International form (elemental %) in smaller text
+        if international_notation:
+            pdf.set_font("Helvetica", "", 9)
+            pdf.set_text_color(*MED_GREY_RGB)
+            pdf.cell(0, 5, str(international_notation), new_x="LMARGIN", new_y="NEXT")
+
+        # Density line
+        if effective_density:
+            pdf.set_font("Helvetica", "", 9)
+            pdf.set_text_color(*DARK_GREY_RGB)
+            pdf.cell(0, 5, f"Density: {effective_density:.2f} kg/L",
+                     new_x="LMARGIN", new_y="NEXT")
+
+        # Composition table: nutrient | m/m % | g/L
+        if nutrient_composition:
+            pdf.ln(2)
+            ga_rows = []
+            for n in nutrient_composition:
+                if not isinstance(n, dict):
+                    continue
+                mm = n.get("m_m_pct", 0)
+                gl = n.get("g_per_l", 0)
+                try:
+                    mm_f = float(mm)
+                    gl_f = float(gl)
+                except (TypeError, ValueError):
+                    continue
+                if mm_f <= 0 and gl_f <= 0:
+                    continue
+                ga_rows.append([
+                    str(n.get("nutrient", "")),
+                    f"{mm_f:.2f}",
+                    f"{gl_f:.2f}",
+                ])
+            if ga_rows:
+                # Inline mini-table (3 narrow columns)
+                col_labels = ["Nutrient", "m/m %", "g/L"]
+                col_widths = [35, 25, 25]
+                total_w = sum(col_widths)
+                pdf.set_font("Helvetica", "B", 9)
+                header_y = pdf.get_y()
+                pdf.set_fill_color(*ORANGE_RGB)
+                pdf.rect(pdf.l_margin, header_y, total_w, 5.5, "F")
+                pdf.set_text_color(255, 255, 255)
+                for label, w in zip(col_labels, col_widths):
+                    pdf.cell(w, 5.5, label)
+                pdf.ln()
+                pdf.set_font("Helvetica", "", 9)
+                for i, row in enumerate(ga_rows):
+                    row_y = pdf.get_y()
+                    if i % 2 == 1:
+                        pdf.set_fill_color(*GREY_LIGHT_RGB)
+                        pdf.rect(pdf.l_margin, row_y, total_w, 4.8, "F")
+                    pdf.set_text_color(*DARK_GREY_RGB)
+                    for val, w in zip(row, col_widths):
+                        pdf.cell(w, 4.8, val)
+                    pdf.ln()
+                pdf.set_draw_color(*ORANGE_RGB)
+                pdf.set_line_width(0.4)
+                pdf.line(pdf.l_margin, pdf.get_y(),
+                         pdf.l_margin + total_w, pdf.get_y())
+
+        pdf.ln(4)
+
+    # KPI summary — batch info always rendered
     pdf.set_font("Helvetica", "B", 11)
     pdf.set_text_color(*DARK_GREY_RGB)
     pdf.cell(0, 8, "Summary", new_x="LMARGIN", new_y="NEXT")
@@ -468,8 +566,13 @@ def build_liquid_pdf(blend_name, client, farm, tank_volume_l, total_dissolved_kg
     kpi_items = [
         f"Tank Volume: {tank_volume_l:,.0f} L",
         f"Total Dissolved: {total_dissolved_kg:,.2f} kg",
-        f"Est. Specific Gravity: {sg_estimate:.3f}",
     ]
+    if water_kg is not None:
+        kpi_items.append(f"Water Required: {water_kg:,.2f} kg")
+    if density_kg_per_l:
+        kpi_items.append(f"Density: {density_kg_per_l:.3f} kg/L")
+    else:
+        kpi_items.append(f"Est. Specific Gravity: {sg_estimate:.3f}")
     for item in kpi_items:
         pdf.cell(0, 5, item, new_x="LMARGIN", new_y="NEXT")
     pdf.ln(4)

@@ -1,29 +1,27 @@
 "use client";
 
 /**
- * Agent workbench — the dashboard every agent lands on at /.
+ * Home page — command bar + today list.
  *
- * Replaces the previous "recent 5 of each" layout with one that answers
- * the question "what needs my attention today?". Single round-trip to
- * /api/workbench/workbench; the backend handles all aggregation.
+ * One question: "what needs my attention right now, and how do I jump
+ * to anything?" No stacked cards, no six-stat strip. Just:
+ *   1. A big search input (focus-on-load, ⌘K / "/" to re-focus) that
+ *      queries /api/workbench/search across clients, analyses, blends,
+ *      and quotes. Arrow keys + Enter navigate results.
+ *   2. A single "Today" list — stale tests, pending quotes, unread
+ *      messages, and never-analysed clients merged and sorted by
+ *      urgency server-side.
+ *   3. A compact stats strip + quick-action buttons below.
  *
- * Layout:
- *   - Welcome header with "you have N things to look at" summary
- *   - Quick-actions row (4 primary CTAs)
- *   - Stats strip (clients / farms / fields / programmes / quotes / MTD)
- *   - Two columns on desktop, stacked on mobile:
- *       left  = attention cards (stale, never-analysed, pending, unread)
- *       right = recent activity feed
- *   - Onboarding state replaces everything for a brand-new agent
+ * Onboarding (brand-new agent) keeps its dedicated welcome screen.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { AppShell } from "@/components/app-shell";
 import { api } from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   AlertTriangle,
@@ -32,16 +30,16 @@ import {
   Clock,
   FileText,
   FlaskConical,
-  Inbox,
   Leaf,
   MessageSquare,
   Plus,
+  Search,
   Sparkles,
-  TestTube,
+  UserPlus,
   Users,
 } from "lucide-react";
 
-// ── Types (mirror the backend workbench response) ────────────────────────
+// ── Types ────────────────────────────────────────────────────────────────
 
 interface WorkbenchStats {
   clients: number;
@@ -52,205 +50,292 @@ interface WorkbenchStats {
   pending_quotes: number;
 }
 
-interface StaleAnalysis {
-  analysis_id: string;
-  client_id: string | null;
-  customer: string;
-  farm: string;
-  field: string;
-  crop: string;
-  last_analysed_at: string;
-  days_old: number;
-}
+type TodayKind =
+  | "unread_messages"
+  | "stale_analysis"
+  | "pending_quote"
+  | "never_analysed";
 
-interface NeverAnalysedClient {
-  client_id: string;
-  name: string;
-}
-
-interface PendingQuote {
-  quote_id: string;
-  client_id: string | null;
-  customer: string;
-  blend_name: string;
-  days_pending: number;
-}
-
-interface AttentionSection<T> {
-  count: number;
-  preview: T[];
-}
-
-interface ActivityItem {
-  type: "blend" | "soil_analysis" | "programme";
-  id: string;
+interface TodayItem {
+  kind: TodayKind;
+  urgency: number;
   title: string;
   subtitle: string;
-  created_at: string;
+  badge: string;
   href: string;
 }
 
 interface WorkbenchResponse {
   user: { id: string; name?: string; email?: string; role: string };
   stats: WorkbenchStats;
-  attention: {
-    stale_analyses: AttentionSection<StaleAnalysis>;
-    clients_never_analysed: AttentionSection<NeverAnalysedClient>;
-    pending_quotes: AttentionSection<PendingQuote>;
-    unread_messages: number;
-  };
-  recent_activity: ActivityItem[];
+  today: TodayItem[];
   is_onboarding: boolean;
-  thresholds: { stale_analysis_months: number };
 }
 
-// ── Small presentational helpers ─────────────────────────────────────────
+type SearchKind = "client" | "analysis" | "blend" | "quote";
 
-function Stat({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="flex-1 min-w-[7rem] text-center">
-      <div className="text-2xl font-bold text-[var(--sapling-dark)] tabular-nums">
-        {value}
-      </div>
-      <div className="mt-0.5 text-xs uppercase tracking-wide text-[var(--sapling-medium-grey)]">
-        {label}
-      </div>
-    </div>
-  );
+interface SearchResult {
+  kind: SearchKind;
+  id: string;
+  title: string;
+  subtitle: string;
+  href: string;
 }
 
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const sec = Math.floor(diff / 1000);
-  if (sec < 60) return "just now";
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  const d = Math.floor(hr / 24);
-  if (d < 30) return `${d}d ago`;
-  const mo = Math.floor(d / 30);
-  if (mo < 12) return `${mo}mo ago`;
-  return `${Math.floor(mo / 12)}y ago`;
+interface SearchResponse {
+  query: string;
+  results: SearchResult[];
 }
 
-type CardTone = "warning" | "alert" | "info" | "neutral";
+// ── Icon + label maps ────────────────────────────────────────────────────
 
-const TONE_STYLES: Record<CardTone, { border: string; icon: string; badge: string }> = {
-  warning: {
-    border: "border-amber-200",
-    icon: "text-amber-600 bg-amber-50",
-    badge: "bg-amber-100 text-amber-800",
-  },
-  alert: {
-    border: "border-red-200",
-    icon: "text-red-600 bg-red-50",
-    badge: "bg-red-100 text-red-800",
-  },
-  info: {
-    border: "border-blue-200",
-    icon: "text-blue-600 bg-blue-50",
-    badge: "bg-blue-100 text-blue-800",
-  },
-  neutral: {
-    border: "border-gray-200",
-    icon: "text-gray-600 bg-gray-50",
-    badge: "bg-gray-100 text-gray-800",
-  },
+const TODAY_ICON: Record<TodayKind, React.ComponentType<{ className?: string }>> = {
+  unread_messages: MessageSquare,
+  stale_analysis: Clock,
+  pending_quote: FileText,
+  never_analysed: UserPlus,
 };
 
-function AttentionCard({
-  tone,
-  icon: Icon,
-  title,
-  count,
-  emptyMessage,
-  viewAllHref,
-  children,
-}: {
-  tone: CardTone;
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  count: number;
-  emptyMessage: string;
-  viewAllHref?: string;
-  children: React.ReactNode;
-}) {
-  const styles = TONE_STYLES[tone];
+const TODAY_TONE: Record<TodayKind, string> = {
+  unread_messages: "bg-red-50 text-red-600",
+  stale_analysis: "bg-amber-50 text-amber-600",
+  pending_quote: "bg-blue-50 text-blue-600",
+  never_analysed: "bg-gray-50 text-gray-600",
+};
+
+const SEARCH_ICON: Record<SearchKind, React.ComponentType<{ className?: string }>> = {
+  client: Users,
+  analysis: Leaf,
+  blend: FlaskConical,
+  quote: FileText,
+};
+
+const SEARCH_KIND_LABEL: Record<SearchKind, string> = {
+  client: "Client",
+  analysis: "Analysis",
+  blend: "Blend",
+  quote: "Quote",
+};
+
+// ── Command bar ──────────────────────────────────────────────────────────
+
+function CommandBar() {
+  const router = useRouter();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [cursor, setCursor] = useState(0);
+
+  // Focus on mount + global shortcuts (⌘K, "/")
+  useEffect(() => {
+    inputRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      const inField = tag === "INPUT" || tag === "TEXTAREA";
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      } else if (e.key === "/" && !inField) {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Close results when clicking outside
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, []);
+
+  // Debounced search
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const handle = setTimeout(async () => {
+      try {
+        const res = await api.get<SearchResponse>(
+          `/api/workbench/search?q=${encodeURIComponent(q)}`,
+        );
+        setResults(res.results);
+        setCursor(0);
+      } catch {
+        setResults([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 150);
+    return () => clearTimeout(handle);
+  }, [query]);
+
+  const go = useCallback(
+    (href: string) => {
+      setOpen(false);
+      setQuery("");
+      router.push(href);
+    },
+    [router],
+  );
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setCursor((c) => Math.min(c + 1, Math.max(results.length - 1, 0)));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setCursor((c) => Math.max(c - 1, 0));
+    } else if (e.key === "Enter") {
+      if (results[cursor]) {
+        e.preventDefault();
+        go(results[cursor].href);
+      }
+    } else if (e.key === "Escape") {
+      setQuery("");
+      setOpen(false);
+      inputRef.current?.blur();
+    }
+  };
+
+  const showDropdown = open && query.trim().length >= 2;
+
   return (
-    <div className={`rounded-xl border bg-white p-5 ${styles.border}`}>
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className={`flex size-9 items-center justify-center rounded-lg ${styles.icon}`}>
-            <Icon className="size-5" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-[var(--sapling-dark)]">{title}</h3>
-            {count > 0 && (
-              <span className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${styles.badge}`}>
-                {count} {count === 1 ? "item" : "items"}
-              </span>
-            )}
-          </div>
-        </div>
-        {count > 0 && viewAllHref && (
-          <Link
-            href={viewAllHref}
-            className="inline-flex items-center gap-0.5 text-xs font-medium text-[var(--sapling-medium-grey)] hover:text-[var(--sapling-orange)]"
-          >
-            View all <ChevronRight className="size-3" />
-          </Link>
-        )}
+    <div ref={containerRef} className="relative">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[var(--sapling-medium-grey)]" />
+        <input
+          ref={inputRef}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={onKeyDown}
+          placeholder="Jump to a client, field, analysis, blend, or quote…"
+          className="h-14 w-full rounded-xl border border-gray-200 bg-white pl-11 pr-20 text-base shadow-sm outline-none ring-0 transition-colors placeholder:text-[var(--sapling-medium-grey)] focus:border-[var(--sapling-orange)] focus:ring-2 focus:ring-[var(--sapling-orange)]/20"
+          aria-label="Search"
+          autoComplete="off"
+        />
+        <kbd className="absolute right-4 top-1/2 hidden -translate-y-1/2 rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[11px] font-medium text-[var(--sapling-medium-grey)] sm:block">
+          ⌘K
+        </kbd>
       </div>
 
-      {count === 0 ? (
-        <p className="py-2 text-sm text-[var(--sapling-medium-grey)]">{emptyMessage}</p>
-      ) : (
-        <div className="space-y-2">{children}</div>
+      {showDropdown && (
+        <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
+          {loading && results.length === 0 ? (
+            <div className="px-4 py-3 text-sm text-[var(--sapling-medium-grey)]">
+              Searching…
+            </div>
+          ) : results.length === 0 ? (
+            <div className="px-4 py-3 text-sm text-[var(--sapling-medium-grey)]">
+              No matches for &ldquo;{query.trim()}&rdquo;
+            </div>
+          ) : (
+            <ul className="max-h-96 overflow-y-auto py-1">
+              {results.map((r, i) => {
+                const Icon = SEARCH_ICON[r.kind];
+                const active = i === cursor;
+                return (
+                  <li key={`${r.kind}-${r.id}`}>
+                    <button
+                      type="button"
+                      onMouseEnter={() => setCursor(i)}
+                      onClick={() => go(r.href)}
+                      className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                        active ? "bg-orange-50" : "hover:bg-gray-50"
+                      }`}
+                    >
+                      <Icon className="size-4 shrink-0 text-[var(--sapling-medium-grey)]" />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-[var(--sapling-dark)]">
+                          {r.title}
+                        </div>
+                        {r.subtitle && (
+                          <div className="truncate text-xs text-[var(--sapling-medium-grey)]">
+                            {r.subtitle}
+                          </div>
+                        )}
+                      </div>
+                      <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--sapling-medium-grey)]">
+                        {SEARCH_KIND_LABEL[r.kind]}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       )}
     </div>
   );
 }
 
-function ActivityIcon({ type }: { type: ActivityItem["type"] }) {
-  const map = {
-    blend: FlaskConical,
-    soil_analysis: TestTube,
-    programme: Calendar,
-  };
-  const Icon = map[type];
-  return <Icon className="size-4 shrink-0 text-[var(--sapling-medium-grey)]" />;
+// ── Today list row ───────────────────────────────────────────────────────
+
+function TodayRow({ item }: { item: TodayItem }) {
+  const Icon = TODAY_ICON[item.kind];
+  const tone = TODAY_TONE[item.kind];
+  return (
+    <Link
+      href={item.href}
+      className="flex items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 transition-colors hover:border-gray-200 hover:bg-gray-50"
+    >
+      <div className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${tone}`}>
+        <Icon className="size-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-medium text-[var(--sapling-dark)]">
+          {item.title}
+        </div>
+        <div className="truncate text-xs text-[var(--sapling-medium-grey)]">
+          {item.subtitle}
+        </div>
+      </div>
+      <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-[var(--sapling-dark)]">
+        {item.badge}
+      </span>
+      <ChevronRight className="size-4 shrink-0 text-[var(--sapling-medium-grey)]" />
+    </Link>
+  );
 }
 
-// ── Skeleton + error states ──────────────────────────────────────────────
+// ── Skeleton + error + onboarding ────────────────────────────────────────
 
-function WorkbenchSkeleton() {
+function HomeSkeleton() {
   return (
-    <div className="mx-auto max-w-6xl animate-pulse space-y-6 px-4 py-8">
-      <div className="h-8 w-64 rounded bg-gray-200" />
-      <div className="grid gap-3 sm:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-24 rounded-xl bg-gray-100" />
-        ))}
-      </div>
-      <div className="h-20 rounded-xl bg-gray-100" />
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="h-64 rounded-xl bg-gray-100 lg:col-span-2" />
-        <div className="h-64 rounded-xl bg-gray-100" />
-      </div>
+    <div className="mx-auto max-w-3xl animate-pulse space-y-6 px-4 py-10">
+      <div className="h-14 rounded-xl bg-gray-100" />
+      <div className="h-64 rounded-xl bg-gray-100" />
+      <div className="h-16 rounded-xl bg-gray-100" />
     </div>
   );
 }
 
-function WorkbenchError({ onRetry }: { onRetry: () => void }) {
+function HomeError({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 text-center">
+    <div className="mx-auto max-w-3xl px-4 py-12 text-center">
       <AlertTriangle className="mx-auto size-8 text-amber-500" />
       <h2 className="mt-3 text-lg font-semibold text-[var(--sapling-dark)]">
-        Couldn&apos;t load your workbench
+        Couldn&apos;t reach the server
       </h2>
       <p className="mt-1 text-sm text-[var(--sapling-medium-grey)]">
-        Something went wrong fetching your dashboard data. Try again in a moment.
+        Check your connection and try again in a moment.
       </p>
       <Button onClick={onRetry} variant="outline" className="mt-4">
         Retry
@@ -259,21 +344,19 @@ function WorkbenchError({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-// ── Onboarding (zero-state) ──────────────────────────────────────────────
-
 function OnboardingWelcome({ name }: { name: string }) {
   const steps = [
     {
       icon: Users,
       title: "Add your first client",
-      body: "Create a client record so you can attach farms, fields, analyses, and reports.",
+      body: "Create a client record so you can attach farms, fields, analyses and reports.",
       href: "/clients",
       cta: "Add client",
     },
     {
       icon: Leaf,
       title: "Run a soil analysis",
-      body: "Enter lab values or upload a lab PDF to get classification, targets, and a feeding plan.",
+      body: "Enter lab values or upload a lab PDF to get classification, targets and a feeding plan.",
       href: "/quick-analysis",
       cta: "New analysis",
     },
@@ -328,9 +411,9 @@ function OnboardingWelcome({ name }: { name: string }) {
   );
 }
 
-// ── Main workbench page ──────────────────────────────────────────────────
+// ── Main page ────────────────────────────────────────────────────────────
 
-export default function WorkbenchPage() {
+export default function HomePage() {
   const { profile, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [data, setData] = useState<WorkbenchResponse | null>(null);
@@ -355,10 +438,17 @@ export default function WorkbenchPage() {
     load();
   }, [authLoading, load]);
 
+  const greeting = useMemo(() => {
+    const hr = new Date().getHours();
+    if (hr < 12) return "Good morning";
+    if (hr < 17) return "Good afternoon";
+    return "Good evening";
+  }, []);
+
   if (loading) {
     return (
       <AppShell>
-        <WorkbenchSkeleton />
+        <HomeSkeleton />
       </AppShell>
     );
   }
@@ -366,7 +456,7 @@ export default function WorkbenchPage() {
   if (error || !data) {
     return (
       <AppShell>
-        <WorkbenchError onRetry={load} />
+        <HomeError onRetry={load} />
       </AppShell>
     );
   }
@@ -379,245 +469,126 @@ export default function WorkbenchPage() {
     );
   }
 
-  const { stats, attention, recent_activity, thresholds } = data;
-  const totalAttention =
-    attention.stale_analyses.count +
-    attention.clients_never_analysed.count +
-    attention.pending_quotes.count +
-    attention.unread_messages;
+  const { stats, today } = data;
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-6xl px-4 py-8">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[var(--sapling-dark)]">
-            Welcome back, {profile?.name ?? "there"}
+      <div className="mx-auto max-w-3xl px-4 py-10">
+        {/* Greeting */}
+        <div className="mb-5">
+          <h1 className="text-xl font-semibold text-[var(--sapling-dark)]">
+            {greeting}, {profile?.name ?? "there"}
           </h1>
-          <p className="mt-1 text-[var(--sapling-medium-grey)]">
-            {totalAttention === 0
-              ? "You're all caught up. Nothing needs your attention right now."
-              : `You have ${totalAttention} ${totalAttention === 1 ? "thing" : "things"} that need a look.`}
+          <p className="mt-0.5 text-sm text-[var(--sapling-medium-grey)]">
+            {today.length === 0
+              ? "You're all caught up — nothing needs attention."
+              : `${today.length} ${today.length === 1 ? "item" : "items"} need a look.`}
           </p>
         </div>
 
-        {/* Quick actions */}
-        <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Button
-            variant="outline"
-            className="h-auto flex-col gap-2 py-5"
-            onClick={() => router.push("/quick-analysis")}
-          >
-            <Leaf className="size-5 text-[var(--sapling-orange)]" />
-            <span className="font-medium">New Analysis</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-auto flex-col gap-2 py-5"
-            onClick={() => router.push("/quick-blend")}
-          >
-            <FlaskConical className="size-5 text-[var(--sapling-orange)]" />
-            <span className="font-medium">New Blend</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-auto flex-col gap-2 py-5"
-            onClick={() => router.push("/season-manager")}
-          >
-            <Calendar className="size-5 text-[var(--sapling-orange)]" />
-            <span className="font-medium">New Programme</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-auto flex-col gap-2 py-5"
-            onClick={() => router.push("/quotes")}
-          >
-            <FileText className="size-5 text-[var(--sapling-orange)]" />
-            <span className="font-medium">New Quote</span>
-          </Button>
-        </div>
+        {/* Command bar */}
+        <CommandBar />
 
-        {/* Stats strip */}
-        <div className="mb-6 flex flex-wrap gap-4 rounded-xl border bg-white p-5">
-          <Stat label="Clients" value={stats.clients} />
-          <div className="hidden sm:block border-l border-gray-200" />
-          <Stat label="Farms" value={stats.farms} />
-          <div className="hidden sm:block border-l border-gray-200" />
-          <Stat label="Fields" value={stats.fields} />
-          <div className="hidden sm:block border-l border-gray-200" />
-          <Stat label="This month" value={stats.analyses_this_month} />
-          <div className="hidden sm:block border-l border-gray-200" />
-          <Stat label="Active progs" value={stats.active_programmes} />
-          <div className="hidden sm:block border-l border-gray-200" />
-          <Stat label="Pending Q" value={stats.pending_quotes} />
-        </div>
-
-        {/* Main two-column */}
-        <div className="grid gap-4 lg:grid-cols-3">
-          {/* Attention column */}
-          <div className="space-y-4 lg:col-span-2">
-            <AttentionCard
-              tone="warning"
-              icon={Clock}
-              title={`Fields overdue for testing (${thresholds.stale_analysis_months}+ months)`}
-              count={attention.stale_analyses.count}
-              emptyMessage="All your fields have recent analyses."
-              viewAllHref="/records"
-            >
-              {attention.stale_analyses.preview.map((item) => (
-                <Link
-                  key={item.analysis_id}
-                  href={item.client_id ? `/clients/${item.client_id}` : "/records"}
-                  className="block rounded-lg border bg-gray-50/50 px-3 py-2 transition-colors hover:bg-orange-50 hover:border-[var(--sapling-orange)]/30"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium text-[var(--sapling-dark)]">
-                        {item.customer || "—"}
-                        {item.field && <span className="text-[var(--sapling-medium-grey)]"> · {item.field}</span>}
-                      </div>
-                      <div className="mt-0.5 text-xs text-[var(--sapling-medium-grey)]">
-                        {item.crop || "Unknown crop"} · last tested {relativeTime(item.last_analysed_at)}
-                      </div>
-                    </div>
-                    <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                      {Math.round(item.days_old / 30)}mo
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </AttentionCard>
-
-            <AttentionCard
-              tone="info"
-              icon={Users}
-              title="Clients without a soil analysis"
-              count={attention.clients_never_analysed.count}
-              emptyMessage="Every client has at least one analysis on file."
-              viewAllHref="/clients"
-            >
-              {attention.clients_never_analysed.preview.map((c) => (
-                <Link
-                  key={c.client_id}
-                  href={`/clients/${c.client_id}`}
-                  className="flex items-center justify-between rounded-lg border bg-gray-50/50 px-3 py-2 transition-colors hover:bg-blue-50 hover:border-blue-300"
-                >
-                  <span className="truncate text-sm font-medium text-[var(--sapling-dark)]">
-                    {c.name}
-                  </span>
-                  <ChevronRight className="size-4 shrink-0 text-[var(--sapling-medium-grey)]" />
-                </Link>
-              ))}
-            </AttentionCard>
-
-            <AttentionCard
-              tone="info"
-              icon={FileText}
-              title="Pending quotes"
-              count={attention.pending_quotes.count}
-              emptyMessage="No quotes are currently waiting on a response."
-              viewAllHref="/quotes"
-            >
-              {attention.pending_quotes.preview.map((q) => (
-                <Link
-                  key={q.quote_id}
-                  href={`/quotes/${q.quote_id}`}
-                  className="block rounded-lg border bg-gray-50/50 px-3 py-2 transition-colors hover:bg-blue-50 hover:border-blue-300"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium text-[var(--sapling-dark)]">
-                        {q.customer || "—"}
-                      </div>
-                      <div className="mt-0.5 truncate text-xs text-[var(--sapling-medium-grey)]">
-                        {q.blend_name}
-                      </div>
-                    </div>
-                    <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
-                      {q.days_pending}d
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </AttentionCard>
-
-            {attention.unread_messages > 0 && (
+        {/* Today */}
+        <section className="mt-8">
+          <div className="mb-2 flex items-baseline justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--sapling-medium-grey)]">
+              Today
+            </h2>
+            {today.length > 0 && (
               <Link
-                href="/quotes"
-                className="flex items-center justify-between rounded-xl border border-red-200 bg-white p-5 transition-colors hover:bg-red-50"
+                href="/records"
+                className="text-xs font-medium text-[var(--sapling-medium-grey)] hover:text-[var(--sapling-orange)]"
               >
-                <div className="flex items-center gap-3">
-                  <div className="flex size-9 items-center justify-center rounded-lg bg-red-50 text-red-600">
-                    <MessageSquare className="size-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-[var(--sapling-dark)]">
-                      Unread quote messages
-                    </h3>
-                    <p className="text-xs text-[var(--sapling-medium-grey)]">
-                      {attention.unread_messages} new{" "}
-                      {attention.unread_messages === 1 ? "message" : "messages"} waiting
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="size-5 text-[var(--sapling-medium-grey)]" />
+                All records →
               </Link>
             )}
           </div>
+          {today.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-8 text-center">
+              <Sparkles className="mx-auto size-5 text-[var(--sapling-orange)]" />
+              <p className="mt-2 text-sm text-[var(--sapling-medium-grey)]">
+                Nothing overdue. Start something new below.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl border bg-white p-1">
+              {today.map((item, i) => (
+                <TodayRow key={`${item.kind}-${i}`} item={item} />
+              ))}
+            </div>
+          )}
+        </section>
 
-          {/* Recent activity column */}
-          <div>
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Recent activity</CardTitle>
-                  <Link
-                    href="/records"
-                    className="inline-flex items-center gap-0.5 text-xs font-medium text-[var(--sapling-medium-grey)] hover:text-[var(--sapling-orange)]"
-                  >
-                    Records <ChevronRight className="size-3" />
-                  </Link>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {recent_activity.length === 0 ? (
-                  <div className="flex flex-col items-center gap-2 py-6 text-center">
-                    <Inbox className="size-6 text-gray-300" />
-                    <p className="text-sm text-[var(--sapling-medium-grey)]">
-                      No activity yet.
-                    </p>
-                  </div>
-                ) : (
-                  <ul className="space-y-2">
-                    {recent_activity.map((item) => (
-                      <li key={`${item.type}-${item.id}`}>
-                        <Link
-                          href={item.href}
-                          className="flex items-start gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-gray-50"
-                        >
-                          <ActivityIcon type={item.type} />
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate font-medium text-[var(--sapling-dark)]">
-                              {item.title}
-                            </div>
-                            {item.subtitle && (
-                              <div className="truncate text-xs text-[var(--sapling-medium-grey)]">
-                                {item.subtitle}
-                              </div>
-                            )}
-                          </div>
-                          <span className="shrink-0 text-[10px] text-[var(--sapling-medium-grey)]">
-                            {relativeTime(item.created_at)}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        {/* Quick actions */}
+        <section className="mt-6 grid gap-2 sm:grid-cols-4">
+          <Button
+            variant="outline"
+            className="h-auto flex-col gap-1.5 py-4"
+            onClick={() => router.push("/quick-analysis")}
+          >
+            <Leaf className="size-5 text-[var(--sapling-orange)]" />
+            <span className="text-sm font-medium">New analysis</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="h-auto flex-col gap-1.5 py-4"
+            onClick={() => router.push("/quick-blend")}
+          >
+            <FlaskConical className="size-5 text-[var(--sapling-orange)]" />
+            <span className="text-sm font-medium">New blend</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="h-auto flex-col gap-1.5 py-4"
+            onClick={() => router.push("/season-manager")}
+          >
+            <Calendar className="size-5 text-[var(--sapling-orange)]" />
+            <span className="text-sm font-medium">New programme</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="h-auto flex-col gap-1.5 py-4"
+            onClick={() => router.push("/quotes")}
+          >
+            <FileText className="size-5 text-[var(--sapling-orange)]" />
+            <span className="text-sm font-medium">New quote</span>
+          </Button>
+        </section>
+
+        {/* Compact stats footer */}
+        <section className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-gray-200 pt-4 text-xs text-[var(--sapling-medium-grey)]">
+          <span>
+            <strong className="font-semibold text-[var(--sapling-dark)]">{stats.clients}</strong>{" "}
+            clients
+          </span>
+          <span>
+            <strong className="font-semibold text-[var(--sapling-dark)]">{stats.farms}</strong>{" "}
+            farms
+          </span>
+          <span>
+            <strong className="font-semibold text-[var(--sapling-dark)]">{stats.fields}</strong>{" "}
+            fields
+          </span>
+          <span>
+            <strong className="font-semibold text-[var(--sapling-dark)]">
+              {stats.analyses_this_month}
+            </strong>{" "}
+            analyses this month
+          </span>
+          <span>
+            <strong className="font-semibold text-[var(--sapling-dark)]">
+              {stats.active_programmes}
+            </strong>{" "}
+            active programmes
+          </span>
+          <span>
+            <strong className="font-semibold text-[var(--sapling-dark)]">
+              {stats.pending_quotes}
+            </strong>{" "}
+            pending quotes
+          </span>
+        </section>
       </div>
     </AppShell>
   );

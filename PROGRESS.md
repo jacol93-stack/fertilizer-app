@@ -1,252 +1,109 @@
 # Sapling upgrade — progress notes
 
-Running log of everything Claude did while you were asleep, top of the
-pile first. Read the top 3 sections when you check in; the rest is
-reference.
+Running log. Top of file is "where we are right now"; scroll down for
+history of what's already shipped.
 
-## TL;DR for the morning
+## TL;DR as of 2026-04-15 (end of day)
 
-- **154 tests passing** (was 59 last check-in). Full engine safety net in
-  place: soil, optimizer, feeding, notation, comparison, soil_corrections,
-  foliar, rate_limit.
-- **Workbench dashboard is live** — new `/api/workbench/workbench` endpoint
-  and a replacement `sapling-web/src/app/page.tsx`. Single round-trip,
-  "what needs my attention today" focus. Try it after restarting the API.
-- **Rate limiting is wired** via a path-classifying middleware (no per-router
-  decorations). Tiered: engine / list / admin / ai / session / default.
-  Sporadic-but-intense workload as you asked for.
-- **Migrations 032–035 applied successfully by you.** Backend picks them up
-  on next restart (soft-delete columns, 18 indexes, RLS policies on 11
-  bare tables, impersonation_sessions table).
-- **Big untracked-code pile in `sapling-api/app/`** is still not committed.
-  My changes are all on top of it. Commit your backend code + my changes
-  together when you're ready; they're one coherent piece.
+**Everything is committed.** Commit `3bb5d5d` landed 218 files
+(+55,820 / −344) consolidating: backend security hardening, agent
+workbench dashboard, full backend + frontend pagination, test suite,
+and the absorption of `sapling-web` into the root monorepo. Working
+tree is clean except for `.DS_Store` and `.claude/settings.local.json`
+which are deliberately left alone.
 
-## How to verify it's working
+**Current state:**
+- **168 backend tests** passing (engines, rate limiter, pagination)
+- **Backend imports cleanly** — 155 FastAPI routes registered
+- **Frontend TypeScript clean** via `tsc --noEmit --skipLibCheck`
+- **Migrations 032–035 applied** to Supabase; 11 tables have proper RLS policies; impersonation lives in the DB now
+- **One monorepo, one git history** — previously sapling-web was a nested repo (4 commits lost in the absorption, content preserved)
+- **No push to remote** — user backs up via iCloud + SSD so `jacol93-stack/fertilizer-app` remote is configured but not pushed
+
+## Pick-up list for tomorrow (in priority order)
+
+1. **Records page full pagination conversion** — last remaining piece of the pagination phase. Records is 997 lines with tabbed UI and complex client-side filtering. Current state: consumes the envelope via `api.getAll` so it works, but doesn't show pagination controls. Converting it properly means pushing search + user filter + tab state to the backend and wiring `usePagination`. Medium-size task.
+
+2. **Calc bug fixes** — tests lock in current buggy behavior for ~8 audit-flagged issues. Fix the optimizer `None` crash first (highest blast radius). Each fix is a code+test update as a deliberate commit.
+
+3. **Next workflow pain point** — user said workflow is the one they feel daily. Dashboard is v1 done. Candidates for v2:
+   - Client → farm → field drill-down nav
+   - Lab PDF extract UX (confidence scoring, diff view, bulk upload)
+   - Season planning re-plan mid-season / programme versioning
+   - Quote → order flow / quote revisions / expiry enforcement
+   - Multi-step wizard state persistence / draft auto-save
+
+4. **Workbench column assumptions** — I guessed a few column names in `workbench.py`. If any attention card is always empty when it shouldn't be, check the backend structured logs for `workbench.<section> failed` warnings and fix the column name.
+
+## Things still parked
+
+- **Quotes page, admin/users, admin/audit full conversion** — currently use `api.getAll` (works) but no pagination UI
+- **Pydantic input validation** on engine request bodies — yield_target caps, crop_name length, field_area_ha bounds
+- **Big audit backlog items** still untouched: CI/CD, Sentry, backup DR runbook, Privacy/ToS, multi-env separation, email deliverability (SPF/DKIM), file upload sanitization, GDPR export, monitoring/alerting, farmer portal, mobile PWA, WhatsApp integration
+
+## How to verify everything's good
 
 ```bash
 # Backend
 cd sapling-api
-venv/bin/python -m pytest tests/        # expect 154 passed
+venv/bin/python -m pytest tests/        # expect 168 passed
 venv/bin/python -m uvicorn app.main:app --reload --port 8000
-# Then hit http://localhost:8000/api/health in a browser — should be {"status":"ok","database":"ok",...}
+# Hit http://localhost:8000/api/health → expect {"status":"ok","database":"ok",...}
 
 # Frontend
 cd sapling-web
 npx tsc --noEmit --skipLibCheck         # clean compile
 npm run dev
-# http://localhost:3000 — you'll land on the new workbench
+# http://localhost:3000 → agent workbench dashboard
+# http://localhost:3000/clients → paginated client list (try ?limit=10&search=foo)
 ```
 
-## Things that need your call before I can do more
-
-1. **Pagination envelope rollout (task #14).** `app/pagination.py` helper
-   exists. Wiring it through the list endpoints changes response shape
-   (from `[...]` to `{items, total, skip, limit}`) which requires a matching
-   frontend change. Tell me "go" and I'll land both sides in one pass.
-2. **Workbench column assumptions.** I built the dashboard against the
-   column names I could verify in the router code. If any card is empty
-   when it shouldn't be, check the backend logs for `workbench.<section>
-   failed` — each section is wrapped in try/except so one bad column
-   can't take down the page.
-3. **Workflow next steps.** Dashboard is v1. The audit listed many other
-   flow pains (client drill-down, lab PDF extract, season planning,
-   records filtering, wizard state persistence). Pick which one hurts
-   next and I'll run at it.
-4. **Calc bug fixes.** I have golden tests locking in current (buggy)
-   behavior for ~8 audit-flagged bugs (classification boundary inclusive,
-   CEC-missing silently skipping base sat, optimizer `None` return,
-   age-beyond-table rolling to 1.0, notation denom cap, clay buffer
-   off-by-one, foliar 30 kg cap, 50% coverage threshold). Each fix
-   updates its test as a deliberate act. Want me to start fixing?
-
 ---
 
-## What's on disk right now (unstaged, on top of your untracked pile)
+## History of what's already shipped
 
-### New / modified tests — `sapling-api/tests/`
+### 2026-04-15 end of day — commit `3bb5d5d`
 
-All 154 pass. Tests intentionally encode audit-flagged quirks so future
-fixes have a target to push back on.
+Unified the repo and committed everything. 218 files. See the commit
+message for the full breakdown.
 
-| File | Tests | Covers |
-|------|-------|--------|
-| `test_soil_engine.py` | 29 | classify, targets, ratio adjustment, base saturation |
-| `test_optimizer.py` | 9 | run_optimizer, find_closest_blend, priority optimizer |
-| `test_feeding_engine.py` | 21 | growth stages, age factors, practical plan, methods |
-| `test_notation.py` | 16 | SA notation ↔ percent conversion, secondary nutrients |
-| `test_comparison_engine.py` | 18 | class index, crop impact, recommendations |
-| `test_soil_corrections.py` | 26 | lime, gypsum, organic carbon, nutrient explanations |
-| `test_foliar_engine.py` | 15 | product scoring, coverage, rate capping |
-| `test_rate_limit.py` | 20 | tier classification, sliding-window counter |
+### 2026-04-15 daytime — pagination phase (pre-commit)
 
-Run: `cd sapling-api && venv/bin/python -m pytest tests/ -v`
+- Hardened `app/pagination.py` helper (PageParams/Page[T]/apply_page)
+- Wired 10 backend list endpoints to the envelope with `count="exact"`: blends, soil, clients, quotes, programmes, leaf, feeding_plans, admin/audit-log, admin/users, admin/deleted
+- Fixed a schema mismatch the user caught: `material_markups` is global, not per-agent (migrations 033+034 were corrected mid-run)
+- Built frontend helpers: `src/lib/pagination.ts`, `src/lib/use-pagination.ts` (debounced search + URL sync), `src/components/pagination-controls.tsx`
+- Added `api.getAll<T>()` helper that transparently unwraps the envelope for legacy consumers
+- Migrated all ~15 simple list consumers to use `api.getAll`
+- Converted the **clients page** to full `usePagination` with server-side search, page size picker, URL deep linking (flagship demo)
+- Added 14 pagination unit tests
 
-### New migrations — `sapling-api/migrations/`
+### 2026-04-15 overnight — test coverage expansion + cleanup
 
-| File | Status | Purpose |
-|------|--------|---------|
-| `032_soft_delete_consistency.sql` | ✅ applied | `deleted_at` + `deleted_by` on blends/soil_analyses/feeding_plans/quotes; backfill `deleted_by` on programmes/leaf_analyses |
-| `033_performance_indexes.sql` | ✅ applied | 18 missing indexes on agent_id / client_id / created_at / deleted_at partials |
-| `034_rls_policies.sql` | ✅ applied | RLS policies for 11 tables 031 left bare; `public.is_admin()` helper. `material_markups` treated as global (not per-agent — your correction) |
-| `035_impersonation_sessions.sql` | ✅ applied | Durable `impersonation_sessions` table; replaces in-memory dict |
+- Added golden-case tests for notation, comparison_engine, soil_corrections, foliar_engine, rate_limit middleware, pagination (95 new tests, total now 154 → 168)
+- Upgraded 5 audit_log `except Exception: pass` sites to `logger.debug` so failures are visible
+- Wrote comprehensive PROGRESS.md
 
-### Code changes — `sapling-api/app/`
+### 2026-04-14 late — agent workbench dashboard
 
-- **`routers/admin.py`** — `/activity` endpoint: fixed dead `.neq("role","admin")`
-  filter (column didn't exist), wrong `saved_blends` table name (→ `blends`),
-  wrong `crop_name` column (→ `crop`). Excludes soft-deleted rows. `limit`
-  query param. Also upgraded the audit_log silent except.
+- New `/api/workbench/workbench` endpoint: stats, 4 attention sections (stale analyses, clients-never-analysed, pending quotes, unread messages), recent activity feed, onboarding flag
+- Replaced `sapling-web/src/app/page.tsx` with workbench layout (welcome header, quick actions, stats strip, attention cards, recent activity, onboarding state)
+- Task list restructured to put workflow phase under a parent task
 
-- **`routers/workbench.py`** (NEW) — `/api/workbench/workbench` endpoint.
-  Single round-trip returning stats, 4 attention sections, recent activity,
-  onboarding flag. Each section wrapped in try/except with named fallback
-  so a broken column can't cascade.
+### 2026-04-14 — backend security workstream
 
-- **`main.py`** —
-  1. `/api/health` now probes the database and returns 503 on failure
-  2. Stdlib-only JSON log formatter wired onto root logger; honors `$LOG_LEVEL`
-  3. `rate_limit_middleware` registered (path-classifying tiered limiter)
-  4. Request-logging middleware: correlation IDs, `request.start` / `request.finish`
-     structured records with duration_ms / status / method / path
-  5. Workbench router mounted at `/api/workbench`
+- **Migrations 032–035 applied to Supabase:**
+  - 032 soft-delete consistency (blends, soil_analyses, feeding_plans, quotes + backfill on programmes, leaf_analyses)
+  - 033 performance indexes (18 new indexes)
+  - 034 RLS policies (11 tables + `public.is_admin()` helper; material_markups treated as global)
+  - 035 impersonation_sessions table
+- **auth.py refactor:** impersonation sessions moved from in-memory dict to DB table; timeout 60 → 15 min; IP + UA captured
+- **main.py changes:** DB-backed health check, JSON log formatter (stdlib only), correlation ID request middleware
+- **Rate limit middleware rewritten** as path-classifying tiered system (zero per-route decorations)
+- **admin.py `/activity` bug fixed** — dead `.neq("role","admin")` filter on wrong table name `saved_blends`
+- **Test suite scaffolded** with golden cases for soil_engine, optimizer, feeding_engine (59 initial tests)
 
-- **`auth.py`** — impersonation sessions moved from in-memory dict to
-  `impersonation_sessions` table. Timeout 60 → **15 min**. Captures IP +
-  user agent. Expired sessions flip to `ended_at` with reason `"expired"`.
-  Falls back to in-memory dict if migration 035 isn't applied (it is now).
+### 2026-04-14 morning — first batch
 
-- **`rate_limit.py`** — rewritten. Path-classifying middleware with
-  tiered rules:
-  - `engine` 30/sec; 300/min (POST/PUT on blend optimize, soil classify/targets/compare/corrections, feeding generate/practical, foliar/liquid/leaf diagnose, programmes generate)
-  - `list` 60/sec; 600/min (GET on `/api/blends/`, `/api/soil/`, `/api/clients/`, `/api/quotes/`, `/api/programmes/`, `/api/leaf/`, `/api/feeding-plans/`, `/api/records`, `/api/workbench/`)
-  - `admin` 20/min (POST/PATCH/DELETE on `/api/admin/*`, `/api/materials/`, `/api/crop-norms/`)
-  - `ai` 5/min; 50/hour (POST on `/api/soil/extract`, `/api/leaf/extract`, `/api/crop-norms/generate`, `/api/soil/batch-analyze`)
-  - `session` 10/min; 200/hour (all methods on `/api/sessions/*`)
-  - `default` 200/min (everything else)
-
-  Keyed by `X-Forwarded-For` with fallback to `request.client.host`.
-  In-memory sliding-window store with per-(rule, key) deques.
-  Bypasses `/api/health`, `/openapi`, `/docs`, `/redoc`, `/favicon`.
-  Sends `Retry-After`, `X-RateLimit-Rule`, `X-RateLimit-Limit` headers on 429.
-
-- **`pagination.py`** (NEW) — reusable `PageParams` / `Page[T]` / `apply_page()`
-  helpers. Not yet wired into list endpoints — waiting on task #14 decision.
-
-- **Audit log silent excepts upgraded** — `auth.py`, `admin.py`, `blends.py`,
-  `feeding_plans.py`, `leaf.py`, `programmes.py`. Was `except Exception: pass`,
-  now `except Exception: logger.debug(...)` with the event_type as context.
-  Behavior unchanged (never blocks the host request) but failures are visible.
-
-### Frontend — `sapling-web/`
-
-- **`src/app/page.tsx`** (REPLACED) — Agent workbench dashboard.
-  Layout: welcome header → quick actions row → stats strip → two-column
-  (attention cards on left, recent activity on right). Collapses to single
-  column on mobile. Has loading skeleton, error state with retry, and a
-  server-driven onboarding state for zero-client agents with a 3-step
-  "Add client → Run analysis → Build blend" welcome.
-  Clean `tsc --noEmit --skipLibCheck`.
-
-- **`.next/types/routes.d 2.ts`** and **`routes.d 4.ts`** — deleted. Stale
-  macOS duplicate files that were causing a spurious TS2300 error. Next.js
-  regenerates `routes.d.ts` on build.
-
-### Committed in git (just one commit)
-
-```
-<new> Remove legacy Streamlit blend/fertilizer apps
-```
-
-Everything else above is on disk, unstaged, waiting for you to bundle it
-with your untracked backend code.
-
----
-
-## Task list state (for reference)
-
-### Done
-
-1. ✅ Commit legacy dir deletions
-2. ✅ Fix dead role filters in admin.py
-3. ✅ Scaffold pytest
-4. ✅ Golden tests — soil_engine
-5. ✅ Golden tests — optimizer
-6. ✅ Golden tests — feeding_engine
-7. ✅ Audit existing RLS policies
-8. ✅ Migration 032 (soft-delete consistency)
-9. ✅ Migration 033 (indexes)
-10. ✅ Migration 034 (RLS policies)
-11. ✅ Migration 035 + auth.py refactor (impersonation to DB)
-12. ✅ DB health check
-15. ✅ Structured logging + request middleware
-16. ✅ Dashboard parent phase
-17. ✅ Rate limiting (path-classifying middleware, zero router touches)
-18. ✅ Dashboard data scoping
-19. ✅ Workbench backend endpoint
-20. ✅ Workbench layout design
-21. ✅ Workbench page implementation
-22. ✅ Attention card components
-23. ✅ Onboarding state
-24. ✅ Extended tests (notation, comparison, corrections)
-25. ✅ Silent except-pass → structured debug logs (audit_log sites only)
-26. ✅ Rate limit middleware tests
-27. ✅ Foliar engine tests
-
-### Parked (waiting on you)
-
-14. 🟡 **Pagination envelope wiring.** Helper module done; threading it
-    through routers + updating the frontend list pages is a backend/frontend
-    coordinated change.
-
----
-
-## Footguns / things you should know
-
-1. **Backend restart required.** The rate-limit middleware, workbench
-   router, and health check upgrade are module-level imports in `main.py`.
-   Kill and restart uvicorn before you test.
-
-2. **The workbench uses columns I verified by grep**, not by schema
-   introspection. If any attention card is always empty for you, check the
-   structured logs for `workbench.<section>_failed` entries — they tell
-   you which section's column assumption is wrong. Fix is usually a
-   one-line column rename in `app/routers/workbench.py`.
-
-3. **Rate limiter is in-memory, single-worker.** If you scale uvicorn to
-   multiple workers, the budget is per-worker which means effective limits
-   are multiplied by worker count. Switch to Redis-backed if you scale.
-
-4. **Auth.py has a fallback dict** for impersonation if migration 035
-   isn't applied. It's applied now, so the fallback never triggers. If you
-   ever need to roll back 035 without reverting auth.py, it'll still work.
-
-5. **TypeScript check is clean** but only with `--skipLibCheck`. There's
-   nothing in my page.tsx that needs lib check changes — the `--skipLibCheck`
-   is just to sidestep upstream node_modules noise.
-
-6. **`/api/workbench/workbench` is a slightly ugly URL.** I mounted the
-   router at `/api/workbench` to leave room for future siblings
-   (`/api/workbench/notifications`, `/api/workbench/alerts`). Can flatten
-   to `/api/workbench` + a single endpoint if you prefer.
-
-7. **Material_markups is global, not per-agent.** My migrations originally
-   assumed per-agent; you caught it with the "column agent_id does not
-   exist" SQL error. Both 033 and 034 were rewritten to treat it as a
-   global admin-writeable, all-readable table. If you later want per-agent
-   markups, that's a schema migration (add agent_id column + backfill).
-
----
-
-## What I'd tackle next (ranked)
-
-1. **Calc bug fixes.** Tests are the safety net; now I can fix the
-   audit-flagged bugs one at a time, each a principled code+test change.
-   Highest impact: the optimizer `None` crash, the CEC-missing silent
-   skip, the classification boundary ambiguity.
-2. **Next workflow pain point** — you pick. My guesses: client →
-   farm → field drill-down navigation, or the lab-PDF extract UX.
-3. **Pagination envelope wiring** (task 14) — waiting on your nod.
-4. **More tests** — liquid_optimizer, programme_engine, leaf_engine.
-5. **Pydantic input validation** on the engine request bodies — range
-   caps for yield_target, field_area_ha, etc.
+- Legacy Streamlit app dirs removed (`blend_app/`, `fertilizer_app/`, `fertilizer_app_deploy/`)
+- Removed stale macOS `.next/types/routes.d 2.ts` / `4.ts` duplicates

@@ -67,6 +67,7 @@ function SeasonBuilderPage() {
   const [userApplications, setUserApplications] = useState<UserApplication[]>([]);
   const [plantingMonths, setPlantingMonths] = useState<Record<string, number>>({});
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [unplanableBlocks, setUnplanableBlocks] = useState<Array<{ block_id: string; block_name: string; reason: string; crop?: string }>>([]);
 
   // Blend groups data (from generate)
   const [blendGroupsData, setBlendGroupsData] = useState<BlendGroupData[]>([]);
@@ -271,11 +272,17 @@ function SeasonBuilderPage() {
       }
 
       // Preview schedule — get block info with growth stages
-      const preview = await api.post<{ schedule: unknown[]; block_info: BlockInfo[] }>(
-        `/api/programmes/${pid}/preview-schedule`
-      );
+      const preview = await api.post<{
+        schedule: unknown[];
+        block_info: BlockInfo[];
+        unplanable_blocks?: Array<{ block_id: string; block_name: string; reason: string; crop?: string }>;
+      }>(`/api/programmes/${pid}/preview-schedule`);
       setBlockInfoData(preview.block_info);
+      setUnplanableBlocks(preview.unplanable_blocks || []);
       setUserApplications([]);
+      if (preview.unplanable_blocks && preview.unplanable_blocks.length > 0) {
+        toast.info(`${preview.unplanable_blocks.length} block${preview.unplanable_blocks.length !== 1 ? "s" : ""} skipped — see warning`);
+      }
       setWizardStep(2);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed";
@@ -515,6 +522,30 @@ function SeasonBuilderPage() {
                   <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                     <AlertTriangle className="mt-0.5 size-4 shrink-0" />
                     {scheduleError}
+                  </div>
+                )}
+                {unplanableBlocks.length > 0 && (
+                  <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+                    <div className="flex items-start gap-2 text-amber-800">
+                      <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                      <div className="flex-1">
+                        <p className="font-medium">
+                          {unplanableBlocks.length} block{unplanableBlocks.length !== 1 ? "s" : ""} skipped
+                        </p>
+                        <ul className="mt-1 space-y-0.5 text-amber-700">
+                          {unplanableBlocks.map((b) => (
+                            <li key={b.block_id}>
+                              <span className="font-medium">{b.block_name}</span>
+                              {b.reason === "missing_targets" && " — no soil analysis linked"}
+                              {b.reason === "missing_growth_stages" && ` — growth stages not configured for ${b.crop}`}
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="mt-1 text-xs text-amber-600">
+                          These blocks will be included in the programme once the missing data is supplied.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 )}
                 {blockInfoData.length > 0 ? (

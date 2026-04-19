@@ -57,7 +57,7 @@ export function NutrientPriorityPanel({
             >
               <div className="flex items-center gap-3">
                 <span className="w-8 text-sm font-bold text-[var(--sapling-dark)]">{nut}</span>
-                <span className="text-xs text-muted-foreground">Target: {target}%</span>
+                <span className="text-xs text-muted-foreground">Target: {target.toFixed(2)}%</span>
                 {missed && (
                   <span className="text-xs text-red-600">
                     achieved {missed.actual.toFixed(2)}% (short {missed.shortfall.toFixed(2)}%)

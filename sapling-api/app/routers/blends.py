@@ -121,7 +121,14 @@ class BlendSave(BaseModel):
     # Liquid-specific fields
     tank_volume_l: float | None = None
     sg_estimate: float | None = None
-    mixing_instructions: list[str] | None = None
+    mixing_instructions: list[Any] | None = None
+    # SA-notation liquid fields (mass-fraction flow, 2026-04-18)
+    target_unit: str | None = None
+    sa_notation: str | None = Field(None, max_length=120)
+    international_notation: str | None = Field(None, max_length=200)
+    density_kg_per_l: float | None = None
+    nutrient_composition: list[dict] | None = None
+    water_kg: float | None = None
 
 
 class BlendOut(BaseModel):
@@ -150,7 +157,7 @@ class BlendOut(BaseModel):
     # Liquid-specific fields
     tank_volume_l: float | None = None
     sg_estimate: float | None = None
-    mixing_instructions: list[str] | None = None
+    mixing_instructions: list[Any] | None = None
 
     model_config = {"from_attributes": True}
 
@@ -172,6 +179,23 @@ class BlendUpdate(BaseModel):
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────
+
+
+def _strip_liquid_meta(blend: dict) -> dict:
+    """Remove the SA-notation `_meta` sentinel the save path stashes into
+    `mixing_instructions`. Leaves human-readable string steps intact.
+
+    TODO: once the `blends` schema grows first-class columns for
+    sa_notation / international_notation / nutrient_composition /
+    density_kg_per_l / water_kg, drop the stash-and-strip dance.
+    """
+    raw = blend.get("mixing_instructions")
+    if isinstance(raw, list):
+        blend["mixing_instructions"] = [
+            m for m in raw
+            if not (isinstance(m, dict) and m.get("_meta") == "sa_notation_label")
+        ]
+    return blend
 
 
 def _strip_costs(data: dict | list, is_admin: bool) -> dict | list:
@@ -547,6 +571,32 @@ def save_blend(
     if "min_compost_pct" in data:
         data["min_compost_pct"] = int(data["min_compost_pct"])
 
+    # Liquid SA-notation / Act 36 extras — the `blends` table schema has not
+    # been extended with dedicated columns yet, so stash the label metadata
+    # into the existing `mixing_instructions` JSONB as a single `_meta` entry
+    # tacked onto the list. The PDF builder and download router can pull it
+    # back out; legacy consumers iterate strings so a dict is ignored.
+    # TODO: persist sa_notation / international_notation / nutrient_composition
+    # / density_kg_per_l / water_kg once the blends schema is extended with
+    # first-class columns (planned follow-up migration).
+    _LIQUID_META_KEYS = (
+        "sa_notation",
+        "international_notation",
+        "nutrient_composition",
+        "density_kg_per_l",
+        "water_kg",
+        "target_unit",
+    )
+    liquid_meta = {k: data.pop(k) for k in _LIQUID_META_KEYS if k in data}
+    if liquid_meta and data.get("blend_type") == "liquid":
+        instructions = list(data.get("mixing_instructions") or [])
+        instructions.append({"_meta": "sa_notation_label", **liquid_meta})
+        data["mixing_instructions"] = instructions
+        # Mirror density into sg_estimate (existing NUMERIC column) when the
+        # caller didn't set it explicitly.
+        if liquid_meta.get("density_kg_per_l") and not data.get("sg_estimate"):
+            data["sg_estimate"] = liquid_meta["density_kg_per_l"]
+
     result = sb.table("blends").insert(data).execute()
     if not result.data:
         raise HTTPException(status_code=500, detail="Failed to save blend")
@@ -561,6 +611,9 @@ def save_blend(
         audit_meta["impersonated_by"] = user.impersonated_by
         audit_meta["impersonation"] = True
     _audit_log("blend_save", "blends", str(blend["id"]), audit_meta, user_id=user.impersonated_by or user.id)
+    # Drop the SA-notation `_meta` entry from the mixing_instructions echo
+    # so the frontend continues to see a list of human-readable strings.
+    blend = _strip_liquid_meta(blend)
     return BlendOut(**blend)
 
 
@@ -593,7 +646,7 @@ def list_blends(
 
     query = apply_page(query, page, default_order="created_at")
     result = query.execute()
-    blends = [BlendOut(**b).model_dump() for b in (result.data or [])]
+    blends = [BlendOut(**_strip_liquid_meta(b)).model_dump() for b in (result.data or [])]
     stripped = _strip_costs(blends, user.role == "admin")
     return Page.from_list(stripped, page, total=getattr(result, "count", None))
 
@@ -723,7 +776,7 @@ def get_blend(
     if user.role != "admin" and blend.get("agent_id") != user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    return _strip_costs(BlendOut(**blend).model_dump(), user.role == "admin")
+    return _strip_costs(BlendOut(**_strip_liquid_meta(blend)).model_dump(), user.role == "admin")
 
 
 @router.patch("/{blend_id}", response_model=BlendOut)
@@ -830,12 +883,33 @@ def hard_delete_blend(
 
 
 class LiquidOptimizeRequest(BaseModel):
-    targets: dict[str, float] = Field(..., description="Nutrient targets in g/L")
+    targets: dict[str, float] = Field(
+        ...,
+        description=(
+            "Nutrient targets. Interpreted as g/L (default) or m/m % of the "
+            "finished solution depending on `target_unit`."
+        ),
+    )
+    target_unit: str = Field(
+        "g_per_l",
+        pattern="^(g_per_l|m_m_pct)$",
+        description=(
+            "Unit for `targets`. 'g_per_l' keeps the legacy behaviour "
+            "(grams per litre of finished solution); 'm_m_pct' uses mass/"
+            "mass percentages, matching SA notation and Act 36 labels. "
+            "m_m_pct is the preferred path — no SG guess is needed and the "
+            "finished blend is guaranteed to hit the requested grade."
+        ),
+    )
     selected_materials: list[str] = Field(..., min_length=1)
     tank_volume_l: float = Field(1000, gt=0, le=100_000)
     priorities: dict[str, str] | None = Field(
         None,
         description="Nutrient priorities: {nutrient: 'must_match' | 'flexible'}. If null, all treated equally."
+    )
+    required_materials: dict[str, float] | None = Field(
+        None,
+        description="Compulsory materials: {material_name: pct_of_total_mass}. Each pct in (0, 100], sum ≤ 100."
     )
 
 
@@ -843,10 +917,17 @@ class LiquidOptimizeRequest(BaseModel):
 def optimize_liquid(body: LiquidOptimizeRequest, user: CurrentUser = Depends(get_current_user)):
     """Optimize a custom liquid blend from selected raw materials.
 
-    Targets are in g/L. Returns recipe with mixing instructions,
-    SG estimate, and compatibility warnings.
+    Accepts targets in either g/L (legacy) or m/m % (preferred). The m/m
+    path runs a mass-fraction LP and reports the finished density as an
+    output, which is how SA-registered liquid products are actually
+    labelled. The g/L path still delegates to the legacy optimizer.
     """
-    from app.services.liquid_optimizer import optimize_liquid_blend, run_liquid_priority_optimizer
+    from app.services.liquid_optimizer import (
+        optimize_liquid_blend,
+        optimize_liquid_blend_mm,
+        run_liquid_priority_optimizer,
+        run_liquid_priority_optimizer_mm,
+    )
 
     sb = get_supabase_admin()
 
@@ -861,22 +942,44 @@ def optimize_liquid(body: LiquidOptimizeRequest, user: CurrentUser = Depends(get
     compat = sb.table("material_compatibility").select("*").execute()
     compat_rules = compat.data or []
 
+    use_mm = body.target_unit == "m_m_pct"
+
     if body.priorities:
-        # Priority-aware optimization
-        result = run_liquid_priority_optimizer(
-            targets=body.targets,
-            priorities=body.priorities,
-            materials=materials,
-            tank_volume_l=body.tank_volume_l,
-            compatibility_rules=compat_rules,
-        )
+        if use_mm:
+            result = run_liquid_priority_optimizer_mm(
+                targets_mm=body.targets,
+                priorities=body.priorities,
+                materials=materials,
+                tank_volume_l=body.tank_volume_l,
+                compatibility_rules=compat_rules,
+                required_materials=body.required_materials,
+            )
+        else:
+            result = run_liquid_priority_optimizer(
+                targets=body.targets,
+                priorities=body.priorities,
+                materials=materials,
+                tank_volume_l=body.tank_volume_l,
+                compatibility_rules=compat_rules,
+                required_materials=body.required_materials,
+            )
     else:
-        result = optimize_liquid_blend(
-            targets=body.targets,
-            materials=materials,
-            tank_volume_l=body.tank_volume_l,
-            compatibility_rules=compat_rules,
-        )
+        if use_mm:
+            result = optimize_liquid_blend_mm(
+                targets_mm=body.targets,
+                materials=materials,
+                tank_volume_l=body.tank_volume_l,
+                compatibility_rules=compat_rules,
+                required_materials=body.required_materials,
+            )
+        else:
+            result = optimize_liquid_blend(
+                targets=body.targets,
+                materials=materials,
+                tank_volume_l=body.tank_volume_l,
+                compatibility_rules=compat_rules,
+                required_materials=body.required_materials,
+            )
 
     if not result.get("success"):
         raise HTTPException(400, result.get("error", "Optimization failed"))

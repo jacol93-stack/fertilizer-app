@@ -12,10 +12,11 @@ the rest of the page keeps working. We log the failure so we notice.
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query, Request
 
 from app.auth import CurrentUser, get_current_user
 from app.rate_limit import limiter
@@ -280,6 +281,69 @@ def _get_unread_messages(sb, agent_id: str) -> int:
     return result.count or 0
 
 
+def _build_today(
+    stale: dict[str, Any],
+    never: dict[str, Any],
+    pending: dict[str, Any],
+    unread_count: int,
+) -> list[dict]:
+    """Merge attention sections into a single urgency-ranked feed.
+
+    Urgency rubric (higher = more urgent):
+      unread message   → 100
+      stale analysis   → 50 + clamp(months_old - threshold, 0, 40)
+      pending quote    → 40 + clamp(days_pending, 0, 30)
+      never-analysed   → 20
+    Ties broken by insertion order.
+    """
+    items: list[dict] = []
+
+    if unread_count:
+        items.append({
+            "kind": "unread_messages",
+            "urgency": 100,
+            "title": f"{unread_count} unread quote {'message' if unread_count == 1 else 'messages'}",
+            "subtitle": "Someone replied on a quote you sent",
+            "badge": f"{unread_count} new",
+            "href": "/quotes",
+        })
+
+    for s in stale.get("preview", []):
+        months_old = max(0, s["days_old"] // 30 - STALE_ANALYSIS_MONTHS)
+        items.append({
+            "kind": "stale_analysis",
+            "urgency": 50 + min(months_old, 40),
+            "title": f"{s['customer'] or '—'}{' · ' + s['field'] if s['field'] else ''}",
+            "subtitle": f"{s['crop'] or 'Unknown crop'} · last tested {s['days_old']}d ago",
+            "badge": f"{s['days_old'] // 30}mo",
+            "href": f"/clients/{s['client_id']}" if s.get("client_id") else "/records",
+        })
+
+    for q in pending.get("preview", []):
+        days = q.get("days_pending", 0)
+        items.append({
+            "kind": "pending_quote",
+            "urgency": 40 + min(days, 30),
+            "title": q["customer"] or q["blend_name"],
+            "subtitle": f"Quote: {q['blend_name']} · waiting {days}d",
+            "badge": f"{days}d",
+            "href": f"/quotes/{q['quote_id']}",
+        })
+
+    for c in never.get("preview", []):
+        items.append({
+            "kind": "never_analysed",
+            "urgency": 20,
+            "title": c["name"],
+            "subtitle": "No soil analysis on file yet",
+            "badge": "new",
+            "href": f"/clients/{c['client_id']}",
+        })
+
+    items.sort(key=lambda x: x["urgency"], reverse=True)
+    return items
+
+
 def _get_recent_activity(sb, agent_id: str) -> list[dict]:
     """Mixed feed: latest analyses, blends, programmes, quotes."""
     feed: list[dict] = []
@@ -351,7 +415,7 @@ def _get_recent_activity(sb, agent_id: str) -> list[dict]:
 @router.get("/workbench")
 @limiter.limit("60/second; 600/minute")  # list-read tier
 def get_workbench(
-    request: Any,  # needed by slowapi decorator
+    request: Request,  # needed by slowapi decorator
     user: CurrentUser = Depends(get_current_user),
 ):
     """The agent home page, assembled in one round-trip.
@@ -387,6 +451,11 @@ def get_workbench(
     )
     unread_messages = _safe("unread_messages", lambda: _get_unread_messages(sb, agent_id), 0)
     activity = _safe("recent_activity", lambda: _get_recent_activity(sb, agent_id), [])
+    today = _safe(
+        "today",
+        lambda: _build_today(stale_analyses, never_analysed, pending_quotes, unread_messages),
+        [],
+    )
 
     # Onboarding state: a brand-new agent with no clients and nothing saved
     # gets a different landing experience. Detect it server-side so the
@@ -413,9 +482,140 @@ def get_workbench(
             "pending_quotes": pending_quotes,
             "unread_messages": unread_messages,
         },
+        "today": today,
         "recent_activity": activity,
         "is_onboarding": is_onboarding,
         "thresholds": {
             "stale_analysis_months": STALE_ANALYSIS_MONTHS,
         },
     }
+
+
+# ── Global search ──────────────────────────────────────────────────────────
+
+# Characters that would break a PostgREST `or()` expression. Keeping it tight
+# to alphanumerics + basic separators removes ilike wildcard injection and
+# comma/paren escapes in one pass.
+_SEARCH_SAFE_RE = re.compile(r"[^a-zA-Z0-9 \-_.@/]")
+
+SEARCH_PER_KIND_LIMIT = 5
+
+
+def _sanitize_query(raw: str) -> str:
+    return _SEARCH_SAFE_RE.sub(" ", raw).strip()[:80]
+
+
+def _search_clients(sb, agent_id: str, role: str, q: str) -> list[dict]:
+    query = sb.table("clients").select("id, name, contact_person, email").is_("deleted_at", "null")
+    if role != "admin":
+        query = query.eq("agent_id", agent_id)
+    query = query.or_(
+        f"name.ilike.%{q}%,contact_person.ilike.%{q}%,email.ilike.%{q}%"
+    ).limit(SEARCH_PER_KIND_LIMIT)
+    rows = (query.execute().data or [])
+    return [{
+        "kind": "client",
+        "id": r["id"],
+        "title": r["name"],
+        "subtitle": r.get("contact_person") or r.get("email") or "",
+        "href": f"/clients/{r['id']}",
+    } for r in rows]
+
+
+def _search_analyses(sb, agent_id: str, role: str, q: str) -> list[dict]:
+    query = (
+        sb.table("soil_analyses")
+        .select("id, client_id, customer, farm, field, crop, created_at")
+        .eq("status", "saved")
+        .is_("deleted_at", "null")
+    )
+    if role != "admin":
+        query = query.eq("agent_id", agent_id)
+    query = query.or_(
+        f"customer.ilike.%{q}%,farm.ilike.%{q}%,field.ilike.%{q}%,crop.ilike.%{q}%"
+    ).order("created_at", desc=True).limit(SEARCH_PER_KIND_LIMIT)
+    rows = (query.execute().data or [])
+    return [{
+        "kind": "analysis",
+        "id": r["id"],
+        "title": r.get("customer") or r.get("crop") or "Soil analysis",
+        "subtitle": " / ".join(x for x in [r.get("farm"), r.get("field"), r.get("crop")] if x),
+        "href": f"/clients/{r['client_id']}" if r.get("client_id") else "/records",
+    } for r in rows]
+
+
+def _search_blends(sb, agent_id: str, role: str, q: str) -> list[dict]:
+    query = (
+        sb.table("blends")
+        .select("id, blend_name, sa_notation, client, client_id, created_at")
+        .eq("status", "saved")
+        .is_("deleted_at", "null")
+    )
+    if role != "admin":
+        query = query.eq("agent_id", agent_id)
+    query = query.or_(
+        f"blend_name.ilike.%{q}%,client.ilike.%{q}%,sa_notation.ilike.%{q}%"
+    ).order("created_at", desc=True).limit(SEARCH_PER_KIND_LIMIT)
+    rows = (query.execute().data or [])
+    return [{
+        "kind": "blend",
+        "id": r["id"],
+        "title": r.get("sa_notation") or r.get("blend_name") or "Blend",
+        "subtitle": r.get("client") or "",
+        "href": "/records",
+    } for r in rows]
+
+
+def _search_quotes(sb, agent_id: str, role: str, q: str) -> list[dict]:
+    query = (
+        sb.table("quotes")
+        .select("id, customer, blend_name, status, created_at")
+        .is_("deleted_at", "null")
+    )
+    if role != "admin":
+        query = query.eq("agent_id", agent_id)
+    query = query.or_(
+        f"customer.ilike.%{q}%,blend_name.ilike.%{q}%"
+    ).order("created_at", desc=True).limit(SEARCH_PER_KIND_LIMIT)
+    rows = (query.execute().data or [])
+    return [{
+        "kind": "quote",
+        "id": r["id"],
+        "title": r.get("customer") or r.get("blend_name") or "Quote",
+        "subtitle": f"{r.get('blend_name') or ''} · {r.get('status') or ''}".strip(" ·"),
+        "href": f"/quotes/{r['id']}",
+    } for r in rows]
+
+
+@router.get("/search")
+@limiter.limit("60/second; 600/minute")
+def search(
+    request: Request,
+    q: str = Query("", max_length=80, description="Search term"),
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Global search across clients, analyses, blends and quotes.
+
+    Returns up to SEARCH_PER_KIND_LIMIT items per kind, scoped to the
+    current agent (admins search everything). Each item has a stable
+    shape: { kind, id, title, subtitle, href }.
+    """
+    cleaned = _sanitize_query(q)
+    if len(cleaned) < 2:
+        return {"query": cleaned, "results": []}
+
+    sb = get_supabase_admin()
+    results: list[dict] = []
+    for name, fn in (
+        ("clients", _search_clients),
+        ("analyses", _search_analyses),
+        ("blends", _search_blends),
+        ("quotes", _search_quotes),
+    ):
+        results.extend(_safe(
+            f"search.{name}",
+            lambda fn=fn: fn(sb, user.id, user.role, cleaned),
+            [],
+        ))
+
+    return {"query": cleaned, "results": results}

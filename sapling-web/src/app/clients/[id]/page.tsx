@@ -490,31 +490,29 @@ export default function ClientHubPage() {
             </Button>
           </div>
 
-          {/* Quick stats */}
+          {/* Quick stats — each panel links to the relevant section or page */}
           <div className="mt-4 flex flex-wrap gap-4">
             {[
-              { label: "Farms", value: farms.length, icon: MapPin },
-              { label: "Fields", value: totalFields, icon: Layers },
-              { label: "Blends", value: blends.length, icon: FlaskConical },
+              { label: "Farms", value: farms.length, icon: MapPin, href: "#farms" },
+              { label: "Fields", value: totalFields, icon: Layers, href: "#farms" },
+              { label: "Blends", value: blends.length, icon: FlaskConical, href: "#records", tab: "blends" as const },
               { label: "Analyses", value: soilAnalyses.length + leafAnalyses.length, icon: Leaf, href: `/clients/${clientId}/documents` },
-              { label: "Programmes", value: programmes.length, icon: Calendar },
+              { label: "Programmes", value: programmes.length, icon: Calendar, href: "#records", tab: "programmes" as const },
             ].map((s) => {
               const inner = (
                 <div
-                  key={s.label}
-                  className={`flex items-center gap-2 rounded-lg border bg-white px-3 py-2 ${
-                    "href" in s ? "cursor-pointer hover:border-[var(--sapling-orange)]/40" : ""
-                  }`}
+                  className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2 cursor-pointer transition-colors hover:border-[var(--sapling-orange)]/40"
                 >
                   <s.icon className="size-4 text-[var(--sapling-orange)]" />
                   <span className="text-lg font-bold text-[var(--sapling-dark)]">{s.value}</span>
                   <span className="text-xs text-muted-foreground">{s.label}</span>
                 </div>
               );
-              return "href" in s && s.href ? (
-                <Link key={s.label} href={s.href}>{inner}</Link>
-              ) : (
-                <div key={s.label}>{inner}</div>
+              const onClick = "tab" in s && s.tab ? () => setRecordsTab(s.tab) : undefined;
+              return (
+                <Link key={s.label} href={s.href} onClick={onClick}>
+                  {inner}
+                </Link>
               );
             })}
           </div>
@@ -551,7 +549,7 @@ export default function ClientHubPage() {
         </div>
 
         {/* ── Farms & Fields ────────────────────────────────────── */}
-        <div className="mb-8 space-y-3">
+        <div id="farms" className="mb-8 space-y-3 scroll-mt-20">
           <h2 className="text-lg font-semibold text-[var(--sapling-dark)]">Farms & Fields</h2>
 
           {farms.length === 0 ? (
@@ -738,7 +736,7 @@ export default function ClientHubPage() {
         })()}
 
         {/* ── Records Section ───────────────────────────────────── */}
-        <div>
+        <div id="records" className="scroll-mt-20">
           <h2 className="mb-3 text-lg font-semibold text-[var(--sapling-dark)]">Records</h2>
 
           {/* Tabs */}

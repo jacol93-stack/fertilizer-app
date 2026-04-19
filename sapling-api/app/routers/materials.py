@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.auth import CurrentUser, get_current_user, require_admin
-from app.supabase_client import get_supabase_admin
+from app.supabase_client import get_supabase_admin, run_sb
 
 router = APIRouter(tags=["materials"])
 
@@ -20,6 +20,8 @@ class MaterialOut(BaseModel):
     id: str | None = None
     material: str
     type: str | None = None
+    form: str | None = None
+    liquid_compatible: bool = False
     cost_per_ton: float = 0
     n: float = 0
     p: float = 0
@@ -34,11 +36,19 @@ class MaterialOut(BaseModel):
     mo: float = 0
     cu: float = 0
     c: float = 0
+    # Liquid-blend physical properties. solubility_20c is g of solute per L
+    # of pure water at 20°C; sg is the material's own density (kg/L). Both
+    # are optional — only liquid-compatible materials need them, and the
+    # liquid optimizer falls back to safe defaults when absent.
+    solubility_20c: float | None = None
+    sg: float | None = None
 
 
 class MaterialCreate(BaseModel):
     material: str = Field(..., min_length=1, max_length=200)
     type: str | None = Field(None, max_length=100)
+    form: str = Field("solid", pattern="^(solid|liquid|chelate)$")
+    liquid_compatible: bool = False
     cost_per_ton: float = Field(0, ge=0, le=10_000_000)
     n: float = Field(0, ge=0, le=100)
     p: float = Field(0, ge=0, le=100)
@@ -53,11 +63,15 @@ class MaterialCreate(BaseModel):
     mo: float = Field(0, ge=0, le=100)
     cu: float = Field(0, ge=0, le=100)
     c: float = Field(0, ge=0, le=100)
+    solubility_20c: float | None = Field(None, ge=0, le=5000, description="Solubility at 20°C — g of solute per L of water")
+    sg: float | None = Field(None, ge=0.5, le=3.0, description="Material density (kg/L). Liquids: e.g. phosphoric acid 80% = 1.57")
 
 
 class MaterialUpdate(BaseModel):
     material: str | None = Field(None, min_length=1, max_length=200)
     type: str | None = Field(None, max_length=100)
+    form: str | None = Field(None, pattern="^(solid|liquid|chelate)$")
+    liquid_compatible: bool | None = None
     cost_per_ton: float | None = Field(None, ge=0, le=10_000_000)
     n: float | None = Field(None, ge=0, le=100)
     p: float | None = Field(None, ge=0, le=100)
@@ -72,6 +86,8 @@ class MaterialUpdate(BaseModel):
     mo: float | None = Field(None, ge=0, le=100)
     cu: float | None = Field(None, ge=0, le=100)
     c: float | None = Field(None, ge=0, le=100)
+    solubility_20c: float | None = Field(None, ge=0, le=5000)
+    sg: float | None = Field(None, ge=0.5, le=3.0)
 
 
 class MarkupOut(BaseModel):
@@ -191,7 +207,7 @@ def get_markups(user: CurrentUser = Depends(require_admin)):
 def list_materials(user: CurrentUser = Depends(get_current_user)):
     """List all materials. Agents see marked-up costs; admins see raw costs."""
     sb = get_supabase_admin()
-    result = sb.table("materials").select("*").neq("form", "liquid").execute()
+    result = run_sb(lambda: sb.table("materials").select("*").execute())
     materials = result.data or []
 
     if user.role != "admin":
@@ -215,9 +231,9 @@ def add_material(
     return MaterialOut(**result.data[0])
 
 
-@router.patch("/{material_id}", response_model=MaterialOut)
+@router.patch("/{material_name}", response_model=MaterialOut)
 def update_material(
-    material_id: int,
+    material_name: str,
     body: MaterialUpdate,
     user: CurrentUser = Depends(require_admin),
 ):
@@ -226,45 +242,35 @@ def update_material(
     updates = body.model_dump(exclude_none=True)
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
-    result = sb.table("materials").update(updates).eq("id", material_id).execute()
+    result = sb.table("materials").update(updates).eq("material", material_name).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Material not found")
     return MaterialOut(**result.data[0])
 
 
-@router.delete("/{material_id}", status_code=204)
+@router.delete("/{material_name}", status_code=204)
 def delete_material(
-    material_id: int,
+    material_name: str,
     user: CurrentUser = Depends(require_admin),
 ):
     """Admin only. Delete a material."""
     sb = get_supabase_admin()
-    result = sb.table("materials").delete().eq("id", material_id).execute()
+    result = sb.table("materials").delete().eq("material", material_name).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Material not found")
 
 
-@router.put("/{material_id}/markup", response_model=MarkupOut)
+@router.put("/{material_name}/markup", response_model=MarkupOut)
 def set_markup(
-    material_id: str,
+    material_name: str,
     body: MarkupSet,
     user: CurrentUser = Depends(require_admin),
 ):
     """Admin only. Set the markup percentage for a material."""
     sb = get_supabase_admin()
-    # Try by material name first (most common), then by UUID
-    mat_result = sb.table("materials").select("material").eq("material", material_id).execute()
-    if mat_result.data:
-        material_name = mat_result.data[0]["material"]
-    else:
-        # Try by ID if the table has one
-        try:
-            mat_result = sb.table("materials").select("material").eq("id", material_id).execute()
-            if not mat_result.data:
-                raise HTTPException(status_code=404, detail="Material not found")
-            material_name = mat_result.data[0]["material"]
-        except Exception:
-            raise HTTPException(status_code=404, detail="Material not found")
+    mat_result = sb.table("materials").select("material").eq("material", material_name).execute()
+    if not mat_result.data:
+        raise HTTPException(status_code=404, detail="Material not found")
 
     sb.table("material_markups").upsert({
         "material": material_name,

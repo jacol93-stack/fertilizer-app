@@ -346,6 +346,24 @@ def update_block(
     if not updates:
         raise HTTPException(400, "No fields to update")
 
+    # If soil_analysis_id is (re)linked, refresh the cached nutrient_targets
+    # from that analysis. The season tracker assumes the block cache is in
+    # sync with its source analysis, so reattaching a newer analysis must
+    # sync the targets — otherwise the next generate will use stale data.
+    if "soil_analysis_id" in updates and updates["soil_analysis_id"]:
+        try:
+            sa = (
+                sb.table("soil_analyses")
+                .select("nutrient_targets")
+                .eq("id", updates["soil_analysis_id"])
+                .limit(1)
+                .execute()
+            )
+            if sa.data and sa.data[0].get("nutrient_targets"):
+                updates["nutrient_targets"] = sa.data[0]["nutrient_targets"]
+        except Exception:
+            pass  # Non-critical — user can regenerate targets later
+
     result = (
         sb.table("programme_blocks")
         .update(updates)
@@ -387,19 +405,37 @@ def preview_schedule(programme_id: str, user: CurrentUser = Depends(get_current_
     if not blocks:
         raise HTTPException(400, "Programme has no blocks.")
 
-    # Check for missing nutrient targets
-    missing_targets = [b["name"] for b in blocks if not b.get("nutrient_targets")]
-    if missing_targets:
-        raise HTTPException(400, f"Blocks missing nutrient targets: {', '.join(missing_targets)}")
+    # Separate blocks with/without nutrient targets. Blocks without targets
+    # cannot be planned yet, but shouldn't block the rest of the programme —
+    # surface them as warnings and plan the others.
+    planable = [b for b in blocks if b.get("nutrient_targets")]
+    unplanable_blocks = [
+        {"block_id": b["id"], "block_name": b["name"], "reason": "missing_targets"}
+        for b in blocks if not b.get("nutrient_targets")
+    ]
+    if not planable:
+        raise HTTPException(
+            400,
+            f"No block has nutrient targets yet. Upload a soil analysis first "
+            f"(missing: {', '.join(b['name'] for b in blocks)}).",
+        )
 
-    # Generate plans
-    block_plans = generate_block_plans(blocks, sb)
+    # Generate plans for the planable subset
+    block_plans = generate_block_plans(planable, sb)
 
-    # Check for missing growth stages
-    missing_stages = [bp["block"]["name"] for bp in block_plans if bp.get("missing_stages")]
-    if missing_stages:
-        crops = list(set(bp["block"]["crop"] for bp in block_plans if bp.get("missing_stages")))
-        raise HTTPException(400, f"No growth stages configured for: {', '.join(crops)}. Contact admin to add growth stage data.")
+    # Blocks with targets but no growth stages for their crop — surface but
+    # don't fail the whole preview
+    for bp in block_plans:
+        if bp.get("missing_stages"):
+            unplanable_blocks.append({
+                "block_id": bp["block"]["id"],
+                "block_name": bp["block"]["name"],
+                "reason": "missing_growth_stages",
+                "crop": bp["block"].get("crop"),
+            })
+
+    # Keep only plans we can render
+    block_plans = [bp for bp in block_plans if not bp.get("missing_stages")]
 
     # Load variability margin
     margin = 0.15
@@ -529,7 +565,12 @@ def preview_schedule(programme_id: str, user: CurrentUser = Depends(get_current_
             "missing_corrective_data": corrective_result["missing_data"],
         })
 
-    return {"schedule": schedule, "block_info": block_info, "corrections": all_corrections}
+    return {
+        "schedule": schedule,
+        "block_info": block_info,
+        "corrections": all_corrections,
+        "unplanable_blocks": unplanable_blocks,
+    }
 
 
 class UserApplication(BaseModel):
@@ -566,16 +607,25 @@ def generate_programme(
 
     # Load blocks
     blocks_result = sb.table("programme_blocks").select("*").eq("programme_id", programme_id).execute()
-    blocks = blocks_result.data or []
+    all_blocks = blocks_result.data or []
 
-    if not blocks:
+    if not all_blocks:
         raise HTTPException(400, "Programme has no blocks. Add blocks first.")
 
-    # Check blocks have targets
-    blocks_without_targets = [b for b in blocks if not b.get("nutrient_targets")]
-    if blocks_without_targets:
-        names = ", ".join(b["name"] for b in blocks_without_targets)
-        raise HTTPException(400, f"Blocks missing nutrient targets: {names}. Run soil analysis first.")
+    # Only generate for blocks with targets; report the skipped ones so the
+    # tracker can flag them for the agronomist to resolve.
+    blocks = [b for b in all_blocks if b.get("nutrient_targets")]
+    skipped_blocks = [
+        {"block_id": b["id"], "block_name": b["name"], "reason": "missing_targets"}
+        for b in all_blocks if not b.get("nutrient_targets")
+    ]
+    if not blocks:
+        names = ", ".join(b["name"] for b in all_blocks)
+        raise HTTPException(
+            400,
+            f"No block has nutrient targets. Upload a soil analysis first "
+            f"(blocks: {names}).",
+        )
 
     # If user provided applications, distribute nutrients across their chosen months
     user_apps = body.applications if body else None
@@ -588,10 +638,6 @@ def generate_programme(
     )
 
     # If user specified applications, redistribute nutrients across their months
-    import logging
-    logger = logging.getLogger("programmes")
-    logger.warning(f"Generate called. user_apps={user_apps}, body={body}")
-
     if user_apps:
         for bp in result["block_plans"]:
             block = bp["block"]
@@ -770,10 +816,13 @@ def generate_programme(
     _audit(sb, user, "programme_generate", programme_id, {
         "num_blocks": len(blocks),
         "num_groups": len(result["blend_groups"]),
+        "num_skipped": len(skipped_blocks),
     })
 
-    # Return full programme state
-    return get_programme(programme_id, user)
+    # Return full programme state + any blocks skipped during generation
+    prog_state = get_programme(programme_id, user)
+    prog_state["skipped_blocks"] = skipped_blocks
+    return prog_state
 
 
 # ── Match field for Quick Analysis integration ───────────────────────────

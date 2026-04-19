@@ -110,7 +110,17 @@ def blend_pdf(blend_id: str, user: CurrentUser = Depends(get_current_user)):
             for n in raw_nutrients
         ]
 
-        mixing_instructions = blend.get("mixing_instructions") or []
+        raw_instructions = blend.get("mixing_instructions") or []
+        # Pull out the `_meta` dict the save path stashed with SA-notation /
+        # Act 36 label data (see blends.save_blend). Strings remain the
+        # actual mixing steps for the PDF.
+        mixing_instructions: list[str] = []
+        liquid_meta: dict = {}
+        for entry in raw_instructions:
+            if isinstance(entry, dict) and entry.get("_meta") == "sa_notation_label":
+                liquid_meta = entry
+            elif isinstance(entry, str):
+                mixing_instructions.append(entry)
 
         pdf_bytes = build_liquid_pdf(
             blend_name=blend.get("blend_name", ""),
@@ -123,6 +133,11 @@ def blend_pdf(blend_id: str, user: CurrentUser = Depends(get_current_user)):
             nutrient_data=nutrient_data if nutrient_data else None,
             mixing_instructions=mixing_instructions or None,
             company_details=company_details or None,
+            sa_notation=liquid_meta.get("sa_notation"),
+            international_notation=liquid_meta.get("international_notation"),
+            density_kg_per_l=liquid_meta.get("density_kg_per_l"),
+            nutrient_composition=liquid_meta.get("nutrient_composition"),
+            water_kg=liquid_meta.get("water_kg"),
         )
 
         _audit(sb, user, "liquid_blend_pdf_download", "blends", blend_id)
@@ -301,6 +316,12 @@ class LiquidBlendPdfRequest(BaseModel):
     compatibility_warnings: list[str] = []
     cost_per_ton: float = 0
     selling_price: float = 0
+    # SA-notation mass-fraction flow (2026-04-18)
+    sa_notation: str | None = None
+    international_notation: str | None = None
+    density_kg_per_l: float | None = None
+    nutrient_composition: list[dict] | None = None
+    water_kg: float | None = None
 
 
 @router.post("/blend/liquid/pdf")
@@ -351,6 +372,11 @@ def liquid_blend_pdf_from_data(body: LiquidBlendPdfRequest, user: CurrentUser = 
         cost_per_ton=body.cost_per_ton if not is_agent else 0,
         selling_price=body.selling_price if not is_agent else 0,
         company_details=cd or None,
+        sa_notation=body.sa_notation,
+        international_notation=body.international_notation,
+        density_kg_per_l=body.density_kg_per_l,
+        nutrient_composition=body.nutrient_composition,
+        water_kg=body.water_kg,
     )
 
     _audit(sb, user, "liquid_blend_pdf_download", "blends", None, {"blend_name": body.blend_name})

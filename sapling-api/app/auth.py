@@ -2,7 +2,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException, Request
-from app.supabase_client import get_supabase_admin
+from app.supabase_client import get_supabase_admin, run_sb
 from supabase import create_client
 from app.config import get_settings
 
@@ -120,7 +120,7 @@ def get_current_user(request: Request) -> CurrentUser:
     # Use Supabase's own auth to verify the token
     try:
         sb = create_client(settings.supabase_url, settings.supabase_anon_key)
-        user_response = sb.auth.get_user(token)
+        user_response = run_sb(lambda: sb.auth.get_user(token))
         user = user_response.user
         if not user:
             raise HTTPException(status_code=401, detail="Invalid token")
@@ -132,7 +132,9 @@ def get_current_user(request: Request) -> CurrentUser:
 
     # Get role from profiles table
     sb_admin = get_supabase_admin()
-    result = sb_admin.table("profiles").select("role, email").eq("id", user_id).execute()
+    result = run_sb(
+        lambda: sb_admin.table("profiles").select("role, email").eq("id", user_id).execute()
+    )
     if not result.data:
         raise HTTPException(status_code=401, detail="User profile not found")
 

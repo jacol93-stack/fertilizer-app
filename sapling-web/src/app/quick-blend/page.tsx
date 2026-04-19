@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, Suspense } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSessionState, clearSessionGroup } from "@/lib/use-session-state";
 import { useAuth } from "@/lib/auth-context";
@@ -115,12 +115,6 @@ interface Client {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-// Fallback safe limits — overridden by DB values when loaded
-const FALLBACK_LIQUID_LIMITS: Record<string, number> = {
-  N: 20, P: 15, K: 20, Ca: 15, Mg: 10, S: 15,
-  Fe: 2, B: 0.5, Mn: 3, Zn: 3, Mo: 0.3, Cu: 1,
-};
-
 const PRIMARY_NUTRIENTS = ["N", "P", "K"] as const;
 const SECONDARY_NUTRIENTS = [
   "Ca",
@@ -187,8 +181,19 @@ function BlendsPage() {
   // ── Liquid mode state ────────────────────────────────────────
   const [liquidMaterials, setLiquidMaterials] = useState<Material[]>([]);
   const [selectedLiquidMaterials, setSelectedLiquidMaterials] = useState<Set<string>>(new Set());
+  // Required-% per material: "" / "0" means optional; > 0 forces exact mass fraction
+  const [requiredLiquidPcts, setRequiredLiquidPcts] = useState<Record<string, string>>({});
+  // Persistent failure reason (shows below optimize button until next attempt)
+  const [liquidErrorDetail, setLiquidErrorDetail] = useState<string | null>(null);
   const [tankVolume, setTankVolume] = useSessionState(SESSION_KEY, "tankVolume", "1000");
   const [liquidTargets, setLiquidTargets] = useSessionState<Record<string, string>>(SESSION_KEY, "liquidTargets", {});
+  // Liquid target input mode — mirrors the dry calc's International/SA toggle.
+  // International: user enters g/L directly (what the optimizer consumes).
+  // SA: user enters N:P:K ratio + total m/m %; we convert to g/L using an
+  // assumed finished-blend SG (default 1.2 kg/L — typical for NPK liquids).
+  const [liquidMode, setLiquidMode] = useSessionState<"international" | "sa">(SESSION_KEY, "liquidMode", "international");
+  const [liquidSaRatio, setLiquidSaRatio] = useSessionState(SESSION_KEY, "liquidSaRatio", { N: "", P: "", K: "" });
+  const [liquidSaTotalPct, setLiquidSaTotalPct] = useSessionState(SESSION_KEY, "liquidSaTotalPct", "");
   const [liquidResult, setLiquidResult] = useState<Record<string, unknown> | null>(null);
   const [liquidOptimizing, setLiquidOptimizing] = useState(false);
   const [showLiquidPriorityPanel, setShowLiquidPriorityPanel] = useState(false);
@@ -201,9 +206,6 @@ function BlendsPage() {
   const [appDilution, setAppDilution] = useSessionState(SESSION_KEY, "appDilution", "");
   const [appSprayVolume, setAppSprayVolume] = useSessionState(SESSION_KEY, "appSprayVolume", "");
   const [appPlantsHa, setAppPlantsHa] = useSessionState(SESSION_KEY, "appPlantsHa", "");
-
-  // ── Nutrient safety limits (loaded from DB) ──────────────────
-  const [liquidSafeLimits, setLiquidSafeLimits] = useState<Record<string, number>>(FALLBACK_LIQUID_LIMITS);
 
   // ── Foliar mode state ────────────────────────────────────────
   const [foliarNutrients, setFoliarNutrients] = useSessionState<string[]>(SESSION_KEY, "foliarNutrients", []);
@@ -222,6 +224,37 @@ function BlendsPage() {
     Record<string, string>
   >(SESSION_KEY, "secondaryTargets", {});
   const [showSecondary, setShowSecondary] = useState(false);
+  const [showLiquidSecondary, setShowLiquidSecondary] = useState(false);
+
+  // Returns whichever unit the current mode uses. Frontend stops doing
+  // any m/m ↔ g/L conversion — the backend handles it.
+  const liquidOptimizePayload = useMemo<{
+    targets: Record<string, number>;
+    target_unit: "g_per_l" | "m_m_pct";
+  }>(() => {
+    if (liquidMode === "international") {
+      const t: Record<string, number> = {};
+      for (const [k, v] of Object.entries(liquidTargets)) {
+        const n = parseFloat(v);
+        if (n > 0) t[k.toLowerCase()] = n;
+      }
+      return { targets: t, target_unit: "g_per_l" };
+    }
+    // SA mode: emit m/m percentages directly from the ratio + total%.
+    const n = parseInt(liquidSaRatio.N) || 0;
+    const p = parseInt(liquidSaRatio.P) || 0;
+    const k = parseInt(liquidSaRatio.K) || 0;
+    const total = parseFloat(liquidSaTotalPct) || 0;
+    const pcts = saRatioToPercent(n, p, k, total);
+    const t: Record<string, number> = {};
+    if (pcts.N > 0) t.n = pcts.N;
+    if (pcts.P > 0) t.p = pcts.P;
+    if (pcts.K > 0) t.k = pcts.K;
+    // Secondaries are still entered as g/L — we cannot submit mixed units.
+    // For v1, if SA mode is active we DROP secondary g/L inputs and warn.
+    // (TODO: let agronomist express secondary as m/m too in a future pass.)
+    return { targets: t, target_unit: "m_m_pct" };
+  }, [liquidMode, liquidTargets, liquidSaRatio, liquidSaTotalPct]);
 
   const [batchSize, setBatchSize] = useSessionState(SESSION_KEY, "batchSize", "1000");
   const [minCompost, setMinCompost] = useSessionState(SESSION_KEY, "minCompost", 50);
@@ -337,30 +370,19 @@ function BlendsPage() {
   // Load liquid materials and foliar products
   useEffect(() => {
     if (blendType === "liquid" && liquidMaterials.length === 0) {
-      // Load nutrient limits from DB
-      api.get<Record<string, { liquid_max: number | null }>>("/api/blends/nutrient-limits")
-        .then((limits) => {
-          const parsed: Record<string, number> = {};
-          for (const [nut, val] of Object.entries(limits)) {
-            // Normalize key: "ca" → "Ca", "fe" → "Fe", "n" → "N"
-            const key = nut.length === 1 ? nut.toUpperCase() : nut.charAt(0).toUpperCase() + nut.slice(1).toLowerCase();
-            if (val.liquid_max != null) parsed[key] = val.liquid_max;
-          }
-          if (Object.keys(parsed).length > 0) setLiquidSafeLimits(parsed);
-        })
-        .catch(() => {});
-
       Promise.all([
         api.get<Material[]>("/api/blends/liquid-materials"),
         api.get<{ liquid_materials: string[] }>("/api/materials/defaults"),
       ]).then(([data, defaults]) => {
         setLiquidMaterials(data.sort((a, b) => a.material.localeCompare(b.material)));
         const liquidDefaults = defaults.liquid_materials || [];
-        if (!isAdmin && liquidDefaults.length > 0) {
-          // Agents use admin-configured defaults
+        // Everyone (admin + agent) opens with the admin-configured agent
+        // defaults. Admin still has the full material list visible and can
+        // tick extras in from there. Only fall back to "select all" when
+        // no defaults have been configured at all.
+        if (liquidDefaults.length > 0) {
           setSelectedLiquidMaterials(new Set(liquidDefaults));
         } else {
-          // Admin or no defaults configured — select all
           setSelectedLiquidMaterials(new Set(data.map((m) => m.material)));
         }
       }).catch(() => {});
@@ -370,26 +392,51 @@ function BlendsPage() {
     }
   }, [blendType]);
 
+  // Build required_materials payload: only include selected materials with a valid pct > 0.
+  // If total > 100 we bail locally so the backend doesn't see a nonsense request.
+  function buildRequiredMaterials(): Record<string, number> | undefined {
+    const out: Record<string, number> = {};
+    for (const name of selectedLiquidMaterials) {
+      const pct = parseFloat(requiredLiquidPcts[name] ?? "");
+      if (!Number.isFinite(pct) || pct <= 0) continue;
+      if (pct > 100) {
+        throw new Error(`Required % for ${name} must be ≤ 100`);
+      }
+      out[name] = pct;
+    }
+    const total = Object.values(out).reduce((a, b) => a + b, 0);
+    if (total > 100.001) {
+      throw new Error(`Required %% total ${total.toFixed(1)}% — cannot exceed 100`);
+    }
+    return Object.keys(out).length > 0 ? out : undefined;
+  }
+
   // Liquid blend optimizer
   async function handleLiquidOptimize() {
-    const targets: Record<string, number> = {};
-    for (const [k, v] of Object.entries(liquidTargets)) {
-      const n = parseFloat(v);
-      if (n > 0) targets[k.toLowerCase()] = n;
-    }
+    const { targets, target_unit } = liquidOptimizePayload;
     if (Object.keys(targets).length === 0) {
-      toast.error("Enter at least one nutrient target (g/L)");
+      toast.error("Enter at least one nutrient target");
+      return;
+    }
+    let requiredMaterials: Record<string, number> | undefined;
+    try {
+      requiredMaterials = buildRequiredMaterials();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Invalid required %");
       return;
     }
     setLiquidOptimizing(true);
     setLiquidResult(null);
     setSavedLiquidBlendId(null);
     setLiquidContactSapling(false);
+    setLiquidErrorDetail(null);
     try {
       const res = await api.post<Record<string, unknown>>("/api/blends/optimize-liquid", {
         targets,
+        target_unit,
         selected_materials: [...selectedLiquidMaterials],
         tank_volume_l: parseFloat(tankVolume) || 1000,
+        required_materials: requiredMaterials,
       });
       setLiquidResult(res);
       if (!res.exact) {
@@ -401,7 +448,9 @@ function BlendsPage() {
       }
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Optimization failed");
+      const msg = e instanceof Error ? e.message : "Optimization failed";
+      setLiquidErrorDetail(msg);
+      toast.error(msg);
     } finally {
       setLiquidOptimizing(false);
     }
@@ -411,17 +460,23 @@ function BlendsPage() {
   async function handleLiquidPriorityOptimize(priorities: Record<string, "must_match" | "flexible">) {
     setLiquidOptimizing(true);
     try {
-      const targets: Record<string, number> = {};
-      for (const [k, v] of Object.entries(liquidTargets)) {
-        const n = parseFloat(v);
-        if (n > 0) targets[k.toLowerCase()] = n;
-      }
+      const { targets, target_unit } = liquidOptimizePayload;
 
+      let requiredMaterials: Record<string, number> | undefined;
+      try {
+        requiredMaterials = buildRequiredMaterials();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Invalid required %");
+        setLiquidOptimizing(false);
+        return;
+      }
       const res = await api.post<Record<string, unknown>>("/api/blends/optimize-liquid", {
         targets,
+        target_unit,
         selected_materials: [...selectedLiquidMaterials],
         tank_volume_l: parseFloat(tankVolume) || 1000,
         priorities,
+        required_materials: requiredMaterials,
       });
       setLiquidResult(res);
 
@@ -442,7 +497,9 @@ function BlendsPage() {
       }
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
-      toast.error("Re-optimization failed: " + (err instanceof Error ? err.message : "Unknown error"));
+      const msg = "Re-optimization failed: " + (err instanceof Error ? err.message : "Unknown error");
+      setLiquidErrorDetail(msg);
+      toast.error(msg);
     } finally {
       setLiquidOptimizing(false);
     }
@@ -482,9 +539,9 @@ function BlendsPage() {
     }
     setLiquidSaving(true);
     try {
-      const liquidFormula = Object.entries(liquidTargets)
-        .filter(([, v]) => parseFloat(v) > 0)
-        .map(([k, v]) => `${k} ${v}g/L`)
+      const unitSuffix = liquidOptimizePayload.target_unit === "m_m_pct" ? "% m/m" : "g/L";
+      const liquidFormula = Object.entries(liquidOptimizePayload.targets)
+        .map(([k, v]) => `${k.toUpperCase()} ${v}${unitSuffix}`)
         .join(", ") || "Liquid Blend";
       const blendName = customBlendName.trim()
         ? `${customBlendName.trim()} - ${liquidFormula}`
@@ -501,11 +558,8 @@ function BlendsPage() {
           farm: farmName || null,
           field: fieldName || null,
           batch_size: parseFloat(tankVolume) || 1000,
-          targets: Object.fromEntries(
-            Object.entries(liquidTargets)
-              .filter(([, v]) => parseFloat(v) > 0)
-              .map(([k, v]) => [k, parseFloat(v)])
-          ),
+          targets: liquidOptimizePayload.targets,
+          target_unit: liquidOptimizePayload.target_unit,
           recipe: liquidResult.recipe as Array<Record<string, unknown>>,
           nutrients: liquidResult.nutrients as Array<Record<string, unknown>>,
           selected_materials: [...selectedLiquidMaterials],
@@ -534,9 +588,9 @@ function BlendsPage() {
         Authorization: `Bearer ${(await (await import("@/lib/supabase")).createClient().auth.getSession()).data.session?.access_token}`,
         "Content-Type": "application/json",
       };
-      const liquidFormula = Object.entries(liquidTargets)
-        .filter(([, v]) => parseFloat(v) > 0)
-        .map(([k, v]) => `${k} ${v}g/L`)
+      const unitSuffix = liquidOptimizePayload.target_unit === "m_m_pct" ? "% m/m" : "g/L";
+      const liquidFormula = Object.entries(liquidOptimizePayload.targets)
+        .map(([k, v]) => `${k.toUpperCase()} ${v}${unitSuffix}`)
         .join(", ") || "Liquid Blend";
       const blendName = customBlendName.trim()
         ? `${customBlendName.trim()} - ${liquidFormula}`
@@ -954,19 +1008,102 @@ function BlendsPage() {
         {blendType === "liquid" && (
           <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
             <div className="flex flex-col gap-6">
-              {/* Nutrient targets (g/L) */}
+              {/* Nutrient targets — International (g/L) or SA (ratio + total m/m %) */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-[var(--sapling-dark)]">Nutrient Targets (g/L)</CardTitle>
-                  <CardDescription>Target concentration per litre of final solution</CardDescription>
+                  <CardTitle className="text-[var(--sapling-dark)]">Nutrient Targets</CardTitle>
+                  <CardDescription>
+                    {liquidMode === "international"
+                      ? "Target concentration per litre of final solution"
+                      : "Enter SA grade (N:P:K ratio + total m/m %). Finished-blend density is computed from the recipe by the optimizer."}
+                  </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-3">
-                    {["N", "P", "K", "Ca", "Mg", "S", "Fe", "B", "Mn", "Zn", "Mo", "Cu"].map((nut) => {
-                      const val = parseFloat(liquidTargets[nut] || "0");
-                      const limit = liquidSafeLimits[nut] || 999;
-                      const overLimit = val > 0 && val > limit;
-                      return (
+                <CardContent className="space-y-4">
+                  {/* Mode toggle */}
+                  <div className="flex rounded-lg bg-muted p-1">
+                    <button
+                      type="button"
+                      onClick={() => setLiquidMode("international")}
+                      className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                        liquidMode === "international"
+                          ? "bg-white text-[var(--sapling-dark)] shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      International (g/L)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLiquidMode("sa")}
+                      className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                        liquidMode === "sa"
+                          ? "bg-white text-[var(--sapling-dark)] shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      SA Local (ratio)
+                    </button>
+                  </div>
+
+                  {liquidMode === "sa" && (
+                    <div className="space-y-3 rounded-lg border border-dashed p-3">
+                      <div className="grid grid-cols-4 gap-2">
+                        {(["N", "P", "K"] as const).map((key) => (
+                          <div key={key} className="space-y-1.5">
+                            <Label htmlFor={`liq-sa-${key}`}>{key}</Label>
+                            <Input
+                              id={`liq-sa-${key}`}
+                              type="number"
+                              min="0"
+                              step="1"
+                              placeholder="0"
+                              value={liquidSaRatio[key]}
+                              onChange={(e) =>
+                                setLiquidSaRatio((prev) => ({ ...prev, [key]: e.target.value }))
+                              }
+                            />
+                          </div>
+                        ))}
+                        <div className="space-y-1.5">
+                          <Label htmlFor="liq-sa-total">Total %</Label>
+                          <Input
+                            id="liq-sa-total"
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            placeholder="0"
+                            value={liquidSaTotalPct}
+                            onChange={(e) => setLiquidSaTotalPct(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      {(() => {
+                        const n = parseInt(liquidSaRatio.N) || 0;
+                        const p = parseInt(liquidSaRatio.P) || 0;
+                        const k = parseInt(liquidSaRatio.K) || 0;
+                        const total = parseFloat(liquidSaTotalPct) || 0;
+                        if (n + p + k === 0 || total === 0) {
+                          return (
+                            <p className="text-xs text-muted-foreground">
+                              e.g. 5:1:5 at total 20% → composition 9.1% N, 1.8% P, 9.1% K m/m
+                            </p>
+                          );
+                        }
+                        const pcts = saRatioToPercent(n, p, k, total);
+                        return (
+                          <p className="text-xs text-muted-foreground">
+                            → Composition: N {pcts.N.toFixed(2)}%, P {pcts.P.toFixed(2)}%, K{" "}
+                            {pcts.K.toFixed(2)}% m/m · finished density will be computed from the recipe
+                          </p>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {/* Primary nutrients — only shown in International mode (SA mode drives N/P/K via the ratio card above). */}
+                  {liquidMode === "international" && (
+                    <div className="grid grid-cols-3 gap-3">
+                      {["N", "P", "K"].map((nut) => (
                         <div key={nut} className="space-y-1">
                           <Label htmlFor={`liq-${nut}`}>{nut} g/L</Label>
                           <Input
@@ -976,15 +1113,43 @@ function BlendsPage() {
                             placeholder="0"
                             value={liquidTargets[nut] || ""}
                             onChange={(e) => setLiquidTargets((prev) => ({ ...prev, [nut]: e.target.value }))}
-                            className={overLimit ? "border-red-400 focus-visible:ring-red-400" : ""}
                           />
-                          {overLimit && (
-                            <p className="text-[10px] text-red-600">Max safe: {limit} g/L</p>
-                          )}
                         </div>
-                      );
-                    })}
-                  </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Secondary nutrients collapsible — mirrors the dry calc pattern. */}
+                  <button
+                    type="button"
+                    onClick={() => setShowLiquidSecondary((v) => !v)}
+                    className="flex w-full items-center gap-2 text-sm font-medium text-[var(--sapling-medium-grey)] hover:text-[var(--sapling-dark)]"
+                  >
+                    {showLiquidSecondary ? (
+                      <ChevronUp className="size-4" />
+                    ) : (
+                      <ChevronDown className="size-4" />
+                    )}
+                    Secondary nutrients
+                  </button>
+
+                  {showLiquidSecondary && (
+                    <div className="grid grid-cols-3 gap-3">
+                      {["Ca", "Mg", "S", "Fe", "B", "Mn", "Zn", "Mo", "Cu"].map((nut) => (
+                        <div key={nut} className="space-y-1">
+                          <Label htmlFor={`liq-${nut}`}>{nut} g/L</Label>
+                          <Input
+                            id={`liq-${nut}`}
+                            type="number"
+                            step="0.1"
+                            placeholder="0"
+                            value={liquidTargets[nut] || ""}
+                            onChange={(e) => setLiquidTargets((prev) => ({ ...prev, [nut]: e.target.value }))}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -1006,26 +1171,66 @@ function BlendsPage() {
                   <CardDescription>Select available liquid-compatible materials</CardDescription>
                 </CardHeader>
                 <CardContent>
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    Tick to include. Optional <span className="font-semibold">%</span> forces that material to an exact share of total blend mass.
+                  </p>
                   <div className="max-h-64 space-y-1 overflow-y-auto">
-                    {liquidMaterials.map((mat) => (
-                      <label key={mat.material} className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-muted">
-                        <input
-                          type="checkbox"
-                          checked={selectedLiquidMaterials.has(mat.material)}
-                          onChange={() => {
-                            setSelectedLiquidMaterials((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(mat.material)) next.delete(mat.material);
-                              else next.add(mat.material);
-                              return next;
-                            });
-                          }}
-                          className="size-4 rounded border-gray-300 accent-[var(--sapling-orange)]"
-                        />
-                        <span className="flex-1 text-sm">{mat.material}</span>
-                        {mat.type && <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{mat.type}</span>}
-                      </label>
-                    ))}
+                    {liquidMaterials.map((mat) => {
+                      const isSelected = selectedLiquidMaterials.has(mat.material);
+                      return (
+                        <div
+                          key={mat.material}
+                          className="flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-muted"
+                        >
+                          <label className="flex flex-1 cursor-pointer items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {
+                                setSelectedLiquidMaterials((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(mat.material)) next.delete(mat.material);
+                                  else next.add(mat.material);
+                                  return next;
+                                });
+                                if (isSelected) {
+                                  setRequiredLiquidPcts((prev) => {
+                                    if (!(mat.material in prev)) return prev;
+                                    const next = { ...prev };
+                                    delete next[mat.material];
+                                    return next;
+                                  });
+                                }
+                              }}
+                              className="size-4 rounded border-gray-300 accent-[var(--sapling-orange)]"
+                            />
+                            <span className="flex-1 text-sm">{mat.material}</span>
+                            {mat.type && <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{mat.type}</span>}
+                          </label>
+                          {isSelected && (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                step={0.1}
+                                placeholder="—"
+                                value={requiredLiquidPcts[mat.material] ?? ""}
+                                onChange={(e) =>
+                                  setRequiredLiquidPcts((prev) => ({
+                                    ...prev,
+                                    [mat.material]: e.target.value,
+                                  }))
+                                }
+                                className="h-7 w-14 rounded border border-gray-300 px-1.5 text-right text-xs"
+                                title="Required % of total blend (optional)"
+                              />
+                              <span className="text-xs text-muted-foreground">%</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>}
@@ -1058,6 +1263,7 @@ function BlendsPage() {
                     initialClient={clientName}
                     initialFarm={farmName}
                     initialField={fieldName}
+                    showField={false}
                   />
                 </CardContent>
               </Card>
@@ -1078,6 +1284,24 @@ function BlendsPage() {
                 {liquidOptimizing ? <Loader2 className="size-5 animate-spin" /> : <Droplets className="size-5" />}
                 {liquidOptimizing ? "Optimizing..." : "Calculate Liquid Blend"}
               </Button>
+
+              {liquidErrorDetail && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold">Blend could not be calculated</p>
+                      <p className="mt-1 whitespace-pre-wrap">{liquidErrorDetail}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setLiquidErrorDetail(null)}
+                      className="shrink-0 text-xs text-red-600 underline hover:text-red-800"
+                    >
+                      dismiss
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Results */}
@@ -1135,11 +1359,7 @@ function BlendsPage() {
                   {/* Priority panel — shown when blend is imperfect */}
                   {showLiquidPriorityPanel && !liquidContactSapling && (
                     <NutrientPriorityPanel
-                      targets={Object.fromEntries(
-                        Object.entries(liquidTargets)
-                          .filter(([, v]) => parseFloat(v) > 0)
-                          .map(([k, v]) => [k, parseFloat(v)])
-                      )}
+                      targets={liquidOptimizePayload.targets}
                       onOptimize={handleLiquidPriorityOptimize}
                       optimizing={liquidOptimizing}
                     />
@@ -1194,7 +1414,69 @@ function BlendsPage() {
                   {/* Summary */}
                   <Card>
                     <CardHeader><CardTitle>Liquid Blend Summary</CardTitle></CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-4">
+                      {Boolean(liquidResult.sa_notation) && (
+                        <div className="rounded-xl border-2 border-[var(--sapling-orange)]/30 bg-orange-50/50 p-4">
+                          <div className="text-xs font-semibold uppercase tracking-wide text-[var(--sapling-medium-grey)]">
+                            Nutrient Composition (SA Grade)
+                          </div>
+                          <div className="mt-1 text-2xl font-bold text-[var(--sapling-dark)]">
+                            {liquidResult.sa_notation as string}
+                          </div>
+                          <div className="mt-1 text-sm text-[var(--sapling-medium-grey)]">
+                            {liquidResult.international_notation as string}
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                            <div>
+                              <div className="text-xs text-[var(--sapling-medium-grey)]">Density</div>
+                              <div className="font-semibold">{(liquidResult.density_kg_per_l ?? liquidResult.sg_estimate) as number} kg/L</div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-[var(--sapling-medium-grey)]">Batch mass</div>
+                              <div className="font-semibold">{((liquidResult.total_dissolved_kg as number) + ((liquidResult.water_kg as number) ?? 0)).toFixed(1)} kg</div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-[var(--sapling-medium-grey)]">Water required</div>
+                              <div className="font-semibold">{((liquidResult.water_kg as number) ?? 0).toFixed(1)} L</div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-[var(--sapling-medium-grey)]">Dissolved solids</div>
+                              <div className="font-semibold">{(liquidResult.total_dissolved_kg as number).toFixed(1)} kg</div>
+                            </div>
+                          </div>
+                          {Array.isArray(liquidResult.nutrient_composition) && (
+                            <details className="mt-3">
+                              <summary className="cursor-pointer text-xs font-medium text-[var(--sapling-medium-grey)] hover:text-[var(--sapling-dark)]">
+                                Per-nutrient breakdown (m/m % and g/L)
+                              </summary>
+                              <div className="mt-2 overflow-x-auto">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="border-b text-[var(--sapling-medium-grey)]">
+                                      <th className="py-1 text-left">Nutrient</th>
+                                      <th className="py-1 text-right">m/m %</th>
+                                      <th className="py-1 text-right">g/L</th>
+                                      <th className="py-1 text-right">Target m/m %</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {(liquidResult.nutrient_composition as Array<Record<string, unknown>>)
+                                      .filter((g) => (g.m_m_pct as number) > 0.001 || (g.target_m_m_pct as number) > 0)
+                                      .map((g) => (
+                                        <tr key={g.nutrient as string} className="border-b last:border-0">
+                                          <td className="py-1 font-medium">{g.nutrient as string}</td>
+                                          <td className="py-1 text-right tabular-nums">{(g.m_m_pct as number).toFixed(3)}%</td>
+                                          <td className="py-1 text-right tabular-nums">{(g.g_per_l as number).toFixed(2)}</td>
+                                          <td className="py-1 text-right tabular-nums text-[var(--sapling-medium-grey)]">{(g.target_m_m_pct as number).toFixed(3)}%</td>
+                                        </tr>
+                                      ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </details>
+                          )}
+                        </div>
+                      )}
                       <div className="grid grid-cols-3 gap-4">
                         <div>
                           <p className="text-xs font-medium uppercase text-muted-foreground">Batch Volume</p>
@@ -1562,6 +1844,7 @@ function BlendsPage() {
                   initialClient={clientName}
                   initialFarm={farmName}
                   initialField={fieldName}
+                  showField={false}
                 />
               </CardContent>
             </Card>
@@ -2247,6 +2530,7 @@ function BlendsPage() {
                   initialClient={clientName}
                   initialFarm={farmName}
                   initialField={fieldName}
+                  showField={false}
                 />
               </CardContent>
             </Card>

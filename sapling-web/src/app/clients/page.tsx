@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth-context";
@@ -72,7 +72,15 @@ function Dialog({ open, onClose, title, children }: { open: boolean; onClose: ()
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export default function ClientsPage() {
+export default function ClientsPageWrapper() {
+  return (
+    <Suspense>
+      <ClientsPage />
+    </Suspense>
+  );
+}
+
+function ClientsPage() {
   // Server-side pagination + search (backend `/api/clients/?search=...&skip=&limit=`).
   // URL query params are synced so the view is shareable / back-button friendly.
   const pagination = usePagination<Client>({

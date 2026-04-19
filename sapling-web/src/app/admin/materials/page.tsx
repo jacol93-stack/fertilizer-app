@@ -13,9 +13,10 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, X, Save, Loader2, Check } from "lucide-react";
 
 interface Material {
-  id: number;
   material: string;
   type: string | null;
+  form: string | null;
+  liquid_compatible: boolean;
   cost_per_ton: number;
   n: number;
   p: number;
@@ -30,18 +31,28 @@ interface Material {
   mo: number;
   cu: number;
   c: number;
+  // Liquid-blend physical properties — only meaningful for liquid-compatible
+  // materials. solubility_20c is g of solute per L of water at 20°C (null/0
+  // = treat as miscible if form === "liquid"). sg is the material's own
+  // density (kg/L), used for volume-displacement math in the liquid LP.
+  solubility_20c: number | null;
+  sg: number | null;
 }
 
 const NUTRIENT_FIELDS = [
   "n", "p", "k", "ca", "mg", "s", "fe", "b", "mn", "zn", "mo", "cu", "c",
 ] as const;
 
-const emptyMaterial: Omit<Material, "id"> = {
+const emptyMaterial: Material = {
   material: "",
   type: null,
+  form: "solid",
+  liquid_compatible: false,
   cost_per_ton: 0,
   n: 0, p: 0, k: 0, ca: 0, mg: 0, s: 0,
   fe: 0, b: 0, mn: 0, zn: 0, mo: 0, cu: 0, c: 0,
+  solubility_20c: null,
+  sg: null,
 };
 
 export default function MaterialsPage() {
@@ -50,15 +61,16 @@ export default function MaterialsPage() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<"dry" | "liquid">("dry");
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
-  const [form, setForm] = useState<Omit<Material, "id">>(emptyMaterial);
+  const [form, setForm] = useState<Material>(emptyMaterial);
   const [saving, setSaving] = useState(false);
 
   // Delete confirm
-  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleteName, setDeleteName] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   // Defaults section
@@ -155,8 +167,7 @@ export default function MaterialsPage() {
 
   function openEdit(mat: Material) {
     setEditingMaterial(mat);
-    const { id, ...rest } = mat;
-    setForm(rest);
+    setForm({ ...mat });
     setDialogOpen(true);
   }
 
@@ -164,7 +175,7 @@ export default function MaterialsPage() {
     setSaving(true);
     try {
       if (editingMaterial) {
-        await api.patch(`/api/materials/${editingMaterial.id}`, form);
+        await api.patch(`/api/materials/${encodeURIComponent(editingMaterial.material)}`, form);
         toast.success("Material updated");
       } else {
         await api.post("/api/materials", form);
@@ -180,12 +191,12 @@ export default function MaterialsPage() {
   }
 
   async function handleDelete() {
-    if (!deleteId) return;
+    if (!deleteName) return;
     setDeleting(true);
     try {
-      await api.delete(`/api/materials/${deleteId}`);
+      await api.delete(`/api/materials/${encodeURIComponent(deleteName)}`);
       toast.success("Material deleted");
-      setDeleteId(null);
+      setDeleteName(null);
       fetchMaterials();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Delete failed");
@@ -194,7 +205,7 @@ export default function MaterialsPage() {
     }
   }
 
-  function updateForm(field: string, value: string | number) {
+  function updateForm(field: string, value: string | number | boolean | null) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
@@ -227,9 +238,9 @@ export default function MaterialsPage() {
           <CardHeader className="cursor-pointer" onClick={() => setDefaultsExpanded(!defaultsExpanded)}>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-base">Agent Default Materials</CardTitle>
+                <CardTitle className="text-base">Agent Default Dry Materials</CardTitle>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {defaultMats.size} materials selected &middot; {defaultMinCompost}% min compost &middot; These are pre-selected for all agents on Quick Blend
+                  {defaultMats.size} materials selected &middot; {defaultMinCompost}% min compost &middot; Pre-selected for agents on Dry Blend
                 </p>
               </div>
               <span className="text-xs text-muted-foreground">{defaultsExpanded ? "Collapse" : "Expand"}</span>
@@ -243,10 +254,15 @@ export default function MaterialsPage() {
                 <>
                   <div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border p-2">
                     {materials
-                      .filter((m) => m.material !== "Manure Compost" && m.material !== "Dolomitic Lime (Filler)")
+                      .filter((m) =>
+                        m.form !== "liquid" &&
+                        m.form !== "chelate" &&
+                        m.material !== "Manure Compost" &&
+                        m.material !== "Dolomitic Lime (Filler)"
+                      )
                       .map((mat) => (
                       <label
-                        key={mat.id || mat.material}
+                        key={mat.material}
                         className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1 transition-colors hover:bg-muted"
                       >
                         <input
@@ -282,7 +298,7 @@ export default function MaterialsPage() {
                     <div className="flex gap-2 ml-auto">
                       <button
                         type="button"
-                        onClick={() => setDefaultMats(new Set(materials.filter((m) => m.material !== "Manure Compost" && m.material !== "Dolomitic Lime (Filler)").map((m) => m.material)))}
+                        onClick={() => setDefaultMats(new Set(materials.filter((m) => m.form !== "liquid" && m.form !== "chelate" && m.material !== "Manure Compost" && m.material !== "Dolomitic Lime (Filler)").map((m) => m.material)))}
                         className="text-xs text-[var(--sapling-orange)] hover:underline"
                       >
                         Select all
@@ -328,7 +344,7 @@ export default function MaterialsPage() {
                   <div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border p-2">
                     {liquidMaterials.map((mat) => (
                       <label
-                        key={mat.id || mat.material}
+                        key={mat.material}
                         className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1 transition-colors hover:bg-muted"
                       >
                         <input
@@ -380,12 +396,38 @@ export default function MaterialsPage() {
           )}
         </Card>
 
+        {/* Dry / Liquid view toggle */}
+        <div className="mt-6 inline-flex rounded-lg border border-gray-200 bg-white p-1">
+          <button
+            type="button"
+            onClick={() => setView("dry")}
+            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+              view === "dry"
+                ? "bg-[var(--sapling-orange)] text-white"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Dry ({materials.filter((m) => m.form !== "liquid" && m.form !== "chelate").length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("liquid")}
+            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+              view === "liquid"
+                ? "bg-[var(--sapling-orange)] text-white"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Liquid ({materials.filter((m) => m.form === "liquid" || m.form === "chelate").length})
+          </button>
+        </div>
+
         {loading ? (
           <div className="mt-8 flex justify-center">
             <div className="size-8 animate-spin rounded-full border-4 border-gray-200 border-t-[var(--sapling-orange)]" />
           </div>
         ) : (
-          <div className="mt-6 overflow-x-auto rounded-xl border border-gray-200 bg-white">
+          <div className="mt-4 overflow-x-auto rounded-xl border border-gray-200 bg-white">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -399,9 +441,15 @@ export default function MaterialsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {materials.map((mat) => (
+                {materials
+                  .filter((m) =>
+                    view === "liquid"
+                      ? m.form === "liquid" || m.form === "chelate"
+                      : m.form !== "liquid" && m.form !== "chelate",
+                  )
+                  .map((mat) => (
                   <tr
-                    key={mat.id || mat.material}
+                    key={mat.material}
                     className="cursor-pointer transition-colors hover:bg-gray-50"
                     onClick={() => openEdit(mat)}
                   >
@@ -432,7 +480,7 @@ export default function MaterialsPage() {
                           size="icon-xs"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setDeleteId(mat.id);
+                            setDeleteName(mat.material);
                           }}
                         >
                           <Trash2 className="size-3.5" />
@@ -441,10 +489,14 @@ export default function MaterialsPage() {
                     </td>
                   </tr>
                 ))}
-                {materials.length === 0 && (
+                {materials.filter((m) =>
+                  view === "liquid"
+                    ? m.form === "liquid" || m.form === "chelate"
+                    : m.form !== "liquid" && m.form !== "chelate",
+                ).length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
-                      No materials found
+                      No {view} materials found
                     </td>
                   </tr>
                 )}
@@ -489,6 +541,33 @@ export default function MaterialsPage() {
                   />
                 </div>
                 <div className="grid gap-1.5">
+                  <Label htmlFor="form">Form</Label>
+                  <select
+                    id="form"
+                    value={form.form ?? "solid"}
+                    onChange={(e) => updateForm("form", e.target.value)}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  >
+                    <option value="solid">Solid (dry)</option>
+                    <option value="liquid">Liquid</option>
+                    <option value="chelate">Chelate</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-end">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={form.liquid_compatible}
+                      onChange={(e) => updateForm("liquid_compatible", e.target.checked)}
+                      className="size-4 rounded border-gray-300 accent-[var(--sapling-orange)]"
+                    />
+                    Liquid-compatible (show on liquid blend selector)
+                  </label>
+                </div>
+                <div className="grid gap-1.5">
                   <Label htmlFor="cost_per_ton">Cost per Ton (R)</Label>
                   <Input
                     id="cost_per_ton"
@@ -520,6 +599,57 @@ export default function MaterialsPage() {
                   ))}
                 </div>
               </div>
+
+              {/* Liquid-specific physical properties — only surfaced when the
+                  material will actually go into a liquid blend. Solids used
+                  only in dry blends don't need these. */}
+              {(form.liquid_compatible || form.form === "liquid" || form.form === "chelate") && (
+                <div className="border-t pt-4">
+                  <p className="mb-1 text-sm font-medium text-gray-700">Liquid Properties</p>
+                  <p className="mb-3 text-xs text-muted-foreground">
+                    Drives the liquid-blend optimizer. Leave blank for miscible liquids
+                    (e.g. phosphoric acid) — the LP will treat them as unbounded.
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="grid gap-1">
+                      <Label htmlFor="solubility_20c" className="text-xs">
+                        Solubility @ 20°C (g/L water)
+                      </Label>
+                      <Input
+                        id="solubility_20c"
+                        type="number"
+                        step="1"
+                        min="0"
+                        max="5000"
+                        placeholder="e.g. 1080 for urea"
+                        value={form.solubility_20c ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          updateForm("solubility_20c", v === "" ? null : parseFloat(v));
+                        }}
+                      />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label htmlFor="sg" className="text-xs">
+                        Density / SG (kg/L)
+                      </Label>
+                      <Input
+                        id="sg"
+                        type="number"
+                        step="0.01"
+                        min="0.5"
+                        max="3.0"
+                        placeholder="e.g. 1.57 for H3PO4 80%"
+                        value={form.sg ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          updateForm("sg", v === "" ? null : parseFloat(v));
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
@@ -535,7 +665,7 @@ export default function MaterialsPage() {
       )}
 
       {/* Delete Confirmation */}
-      {deleteId !== null && (
+      {deleteName !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="mx-4 w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
             <h2 className="text-lg font-semibold text-[var(--sapling-dark)]">
@@ -545,7 +675,7 @@ export default function MaterialsPage() {
               Are you sure you want to delete this material? This action cannot be undone.
             </p>
             <div className="mt-6 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setDeleteId(null)}>
+              <Button variant="outline" onClick={() => setDeleteName(null)}>
                 Cancel
               </Button>
               <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
