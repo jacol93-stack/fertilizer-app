@@ -1,13 +1,25 @@
 """Soil analysis endpoints: classification, targets, and CRUD."""
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from pydantic import BaseModel, Field
 
+# Conflict resolution values accepted on write endpoints when a field already
+# has a recent analysis. Phase 1 supports "replace" only; the other values are
+# reserved for later phases (merge-as-composite UX).
+ConflictResolution = Literal[
+    "replace",
+    "merge_as_composite",
+    "keep_both_new_latest",
+    "keep_both_old_latest",
+]
+FIELD_ANALYSIS_CONFLICT_WINDOW_DAYS = 7
+
 from app.auth import CurrentUser, get_current_user, require_admin
 from app.pagination import Page, PageParams, apply_page
+from app.services.aggregation import aggregate_samples
 from app.services.soil_engine import (
     classify_soil_value,
     evaluate_ratios,
@@ -45,6 +57,21 @@ class TargetsResponse(BaseModel):
     targets: list[dict]
 
 
+class ComponentSampleIn(BaseModel):
+    """One physical sample contributing to a composite soil analysis.
+
+    When two or more of these are supplied on a create call, the server
+    aggregates them (area-weighted if every sample carries `weight_ha`,
+    otherwise equal-weighted) and retains the raw components on the
+    stored record. A caller supplying exactly one component, or none at
+    all, is treated as a single-sample record.
+    """
+    values: dict[str, float | None]
+    weight_ha: float | None = Field(None, gt=0, le=100_000)
+    location_label: str | None = Field(None, max_length=200)
+    depth_cm: float | None = Field(None, ge=0, le=500)
+
+
 class SoilAnalysisCreate(BaseModel):
     client_id: str | None = None
     farm_id: str | None = None
@@ -66,6 +93,11 @@ class SoilAnalysisCreate(BaseModel):
     norms_snapshot: dict | None = None
     source_document_url: str | None = Field(None, max_length=500)
     status: str = Field("saved", max_length=20)
+    conflict_resolution: ConflictResolution | None = None
+    # Multi-sample composite: supply ≥2 to build one composite record
+    # with non-destructive retention of the raw samples. Composite's
+    # weighted mean overrides `soil_values` if both are supplied.
+    component_samples: list[ComponentSampleIn] | None = None
 
 
 class SoilAnalysisOut(BaseModel):
@@ -74,6 +106,172 @@ class SoilAnalysisOut(BaseModel):
 
 
 # ── Helper ────────────────────────────────────────────────────────────────────
+
+
+def _check_field_analysis_conflict(
+    sb,
+    field_id: str,
+    window_days: int = FIELD_ANALYSIS_CONFLICT_WINDOW_DAYS,
+) -> dict | None:
+    """Return a conflict payload if `field_id` has a recent analysis, else None.
+
+    A conflict means the field's `latest_analysis_id` points at a soil analysis
+    whose `analysis_date` (or `created_at` fallback) is within `window_days` of
+    now. The client must pass `conflict_resolution` to proceed — otherwise the
+    save endpoint returns HTTP 409 so the UI can confirm instead of silently
+    overwriting the previous analysis.
+    """
+    if not field_id:
+        return None
+    try:
+        f = sb.table("fields").select(
+            "id, name, latest_analysis_id"
+        ).eq("id", field_id).execute()
+        if not f.data or not f.data[0].get("latest_analysis_id"):
+            return None
+        latest_id = f.data[0]["latest_analysis_id"]
+        field_name = f.data[0].get("name") or ""
+
+        a = sb.table("soil_analyses").select(
+            "id, analysis_date, created_at, crop"
+        ).eq("id", latest_id).execute()
+        if not a.data:
+            return None
+        existing = a.data[0]
+
+        ref_str = existing.get("analysis_date") or existing.get("created_at")
+        if not ref_str:
+            return None
+        try:
+            ref = datetime.fromisoformat(ref_str.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        if ref.tzinfo is None:
+            ref = ref.replace(tzinfo=timezone.utc)
+        age_days = (datetime.now(timezone.utc) - ref).days
+        if age_days > window_days:
+            return None
+
+        return {
+            "field_id": field_id,
+            "field_name": field_name,
+            "existing": {
+                "id": existing["id"],
+                "analysis_date": existing.get("analysis_date"),
+                "created_at": existing.get("created_at"),
+                "crop": existing.get("crop"),
+            },
+            "window_days": window_days,
+        }
+    except Exception:
+        return None
+
+
+def _validate_conflict_resolution(value: ConflictResolution | None) -> None:
+    """All four resolutions are supported after Phase 7."""
+    if value is None:
+        return
+    if value in ("replace", "merge_as_composite", "keep_both_new_latest", "keep_both_old_latest"):
+        return
+    raise HTTPException(
+        status_code=422,
+        detail=f"Unknown conflict_resolution '{value}'.",
+    )
+
+
+def _merge_incoming_into_existing(
+    sb,
+    existing_analysis_id: str,
+    incoming_soil_values: dict,
+    incoming_components: list | None,
+    *,
+    default_weight_ha: float | None = None,
+    default_location_label: str | None = None,
+    default_depth_cm: float | None = None,
+) -> dict:
+    """Non-destructive merge: absorb the incoming sample(s) into an existing
+    analysis as additional components, re-aggregate, and UPDATE the row in
+    place. Returns the updated analysis record.
+
+    If the existing row has no `component_samples` retained (legacy /
+    single-sample), its `soil_values` are treated as one component so no
+    data is lost.
+    """
+    existing_result = sb.table("soil_analyses").select(
+        "id, soil_values, component_samples, composition_method"
+    ).eq("id", existing_analysis_id).execute()
+    if not existing_result.data:
+        raise HTTPException(status_code=404, detail="Existing analysis not found for merge")
+    existing = existing_result.data[0]
+
+    existing_components = existing.get("component_samples") or []
+    if not existing_components:
+        # Promote the legacy single-sample row into a component list with
+        # one entry so we don't lose its values when aggregating.
+        existing_components = [{
+            "values": {k: v for k, v in (existing.get("soil_values") or {}).items() if v is not None},
+        }]
+
+    incoming_as_components: list[dict] = []
+    if incoming_components:
+        incoming_as_components = list(incoming_components)
+    elif incoming_soil_values:
+        incoming_as_components = [{
+            "values": {k: v for k, v in incoming_soil_values.items() if v is not None},
+            **({"weight_ha": default_weight_ha} if default_weight_ha is not None else {}),
+            **({"location_label": default_location_label} if default_location_label else {}),
+            **({"depth_cm": default_depth_cm} if default_depth_cm is not None else {}),
+        }]
+
+    combined = existing_components + incoming_as_components
+    weights: list[float] | None = None
+    if all(c.get("weight_ha") is not None and c.get("weight_ha") > 0 for c in combined):
+        weights = [float(c["weight_ha"]) for c in combined]
+
+    agg = aggregate_samples(combined, weights=weights)
+
+    update_row: dict = {
+        "soil_values": agg.values,
+        "component_samples": combined,
+        "composition_method": agg.composition_method,
+        "replicate_count": agg.replicate_count,
+        "aggregation_stats": agg.stats_as_dict(),
+    }
+    result = sb.table("soil_analyses").update(update_row).eq("id", existing_analysis_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Failed to merge analyses")
+    return result.data[0]
+
+
+def _build_composite_fields(components) -> dict | None:
+    """Aggregate ≥2 component samples into the DB field set for soil_analyses.
+
+    Returns None if fewer than two components are supplied (the caller
+    should treat the data as a single-sample record and proceed with
+    its existing `soil_values`).
+    """
+    if not components or len(components) < 2:
+        return None
+    payload = [
+        {
+            "values": {k: v for k, v in c.values.items() if v is not None},
+            **({"weight_ha": c.weight_ha} if c.weight_ha is not None else {}),
+            **({"location_label": c.location_label} if c.location_label else {}),
+            **({"depth_cm": c.depth_cm} if c.depth_cm is not None else {}),
+        }
+        for c in components
+    ]
+    weights: list[float] | None = None
+    if all(c.weight_ha is not None and c.weight_ha > 0 for c in components):
+        weights = [float(c.weight_ha) for c in components]
+    agg = aggregate_samples(payload, weights=weights)
+    return {
+        "soil_values": agg.values,
+        "component_samples": payload,
+        "composition_method": agg.composition_method,
+        "replicate_count": agg.replicate_count,
+        "aggregation_stats": agg.stats_as_dict(),
+    }
 
 
 def _audit(sb, user: CurrentUser, action: str, table: str, record_id: str | None = None, detail: dict | None = None):
@@ -442,8 +640,50 @@ def create_soil_analysis(body: SoilAnalysisCreate, user: CurrentUser = Depends(g
     """Save a soil analysis record with norms snapshot for future PDF generation."""
     sb = get_supabase_admin()
 
+    _validate_conflict_resolution(body.conflict_resolution)
+
     data = body.model_dump(exclude_none=False)
+    data.pop("conflict_resolution", None)
+    # component_samples are turned into server-side columns via
+    # _build_composite_fields below; drop the raw input shape from the
+    # insert payload so Supabase doesn't receive a list of Pydantic dicts
+    # that don't match the JSONB layout we actually store.
+    data.pop("component_samples", None)
     data["agent_id"] = user.id
+
+    composite = _build_composite_fields(body.component_samples)
+    if composite is not None:
+        data.update(composite)
+
+    # Guard: if the target field already has a recent analysis, require the
+    # caller to acknowledge. Prevents silent orphaning of the previous record.
+    existing_conflict: dict | None = None
+    if data.get("field_id"):
+        existing_conflict = _check_field_analysis_conflict(sb, data["field_id"])
+        if existing_conflict and body.conflict_resolution is None:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "type": "field_analysis_conflict",
+                    "conflicts": [existing_conflict],
+                },
+            )
+
+    # Merge-as-composite short-circuits the whole insert path: instead of a
+    # new row, we fold the incoming sample(s) into the existing analysis.
+    if body.conflict_resolution == "merge_as_composite" and existing_conflict:
+        incoming_components_raw = [c.model_dump() for c in (body.component_samples or [])]
+        merged = _merge_incoming_into_existing(
+            sb,
+            existing_conflict["existing"]["id"],
+            incoming_soil_values=data.get("soil_values") or {},
+            incoming_components=incoming_components_raw or None,
+        )
+        _audit(
+            sb, user, "merge", "soil_analyses", merged["id"],
+            detail={"conflict_resolution": "merge_as_composite"},
+        )
+        return merged
 
     # Snapshot current norms if not provided — merge crop-specific overrides
     if not data.get("norms_snapshot"):
@@ -509,8 +749,12 @@ def create_soil_analysis(body: SoilAnalysisCreate, user: CurrentUser = Depends(g
 
     record = result.data[0]
 
-    # Update field's latest_analysis_id if this analysis is linked to a field
-    if record.get("field_id"):
+    # Update field's latest_analysis_id if this analysis is linked to a field.
+    # `keep_both_old_latest` is the one resolution that skips this update —
+    # the new row is stored but the field keeps pointing at the earlier
+    # analysis, per the agronomist's choice.
+    should_set_latest = record.get("field_id") and body.conflict_resolution != "keep_both_old_latest"
+    if should_set_latest:
         try:
             sb.table("fields").update({
                 "latest_analysis_id": record["id"],
@@ -536,7 +780,10 @@ def create_soil_analysis(body: SoilAnalysisCreate, user: CurrentUser = Depends(g
         except Exception:
             pass  # Non-critical; save succeeds regardless
 
-    _audit(sb, user, "create", "soil_analyses", record["id"])
+    _audit(
+        sb, user, "create", "soil_analyses", record["id"],
+        detail={"conflict_resolution": body.conflict_resolution} if body.conflict_resolution else None,
+    )
     return record
 
 
@@ -552,6 +799,7 @@ class BatchAnalysisItem(BaseModel):
     yield_unit: str | None = Field(None, max_length=50)
     analysis_type: str = Field("soil", pattern="^(soil|leaf)$")
     soil_values: dict[str, float | None] = Field(default_factory=dict)
+    component_samples: list[ComponentSampleIn] | None = None
 
 
 class BatchSaveRequest(BaseModel):
@@ -561,6 +809,7 @@ class BatchSaveRequest(BaseModel):
     analysis_date: str | None = Field(None, max_length=20)
     source_document_url: str | None = Field(None, max_length=500)
     items: list[BatchAnalysisItem] = Field(..., min_length=1)
+    conflict_resolution: ConflictResolution | None = None
 
 
 @router.post("/batch", status_code=201)
@@ -573,6 +822,28 @@ def batch_save_analyses(body: BatchSaveRequest, user: CurrentUser = Depends(get_
     Returns list of saved analysis records with their IDs.
     """
     sb = get_supabase_admin()
+
+    _validate_conflict_resolution(body.conflict_resolution)
+
+    # Guard: collect every field whose latest analysis is recent enough to
+    # count as a conflict. If any exist and the caller has not acknowledged,
+    # return 409 with the full list so the UI can show one confirmation.
+    # If they have, we also keep the conflict map around so the merge /
+    # keep-both paths know which existing analyses to target.
+    conflict_by_field: dict[str, dict] = {}
+    for item in body.items:
+        if item.field_id:
+            c = _check_field_analysis_conflict(sb, item.field_id)
+            if c:
+                conflict_by_field[item.field_id] = c
+    if conflict_by_field and body.conflict_resolution is None:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "type": "field_analysis_conflict",
+                "conflicts": list(conflict_by_field.values()),
+            },
+        )
 
     # Load reference data once
     sufficiency = sb.table("soil_sufficiency").select("*").execute().data or []
@@ -672,6 +943,12 @@ def batch_save_analyses(body: BatchSaveRequest, user: CurrentUser = Depends(get_
             continue
 
         # ── SOIL analysis → soil_analyses table ──
+        # If the item carries ≥2 components, aggregate them now so the
+        # downstream classifier, ratios, and nutrient-target calc all
+        # operate on the composite values.
+        composite = _build_composite_fields(item.component_samples)
+        effective_values = composite["soil_values"] if composite else item.soil_values
+
         # Get crop-specific overrides
         crop_overrides = None
         if item.crop:
@@ -683,27 +960,27 @@ def batch_save_analyses(body: BatchSaveRequest, user: CurrentUser = Depends(get_
 
         # Classify soil values
         classifications = {}
-        for param, value in item.soil_values.items():
+        for param, value in effective_values.items():
             if value is not None:
                 classifications[param] = classify_soil_value(
                     value, param, sufficiency, crop_overrides
                 )
 
         # Evaluate ratios
-        ratios = evaluate_ratios(item.soil_values, ratio_rows)
+        ratios = evaluate_ratios(effective_values, ratio_rows)
 
         # Calculate nutrient targets if crop + yield provided
         nutrient_targets = None
         if item.crop and item.yield_target:
             crop_rows = sb.table("crop_requirements").select("*").execute().data or []
             targets = calculate_nutrient_targets(
-                item.crop, item.yield_target, item.soil_values,
+                item.crop, item.yield_target, effective_values,
                 crop_rows, sufficiency, adjustment_rows, param_map_rows,
                 crop_overrides,
             )
             if targets:
                 nutrient_targets = adjust_targets_for_ratios(
-                    targets, ratios, item.soil_values, ratio_rows
+                    targets, ratios, effective_values, ratio_rows
                 )
 
         # Merge crop overrides into norms snapshot for this item
@@ -725,7 +1002,7 @@ def batch_save_analyses(body: BatchSaveRequest, user: CurrentUser = Depends(get_
             "yield_unit": item.yield_unit,
             "lab_name": body.lab_name,
             "analysis_date": body.analysis_date,
-            "soil_values": item.soil_values,
+            "soil_values": effective_values,
             "classifications": classifications,
             "ratio_results": [dict(r) for r in ratios],
             "nutrient_targets": nutrient_targets,
@@ -733,14 +1010,46 @@ def batch_save_analyses(body: BatchSaveRequest, user: CurrentUser = Depends(get_
             "status": "saved",
             **({"source_document_url": body.source_document_url} if body.source_document_url else {}),
         }
+        if composite is not None:
+            # Overwrite soil_values with the composite (already identical)
+            # and attach component retention columns.
+            data["soil_values"] = composite["soil_values"]
+            data["component_samples"] = composite["component_samples"]
+            data["composition_method"] = composite["composition_method"]
+            data["replicate_count"] = composite["replicate_count"]
+            data["aggregation_stats"] = composite["aggregation_stats"]
+
+        # Merge-as-composite short-circuits: fold this item's values into the
+        # existing analysis instead of inserting a new row.
+        item_conflict = conflict_by_field.get(item.field_id) if item.field_id else None
+        if body.conflict_resolution == "merge_as_composite" and item_conflict:
+            incoming_components_raw = [c.model_dump() for c in (item.component_samples or [])]
+            merged = _merge_incoming_into_existing(
+                sb,
+                item_conflict["existing"]["id"],
+                incoming_soil_values=data.get("soil_values") or {},
+                incoming_components=incoming_components_raw or None,
+            )
+            saved.append(merged)
+            _audit(
+                sb, user, "merge", "soil_analyses", merged["id"],
+                detail={"conflict_resolution": "merge_as_composite"},
+            )
+            continue
 
         result = sb.table("soil_analyses").insert(data).execute()
         if result.data:
             record = result.data[0]
             saved.append(record)
 
-            # Update field's latest_analysis_id
-            if item.field_id:
+            # Update field's latest_analysis_id. `keep_both_old_latest`
+            # keeps the existing analysis as latest when a conflict was
+            # resolved; everything else repoints to the new row.
+            skip_latest = (
+                body.conflict_resolution == "keep_both_old_latest"
+                and item.field_id in conflict_by_field
+            )
+            if item.field_id and not skip_latest:
                 try:
                     sb.table("fields").update({
                         "latest_analysis_id": record["id"],
@@ -748,7 +1057,10 @@ def batch_save_analyses(body: BatchSaveRequest, user: CurrentUser = Depends(get_
                 except Exception:
                     pass
 
-            _audit(sb, user, "batch_create", "soil_analyses", record["id"])
+            _audit(
+                sb, user, "batch_create", "soil_analyses", record["id"],
+                detail={"conflict_resolution": body.conflict_resolution} if body.conflict_resolution else None,
+            )
 
     return {"saved": len(saved), "analyses": saved}
 
@@ -981,6 +1293,39 @@ def get_soil_analysis(analysis_id: str, user: CurrentUser = Depends(get_current_
         raise HTTPException(status_code=403, detail="Access denied")
 
     return record
+
+
+@router.get("/{analysis_id}/components")
+def get_soil_analysis_components(
+    analysis_id: str,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Return the component samples that produced a composite analysis.
+
+    For single-sample records (or rows pre-dating migration 040), returns
+    `components: []` and `composition_method: 'single'`. The field drawer
+    uses this endpoint to render the "N samples composited" panel.
+    """
+    sb = get_supabase_admin()
+
+    result = sb.table("soil_analyses").select(
+        "id, agent_id, composition_method, replicate_count, "
+        "component_samples, aggregation_stats"
+    ).eq("id", analysis_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Soil analysis not found")
+
+    record = result.data[0]
+    if user.role != "admin" and record.get("agent_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    return {
+        "analysis_id": analysis_id,
+        "composition_method": record.get("composition_method") or "single",
+        "replicate_count": record.get("replicate_count") or 1,
+        "components": record.get("component_samples") or [],
+        "stats": record.get("aggregation_stats") or {},
+    }
 
 
 @router.post("/{analysis_id}/delete", status_code=200)

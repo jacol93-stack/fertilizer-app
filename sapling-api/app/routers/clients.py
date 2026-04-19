@@ -312,11 +312,35 @@ def delete_farm(farm_id: str, user: CurrentUser = Depends(get_current_user)):
 
 @router.get("/farms/{farm_id}/fields")
 def list_fields(farm_id: str, user: CurrentUser = Depends(get_current_user)):
-    """List fields for a farm."""
+    """List fields for a farm.
+
+    Each field is enriched with `latest_analysis_composite` — a tiny
+    summary of how the linked soil analysis was composed. Callers (e.g.
+    the field card) use this to render a "N samples" badge without
+    having to fire a second round-trip per field.
+    """
     sb = get_supabase_admin()
     _check_farm_access(sb, farm_id, user)
     result = sb.table("fields").select("*").eq("farm_id", farm_id).order("name").execute()
-    return result.data
+    fields_data = result.data or []
+
+    analysis_ids = [f["latest_analysis_id"] for f in fields_data if f.get("latest_analysis_id")]
+    composites: dict[str, dict] = {}
+    if analysis_ids:
+        analyses = sb.table("soil_analyses").select(
+            "id, composition_method, replicate_count"
+        ).in_("id", analysis_ids).execute()
+        for a in (analyses.data or []):
+            composites[a["id"]] = {
+                "composition_method": a.get("composition_method") or "single",
+                "replicate_count": a.get("replicate_count") or 1,
+            }
+
+    for f in fields_data:
+        aid = f.get("latest_analysis_id")
+        f["latest_analysis_composite"] = composites.get(aid) if aid else None
+
+    return fields_data
 
 
 @router.post("/farms/{farm_id}/fields", status_code=201)

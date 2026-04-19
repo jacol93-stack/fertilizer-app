@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { API_URL, api } from "@/lib/api";
+import { Fragment, useState, useEffect, useRef } from "react";
+import { API_URL, api, isFieldAnalysisConflict, type FieldAnalysisConflict } from "@/lib/api";
+import { ConflictResolutionDialog, type ConflictResolutionChoice } from "@/components/conflict-resolution-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +23,8 @@ import {
   Plus,
   Trash2,
   ChevronDown,
+  ChevronRight,
+  Layers,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────
@@ -45,6 +48,14 @@ interface FieldOption {
   farm_name?: string;
 }
 
+interface ComponentSample {
+  key: string;
+  location_label: string;
+  weight_ha: string;
+  depth_cm: string;
+  values: Record<string, string>;
+}
+
 interface SampleRow {
   key: string; // unique key for React
   field_id: string;
@@ -56,6 +67,12 @@ interface SampleRow {
   analysis_type: "soil" | "leaf";
   values: Record<string, string>;
   auto_matched: boolean;
+  // When non-null, the row is in multi-sample mode: each component
+  // carries its own lab values + optional zone metadata. The server
+  // aggregates them when saving (area-weighted if every component
+  // supplies a positive weight_ha, otherwise equal). Leaving this null
+  // keeps the legacy single-sample flow untouched.
+  components: ComponentSample[] | null;
 }
 
 interface BatchAnalysisUploadProps {
@@ -98,6 +115,8 @@ export function BatchAnalysisUpload({
   const [rows, setRows] = useState<SampleRow[]>([]);
   const [sourceDocumentUrl, setSourceDocumentUrl] = useState<string | null>(null);
   const [localFields, setLocalFields] = useState<FieldOption[]>(fields);
+  const [pendingConflicts, setPendingConflicts] = useState<FieldAnalysisConflict[]>([]);
+  const pendingPayloadRef = useRef<Record<string, unknown> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const moreFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -205,6 +224,7 @@ export function BatchAnalysisUpload({
             analysis_type: isLeaf ? "leaf" : "soil",
             values: mappedValues,
             auto_matched: !!match,
+            components: null,
           };
         });
 
@@ -235,6 +255,7 @@ export function BatchAnalysisUpload({
         analysis_type: analysisType,
         values: {},
         auto_matched: false,
+        components: null,
       },
     ]);
   };
@@ -254,6 +275,105 @@ export function BatchAnalysisUpload({
 
   const removeRow = (key: string) => {
     setRows((prev) => prev.filter((r) => r.key !== key));
+  };
+
+  // ── Multi-sample (component) editing ────────────────────────────────
+
+  const makeComponentKey = () => `comp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+  /**
+   * Toggle a row between single-sample and multi-sample mode.
+   *
+   * Enter multi-sample: the row's current values become the first
+   * component (so nothing is lost) and a blank second component is
+   * added so the user can start entering zone 2 immediately.
+   *
+   * Exit multi-sample: only allowed when <=1 components exist. Values
+   * from component 0 (if present) fold back into the row. This keeps
+   * the collapse button from silently discarding zone data.
+   */
+  const toggleMultiSample = (key: string) => {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.key !== key) return r;
+        if (r.components == null) {
+          return {
+            ...r,
+            components: [
+              {
+                key: makeComponentKey(),
+                location_label: "",
+                weight_ha: "",
+                depth_cm: "",
+                values: { ...r.values },
+              },
+              {
+                key: makeComponentKey(),
+                location_label: "",
+                weight_ha: "",
+                depth_cm: "",
+                values: {},
+              },
+            ],
+          };
+        }
+        if (r.components.length > 1) return r;  // cannot collapse with multiple zones
+        return {
+          ...r,
+          values: r.components[0]?.values ?? {},
+          components: null,
+        };
+      })
+    );
+  };
+
+  const addComponent = (rowKey: string) => {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.key !== rowKey || r.components == null) return r;
+        return {
+          ...r,
+          components: [
+            ...r.components,
+            {
+              key: makeComponentKey(),
+              location_label: "",
+              weight_ha: "",
+              depth_cm: "",
+              values: {},
+            },
+          ],
+        };
+      })
+    );
+  };
+
+  const updateComponent = (
+    rowKey: string,
+    compKey: string,
+    patch: Partial<ComponentSample>,
+  ) => {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.key !== rowKey || r.components == null) return r;
+        return {
+          ...r,
+          components: r.components.map((c) =>
+            c.key === compKey ? { ...c, ...patch } : c,
+          ),
+        };
+      })
+    );
+  };
+
+  const removeComponent = (rowKey: string, compKey: string) => {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.key !== rowKey || r.components == null) return r;
+        const next = r.components.filter((c) => c.key !== compKey);
+        return { ...r, components: next };
+      })
+    );
   };
 
   const selectField = (key: string, fieldId: string) => {
@@ -314,9 +434,17 @@ export function BatchAnalysisUpload({
   // ── Save all ────────────────────────────────────────────────────────
 
   const handleSave = async () => {
-    const validRows = rows.filter(
-      (r) => Object.values(r.values).some((v) => v && v !== "0")
-    );
+    const hasAnyValue = (vals: Record<string, string>) =>
+      Object.values(vals).some((v) => v && v !== "0");
+
+    const rowHasData = (r: SampleRow) => {
+      if (r.components && r.components.length > 0) {
+        return r.components.some((c) => hasAnyValue(c.values));
+      }
+      return hasAnyValue(r.values);
+    };
+
+    const validRows = rows.filter(rowHasData);
 
     if (validRows.length === 0) {
       toast.error("No samples with values to save");
@@ -326,11 +454,41 @@ export function BatchAnalysisUpload({
     setSaving(true);
     try {
       const items = validRows.map((r) => {
-        const numericValues: Record<string, number | null> = {};
-        for (const [k, v] of Object.entries(r.values)) {
-          const n = parseFloat(v);
-          numericValues[k] = isNaN(n) ? null : n;
+        const toNumericValues = (vals: Record<string, string>) => {
+          const out: Record<string, number | null> = {};
+          for (const [k, v] of Object.entries(vals)) {
+            const n = parseFloat(v);
+            out[k] = isNaN(n) ? null : n;
+          }
+          return out;
+        };
+
+        // Multi-sample mode: only send component_samples when the user
+        // actually entered ≥2 zones with data. A single filled component
+        // is treated as a plain single-sample record at the server.
+        const filledComponents =
+          r.components?.filter((c) => hasAnyValue(c.values)) ?? [];
+
+        if (filledComponents.length >= 2) {
+          return {
+            field_id: r.field_id || null,
+            field_name: r.field_name || null,
+            crop: r.crop || null,
+            cultivar: r.cultivar || null,
+            yield_target: r.yield_target ? parseFloat(r.yield_target) : null,
+            yield_unit: r.yield_unit || null,
+            analysis_type: r.analysis_type,
+            soil_values: toNumericValues(filledComponents[0].values),
+            component_samples: filledComponents.map((c) => ({
+              values: toNumericValues(c.values),
+              weight_ha: c.weight_ha ? parseFloat(c.weight_ha) : null,
+              location_label: c.location_label || null,
+              depth_cm: c.depth_cm ? parseFloat(c.depth_cm) : null,
+            })),
+          };
         }
+
+        const baseValues = filledComponents[0]?.values ?? r.values;
         return {
           field_id: r.field_id || null,
           field_name: r.field_name || null,
@@ -339,27 +497,68 @@ export function BatchAnalysisUpload({
           yield_target: r.yield_target ? parseFloat(r.yield_target) : null,
           yield_unit: r.yield_unit || null,
           analysis_type: r.analysis_type,
-          soil_values: numericValues,
+          soil_values: toNumericValues(baseValues),
         };
       });
 
-      const res = await api.post<{ saved: number; analyses: unknown[] }>("/api/soil/batch", {
+      const basePayload = {
         client_id: clientId,
         farm_id: farmId || null,
         lab_name: labName || null,
         analysis_date: analysisDate || null,
         source_document_url: sourceDocumentUrl || null,
         items,
-      });
+      };
 
-      toast.success(`Saved ${res.saved} analyse${res.saved !== 1 ? "s" : ""}`);
+      try {
+        const res = await api.post<{ saved: number; analyses: unknown[] }>("/api/soil/batch", basePayload);
+        toast.success(`Saved ${res.saved} analyse${res.saved !== 1 ? "s" : ""}`);
+        onSaved();
+        onClose();
+      } catch (err) {
+        const conflicts = isFieldAnalysisConflict(err);
+        if (!conflicts) throw err;
+        // Defer to the conflict dialog — the user picks a resolution and
+        // handleConflictResolved re-posts with the chosen flag.
+        pendingPayloadRef.current = basePayload;
+        setPendingConflicts(conflicts);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleConflictResolved = async (choice: ConflictResolutionChoice) => {
+    const payload = pendingPayloadRef.current;
+    if (!payload) {
+      setPendingConflicts([]);
+      return;
+    }
+    setPendingConflicts([]);
+    setSaving(true);
+    try {
+      const res = await api.post<{ saved: number; analyses: unknown[] }>("/api/soil/batch", {
+        ...payload,
+        conflict_resolution: choice,
+      });
+      const verb = choice === "merge_as_composite" ? "Merged" : "Saved";
+      toast.success(`${verb} ${res.saved} analyse${res.saved !== 1 ? "s" : ""}`);
       onSaved();
       onClose();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to save");
     } finally {
       setSaving(false);
+      pendingPayloadRef.current = null;
     }
+  };
+
+  const handleConflictCancelled = () => {
+    setPendingConflicts([]);
+    pendingPayloadRef.current = null;
+    toast.info("Save cancelled — no changes made");
   };
 
   // ── Render ──────────────────────────────────────────────────────────
@@ -520,15 +719,43 @@ export function BatchAnalysisUpload({
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((row) => (
+                    {rows.map((row) => {
+                      const isMulti = row.components !== null;
+                      const canCollapse = isMulti && (row.components?.length ?? 0) <= 1;
+                      return (
+                      <Fragment key={row.key}>
                       <tr
-                        key={row.key}
                         className={`border-b last:border-0 ${
                           row.field_id ? "bg-white" : "bg-amber-50"
                         }`}
                       >
                         <td className="whitespace-nowrap px-2 py-1">
-                          <span className="font-medium">{row.field_name || "—"}</span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => toggleMultiSample(row.key)}
+                              disabled={isMulti && !canCollapse}
+                              title={
+                                isMulti
+                                  ? canCollapse
+                                    ? "Collapse to single sample"
+                                    : "Remove extra zones first"
+                                  : "Split into zone samples"
+                              }
+                              className={`flex size-5 items-center justify-center rounded hover:bg-muted ${
+                                isMulti ? "text-[var(--sapling-orange)]" : "text-muted-foreground"
+                              } disabled:opacity-40`}
+                            >
+                              {isMulti ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
+                            </button>
+                            <span className="font-medium">{row.field_name || "—"}</span>
+                            {isMulti && (
+                              <span className="inline-flex items-center gap-0.5 rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-medium text-orange-700">
+                                <Layers className="size-2.5" />
+                                {row.components?.length ?? 0}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-2 py-1">
                           <div className="flex items-center gap-0.5">
@@ -569,16 +796,25 @@ export function BatchAnalysisUpload({
                         </td>
                         {params.map((p) => (
                           <td key={p} className="px-0.5 py-1">
-                            <input
-                              type="number"
-                              step="any"
-                              value={row.values[p] || ""}
-                              onChange={(e) =>
-                                updateRow(row.key, { values: { ...row.values, [p]: e.target.value } })
-                              }
-                              className="h-6 w-14 rounded border px-1 text-center text-xs tabular-nums"
-                              placeholder="—"
-                            />
+                            {isMulti ? (
+                              <div
+                                className="flex h-6 w-14 items-center justify-center rounded border border-dashed border-muted-foreground/30 bg-muted/40 text-center text-[10px] italic tabular-nums text-muted-foreground"
+                                title="Values entered per zone below; server aggregates on save"
+                              >
+                                mean
+                              </div>
+                            ) : (
+                              <input
+                                type="number"
+                                step="any"
+                                value={row.values[p] || ""}
+                                onChange={(e) =>
+                                  updateRow(row.key, { values: { ...row.values, [p]: e.target.value } })
+                                }
+                                className="h-6 w-14 rounded border px-1 text-center text-xs tabular-nums"
+                                placeholder="—"
+                              />
+                            )}
                           </td>
                         ))}
                         <td className="px-1 py-1">
@@ -587,7 +823,94 @@ export function BatchAnalysisUpload({
                           </button>
                         </td>
                       </tr>
-                    ))}
+                      {isMulti && row.components && (
+                        <tr className="bg-orange-50/30">
+                          <td colSpan={params.length + 5} className="px-3 py-2">
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                                <Layers className="size-3" />
+                                <span>
+                                  Zone samples — the server will area-weight if every zone has a hectare weight, otherwise equal weights.
+                                </span>
+                              </div>
+                              {row.components.map((comp, idx) => {
+                                const componentsCount = row.components!.length;
+                                return (
+                                  <div key={comp.key} className="flex flex-wrap items-center gap-1.5 rounded border border-orange-200/70 bg-white px-2 py-1.5">
+                                    <span className="w-14 shrink-0 text-[10px] font-medium text-muted-foreground">
+                                      Zone {idx + 1}
+                                    </span>
+                                    <input
+                                      value={comp.location_label}
+                                      onChange={(e) => updateComponent(row.key, comp.key, { location_label: e.target.value })}
+                                      placeholder="Label (e.g. North)"
+                                      className="h-6 w-28 rounded border px-1 text-xs"
+                                    />
+                                    <input
+                                      type="number"
+                                      step="any"
+                                      value={comp.weight_ha}
+                                      onChange={(e) => updateComponent(row.key, comp.key, { weight_ha: e.target.value })}
+                                      placeholder="ha"
+                                      className="h-6 w-14 rounded border px-1 text-center text-xs tabular-nums"
+                                      title="Zone area in hectares (optional, enables area-weighted mean)"
+                                    />
+                                    <input
+                                      type="number"
+                                      step="any"
+                                      value={comp.depth_cm}
+                                      onChange={(e) => updateComponent(row.key, comp.key, { depth_cm: e.target.value })}
+                                      placeholder="cm"
+                                      className="h-6 w-12 rounded border px-1 text-center text-xs tabular-nums"
+                                      title="Sampling depth (optional)"
+                                    />
+                                    <div className="flex flex-wrap items-center gap-0.5">
+                                      {params.map((p) => (
+                                        <div key={p} className="flex flex-col items-center">
+                                          <span className="text-[9px] text-muted-foreground">{p}</span>
+                                          <input
+                                            type="number"
+                                            step="any"
+                                            value={comp.values[p] || ""}
+                                            onChange={(e) =>
+                                              updateComponent(row.key, comp.key, {
+                                                values: { ...comp.values, [p]: e.target.value },
+                                              })
+                                            }
+                                            className="h-6 w-12 rounded border px-1 text-center text-xs tabular-nums"
+                                            placeholder="—"
+                                          />
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <div className="flex-1" />
+                                    <button
+                                      type="button"
+                                      onClick={() => removeComponent(row.key, comp.key)}
+                                      disabled={componentsCount <= 1}
+                                      className="text-muted-foreground hover:text-red-500 disabled:opacity-30"
+                                      title={componentsCount <= 1 ? "At least one zone required" : "Remove zone"}
+                                    >
+                                      <X className="size-3" />
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => addComponent(row.key)}
+                                className="h-7 text-xs"
+                              >
+                                <Plus className="size-3" /> Add zone sample
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -611,6 +934,12 @@ export function BatchAnalysisUpload({
           )}
         </div>
       </SheetContent>
+      <ConflictResolutionDialog
+        open={pendingConflicts.length > 0}
+        conflicts={pendingConflicts}
+        onResolve={handleConflictResolved}
+        onCancel={handleConflictCancelled}
+      />
     </Sheet>
   );
 }

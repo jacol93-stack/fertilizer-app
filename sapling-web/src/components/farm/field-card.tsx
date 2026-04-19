@@ -3,7 +3,7 @@
 import type { Field } from "@/lib/season-constants";
 import { MONTH_NAMES } from "@/lib/season-constants";
 import { Card, CardContent } from "@/components/ui/card";
-import { Droplets, Sprout, TreeDeciduous, CheckCircle2, Pencil } from "lucide-react";
+import { Droplets, Sprout, TreeDeciduous, CheckCircle2, Pencil, Layers } from "lucide-react";
 
 interface FieldCardProps {
   field: Field;
@@ -137,7 +137,7 @@ export function FieldCard({ field, selected, selectable, onToggle, onClick }: Fi
         )}
 
         {/* Analysis status */}
-        <div className="mt-2 border-t border-gray-100 pt-2">
+        <div className="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2">
           {field.latest_analysis_id ? (
             <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-600">
               <span className="size-1.5 rounded-full bg-green-500" />
@@ -145,6 +145,15 @@ export function FieldCard({ field, selected, selectable, onToggle, onClick }: Fi
             </span>
           ) : (
             <span className="text-[10px] text-gray-400">No analysis</span>
+          )}
+          {field.latest_analysis_composite && field.latest_analysis_composite.replicate_count > 1 && (
+            <span
+              className="inline-flex items-center gap-0.5 rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-medium text-orange-700"
+              title={`Composite of ${field.latest_analysis_composite.replicate_count} zone samples (${field.latest_analysis_composite.composition_method.replace("composite_", "").replace("_", " ")})`}
+            >
+              <Layers className="size-2.5" />
+              {field.latest_analysis_composite.replicate_count} samples
+            </span>
           )}
         </div>
       </CardContent>

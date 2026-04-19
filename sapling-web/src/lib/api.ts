@@ -2,6 +2,51 @@ import { createClient } from "./supabase";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+/**
+ * Thrown by `apiFetch` for any non-2xx response. Carries the HTTP status and
+ * parsed response body so callers can branch on structured error payloads
+ * (e.g. 409 field-analysis-conflict with a list of recent analyses).
+ */
+export class ApiError extends Error {
+  status: number;
+  body: unknown;
+
+  constructor(message: string, status: number, body: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.body = body;
+  }
+}
+
+export interface FieldAnalysisConflict {
+  field_id: string;
+  field_name: string;
+  existing: {
+    id: string;
+    analysis_date: string | null;
+    created_at: string | null;
+    crop: string | null;
+  };
+  window_days: number;
+}
+
+export interface FieldAnalysisConflictDetail {
+  type: "field_analysis_conflict";
+  conflicts: FieldAnalysisConflict[];
+}
+
+/** Type guard for the 409 payload returned by /api/soil/ and /api/soil/batch. */
+export function isFieldAnalysisConflict(err: unknown): FieldAnalysisConflict[] | null {
+  if (!(err instanceof ApiError) || err.status !== 409) return null;
+  const body = err.body as { detail?: FieldAnalysisConflictDetail } | undefined;
+  const detail = body?.detail;
+  if (detail?.type === "field_analysis_conflict" && Array.isArray(detail.conflicts)) {
+    return detail.conflicts;
+  }
+  return null;
+}
+
 // Impersonation state — set by admin, persisted in sessionStorage
 let _impersonateUserId: string | null = null;
 
@@ -98,14 +143,14 @@ async function apiFetch<T = unknown>(
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    const detail = body.detail;
+    const detail = (body as { detail?: unknown }).detail;
     const message =
       typeof detail === "string"
         ? detail
         : Array.isArray(detail)
           ? detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join("; ")
           : `API error ${res.status}`;
-    throw new Error(message);
+    throw new ApiError(message, res.status, body);
   }
   return res.json();
 }

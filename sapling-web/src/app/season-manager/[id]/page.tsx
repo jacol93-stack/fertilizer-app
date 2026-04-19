@@ -32,6 +32,17 @@ import { ComparisonView } from "@/components/season-manager/comparison-view";
 import { STATUS_COLORS, GROUP_COLORS, MONTH_NAMES } from "@/lib/season-constants";
 import type { Programme, Block, ProgrammeBlend } from "@/lib/season-constants";
 
+// Per-group heterogeneity report emitted by /api/programmes/:id/generate.
+// Not persisted — regenerate to refresh. See Wilding (1985) derivation in
+// services/programme_engine.HETEROGENEITY_THRESHOLDS.
+interface GroupHeterogeneity {
+  per_nutrient?: Record<string, { cv_pct: number | null; n: number; level: "ok" | "warn" | "split" }>;
+  warnings?: Array<{ nutrient: string; cv_pct: number | null; level: "warn" | "split"; threshold_pct: number }>;
+  any_warn?: boolean;
+  any_split?: boolean;
+  citation?: string;
+}
+
 // Extended type for detail page (blocks + blends come together)
 interface ProgrammeDetail {
   id: string;
@@ -45,6 +56,7 @@ interface ProgrammeDetail {
   notes: string | null;
   blocks: (Block & { id: string; feeding_plan_id?: string | null; blend_group?: string | null; nutrient_targets?: unknown[] | null })[];
   blends: ProgrammeBlend[];
+  heterogeneity_by_group?: Record<string, GroupHeterogeneity>;
 }
 
 export default function ProgrammeTrackerPageWrapper() {
@@ -220,6 +232,44 @@ function ProgrammeTrackerPage() {
               </div>
             )}
 
+            {/* Heterogeneity summary — surfaced right after generate, lives
+                in client state only (not persisted). Regenerate to refresh. */}
+            {programme.heterogeneity_by_group && (() => {
+              const entries = Object.entries(programme.heterogeneity_by_group).filter(
+                ([, h]) => h?.any_warn || h?.any_split
+              );
+              if (entries.length === 0) return null;
+              const hasSplit = entries.some(([, h]) => h?.any_split);
+              return (
+                <div className={`flex items-start gap-3 rounded-lg border p-4 ${
+                  hasSplit ? "border-red-200 bg-red-50" : "border-orange-200 bg-orange-50"
+                }`}>
+                  <AlertTriangle className={`mt-0.5 size-5 shrink-0 ${
+                    hasSplit ? "text-red-600" : "text-orange-600"
+                  }`} />
+                  <div className="space-y-1">
+                    <p className={`font-medium ${hasSplit ? "text-red-800" : "text-orange-800"}`}>
+                      {hasSplit
+                        ? "Blend group(s) span very different blocks"
+                        : "Blend group(s) show block-to-block variation"}
+                    </p>
+                    <p className={`text-sm ${hasSplit ? "text-red-700" : "text-orange-700"}`}>
+                      {entries.map(([g, h]) => {
+                        const nuts = (h.warnings || [])
+                          .map((w) => `${w.nutrient} CV ${w.cv_pct?.toFixed(0) ?? "?"}%`)
+                          .join(", ");
+                        return `Group ${g}: ${nuts}`;
+                      }).join(" · ")}
+                    </p>
+                    <p className="text-xs italic text-muted-foreground">
+                      Thresholds from {entries[0]?.[1]?.citation || "Wilding (1985)"}. Review whether
+                      {hasSplit ? " splitting the group" : " a single uniform blend"} fits these blocks.
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Action buttons */}
             <div className="flex flex-wrap gap-3">
               <Button variant="outline" onClick={() => router.push(`/season-manager/${programmeId}/upload`)}>
@@ -290,6 +340,9 @@ function ProgrammeTrackerPage() {
                     .sort((a, b) => (a.application_month || 0) - (b.application_month || 0));
                   const groupBlocks = programme.blocks.filter((b) => b.blend_group === group);
                   const totalArea = groupBlocks.reduce((s, b) => s + (b.area_ha || 0), 0);
+                  const groupHeterogeneity = programme.heterogeneity_by_group?.[group];
+                  const showWarning = groupHeterogeneity?.any_warn || groupHeterogeneity?.any_split;
+                  const isSplit = groupHeterogeneity?.any_split;
 
                   return (
                     <Card key={group} className="mb-4">
@@ -303,6 +356,35 @@ function ProgrammeTrackerPage() {
                           </CardTitle>
                           <span className="text-xs text-muted-foreground">{totalArea} ha total</span>
                         </div>
+                        {showWarning && (
+                          <div className={`mt-2 flex items-start gap-2 rounded border px-3 py-2 text-xs ${
+                            isSplit
+                              ? "border-red-200 bg-red-50 text-red-800"
+                              : "border-orange-200 bg-orange-50 text-orange-800"
+                          }`}>
+                            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                            <div className="space-y-0.5">
+                              <p className="font-medium">
+                                {isSplit
+                                  ? "High variation between blocks — consider splitting"
+                                  : "Moderate variation — review before committing"}
+                              </p>
+                              <p className="opacity-90">
+                                {(groupHeterogeneity?.warnings || []).map((w) => (
+                                  <span key={w.nutrient} className="mr-3 inline-block">
+                                    {w.nutrient}: CV {w.cv_pct?.toFixed(0) ?? "—"}%
+                                    <span className="ml-1 text-[10px] opacity-70">
+                                      ({w.level === "split" ? "≥" : "≥"}{w.threshold_pct}% {w.level})
+                                    </span>
+                                  </span>
+                                ))}
+                              </p>
+                              <p className="text-[10px] italic opacity-70">
+                                Source: {groupHeterogeneity?.citation || "Wilding (1985)"}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </CardHeader>
                       <CardContent>
                         <div className="overflow-x-auto">

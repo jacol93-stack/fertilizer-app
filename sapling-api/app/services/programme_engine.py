@@ -5,6 +5,7 @@ feeding plans per block, groups blocks by similar NPK profiles, and runs the
 blend optimizer for each group.
 """
 
+from app.services.aggregation import aggregate_samples
 from app.services.feeding_engine import generate_feeding_plan, validate_methods
 from app.services.soil_corrections import calculate_corrective_targets
 from app.services.foliar_engine import recommend_foliar_products
@@ -14,6 +15,150 @@ from app.supabase_client import get_supabase_admin
 FOLIAR_METHODS = {"foliar", "foliar_spray"}
 # Methods that use the dry blend optimizer
 DRY_METHODS = {"broadcast", "band_place", "side_dress", "topdress"}
+
+# Per-nutrient CV thresholds for flagging within-group heterogeneity across
+# blocks. Derived from Wilding (1985) soil-variability classification (the
+# standard citation in soil science) with a widened band for P since within-
+# field P CVs of 40–100% are empirically normal (Mulla & Schepers 1997;
+# Cambardella et al. 1994). Values are percentages.
+#
+# Nutrients not listed use the generic fallback (30% warn / 50% split),
+# which sits at Wilding's moderate-to-high boundary for typical soil
+# parameters. FERTASA does not publish a numeric threshold (see
+# reference_cv_thresholds memory); this is the defensible default.
+HETEROGENEITY_THRESHOLDS = {
+    "P":  {"warn": 35.0, "split": 50.0},
+    "K":  {"warn": 25.0, "split": 35.0},
+    "N":  {"warn": 30.0, "split": 50.0},
+    "Ca": {"warn": 30.0, "split": 50.0},
+    "Mg": {"warn": 30.0, "split": 50.0},
+    "S":  {"warn": 30.0, "split": 50.0},
+}
+_FALLBACK_THRESHOLD = {"warn": 30.0, "split": 50.0}
+HETEROGENEITY_CITATION = "Wilding (1985) via Mulla & Schepers (1997)"
+
+
+def _classify_heterogeneity(nutrient: str, cv_pct: float | None) -> str:
+    """Return 'ok' | 'warn' | 'split' for a per-nutrient CV across blocks."""
+    if cv_pct is None:
+        return "ok"
+    thresholds = HETEROGENEITY_THRESHOLDS.get(nutrient, _FALLBACK_THRESHOLD)
+    if cv_pct >= thresholds["split"]:
+        return "split"
+    if cv_pct >= thresholds["warn"]:
+        return "warn"
+    return "ok"
+
+
+def _aggregate_blend_group(group_blocks: list[dict]) -> dict:
+    """Area-weighted aggregation of per-block requirements within one group.
+
+    Combines `block.nutrient_targets` across every block in the group using
+    `aggregate_samples`. Weights are `block.area_ha`; if any block lacks a
+    positive area the whole group falls back to equal weights (flagged in
+    `weight_strategy`). Also emits a heterogeneity report that classifies
+    each nutrient's CV against the Wilding-derived thresholds.
+
+    Returns a dict with:
+        aggregated_targets: list[{Nutrient, Target_kg_ha}] — weighted means
+        weight_strategy:    'area_weighted' | 'equal'
+        heterogeneity:      {
+            per_nutrient: {Nutrient: {cv_pct, n, level}},
+            warnings:      [{nutrient, cv_pct, level, threshold_pct}],
+            any_split:     bool,
+            any_warn:      bool,
+            citation:      str,
+        }
+    """
+    if not group_blocks:
+        return {
+            "aggregated_targets": [],
+            "weight_strategy": "equal",
+            "heterogeneity": {
+                "per_nutrient": {},
+                "warnings": [],
+                "any_split": False,
+                "any_warn": False,
+                "citation": HETEROGENEITY_CITATION,
+            },
+        }
+
+    # Build {Nutrient -> Target_kg_ha} per block; skip blocks without targets
+    samples: list[dict] = []
+    weights: list[float | None] = []
+    for bp in group_blocks:
+        targets = bp["block"].get("nutrient_targets") or []
+        if not targets:
+            continue
+        vec = {
+            t["Nutrient"]: float(t["Target_kg_ha"])
+            for t in targets
+            if t.get("Nutrient") and t.get("Target_kg_ha") is not None
+        }
+        if not vec:
+            continue
+        samples.append({"values": vec})
+        weights.append(bp["block"].get("area_ha"))
+
+    if not samples:
+        return {
+            "aggregated_targets": [],
+            "weight_strategy": "equal",
+            "heterogeneity": {
+                "per_nutrient": {},
+                "warnings": [],
+                "any_split": False,
+                "any_warn": False,
+                "citation": HETEROGENEITY_CITATION,
+            },
+        }
+
+    use_area = all(w is not None and w > 0 for w in weights)
+    agg = aggregate_samples(
+        samples,
+        weights=[float(w) for w in weights] if use_area else None,
+    )
+
+    aggregated_targets = [
+        {"Nutrient": nut, "Target_kg_ha": round(val, 2)}
+        for nut, val in agg.values.items()
+    ]
+
+    per_nutrient: dict[str, dict] = {}
+    warnings: list[dict] = []
+    any_warn = False
+    any_split = False
+    for nut, stats in agg.stats.items():
+        level = _classify_heterogeneity(nut, stats.cv_pct)
+        per_nutrient[nut] = {
+            "cv_pct": round(stats.cv_pct, 1) if stats.cv_pct is not None else None,
+            "n": stats.n,
+            "level": level,
+        }
+        if level in ("warn", "split"):
+            thresholds = HETEROGENEITY_THRESHOLDS.get(nut, _FALLBACK_THRESHOLD)
+            warnings.append({
+                "nutrient": nut,
+                "cv_pct": round(stats.cv_pct, 1) if stats.cv_pct is not None else None,
+                "level": level,
+                "threshold_pct": thresholds[level],
+            })
+            if level == "split":
+                any_split = True
+            else:
+                any_warn = True
+
+    return {
+        "aggregated_targets": aggregated_targets,
+        "weight_strategy": agg.weight_strategy,
+        "heterogeneity": {
+            "per_nutrient": per_nutrient,
+            "warnings": warnings,
+            "any_split": any_split,
+            "any_warn": any_warn or any_split,
+            "citation": HETEROGENEITY_CITATION,
+        },
+    }
 
 
 def build_programme(
@@ -205,9 +350,16 @@ def build_programme(
         total_area = sum(bp["block"].get("area_ha", 0) or 0 for bp in group_blocks)
         block_names = [bp["block"]["name"] for bp in group_blocks]
 
-        # Aggregate applications across blocks in this group
-        # Use the first block's plan as template for timing
-        template_items = group_blocks[0]["items"] if group_blocks else []
+        # Template items: borrow timing/method/stage from the first block
+        # but overwrite the nutrient kg_ha fields with the area-weighted
+        # mean across blocks in this group. Without this, uniform-blend
+        # groups got the first block's numbers verbatim — inaccurate for
+        # groups that span blocks with different targets.
+        template_items = _build_group_template_items(group_blocks)
+
+        # Level 2 aggregation: weighted mean of block-level nutrient
+        # targets + heterogeneity gate against Wilding thresholds.
+        agg = _aggregate_blend_group(group_blocks)
 
         blend_groups[group_letter] = {
             "group": group_letter,
@@ -216,12 +368,86 @@ def build_programme(
             "total_area_ha": round(total_area, 2),
             "num_applications": len(template_items),
             "template_items": template_items,
+            "aggregated_targets": agg["aggregated_targets"],
+            "weight_strategy": agg["weight_strategy"],
+            "heterogeneity": agg["heterogeneity"],
         }
 
     return {
         "block_plans": block_plans,
         "blend_groups": blend_groups,
     }
+
+
+def _build_group_template_items(group_blocks: list[dict]) -> list[dict]:
+    """Area-weight per-application nutrient kg_ha across blocks in a group.
+
+    Foliar items are passed through unchanged (they carry per-product
+    recommendations and shouldn't be mechanically averaged). Non-foliar
+    items get each `*_kg_ha` field replaced with the area-weighted mean
+    across blocks. Method/timing/stage come from the first block's plan —
+    blocks in the same group share those by construction of the grouper.
+    """
+    if not group_blocks:
+        return []
+
+    first_items = group_blocks[0]["items"]
+    if len(group_blocks) == 1:
+        return first_items
+
+    weights_raw = [bp["block"].get("area_ha") for bp in group_blocks]
+    use_area = all(w is not None and w > 0 for w in weights_raw)
+    weights = [float(w) for w in weights_raw] if use_area else None
+
+    nutrient_keys = [
+        "n", "p", "k", "ca", "mg", "s",
+        "fe", "b", "mn", "zn", "mo", "cu",
+    ]
+
+    aggregated_items: list[dict] = []
+    for i, template in enumerate(first_items):
+        out = dict(template)
+
+        # Skip mechanical averaging of foliar items — they carry product
+        # recommendations; averaging would produce nonsense numbers that
+        # no product matches.
+        if template.get("method") in FOLIAR_METHODS:
+            aggregated_items.append(out)
+            continue
+
+        samples: list[dict] = []
+        sample_weights: list[float] = []
+        for j, bp in enumerate(group_blocks):
+            if i >= len(bp["items"]):
+                continue
+            item = bp["items"][i]
+            if item.get("method") in FOLIAR_METHODS:
+                continue
+            samples.append({
+                "values": {k: float(item.get(f"{k}_kg_ha", 0) or 0) for k in nutrient_keys},
+            })
+            if use_area and weights is not None:
+                sample_weights.append(weights[j])
+
+        if not samples:
+            aggregated_items.append(out)
+            continue
+
+        agg = aggregate_samples(
+            samples,
+            weights=sample_weights if use_area and sample_weights else None,
+        )
+        for k in nutrient_keys:
+            if k in agg.values:
+                out[f"{k}_kg_ha"] = round(agg.values[k], 3)
+        # Recompute total from the aggregated nutrient vector
+        out["total_kg_ha"] = round(
+            sum(out.get(f"{k}_kg_ha", 0) or 0 for k in nutrient_keys),
+            3,
+        )
+        aggregated_items.append(out)
+
+    return aggregated_items
 
 
 def _enrich_with_product_recommendations(

@@ -6,7 +6,8 @@ import { useSessionState, clearSessionGroup } from "@/lib/use-session-state";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth-context";
 import { ClientSelector, ComboBox } from "@/components/client-selector";
-import { api } from "@/lib/api";
+import { api, isFieldAnalysisConflict, type FieldAnalysisConflict } from "@/lib/api";
+import { ConflictResolutionDialog, type ConflictResolutionChoice } from "@/components/conflict-resolution-dialog";
 import { useEffectiveAdmin } from "@/lib/use-effective-role";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -102,6 +103,8 @@ function QuickAnalysisPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAnalysisId, setSavedAnalysisId] = useState<string | null>(null);
+  const [pendingConflicts, setPendingConflicts] = useState<FieldAnalysisConflict[]>([]);
+  const [pendingSavePayload, setPendingSavePayload] = useState<Record<string, unknown> | null>(null);
 
   // ── Pre-fill from URL params (e.g. coming from farm detail page) ──
   useEffect(() => {
@@ -373,7 +376,7 @@ function QuickAnalysisPage() {
     setLoading(true);
     setError(null);
     try {
-      const result = await api.post<{ id: string }>("/api/soil/", {
+      const payload = {
         client_id: clientId || null,
         farm_id: farmId || null,
         field_id: fieldId || null,
@@ -390,14 +393,51 @@ function QuickAnalysisPage() {
         nutrient_targets: targets.length > 0 ? targets : null,
         ratio_results: ratios,
         classifications,
-      });
-      setSavedAnalysisId(result.id);
-      toast.success("Soil analysis saved");
+      };
+
+      try {
+        const result = await api.post<{ id: string }>("/api/soil/", payload);
+        setSavedAnalysisId(result.id);
+        toast.success("Soil analysis saved");
+      } catch (err) {
+        const conflicts = isFieldAnalysisConflict(err);
+        if (!conflicts) throw err;
+        // Defer to the modal — handleConflictResolved re-posts.
+        setPendingSavePayload(payload);
+        setPendingConflicts(conflicts);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleConflictResolved = async (choice: ConflictResolutionChoice) => {
+    const payload = pendingSavePayload;
+    setPendingConflicts([]);
+    setPendingSavePayload(null);
+    if (!payload) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await api.post<{ id: string }>("/api/soil/", {
+        ...payload,
+        conflict_resolution: choice,
+      });
+      setSavedAnalysisId(result.id);
+      toast.success(choice === "merge_as_composite" ? "Merged into existing analysis" : "Soil analysis saved");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConflictCancelled = () => {
+    setPendingConflicts([]);
+    setPendingSavePayload(null);
+    toast.info("Save cancelled — no changes made");
   };
 
   // Build a Programme — analysis is already auto-saved, just navigate
@@ -772,6 +812,12 @@ function QuickAnalysisPage() {
           />
         )}
       </div>
+      <ConflictResolutionDialog
+        open={pendingConflicts.length > 0}
+        conflicts={pendingConflicts}
+        onResolve={handleConflictResolved}
+        onCancel={handleConflictCancelled}
+      />
     </AppShell>
   );
 }

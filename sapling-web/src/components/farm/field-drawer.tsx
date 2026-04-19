@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ComboBox } from "@/components/client-selector";
 import { toast } from "sonner";
-import { Loader2, X, Save, Trash2, Copy } from "lucide-react";
+import { Loader2, X, Save, Trash2, Copy, Layers, ChevronRight, ChevronDown } from "lucide-react";
 import type { Field, CropNorm, SoilAnalysis } from "@/lib/season-constants";
 import { MONTH_NAMES, IRRIGATION_TYPES } from "@/lib/season-constants";
 
@@ -17,6 +17,21 @@ interface LinkedRecord {
   type: string;
   date?: string;
   detail?: string;
+}
+
+interface ComponentSample {
+  values: Record<string, number | null>;
+  weight_ha?: number | null;
+  location_label?: string | null;
+  depth_cm?: number | null;
+}
+
+interface AnalysisComponents {
+  analysis_id: string;
+  composition_method: string;
+  replicate_count: number;
+  components: ComponentSample[];
+  stats: Record<string, unknown>;
 }
 
 interface FieldDrawerProps {
@@ -115,6 +130,9 @@ export function FieldDrawer({ open, onClose, field, farmId, crops, analyses, onS
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const initialRef = useRef<string>("");
+  const [components, setComponents] = useState<AnalysisComponents | null>(null);
+  const [loadingComponents, setLoadingComponents] = useState(false);
+  const [componentsExpanded, setComponentsExpanded] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -157,6 +175,35 @@ export function FieldDrawer({ open, onClose, field, farmId, crops, analyses, onS
       setCropMethods(methods || []);
     } catch { setCropMethods([]); }
   };
+
+  // Fetch the component retention panel for the currently-linked analysis.
+  // Only surfaces content when the analysis is a real composite (replicate
+  // count > 1); single-sample rows get the existing dropdown and nothing
+  // else, matching pre-multi-sample behaviour.
+  useEffect(() => {
+    const id = form.latestAnalysisId;
+    if (!id) {
+      setComponents(null);
+      setComponentsExpanded(false);
+      return;
+    }
+    let cancelled = false;
+    setLoadingComponents(true);
+    api
+      .get<AnalysisComponents>(`/api/soil/${id}/components`)
+      .then((res) => {
+        if (!cancelled) setComponents(res);
+      })
+      .catch(() => {
+        if (!cancelled) setComponents(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingComponents(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [form.latestAnalysisId]);
 
   const handleCropSelect = async (cropName: string) => {
     const cropNorm = crops.find((c) => c.crop === cropName);
@@ -449,6 +496,67 @@ export function FieldDrawer({ open, onClose, field, farmId, crops, analyses, onS
                   </option>
                 ))}
               </select>
+
+              {/* Composite component panel — only when the linked analysis
+                  actually came from multiple zone samples. Single-sample
+                  records (legacy or deliberate) get no extra UI. */}
+              {loadingComponents && (
+                <div className="flex items-center gap-2 rounded-md border bg-gray-50 px-3 py-2 text-xs text-muted-foreground">
+                  <Loader2 className="size-3 animate-spin" /> Loading composite…
+                </div>
+              )}
+              {!loadingComponents && components && components.replicate_count > 1 && (
+                <div className="rounded-md border border-orange-200 bg-orange-50/50">
+                  <button
+                    type="button"
+                    onClick={() => setComponentsExpanded((v) => !v)}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-orange-800 hover:bg-orange-100/60"
+                  >
+                    {componentsExpanded ? (
+                      <ChevronDown className="size-3" />
+                    ) : (
+                      <ChevronRight className="size-3" />
+                    )}
+                    <Layers className="size-3" />
+                    <span>
+                      {components.replicate_count} zone sample{components.replicate_count !== 1 ? "s" : ""} composited
+                    </span>
+                    <span className="ml-auto text-[10px] font-normal uppercase tracking-wider text-orange-700/70">
+                      {components.composition_method.replace("composite_", "").replace("_", " ")}
+                    </span>
+                  </button>
+                  {componentsExpanded && (
+                    <div className="space-y-1.5 border-t border-orange-200 px-3 py-2">
+                      {components.components.length === 0 && (
+                        <p className="text-[11px] text-muted-foreground">
+                          Component samples not retained (pre-migration record).
+                        </p>
+                      )}
+                      {components.components.map((c, i) => {
+                        const valueKeys = Object.keys(c.values || {});
+                        return (
+                          <div key={i} className="rounded border border-orange-100 bg-white px-2 py-1.5 text-[11px]">
+                            <div className="mb-1 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+                              <span className="font-medium text-orange-800">Zone {i + 1}</span>
+                              {c.location_label && <span>{c.location_label}</span>}
+                              {c.weight_ha != null && <span>{c.weight_ha} ha</span>}
+                              {c.depth_cm != null && <span>{c.depth_cm} cm</span>}
+                            </div>
+                            <div className="flex flex-wrap gap-x-3 gap-y-0.5 tabular-nums">
+                              {valueKeys.map((k) => (
+                                <span key={k}>
+                                  <span className="text-muted-foreground">{k}:</span>{" "}
+                                  {c.values[k] ?? "—"}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </section>
           )}
 

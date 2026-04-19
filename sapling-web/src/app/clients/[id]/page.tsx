@@ -687,6 +687,15 @@ export default function ClientHubPage() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
+                              {f.latest_analysis_composite && f.latest_analysis_composite.replicate_count > 1 && (
+                                <span
+                                  className="inline-flex items-center gap-0.5 rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-medium text-orange-700"
+                                  title={`Composite of ${f.latest_analysis_composite.replicate_count} zone samples`}
+                                >
+                                  <Layers className="size-2.5" />
+                                  {f.latest_analysis_composite.replicate_count}
+                                </span>
+                              )}
                               {f.latest_analysis_id ? (
                                 <span className="size-2 rounded-full bg-green-500" title="Analysis linked" />
                               ) : (
@@ -1136,6 +1145,16 @@ export default function ClientHubPage() {
             api.getAll<LocalSoilAnalysis>(`/api/soil?client_id=${clientId}`)
               .then(setSoilAnalyses)
               .catch(() => {});
+            // Also refetch fields so the composite badge / analysis-linked
+            // indicator reflect the new save (merges can bump replicate_count
+            // on an existing row; plain saves set latest_analysis_id).
+            Promise.all(
+              farms.map((farm) =>
+                api.get<Field[]>(`/api/clients/farms/${farm.id}/fields`)
+                  .then((flds) => [farm.id, flds] as const)
+                  .catch(() => [farm.id, [] as Field[]] as const),
+              ),
+            ).then((pairs) => setFarmFields(Object.fromEntries(pairs)));
           }}
         />
       )}

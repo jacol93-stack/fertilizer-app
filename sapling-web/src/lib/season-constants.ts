@@ -65,6 +65,10 @@ export interface Field {
   accepted_methods: string[];
   fertigation_months: number[];
   latest_analysis_id: string | null;
+  latest_analysis_composite?: {
+    composition_method: string;
+    replicate_count: number;
+  } | null;
   gps_lat: number | null;
   gps_lng: number | null;
   created_at?: string;

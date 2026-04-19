@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MONTH_NAMES } from "@/lib/season-constants";
 import { Plus, X } from "lucide-react";
@@ -128,8 +128,25 @@ export function ScheduleReview({ blockInfo, onApplicationsChange, onPlantingMont
     return init;
   });
 
-  const emitChange = (updated: Record<string, Array<{ month: number; method: string }>>, pMonths?: Record<string, number>) => {
-    const pm = pMonths || plantingMonths;
+  // Shared-schedule mode: one application list broadcast to every block
+  // instead of N per-block lists. When blocks share a programme they'll
+  // be applied uniformly, so editing the schedule per block is busywork.
+  // Feasible when every block accepts at least one method in common.
+  const sharedMethods = useMemo(() => {
+    if (blockInfo.length === 0) return [] as string[];
+    const first = new Set(blockInfo[0].accepted_methods || []);
+    for (let i = 1; i < blockInfo.length; i++) {
+      const accepted = new Set(blockInfo[i].accepted_methods || []);
+      for (const m of Array.from(first)) {
+        if (!accepted.has(m)) first.delete(m);
+      }
+    }
+    return Array.from(first);
+  }, [blockInfo]);
+  const canShareSchedule = blockInfo.length > 1 && sharedMethods.length > 0;
+  const [sharedSchedule, setSharedSchedule] = useState<boolean>(canShareSchedule);
+
+  const emitChange = (updated: Record<string, Array<{ month: number; method: string }>>) => {
     const apps: UserApplication[] = [];
     for (const [blockId, list] of Object.entries(updated)) {
       for (const a of list) {
@@ -173,6 +190,62 @@ export function ScheduleReview({ blockInfo, onApplicationsChange, onPlantingMont
     emitChange(updated);
   };
 
+  // ─── Shared-schedule helpers ────────────────────────────────────────
+  // Source of truth in shared mode is still `appsByBlock`, but every
+  // block carries an identical list. Mutations broadcast across all
+  // block ids so the per-block emitChange contract to the parent is
+  // unchanged (the backend gets one UserApplication per block per month
+  // as before — no API change needed).
+
+  const sharedApps = useMemo(() => {
+    if (!sharedSchedule || blockInfo.length === 0) return [] as Array<{ month: number; method: string }>;
+    return appsByBlock[blockInfo[0].block_id] || [];
+  }, [sharedSchedule, blockInfo, appsByBlock]);
+
+  const broadcastApps = (next: Array<{ month: number; method: string }>) => {
+    const updated: Record<string, Array<{ month: number; method: string }>> = {};
+    for (const bi of blockInfo) {
+      updated[bi.block_id] = next.map((a) => ({ ...a }));
+    }
+    setAppsByBlock(updated);
+    emitChange(updated);
+  };
+
+  const addSharedApplication = () => {
+    const used = new Set(sharedApps.map((a) => a.month));
+    let nextMonth = 1;
+    for (let m = 1; m <= 12; m++) {
+      if (!used.has(m)) { nextMonth = m; break; }
+    }
+    const defaultMethod = sharedMethods[0] || "broadcast";
+    broadcastApps([...sharedApps, { month: nextMonth, method: defaultMethod }]);
+  };
+
+  const removeSharedApplication = (idx: number) => {
+    broadcastApps(sharedApps.filter((_, i) => i !== idx));
+  };
+
+  const updateSharedApplication = (idx: number, field: "month" | "method", value: number | string) => {
+    broadcastApps(sharedApps.map((a, i) => (i === idx ? { ...a, [field]: value } : a)));
+  };
+
+  const handleToggleShared = (next: boolean) => {
+    setSharedSchedule(next);
+    // When enabling shared mode, broadcast whichever block already has
+    // the most applications set up so we don't silently drop work.
+    if (next) {
+      const richest = blockInfo.reduce<Array<{ month: number; method: string }>>((acc, bi) => {
+        const list = appsByBlock[bi.block_id] || [];
+        return list.length > acc.length ? list : acc;
+      }, []);
+      // Filter methods that aren't accepted by every block
+      const allowed = new Set(sharedMethods);
+      const sanitized = richest
+        .map((a) => ({ ...a, method: allowed.has(a.method) ? a.method : sharedMethods[0] || "broadcast" }));
+      broadcastApps(sanitized);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -181,6 +254,81 @@ export function ScheduleReview({ blockInfo, onApplicationsChange, onPlantingMont
           Choose which months to apply fertilizer and the method for each. The engine will distribute nutrients based on the crop&apos;s growth stages.
         </p>
       </div>
+
+      {/* Shared-schedule toggle + panel. Default to shared when feasible
+          (more than one block and at least one method accepted by every
+          block). The schedule still saves per-block on the backend; this
+          is a UX collapse only. */}
+      {canShareSchedule && (
+        <div className="rounded-xl border bg-white">
+          <label className="flex cursor-pointer items-center gap-3 border-b px-4 py-3">
+            <input
+              type="checkbox"
+              checked={sharedSchedule}
+              onChange={(e) => handleToggleShared(e.target.checked)}
+              className="size-4 accent-[var(--sapling-orange)]"
+            />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-[var(--sapling-dark)]">
+                Same schedule for all blocks
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {blockInfo.length} blocks share this programme — edit one schedule that applies to all.
+                Turn off if one block needs a different month or method.
+              </p>
+            </div>
+          </label>
+
+          {sharedSchedule && (
+            <div className="space-y-2 px-4 py-3">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                Fertilizer Applications ({sharedApps.length})
+              </p>
+
+              {sharedApps.length === 0 && (
+                <p className="py-2 text-center text-xs text-muted-foreground">No applications added yet</p>
+              )}
+
+              {sharedApps
+                .map((a, i) => ({ a, i }))
+                .sort((x, y) => x.a.month - y.a.month)
+                .map(({ a, i }) => (
+                  <div key={i} className="flex items-center gap-2 rounded-lg border px-3 py-2">
+                    <select
+                      value={a.month}
+                      onChange={(e) => updateSharedApplication(i, "month", parseInt(e.target.value))}
+                      className="rounded border bg-white px-2 py-1 text-sm font-medium"
+                    >
+                      {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => (
+                        <option key={m} value={m}>{MONTH_NAMES[m]}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={a.method}
+                      onChange={(e) => updateSharedApplication(i, "method", e.target.value)}
+                      className="rounded border bg-white px-2 py-1 text-sm"
+                    >
+                      {sharedMethods.map((m) => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => removeSharedApplication(i)}
+                      className="ml-auto rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                ))}
+
+              <Button variant="outline" size="sm" onClick={addSharedApplication} className="w-full">
+                <Plus className="size-3.5" />
+                Add Application
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       {blockInfo.map((bi) => {
         const blockApps = appsByBlock[bi.block_id] || [];
@@ -383,7 +531,7 @@ export function ScheduleReview({ blockInfo, onApplicationsChange, onPlantingMont
 
                   return cells.map((c) => (
                     <div
-                      key={c.stage.stage_name}
+                      key={`${c.stage.stage_name}-${c.startCol}`}
                       className={`overflow-hidden text-center text-[9px] font-medium leading-tight py-0.5 rounded-sm ${STAGE_COLORS[c.stageIdx % STAGE_COLORS.length].split(" ")[0]} ${STAGE_COLORS[c.stageIdx % STAGE_COLORS.length].split(" ")[1]}`}
                       style={{
                         position: "absolute",
@@ -401,63 +549,68 @@ export function ScheduleReview({ blockInfo, onApplicationsChange, onPlantingMont
               </div>
             </div>
 
-            {/* Applications */}
-            <div className="border-t px-4 py-3 space-y-2">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Fertilizer Applications ({blockApps.length})
-              </p>
+            {/* Applications — hidden when the shared-schedule panel
+                above is driving every block. Per-block planting month
+                and growth timeline stay visible because those are about
+                the block itself, not the application schedule. */}
+            {!sharedSchedule && (
+              <div className="border-t px-4 py-3 space-y-2">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Fertilizer Applications ({blockApps.length})
+                </p>
 
-              {blockApps.length === 0 && (
-                <p className="py-2 text-center text-xs text-muted-foreground">No applications added yet</p>
-              )}
+                {blockApps.length === 0 && (
+                  <p className="py-2 text-center text-xs text-muted-foreground">No applications added yet</p>
+                )}
 
-              {blockApps
-                .sort((a, b) => a.month - b.month)
-                .map((app, idx) => {
-                  const stage = getStageForMonth(app.month, shiftedStages);
-                  return (
-                    <div key={idx} className="flex items-center gap-2 rounded-lg border px-3 py-2">
-                      <select
-                        value={app.month}
-                        onChange={(e) => updateApplication(bi.block_id, idx, "month", parseInt(e.target.value))}
-                        className="rounded border bg-white px-2 py-1 text-sm font-medium"
-                      >
-                        {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => (
-                          <option key={m} value={m}>{MONTH_NAMES[m]}</option>
-                        ))}
-                      </select>
-                      <select
-                        value={app.method}
-                        onChange={(e) => updateApplication(bi.block_id, idx, "method", e.target.value)}
-                        className="rounded border bg-white px-2 py-1 text-sm"
-                      >
-                        {bi.accepted_methods.map((m) => (
-                          <option key={m} value={m}>{m}</option>
-                        ))}
-                      </select>
-                      {stage && (
-                        <span className="text-xs text-muted-foreground">{stage.stage_name}</span>
-                      )}
-                      <button
-                        onClick={() => removeApplication(bi.block_id, idx)}
-                        className="ml-auto rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
-                      >
-                        <X className="size-3.5" />
-                      </button>
-                    </div>
-                  );
-                })}
+                {blockApps
+                  .sort((a, b) => a.month - b.month)
+                  .map((app, idx) => {
+                    const stage = getStageForMonth(app.month, shiftedStages);
+                    return (
+                      <div key={idx} className="flex items-center gap-2 rounded-lg border px-3 py-2">
+                        <select
+                          value={app.month}
+                          onChange={(e) => updateApplication(bi.block_id, idx, "month", parseInt(e.target.value))}
+                          className="rounded border bg-white px-2 py-1 text-sm font-medium"
+                        >
+                          {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => (
+                            <option key={m} value={m}>{MONTH_NAMES[m]}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={app.method}
+                          onChange={(e) => updateApplication(bi.block_id, idx, "method", e.target.value)}
+                          className="rounded border bg-white px-2 py-1 text-sm"
+                        >
+                          {bi.accepted_methods.map((m) => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                        {stage && (
+                          <span className="text-xs text-muted-foreground">{stage.stage_name}</span>
+                        )}
+                        <button
+                          onClick={() => removeApplication(bi.block_id, idx)}
+                          className="ml-auto rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => addApplication(bi.block_id)}
-                className="w-full"
-              >
-                <Plus className="size-3.5" />
-                Add Application
-              </Button>
-            </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addApplication(bi.block_id)}
+                  className="w-full"
+                >
+                  <Plus className="size-3.5" />
+                  Add Application
+                </Button>
+              </div>
+            )}
           </div>
         );
       })}

@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from app.auth import CurrentUser, get_current_user, require_admin
 from app.pagination import Page, PageParams, apply_page
+from app.services.aggregation import AggregationResult, aggregate_samples
 from app.supabase_client import get_supabase_admin
 
 router = APIRouter(tags=["Programmes"])
@@ -839,15 +840,29 @@ def generate_programme(
             }
             sb.table("programme_blends").insert(blend_data).execute()
 
+    # Collect the Level 2 heterogeneity report so the UI can surface a
+    # per-group warning when blocks within a group have divergent nutrient
+    # requirements (Wilding-derived thresholds). Not persisted yet —
+    # regenerate to refresh.
+    heterogeneity_by_group = {
+        letter: g.get("heterogeneity") or {}
+        for letter, g in result["blend_groups"].items()
+    }
+    any_heterogeneity_warn = any(h.get("any_warn") for h in heterogeneity_by_group.values())
+    any_heterogeneity_split = any(h.get("any_split") for h in heterogeneity_by_group.values())
+
     _audit(sb, user, "programme_generate", programme_id, {
         "num_blocks": len(blocks),
         "num_groups": len(result["blend_groups"]),
         "num_skipped": len(skipped_blocks),
+        "heterogeneity_warn": any_heterogeneity_warn,
+        "heterogeneity_split": any_heterogeneity_split,
     })
 
     # Return full programme state + any blocks skipped during generation
     prog_state = get_programme(programme_id, user)
     prog_state["skipped_blocks"] = skipped_blocks
+    prog_state["heterogeneity_by_group"] = heterogeneity_by_group
     return prog_state
 
 
@@ -1865,18 +1880,33 @@ def save_bulk_analyses(
     for block_id, items in block_groups.items():
         block = blocks[block_id]
 
+        analysis_type = items[0].analysis_type
+
         if body.average_same_block and len(items) > 1:
-            # Average values across samples for this block
-            avg_values = _average_values([i.values for i in items])
-            outliers = _detect_outliers([i.values for i in items])
+            # Non-destructive composite: keep every component sample on
+            # the record so we can re-aggregate later (drop an outlier,
+            # add a fourth sample, etc.) without re-entering lab values.
+            component_samples = [
+                {"values": {k: v for k, v in i.values.items() if v is not None}}
+                for i in items
+            ]
+            agg = aggregate_samples(component_samples)
+            avg_values = agg.values
+            outliers = _format_outliers_for_response(agg, items)
+            composition_method = agg.composition_method
+            replicate_count = agg.replicate_count
+            aggregation_stats = agg.stats_as_dict()
         else:
             avg_values = items[0].values
             outliers = []
-
-        analysis_type = items[0].analysis_type
+            component_samples = None
+            composition_method = "single"
+            replicate_count = 1
+            aggregation_stats = None
 
         if analysis_type == "leaf":
-            # Save as leaf analysis
+            # Save as leaf analysis. Leaf schema has no component retention
+            # columns (yet) — Phase 2 only extended soil_analyses.
             record = sb.table("leaf_analyses").insert({
                 "agent_id": user.id,
                 "programme_id": programme_id,
@@ -1885,12 +1915,12 @@ def save_bulk_analyses(
                 "lab_name": body.lab_name,
                 "sample_date": body.analysis_date,
                 "values": avg_values,
-                "notes": f"Bulk upload — {len(items)} sample(s) averaged" if len(items) > 1 else None,
+                "notes": f"Bulk upload — {replicate_count} sample(s) composited" if replicate_count > 1 else None,
             }).execute()
         else:
-            # Save as soil analysis
+            # Save as soil analysis with component retention.
             numeric_values = {k: v for k, v in avg_values.items() if v is not None}
-            record = sb.table("soil_analyses").insert({
+            soil_row: dict = {
                 "agent_id": user.id,
                 "crop": block.get("crop") or items[0].crop,
                 "cultivar": items[0].cultivar,
@@ -1898,7 +1928,14 @@ def save_bulk_analyses(
                 "analysis_date": body.analysis_date,
                 "soil_values": numeric_values,
                 "status": "saved",
-            }).execute()
+                "composition_method": composition_method,
+                "replicate_count": replicate_count,
+            }
+            if component_samples is not None:
+                soil_row["component_samples"] = component_samples
+            if aggregation_stats is not None:
+                soil_row["aggregation_stats"] = aggregation_stats
+            record = sb.table("soil_analyses").insert(soil_row).execute()
 
             # Link to programme block + set nutrient targets
             if record.data:
@@ -1961,62 +1998,31 @@ def save_bulk_analyses(
     }
 
 
-def _average_values(value_sets: list[dict]) -> dict:
-    """Average multiple value dicts, ignoring None values."""
-    if not value_sets:
-        return {}
-    if len(value_sets) == 1:
-        return value_sets[0]
+def _format_outliers_for_response(
+    agg: AggregationResult,
+    items: list,
+) -> list[dict]:
+    """Flatten aggregation outlier indices into the legacy response shape.
 
-    all_keys = set()
-    for vs in value_sets:
-        all_keys.update(vs.keys())
-
-    result = {}
-    for key in all_keys:
-        nums = [float(vs[key]) for vs in value_sets if vs.get(key) is not None]
-        if nums:
-            result[key] = round(sum(nums) / len(nums), 4)
-        else:
-            result[key] = None
-
-    return result
-
-
-def _detect_outliers(value_sets: list[dict], threshold: float = 2.0) -> list[dict]:
-    """Detect values that are >threshold standard deviations from the mean.
-
-    Returns list of {sample_idx, key, value, mean, std_dev} for outliers.
+    The frontend expects {sample_idx, key, value, mean, std_dev} per
+    flagged value. Shape predates the aggregation primitive — we keep it
+    stable so this endpoint's callers don't have to migrate at the same
+    time.
     """
-    if len(value_sets) < 3:
-        return []  # Need at least 3 samples for meaningful outlier detection
-
-    import statistics
-
-    all_keys = set()
-    for vs in value_sets:
-        all_keys.update(vs.keys())
-
-    outliers = []
-    for key in all_keys:
-        nums = [(i, float(vs[key])) for i, vs in enumerate(value_sets) if vs.get(key) is not None]
-        if len(nums) < 3:
+    out: list[dict] = []
+    for key, s in agg.stats.items():
+        if not s.outlier_sample_indices:
             continue
-
-        values = [n[1] for n in nums]
-        mean = statistics.mean(values)
-        std = statistics.stdev(values)
-        if std < 0.001:
-            continue
-
-        for idx, val in nums:
-            if abs(val - mean) > threshold * std:
-                outliers.append({
-                    "sample_idx": idx,
-                    "key": key,
-                    "value": val,
-                    "mean": round(mean, 4),
-                    "std_dev": round(std, 4),
-                })
-
-    return outliers
+        std_dev = s.variance ** 0.5
+        for idx in s.outlier_sample_indices:
+            raw = items[idx].values.get(key)
+            if raw is None:
+                continue
+            out.append({
+                "sample_idx": idx,
+                "key": key,
+                "value": float(raw),
+                "mean": round(s.mean, 4),
+                "std_dev": round(std_dev, 4),
+            })
+    return out
