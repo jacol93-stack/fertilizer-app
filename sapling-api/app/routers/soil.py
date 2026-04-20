@@ -32,6 +32,31 @@ from app.supabase_client import get_supabase_admin
 router = APIRouter(tags=["Soil"])
 
 
+def _rate_table_context(obj) -> dict:
+    """Build the context dict passed to lookup_rate_table() from a request.
+
+    Dimensions the FERTASA rate tables can filter on: water_regime,
+    clay_pct, texture, rainfall_mm, region, prior_crop. Request models
+    don't carry all of these today; anything absent is left out of the
+    context and the lookup treats it as "caller doesn't know" (rows that
+    require that dimension are skipped, generic rows still match).
+
+    water_regime defaults to 'dryland': SA field-crop production is
+    overwhelmingly dryland, and the seeded FERTASA wheat/potato/canola
+    tables are all dryland-specific. Irrigation-specific tables (seeded
+    in later migrations) will require an explicit override from a
+    request field that doesn't yet exist — add it when that context
+    becomes available.
+    """
+    ctx: dict = {"water_regime": "dryland"}
+    for key in ("clay_pct", "texture", "rainfall_mm", "region",
+                "prior_crop", "water_regime"):
+        val = getattr(obj, key, None)
+        if val is not None:
+            ctx[key] = val
+    return ctx
+
+
 # ── Pydantic models ──────────────────────────────────────────────────────────
 
 
@@ -354,6 +379,7 @@ def nutrient_targets(body: TargetsRequest, user: CurrentUser = Depends(get_curre
     adjustment = sb.table("adjustment_factors").select("*").execute().data
     param_map = sb.table("soil_parameter_map").select("*").execute().data
     ratio_rows = sb.table("ideal_ratios").select("*").execute().data
+    rate_tables = sb.table("fertilizer_rate_tables").select("*").eq("crop", body.crop_name).execute().data or []
 
     # Fetch crop-specific overrides
     crop_overrides = None
@@ -373,6 +399,8 @@ def nutrient_targets(body: TargetsRequest, user: CurrentUser = Depends(get_curre
         adjustment_rows=adjustment,
         param_map_rows=param_map,
         crop_override_rows=crop_overrides,
+        rate_table_rows=rate_tables,
+        rate_table_context=_rate_table_context(body),
     )
 
     # Step 2: Evaluate ratios
@@ -479,6 +507,7 @@ def run_analysis(body: RunAnalysisRequest, user: CurrentUser = Depends(get_curre
         crop_rows = sb.table("crop_requirements").select("*").execute().data
         adjustment = sb.table("adjustment_factors").select("*").execute().data
         param_map = sb.table("soil_parameter_map").select("*").execute().data
+        rate_tables = sb.table("fertilizer_rate_tables").select("*").eq("crop", body.crop_name).execute().data or []
 
         targets = calculate_nutrient_targets(
             crop_name=body.crop_name,
@@ -489,6 +518,8 @@ def run_analysis(body: RunAnalysisRequest, user: CurrentUser = Depends(get_curre
             adjustment_rows=adjustment,
             param_map_rows=param_map,
             crop_override_rows=crop_overrides,
+            rate_table_rows=rate_tables,
+            rate_table_context=_rate_table_context(body),
         )
 
         adjusted_targets = adjust_targets_for_ratios(
@@ -850,6 +881,7 @@ def batch_save_analyses(body: BatchSaveRequest, user: CurrentUser = Depends(get_
     ratio_rows = sb.table("ideal_ratios").select("*").execute().data or []
     adjustment_rows = sb.table("adjustment_factors").select("*").execute().data or []
     param_map_rows = sb.table("soil_parameter_map").select("*").execute().data or []
+    rate_table_rows_all = sb.table("fertilizer_rate_tables").select("*").execute().data or []
 
     # Lookup client name
     customer_name = ""
@@ -973,10 +1005,13 @@ def batch_save_analyses(body: BatchSaveRequest, user: CurrentUser = Depends(get_
         nutrient_targets = None
         if item.crop and item.yield_target:
             crop_rows = sb.table("crop_requirements").select("*").execute().data or []
+            item_rate_tables = [r for r in rate_table_rows_all if r.get("crop") == item.crop]
             targets = calculate_nutrient_targets(
                 item.crop, item.yield_target, effective_values,
                 crop_rows, sufficiency, adjustment_rows, param_map_rows,
                 crop_overrides,
+                rate_table_rows=item_rate_tables,
+                rate_table_context=_rate_table_context(item),
             )
             if targets:
                 nutrient_targets = adjust_targets_for_ratios(

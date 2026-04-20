@@ -103,10 +103,218 @@ def get_adjustment_factor(classification, adjustment_rows, nutrient=None):
     return float(row["factor"])
 
 
+def lookup_rate_table(crop, nutrient, yield_target, soil_value, rate_table_rows,
+                       context=None):
+    """Look up a FERTASA-style 2-D rate table cell for (crop, nutrient).
+
+    Snap semantics (conservative, faithful to published cell):
+      * Yield: rows with yield_max IS NULL are open-top bands — they
+        apply iff yield_target >= yield_min. Rows where min == max
+        are discrete points; snap to the nearest. Tie-break: prefer
+        higher yield_min (agronomist-conservative).
+      * Soil test: rows with a soil-test axis use half-open bands
+        [soil_test_min, soil_test_max); NULL max = open upper bound.
+        Rows where ALL soil_test_* cols are NULL mean the table has
+        no soil-test axis (e.g. canola N) — always applicable.
+      * Third-axis filters (clay_pct, texture, rainfall, region,
+        prior_crop, water_regime): NULL in the row means "no
+        constraint on that dimension". Non-NULL means the context
+        must match.
+      * Specificity: when multiple rows pass all filters, pick the
+        one with the most non-NULL third-axis columns (the most
+        specific match wins over the generic fallback).
+
+    Args:
+        crop: crop name (matches fertilizer_rate_tables.crop).
+        nutrient: 'N', 'P', 'K', etc.
+        yield_target: numeric, the user's yield target (crop's yield unit).
+        soil_value: numeric soil-test reading, or None if not applicable.
+        rate_table_rows: full list of dicts from fertilizer_rate_tables.
+        context: optional dict with keys — clay_pct, texture, rainfall_mm,
+                 region, prior_crop, water_regime. NULL/missing keys mean
+                 the caller doesn't know the value; rows requiring that
+                 dimension are skipped.
+
+    Returns:
+        dict with keys Rate_Min, Rate_Max, Rate_Mid, Is_Range, Source,
+        Source_Section, Source_Note, Matched_Band — or None on miss.
+    """
+    if not rate_table_rows:
+        return None
+
+    ctx = context or {}
+
+    # Narrow by crop + nutrient
+    candidates = [
+        r for r in rate_table_rows
+        if r.get("crop") == crop and r.get("nutrient") == nutrient
+    ]
+    if not candidates:
+        return None
+
+    # Apply third-axis filters (row requires a match only if its column is non-NULL)
+    def _passes_third_axis(row):
+        # Clay-% range
+        cmin, cmax = row.get("clay_pct_min"), row.get("clay_pct_max")
+        if cmin is not None or cmax is not None:
+            clay = ctx.get("clay_pct")
+            if clay is None:
+                return False
+            clay = float(clay)
+            if cmin is not None and clay < float(cmin):
+                return False
+            if cmax is not None and clay >= float(cmax):
+                return False
+        # Texture
+        if row.get("texture") is not None and ctx.get("texture") != row.get("texture"):
+            return False
+        # Rainfall range
+        rmin, rmax = row.get("rainfall_mm_min"), row.get("rainfall_mm_max")
+        if rmin is not None or rmax is not None:
+            rain = ctx.get("rainfall_mm")
+            if rain is None:
+                return False
+            rain = float(rain)
+            if rmin is not None and rain < float(rmin):
+                return False
+            if rmax is not None and rain >= float(rmax):
+                return False
+        # Region / prior_crop / water_regime: discrete equality
+        for field in ("region", "prior_crop", "water_regime"):
+            if row.get(field) is not None and ctx.get(field) != row.get(field):
+                return False
+        return True
+
+    candidates = [r for r in candidates if _passes_third_axis(r)]
+    if not candidates:
+        return None
+
+    # Soil-test axis filter: row has a soil-test axis iff soil_test_min or
+    # soil_test_max is non-NULL. If the row has an axis, soil_value must
+    # fall in its band. If the row has no axis, it's always applicable.
+    def _passes_soil_axis(row):
+        smin, smax = row.get("soil_test_min"), row.get("soil_test_max")
+        has_axis = smin is not None or smax is not None
+        if not has_axis:
+            return True
+        if soil_value is None:
+            return False
+        sv = float(soil_value)
+        if smin is not None and sv < float(smin):
+            return False
+        if smax is not None and sv >= float(smax):
+            return False
+        return True
+
+    candidates = [r for r in candidates if _passes_soil_axis(r)]
+    if not candidates:
+        return None
+
+    # Yield-axis match: three row shapes are possible.
+    #   1. Open-top  (yield_max IS NULL, e.g. "2.5+"): applies iff yield ≥ yield_min.
+    #   2. Point     (yield_min == yield_max, e.g. "1.0"): snap to nearest.
+    #   3. Band      (yield_min < yield_max, e.g. "1-2"): applies iff yield
+    #                 falls in half-open interval [yield_min, yield_max).
+    #
+    # Precedence when multiple shapes apply:
+    #   band ∋ yield  →  beats open-top, beats point-snap.
+    #   open-top ∋ yield (no band matched)  →  beats point-snap.
+    #   no membership match  →  snap to nearest point.
+    # Rationale: explicit membership (yield literally IN the published
+    # interval) is a stronger match than snapping to a nearby point.
+    yt = float(yield_target)
+
+    bands = [
+        r for r in candidates
+        if r.get("yield_max_t_ha") is not None
+        and float(r["yield_min_t_ha"]) < float(r["yield_max_t_ha"])
+    ]
+    applicable_bands = [
+        r for r in bands
+        if float(r["yield_min_t_ha"]) <= yt < float(r["yield_max_t_ha"])
+    ]
+
+    open_top = [r for r in candidates if r.get("yield_max_t_ha") is None]
+    applicable_open = [
+        r for r in open_top
+        if float(r["yield_min_t_ha"]) <= yt
+    ]
+
+    if applicable_bands:
+        # Prefer the narrowest matching band (highest min when they overlap).
+        applicable_bands.sort(
+            key=lambda r: float(r["yield_min_t_ha"]), reverse=True
+        )
+        chosen = applicable_bands[0]
+    elif applicable_open:
+        applicable_open.sort(
+            key=lambda r: float(r["yield_min_t_ha"]), reverse=True
+        )
+        chosen = applicable_open[0]
+    else:
+        # Snap to nearest discrete point
+        discrete = [
+            r for r in candidates
+            if r.get("yield_max_t_ha") is not None
+            and float(r["yield_min_t_ha"]) == float(r["yield_max_t_ha"])
+        ]
+        if not discrete:
+            return None
+        # Tie-break: closer wins; on exact tie, prefer higher yield_min.
+        discrete.sort(key=lambda r: (
+            abs(float(r["yield_min_t_ha"]) - yt),
+            -float(r["yield_min_t_ha"]),
+        ))
+        chosen = discrete[0]
+
+    # Specificity: among rows that match the same yield AND soil band,
+    # prefer the one with the most non-NULL third-axis columns.
+    third_axis_cols = ("clay_pct_min", "texture", "rainfall_mm_min",
+                        "region", "prior_crop", "water_regime")
+    same_band = [
+        r for r in candidates
+        if r.get("yield_min_t_ha") == chosen.get("yield_min_t_ha")
+        and r.get("yield_max_t_ha") == chosen.get("yield_max_t_ha")
+        and r.get("soil_test_min") == chosen.get("soil_test_min")
+        and r.get("soil_test_max") == chosen.get("soil_test_max")
+    ]
+    if len(same_band) > 1:
+        same_band.sort(
+            key=lambda r: sum(1 for c in third_axis_cols if r.get(c) is not None),
+            reverse=True,
+        )
+        chosen = same_band[0]
+
+    rate_min = float(chosen["rate_min_kg_ha"])
+    rate_max = float(chosen["rate_max_kg_ha"])
+    return {
+        "Rate_Min": rate_min,
+        "Rate_Max": rate_max,
+        "Rate_Mid": round((rate_min + rate_max) / 2, 2),
+        "Is_Range": rate_max > rate_min,
+        "Source": chosen.get("source"),
+        "Source_Section": chosen.get("source_section"),
+        "Source_Note": chosen.get("source_note"),
+        "Matched_Band": {
+            "yield_min": chosen.get("yield_min_t_ha"),
+            "yield_max": chosen.get("yield_max_t_ha"),
+            "soil_test_min": chosen.get("soil_test_min"),
+            "soil_test_max": chosen.get("soil_test_max"),
+            "soil_test_method": chosen.get("soil_test_method"),
+        },
+    }
+
+
 def calculate_nutrient_targets(crop_name, yield_target, soil_values,
                                 crop_rows, sufficiency_rows, adjustment_rows, param_map_rows,
-                                crop_override_rows=None):
+                                crop_override_rows=None, rate_table_rows=None,
+                                rate_table_context=None):
     """Calculate adjusted nutrient targets (kg/ha) for a crop.
+
+    When a FERTASA (or equivalent) rate-table row exists for the
+    (crop, nutrient, yield, soil) combination, the table cell overrides
+    the `removal × factor` heuristic. The result dict's `Source` field
+    indicates which path was taken.
 
     Args:
         crop_name: crop name matching crop_requirements table
@@ -116,6 +324,13 @@ def calculate_nutrient_targets(crop_name, yield_target, soil_values,
         sufficiency_rows: list of dicts from soil_sufficiency table
         adjustment_rows: list of dicts from adjustment_factors table
         param_map_rows: list of dicts from soil_parameter_map table
+        crop_override_rows: optional crop-specific sufficiency overrides
+        rate_table_rows: optional list of dicts from fertilizer_rate_tables.
+            When provided, a table hit replaces the removal × factor
+            calculation for that nutrient.
+        rate_table_context: optional dict passed to lookup_rate_table()
+            for third-axis filtering (clay_pct, texture, rainfall_mm,
+            region, prior_crop, water_regime).
     """
     crop_row = next((r for r in crop_rows if r["crop"] == crop_name), None)
     if not crop_row:
@@ -138,6 +353,23 @@ def calculate_nutrient_targets(crop_name, yield_target, soil_values,
         factor = get_adjustment_factor(classification, adjustment_rows, nutrient=nut)
         adjusted = round(base_req * factor, 2)
 
+        # Rate-table override takes precedence when a matching cell exists.
+        rate_hit = lookup_rate_table(
+            crop=crop_name,
+            nutrient=nut,
+            yield_target=yield_target,
+            soil_value=soil_val,
+            rate_table_rows=rate_table_rows,
+            context=rate_table_context,
+        ) if rate_table_rows else None
+
+        if rate_hit is not None:
+            target_kg_ha = rate_hit["Rate_Mid"]
+            source_label = f"{rate_hit['Source']} ({rate_hit['Source_Section']})"
+        else:
+            target_kg_ha = adjusted
+            source_label = "removal × factor (heuristic)"
+
         results.append({
             "Nutrient": nut,
             "Per_Unit": per_unit,
@@ -145,7 +377,9 @@ def calculate_nutrient_targets(crop_name, yield_target, soil_values,
             "Soil_Value": soil_val if soil_val is not None else "",
             "Classification": classification,
             "Factor": factor,
-            "Target_kg_ha": adjusted,
+            "Target_kg_ha": target_kg_ha,
+            "Source": source_label,
+            "Rate_Table_Hit": rate_hit,
         })
 
     return results

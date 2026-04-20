@@ -271,6 +271,127 @@ def test_priority_optimizer_matches_must_match():
         pass
 
 
+# ── Incompatibility handling (MILP path) ───────────────────────────────────
+
+
+def _calcium_nitrate(**overrides):
+    base = {
+        "material": "Calcium Nitrate",
+        "type": "straight",
+        "form": "liquid",
+        "n": 15.5, "p": 0, "k": 0,
+        "ca": 19.0, "mg": 0, "s": 0,
+        "fe": 0, "b": 0, "mn": 0, "zn": 0, "mo": 0, "cu": 0,
+        "solubility_20c": 1200.0,
+        "sg": 1.82,
+        "mixing_order": 2,
+    }
+    base.update(overrides)
+    return base
+
+
+def _ammonium_sulfate(**overrides):
+    base = {
+        "material": "Ammonium Sulphate",
+        "type": "straight",
+        "form": "liquid",
+        "n": 21.0, "p": 0, "k": 0,
+        "ca": 0, "mg": 0, "s": 24.0,
+        "fe": 0, "b": 0, "mn": 0, "zn": 0, "mo": 0, "cu": 0,
+        "solubility_20c": 760.0,
+        "sg": 1.77,
+        "mixing_order": 3,
+    }
+    base.update(overrides)
+    return base
+
+
+CA_SULFATE_INCOMPAT = [{
+    "material_a": "Calcium Nitrate",
+    "material_b": "Ammonium Sulphate",
+    "compatible": False,
+    "severity": "incompatible",
+    "reason": "Ca + SO4 precipitates as gypsum",
+}]
+
+
+def test_incompatible_pair_is_resolved_by_optimizer():
+    """User's reported bug: enabling raw materials that include a Ca source
+    and a sulphate source used to hard-error. The optimizer should instead
+    pick a compatible subset (drop one side of the incompatible edge)."""
+    materials = [_calcium_nitrate(), _ammonium_sulfate(), _map(), _kcl()]
+    # N can come from either Ca(NO3)2 or (NH4)2SO4. A low-Ca target lets
+    # the optimizer pick the sulphate side and avoid the incompatibility.
+    targets = {"n": 4.0, "p": 2.0, "k": 4.0}
+
+    result = optimize_liquid_blend_mm(
+        targets, materials, tank_volume_l=1000,
+        compatibility_rules=CA_SULFATE_INCOMPAT,
+    )
+
+    assert result["success"] is True, result.get("error")
+    recipe_names = {r["material"] for r in result["recipe"]}
+    # At most one of the incompatible pair ends up in the recipe
+    assert not ({"Calcium Nitrate", "Ammonium Sulphate"} <= recipe_names), (
+        f"both incompatible materials in recipe: {recipe_names}"
+    )
+
+
+def test_incompatible_but_both_required_is_hard_error():
+    """If the user explicitly required both halves of an incompatible pair,
+    that IS a conflict — the optimizer can't honour both without dropping
+    one. Surface it as a clear error."""
+    materials = [_calcium_nitrate(), _ammonium_sulfate(), _map(), _kcl()]
+    targets = {"n": 4.0, "p": 1.0, "k": 2.0}
+
+    result = optimize_liquid_blend_mm(
+        targets, materials, tank_volume_l=1000,
+        compatibility_rules=CA_SULFATE_INCOMPAT,
+        required_materials={
+            "Calcium Nitrate": 20.0,
+            "Ammonium Sulphate": 10.0,
+        },
+    )
+
+    assert result["success"] is False
+    assert "incompatible" in result["error"].lower()
+    assert "Calcium Nitrate" in result["incompatible_materials"]
+    assert "Ammonium Sulphate" in result["incompatible_materials"]
+
+
+def test_required_material_on_compatible_side_is_kept():
+    """If only ONE side of an incompatible pair is required, the optimizer
+    pins that side and excludes the incompatible partner automatically."""
+    materials = [_calcium_nitrate(), _ammonium_sulfate(), _map(), _kcl()]
+    targets = {"n": 4.0, "p": 2.0, "k": 4.0}
+
+    result = optimize_liquid_blend_mm(
+        targets, materials, tank_volume_l=1000,
+        compatibility_rules=CA_SULFATE_INCOMPAT,
+        required_materials={"Calcium Nitrate": 15.0},
+    )
+
+    assert result["success"] is True, result.get("error")
+    recipe_names = {r["material"] for r in result["recipe"]}
+    assert "Calcium Nitrate" in recipe_names
+    assert "Ammonium Sulphate" not in recipe_names
+
+
+def test_no_incompatibility_path_unchanged():
+    """Regression guard: with no incompatibility rules, the fast LP path
+    should be taken and produce the same result as before this change."""
+    materials = _basic_npk_materials()
+    targets = {"n": 5.0, "p": 2.0, "k": 5.0}
+
+    result = optimize_liquid_blend_mm(
+        targets, materials, tank_volume_l=1000,
+        compatibility_rules=None,
+    )
+
+    assert result["success"] is True
+    assert result["exact"] is True
+
+
 # ── Sanity check on the density helper ─────────────────────────────────────
 
 def test_compute_sg_from_fractions_water_only_is_one():

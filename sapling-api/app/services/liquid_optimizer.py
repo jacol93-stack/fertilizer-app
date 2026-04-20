@@ -10,7 +10,7 @@ Optimizes liquid fertilizer blends with:
 """
 
 import numpy as np
-from scipy.optimize import linprog
+from scipy.optimize import Bounds, LinearConstraint, linprog, milp
 
 from app.services.nutrient_limits import load_liquid_limits
 
@@ -44,6 +44,147 @@ MAX_KG_PER_LITRE = 1.5
 # at ~11%), published TDSes from AgroLiquid / Simplot / NACHURS / Kugler
 # / CropChoice / Tessenderlo surveyed April 2026.
 MAX_NUTRIENT_MM_PCT = 25.0
+
+
+class _LPResult:
+    """linprog-shape shim so MILP and LP paths return the same thing."""
+    __slots__ = ("success", "x", "fun", "message", "status")
+
+    def __init__(self, success, x, fun, message="", status=0):
+        self.success = success
+        self.x = x
+        self.fun = fun
+        self.message = message
+        self.status = status
+
+
+def _solve_with_incompat(
+    *, c, A_ub, b_ub, A_eq, b_eq, bounds,
+    incompatible_pairs: set[tuple[int, int]],
+    n_mats: int,
+    required_indices: set[int] | None = None,
+):
+    """Solve the liquid-blend LP, enforcing at-most-one on incompatible pairs.
+
+    Empty `incompatible_pairs` → plain linprog (same path as before).
+    Non-empty → MILP with binary indicator y_i ∈ {0, 1} per material:
+        * x_i ≤ ub_i × y_i            — material is "used" iff indicator is 1
+        * y_i + y_j ≤ 1               — for each (i, j) ∈ incompatible_pairs
+        * y_i = 1 for required i      — pin indicators for materials the user
+                                        explicitly required, so the infeasible
+                                        branches are pruned rather than
+                                        silently dropping a required material.
+
+    The optimizer then picks a compatible subset (one side of each
+    incompatible edge) that best meets the nutrient targets at lowest
+    cost. Caller is responsible for preflighting required-vs-required
+    incompatibilities (hard conflict) before getting here.
+
+    Returns a linprog-compatible result object with .success, .x (original
+    variables only — binaries are stripped), .fun, .message.
+    """
+    if not incompatible_pairs:
+        lp_kwargs = dict(c=c, A_ub=A_ub, b_ub=b_ub, bounds=bounds, method="highs")
+        if A_eq is not None and len(A_eq) > 0:
+            lp_kwargs["A_eq"] = A_eq
+            lp_kwargs["b_eq"] = b_eq
+        res = linprog(**lp_kwargs)
+        return _LPResult(res.success, res.x, res.fun, res.message, res.status)
+
+    required_indices = required_indices or set()
+    n_orig = len(c)                   # continuous vars (materials + optionally water)
+    n_bin = n_mats                    # one indicator per material
+    n_total = n_orig + n_bin
+
+    # Objective — binaries don't contribute to cost
+    c_ext = np.concatenate([np.asarray(c, dtype=float), np.zeros(n_bin)])
+
+    # Bounds — continuous vars keep their original bounds; binaries ∈ [0, 1],
+    # pinned to 1 for required materials (so the solver can't exclude them).
+    lb = np.zeros(n_total)
+    ub = np.full(n_total, np.inf)
+    for i, (lo, hi) in enumerate(bounds):
+        lb[i] = 0.0 if lo is None else float(lo)
+        ub[i] = np.inf if hi is None else float(hi)
+    for i in range(n_mats):
+        lb[n_orig + i] = 1.0 if i in required_indices else 0.0
+        ub[n_orig + i] = 1.0
+
+    # Integrality: 0 for continuous, 1 for binary indicators
+    integrality = np.zeros(n_total, dtype=int)
+    integrality[n_orig:] = 1
+
+    constraints: list[LinearConstraint] = []
+
+    # Pad the existing A_ub / A_eq with zero columns for the new binary vars
+    if A_ub is not None and len(A_ub) > 0:
+        A_ub_arr = np.asarray(A_ub, dtype=float)
+        A_ub_ext = np.hstack([A_ub_arr, np.zeros((A_ub_arr.shape[0], n_bin))])
+        constraints.append(LinearConstraint(
+            A_ub_ext, -np.inf, np.asarray(b_ub, dtype=float)
+        ))
+
+    if A_eq is not None and len(A_eq) > 0:
+        A_eq_arr = np.asarray(A_eq, dtype=float)
+        A_eq_ext = np.hstack([A_eq_arr, np.zeros((A_eq_arr.shape[0], n_bin))])
+        b_eq_arr = np.asarray(b_eq, dtype=float)
+        constraints.append(LinearConstraint(A_eq_ext, b_eq_arr, b_eq_arr))
+
+    # Linking: x_i - ub_i × y_i ≤ 0 for each material i (skip water)
+    link_rows = []
+    for i in range(n_mats):
+        ub_i = ub[i] if np.isfinite(ub[i]) else 1.0  # conservative cap
+        row = np.zeros(n_total)
+        row[i] = 1.0
+        row[n_orig + i] = -ub_i
+        link_rows.append(row)
+    constraints.append(LinearConstraint(
+        np.array(link_rows), -np.inf, np.zeros(n_mats)
+    ))
+
+    # Incompatibility: y_i + y_j ≤ 1
+    pair_rows = []
+    for (i, j) in incompatible_pairs:
+        row = np.zeros(n_total)
+        row[n_orig + i] = 1.0
+        row[n_orig + j] = 1.0
+        pair_rows.append(row)
+    constraints.append(LinearConstraint(
+        np.array(pair_rows), -np.inf, np.ones(len(pair_rows))
+    ))
+
+    res = milp(
+        c=c_ext,
+        constraints=constraints,
+        integrality=integrality,
+        bounds=Bounds(lb=lb, ub=ub),
+    )
+
+    if res.success and res.x is not None:
+        return _LPResult(True, res.x[:n_orig], res.fun, res.message, 0)
+    return _LPResult(
+        False, None, None,
+        res.message if hasattr(res, "message") else "MILP infeasible",
+        1,
+    )
+
+
+def _required_required_conflict(
+    required_indices: set[int],
+    incompatible_pairs: set[tuple[int, int]],
+    materials: list[dict],
+) -> list[str] | None:
+    """Return the list of material names in a required-required incompatible
+    pair, or None if no such conflict exists. A conflict here is a genuine
+    user error — they asked for both materials explicitly."""
+    conflicts = [
+        (i, j) for (i, j) in incompatible_pairs
+        if i in required_indices and j in required_indices
+    ]
+    if not conflicts:
+        return None
+    names = sorted({materials[i]["material"] for pair in conflicts for i in pair})
+    return names
 
 
 def check_compatibility(selected_materials: list[dict], compatibility_rules: list[dict]) -> list[dict]:
@@ -249,14 +390,25 @@ def optimize_liquid_blend(
     # Load nutrient safety limits from DB (with fallback)
     nutrient_limits = load_liquid_limits()
 
-    # ── Pre-check: remove hard-incompatible pairs ──────────────────────
-    # If incompatible materials are both selected, we need to choose subsets.
-    # Strategy: check all pairs, if any hard incompatible found, report them
-    # and let the user resolve (rather than silently dropping materials).
+    # ── Incompatible pair enforcement ──
+    # Previously this path computed the pair set and then ignored it — the
+    # LP happily returned blends with both halves of an incompatible pair
+    # present. Now we enforce "at most one of a pair" via MILP; the only
+    # hard error is when BOTH materials in a pair were user-required.
     incompatible_pairs = _get_incompatible_pairs(materials, compatibility_rules or [])
-
     n_mats = len(materials)
-    n_active = list(range(n_mats))  # indices of materials we'll actually use
+    required_idx = {idx for idx, _ in required_constraints}
+    rr_conflict = _required_required_conflict(required_idx, incompatible_pairs, materials)
+    if rr_conflict:
+        return {
+            "success": False,
+            "error": (
+                "Required materials are incompatible with each other: "
+                + ", ".join(rr_conflict)
+                + ". Lower the required % on one of them, or remove it."
+            ),
+            "incompatible_materials": rr_conflict,
+        }
 
     # Count how many materials have at least some nutrient content for targets
     has_nutrients = set()
@@ -345,12 +497,14 @@ def optimize_liquid_blend(
         A_eq_arr = np.array(eq_rows, dtype=float)
         b_eq_arr = np.zeros(len(eq_rows), dtype=float)
 
-    lp_kwargs = dict(c=c, A_ub=A_ub_arr, b_ub=b_ub_arr, bounds=bounds, method="highs")
-    if A_eq_arr is not None:
-        lp_kwargs["A_eq"] = A_eq_arr
-        lp_kwargs["b_eq"] = b_eq_arr
-
-    result = linprog(**lp_kwargs)
+    result = _solve_with_incompat(
+        c=c, A_ub=A_ub_arr, b_ub=b_ub_arr,
+        A_eq=A_eq_arr, b_eq=b_eq_arr,
+        bounds=bounds,
+        incompatible_pairs=incompatible_pairs,
+        n_mats=n_mats,
+        required_indices=required_idx,
+    )
 
     if not result.success:
         # Try relaxed — find closest achievable
@@ -359,6 +513,9 @@ def optimize_liquid_blend(
             tank_volume_l, compatibility_rules, nutrient_limits,
             A_eq=A_eq_arr, b_eq=b_eq_arr,
             required_materials=required_materials,
+            incompatible_pairs=incompatible_pairs,
+            required_indices=required_idx,
+            n_mats=n_mats,
         )
 
     x = result.x
@@ -478,21 +635,38 @@ def _calc_nutrients(x: np.ndarray, materials: list[dict], targets: dict, tank_vo
     return nutrients
 
 
-def _find_closest_liquid_blend(c, A_ub, b_ub, bounds, materials, targets, tank_volume_l, compatibility_rules, nutrient_limits=None, A_eq=None, b_eq=None, required_materials=None):
-    """Binary search for the highest achievable scale factor."""
+def _find_closest_liquid_blend(
+    c, A_ub, b_ub, bounds, materials, targets, tank_volume_l,
+    compatibility_rules, nutrient_limits=None, A_eq=None, b_eq=None,
+    required_materials=None,
+    incompatible_pairs: set[tuple[int, int]] | None = None,
+    required_indices: set[int] | None = None,
+    n_mats: int | None = None,
+):
+    """Binary search for the highest achievable scale factor.
+
+    When incompatible_pairs is non-empty, every inner solve respects the
+    at-most-one constraint — a relaxed-scale blend must still be a valid
+    chemistry, not just a mathematically feasible one.
+    """
     best_scale = 0
     best_x = None
+    incompatible_pairs = incompatible_pairs or set()
+    if n_mats is None:
+        n_mats = len(materials)
 
     lo, hi = 0.0, 1.0
     for _ in range(20):
         mid = (lo + hi) / 2
         scaled_b = b_ub * mid  # Scale all targets by mid
 
-        kwargs = dict(c=c, A_ub=A_ub, b_ub=scaled_b, bounds=bounds, method="highs")
-        if A_eq is not None:
-            kwargs["A_eq"] = A_eq
-            kwargs["b_eq"] = b_eq
-        result = linprog(**kwargs)
+        result = _solve_with_incompat(
+            c=c, A_ub=A_ub, b_ub=scaled_b,
+            A_eq=A_eq, b_eq=b_eq, bounds=bounds,
+            incompatible_pairs=incompatible_pairs,
+            n_mats=n_mats,
+            required_indices=required_indices,
+        )
         if result.success:
             best_scale = mid
             best_x = result.x
@@ -947,22 +1121,26 @@ def optimize_liquid_blend_mm(
         b_eq.append(frac)
 
     # ── Incompatible pair enforcement ──
-    # We cannot express "at most one of a pair" in a pure LP, so we defer
-    # hard-incompatibility to a pre-flight check and surface as an error.
+    # "At most one of a pair" is not expressible in a pure LP, so when any
+    # incompatible pair is in the selection we switch to a MILP with binary
+    # indicators per material (y_i ∈ {0, 1}, x_i ≤ y_i, y_i + y_j ≤ 1). The
+    # optimizer then picks one side of each incompatible edge on its own.
+    #
+    # Hard-error only when BOTH materials in a pair are user-required —
+    # that's a genuine conflict the optimizer can't resolve without
+    # dropping a required input.
     incompatible = _get_incompatible_pairs(materials, compatibility_rules or [])
-    if incompatible:
-        names = set()
-        for i, j in incompatible:
-            names.add(materials[i]["material"])
-            names.add(materials[j]["material"])
+    required_idx = {idx for idx, _ in required_constraints}
+    rr_conflict = _required_required_conflict(required_idx, incompatible, materials)
+    if rr_conflict:
         return {
             "success": False,
             "error": (
-                "Incompatible materials selected together: "
-                + ", ".join(sorted(names))
-                + ". Remove one from each incompatible pair."
+                "Required materials are incompatible with each other: "
+                + ", ".join(rr_conflict)
+                + ". Lower the required % on one of them, or remove it."
             ),
-            "incompatible_materials": sorted(names),
+            "incompatible_materials": rr_conflict,
         }
 
     # ── Objective: minimise cost per kg of finished blend ──
@@ -981,14 +1159,16 @@ def optimize_liquid_blend_mm(
     A_eq_arr = np.array(A_eq, dtype=float)
     b_eq_arr = np.array(b_eq, dtype=float)
 
-    result = linprog(
+    result = _solve_with_incompat(
         c=c,
         A_ub=A_ub_arr,
         b_ub=b_ub_arr,
         A_eq=A_eq_arr,
         b_eq=b_eq_arr,
         bounds=bounds,
-        method="highs",
+        incompatible_pairs=incompatible,
+        n_mats=n_mats,
+        required_indices=required_idx,
     )
 
     if not result.success:
@@ -1006,6 +1186,9 @@ def optimize_liquid_blend_mm(
             compatibility_rules=compatibility_rules,
             nutrient_limits=nutrient_limits,
             required_materials=required_materials,
+            incompatible_pairs=incompatible,
+            required_indices=required_idx,
+            n_mats=n_mats,
         )
 
     return _package_mm_result(
@@ -1147,12 +1330,19 @@ def _find_closest_mm_blend(
     c, A_ub, b_ub, A_eq, b_eq, bounds,
     materials, targets_mm, targeted_nutrients,
     tank_volume_l, compatibility_rules, nutrient_limits, required_materials,
+    incompatible_pairs: set[tuple[int, int]] | None = None,
+    required_indices: set[int] | None = None,
+    n_mats: int | None = None,
 ) -> dict:
     """Binary-search the largest scale factor that keeps the LP feasible.
 
     Identical strategy to the g/L optimizer's closest-blend fallback:
     shrink every nutrient target by a common factor until the LP solves,
     then report `scale` < 1 so the UI can show priority panel.
+
+    If incompatible_pairs is non-empty, every inner solve respects the same
+    at-most-one constraint as the primary optimize call (otherwise the
+    fallback could "succeed" with an incompatible pair both present).
     """
     if A_ub is None or b_ub is None:
         # Nothing to relax — genuinely infeasible.
@@ -1171,16 +1361,21 @@ def _find_closest_mm_blend(
     n_target_rows = len(targeted_nutrients)
     best_scale = 0.0
     best_x = None
+    incompatible_pairs = incompatible_pairs or set()
+    if n_mats is None:
+        n_mats = len(materials)
 
     lo, hi = 0.0, 1.0
     for _ in range(20):
         mid = (lo + hi) / 2
         scaled_b = b_ub.copy()
         scaled_b[:n_target_rows] = b_ub[:n_target_rows] * mid
-        res = linprog(
+        res = _solve_with_incompat(
             c=c, A_ub=A_ub, b_ub=scaled_b,
-            A_eq=A_eq, b_eq=b_eq,
-            bounds=bounds, method="highs",
+            A_eq=A_eq, b_eq=b_eq, bounds=bounds,
+            incompatible_pairs=incompatible_pairs,
+            n_mats=n_mats,
+            required_indices=required_indices,
         )
         if res.success:
             best_scale = mid

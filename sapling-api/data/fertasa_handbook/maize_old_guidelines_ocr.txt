@@ -1,0 +1,629 @@
+========== p-01 ==========
+Fertilization:
+5.4. FERTILIZATION OF MAIZE
+
+INTRODUCTION
+
+Although maize originated in semi-arid regions, it is not a reliable crop under
+variable rainfall conditions and will usually be outperformed by crops such as
+sorghum. Maize is one of the most important crops in the milder subtropical and
+tropical regions of the world, under sufficient rainfall conditions. Maize does
+extremely well under irrigation in drier regions, and will produce higher yields than
+virtually all other grain crops. It is grown over a wider range of climatic conditions
+than other important grain crops such as wheat and rice, even though it is limited
+to the warmer areas (Arnon, 1975).
+
+The choice of a suitable planting time for maize is extremely important. Both
+rainfall and temperature should be taken into account. Under most conditions, the
+planting process can commence once 25 mm of rain has fallen within five days,
+provided there is sufficient moisture in the subsoil.
+
+Because the growth rate of maize is temperature dependent, general terms such
+as "140 or 150 days cultivars" are meaningless. For example, a cultivar planted at
+Ermelo in Mpumalanga may need 90 days from emergence to flowering, but it
+may begin flowering only 78 days after planting if it was planted on the same day
+at Lichtenburg in North West. The reason for this lies in the fact that higher
+average summer temperatures occur at Lichtenburg than at Ermelo.
+
+A simple and practical method to overcome this problem is to use the concept of
+heat units (HU) or growing degree day (GDD), which takes into account daily
+maximum and minimum temperatures. However, HU does not account for data
+relating to soil moisture status, wind, humidity and day lengths, and consequently
+the HU concept may give only an indication of growth rate. The HU concept is also
+less successful under dry-land conditions than in irrigation situations, where soil
+moisture stress should not play any role.
+
+The maize plant stops growing when the temperature drops below 8°C or rises
+above 34°C. The following formula is used to determine HU on a daily basis:
+
+Daily HU = [ma temp. (upper limit 34°C) + min. temp. | - 8°C
+2
+
+The FSSA guidelines for the fertilization of maize is based on results gained from
+more than 15 years of calibration trials on the highveld. The guidelines provide an
+estimate of N-, P-, and K-requirements, based on experimental data, which will
+maximise the probability of obtaining a predetermined realistic yield target.
+
+The fertilizer guidelines are linked to two variables, i.e. yield potential and soil
+status of P and K as determined by soil analysis. Other variables, such as climate,
+soil depth and soil type, also play an equally important role, and it is therefore the
+task of the expert fertilizer adviser to take such conditions into account in the final
+
+Fertilizer Handbook
+176
+========== p-02 ==========
+recommendation. By implication, some of these factors are already integrated into
+the concept of yield potential. A deep soil in a high rainfall area will naturally have
+a higher yield potential than the same soil in a lower rainfall area. Similarly, a
+shallow soil in a low rainfall area will pose greater production risks (very low
+potential) compared to the same shallow soil in a higher rainfall area.
+
+YIELD POTENTIAL
+
+Yield potential in the context in which it is used in this publication, is that yield
+which can be realised on a given soil over several seasons, with optimum
+utilisation of all inputs. The principle that should always apply is that the yield
+potential should first be determined before deciding on a fertilizer programme.
+
+The determination of yield potential is the first step in fertilizer planning. Decide on
+a realistic potential that can be achieved, by taking into consideration such factors
+as the production area, climate (rainfall and temperature), soil, planting date,
+cultivar and the availability of irrigation.
+
+This definition of yield therefore relates to other popular terms such as yield target
+and planning yield. They all imply an attainable yield over the medium to long
+term. This is in contrast to the strict biological-genetical concept of potential, which
+can only be achieved under ideal conditions.
+
+Various models exist which predict the yield potential on the basis of soil and
+climatological data. Some models are more sophisticated than others, and take
+factors such as wind strength, leaf area, and crop index into consideration.
+
+An example of a relatively simple and empirical model that has gained a wide
+usage in the field with a fair amount of success appears in Table 5.4.1. Various
+adaptations of this model are used by different institutions.
+
+Table 5.4.1. Maize yield potential of a field
+(Adapted from: "Mielieproduksie en die Mielierekenaar", P.J. Mohr, 1977; FSSA
+Publication No. 61)
+
+Potential for restricting layer
+Solid rock/ Broken Soft Soft
+hard plinthite rock/gravel plinthite plinthite/clay
+
+Rainfall Depth (m):
+
+0.6 1.2 0.3 0.9 | 0.3 | 0.6 1.2
+mm jr’ tha™
+500 1.8 2.5 - 2.3 1.9 2.6 3.5
+600 2.7 41 1.8 3.8 2.6 3.7 5.5
+700 3.4 6.4 2.5 5.4 3.1 46 7.4
+800 3.9 8.7 3.1 6.8 3.3 5.1 8.9
+900 41 10.4 3.6 8.1 3.0 5.4 10.1
+
+Fertilizer Handbook
+
+177
+========== p-03 ==========
+PLANT NUTRIENT REQUIREMENTS
+
+The rate of N- and K-uptake by the maize plant reaches a peak approximately
+two weeks prior to flowering, whilst the peak for P-uptake coincides with flower-
+ing and maximum water uptake. This is illustrated in Figure 5.4.1. These are typ-
+ical curves and do not necessarily apply to a specific cultivar.
+
+= K
+36 20
+=
+fo)
+3°
+® 15
+S
+oO
+oO
+3
+©
+2 10
+g
+g = rs)
+a 2 =}
+3 . Fs ) 3,
+L = c= To
+Zz E g ee
+a) 3 =
+Oo ic
+
+ee [ee Ge
+0123 4 5 67 8 9 10 11 12 13 14 15 16 17
+
+Weeks after planting
+
+Figure 5.4.1. Rate of nutrient uptake by maize. (From Aldrich & Leng, 1965)
+
+The cumulative uptake of N, P and K by the maize plant, expressed as a
+percentage of the total uptake, is reflected in Figure 5.4.2. The number of days
+from emergence to flowering in Figure 5.4.2 applies to a medium growing cultivar.
+Depending on the climate and cultivar, this may vary from 48 to 85 days.
+
+The average removal of plant nutrients by maize is shown in Table 5.4.2.
+
+SCHEDULING OF APPLICATION
+The following guideline may be used when scheduling application.
+
+All the phosphate (P) is applied at planting (or prior to planting where the soil-P
+reserves are very low). A portion of the nitrogen is applied at planting. The balance
+is applied mechanically before 5 to 6 weeks have lapsed since emergence as a
+side-dressing under dry-land cultivation. With irrigation, a portion of the nitrogen
+may be applied in the form of fertigation up to the last vegetative stage.
+
+Fertilizer Handbook
+178
+========== p-04 ==========
+100 D
+90 2 Pe 90
+ol7 pe
+\ oA
+UY 80 i, Pid Piaf A | | 80
+3 70 Kf ) ine 3tLf 7 =
+“ 7 a s ra,
+rai NOLS o 2 te
+Zz 60 7 ye x 60 |
+2 yp i | s : <
+< / 4 7 . 5
+O 50 fie te 50 2
+r y vA a w
+LL 7 Fi 2 & ro)
+ra Ht Se ou
+Q ‘is S.4 <
+E : 30
+5 30 ~f—p if
+4 .
+~ 20 4 oie . 20 &
+lu 4 E oO
+o Y\ eye
+10, wt 10
+Od or CI ee a i 0
+0 7 14 21 28 35 42 49 56 63 70 77 84 91 9 105 112
+Days
+
+Figure 5.4.2. Cumulative uptake of nitrogen, phosphorus and potassium by
+a maize plant as a percentage of total uptake by the plant (Aldrich & Leng,
+1966)
+
+Table 5.4.2. NPK-removal by maize per 1 ton of marketable product
+
+N P K
+Grain only 15 3 3.5
+Whole plant” 27 45 20
+
+(1) Excluding roots.
+
+Usually all the potassium will be applied prior to or at planting, depending on the
+amount to be applied. In cases where potassium supply under high yield
+conditions is suspect, good results may be obtained with a side-dressing, or
+fertigation, up to the last vegetative stage, as with nitrogen.
+
+Fertilizer Handbook
+179
+========== p-05 ==========
+MACRONUTRIENTS
+
+Nitrogen (N)
+
+The FSSA guideline for N-fertilization assumes that the relationship between yield
+and N-requirement is strong enough to serve as a basis for a guideline. This is a
+debatable point, and one that may well be changed in the future. Research is
+currently being conducted in finding methods to determine the mineral-N content
+of the soil, and to take this into consideration when making recommendations.
+Figure 5.4.3 indicates the relationship found in four FSSA trials between N-rate
+and yield. This serves as an illustration of the type of relationships that can be
+achieved.
+
+10 |
+Mg/S/81
+an |
+M3/W/80
+
+6
+———— _m8/w/80
+f 4b
+ke} aoe
+3 | = optimum
+>
+
+2=
+
++ M1/W/82
+0
+100 200
+kg N ha™1
+
+Figure 5.4.3. Yield graphs to illustrate optimum N-levels in several FSSA
+trials.
+
+Figure 5.4.4 illustrates the relationship between optimum N-rates and the
+corresponding yields obtained in all FSSA trials since 1978. It shows a good
+correlation between the FSSA N-guideline (broken line) and the experimental
+regression line (solid line).
+
+The broken line in Figure 5.4.4 can also be represented in table form (Table 5.4.3),
+and this is the actual N-guideline for fertilization of maize.
+
+When using the guideline, sound judgement should always prevail. Several
+factors that could influence the nitrogen requirement must be considered when
+making a final recommendation from the relationship in Table 5.4.3. These factors
+can be divided into primary and secondary or management factors.
+
+Fertilizer Handbook
+180
+========== p-06 ==========
+10000 [—
+
+8200 F-
+
+6400 fF-
+
+Yield, kg ha™1
+
+4600 F-
+experimental
+
+y = 1969 + 38.86 N
+r = 0.773
+
+sp00 K 4 vr rnnnenenee FSSA guideline
+
+50 100 150 200 250
+
+kg N ha*1
+
+Figure 5.4.4. Relationship between optimal N-levels and yields obtained in
+all FSSA trials since 1978/79
+
+Table 5.4.3. Guideline for N-fertilization of maize()
+
+tha"
+
+Yield potential 2 3 4 5 6 7 8 9 10
+kg ha"
+
+N-application 20 45 70 95 120 145 170 195 220
+
+(1) Where yields in excess of 10 ton ha“ are obtained (e.g. under irrigation), 20
+to 30 kg N per additional ton may be applied.
+
+Primary factors
+
++ Leaching. The leaching of nitrates out of the root zone can occur in
+well-drained soils after excessive rainfall. This can be partially overcome by
+timing nitrogen applications to coincide with the active growth of the plant.
+
+Fertilizer Handbook
+181
+
+========== p-07 ==========
+Denitrification. This occurs when the soil oxygen supply is limited, i.e.
+under very wet conditions with temperatures above 20°C. If these conditions
+persist for a reasonably long period, additional applications of nitrogen
+would be warranted.
+
+Negative N-period. If large amounts of organic matter with a wide C:N ratio
+are incorporated into the soil (i.e. wheat straw), the mineral-N in the soil is
+temporarily "fixed" by micro-organisms, causing the nitrogen to become
+temporarily unavailable. When such conditions prevail, the solution would be
+to apply part of the total-N earlier.
+
+Symbiotic N-fixation. Legumes are capable of converting atmospheric
+nitrogen into a usable form through the symbiotic action of micro-organisms
+and roots. Legumes can fix between 25 and 250 kg N ha‘! in this manner,
+and most of this will become available to the next crop in the rotation
+system. This will necessitate a lowering of that crop's N-fertilizer require-
+ment.
+
+Secondary and management factors
+There are many secondary or management factors that may have an effect on the
+level of nitrogen fertilization in a given season:
+
+¢
+
+Carry over: The yield attained in the previous season, compared to the N
+applied. A simple balance sheet of enrichment/depletion can be drawn up,
+and this will serve as an indication of the net status of the soil-N.
+
+Removal: Take into account the removal by the preceding crop (grain and/or
+rest of the plant).
+
+Soil nutrient status. The efficiency of N-uptake is decreased if the status of
+P and K, and also other macro- and micronutrients, is very low.
+
+Weed control. Poor weed control suppresses yield potential and the
+availability of soil moisture, and therefore also the chances of optimum
+utilisation of applied nitrogen.
+
+Insect control. Poor insect control has the same effect as poor weed
+control.
+
+Plant population. An uneven stand or a too low plant population for
+specific conditions may also lead to under-utilisation of the applied nitrogen.
+
+Available soil moisture. Knowledge of the status of available soil moisture
+in the profile during the growing season, especially when the crop can still
+benefit from applied-N, will allow for informed decisions to be made whether
+additional N should be applied as a side-dressing.
+
+Planting date. Planting dates that deviate from the ideal can also suppress
+yield potential.
+
+Fertilizer Handbook
+
+182
+========== p-08 ==========
+The fertilizer adviser should take as many of these factors as is possible into
+consideration before making a final recommendation.
+
+Research conducted by the North West Department of Agriculture (Bloem, 2002)
+has indicated a link between nitrogen supply and the clay content of soils. The
+higher nitrogen supply of a soil with higher clay content can be ascribed to the
+release of nitrogen from organic matter. (Organic matter is positively correlated
+with clay content.) A summary of the research results in a nitrogen fertilizer
+guideline appears in Table 5.4.4.
+
+Table 5.4.4. N-guideline (kg N ha") adjusted for texture according to North
+West Department of Agriculture
+
+Yield
+Clay content (ton ha”)
+
+(%)
+
+2.0 3.0 40 5.0 6.0
+
+5 23 58 92 126 160
+
+15 10 45 79 113 147
+
+25 0 33 67 101 135
+
+40 0 14 48 82 116
+
+Source: Andries Bloem: "Databasis- en navorsingsresultate dui stikstoflewering van gronde
+aan". SA Graan/Grain, July 2002 (table abbreviated).
+
+Phosphorus (P)
+
+The uptake of phosphorus by plant roots is almost exclusively through the process
+of diffusion. The contribution made by direct contact and mass flow uptake is
+negligible.
+
+When soluble forms of phosphorus (such as in compounds, MAP and super-
+phosphates) are applied to the soil, they will invariably tend to be converted to less
+soluble forms. These factors make it necessary for soil-P reserves to be available
+in sufficient quantities to ensure optimum P-uptake. Calibration work done by the
+FSSA over more than 15 years has given rise to a P-fertilizer approach that may
+be summarised as follows:
+
++ The reaction to applied-P is equally dependent on both seasonal and soil
+differences. This is true for a wide range of soils. Therefore, no effort is made
+to differentiate between soil forms and families concerning P-requirements.
+
+4 Soil analysis is not infallible in predicting yield response to applied-P. It does,
+however, explain sufficient variation to be used as a useful tool in determin-
+ing P-requirements.
+
++ By indirect method it was established that, within limits, low yield potentials
+had lower P-optima, and conversely that higher yield potentials had higher
+P-optima.
+
+Fertilizer Handbook
+183
+========== p-09 ==========
++ Probability of response to applied-P decreases from 100% in the 0 to 6 mg
+kg"! (Bray 1) soil-P range to 42% in the 15 to 25 mg kg"! (Bray 1) soil-P
+range.
+
+4 Soil-P reserves need to be built up quicker on high potential soils and
+slower on low potential soils.
+
+These findings have been included in the fertilization model (Table 5.4.5), with the
+following reference values and interpolations between these values:
+
+(i) Amaximum of 130 kg ha"! P for yields of 8 tons ha“! and higher. This is a
+low risk situation with quick replenishment of soil-P reserves.
+
+(ii) Amaximum P-application of 45 kg ha“! for yield potentials of 3 ton ha“, with
+extrapolation to 20 kg ha‘! for 2 t ha". There is higher risk and therefore
+slower build-up of soil-P reserves.
+
+(iii) Build-up of soil-P to 14 mg ha‘' (Bray 1) for yield potentials of 2 to 4 t ha“,
+20 mg kg" for potentials of 4 to 6 t ha“! and 20 to 25 mg kg"! for yield
+levels of 8 to 10 t ha™’. It is assumed that soil-P can still be built up with
+maintenance applications in excess of 3 kg ha“! P. Based on other data, this
+figure is somewhat conservative.
+
+Interpolation between these reference values was rounded off to the nearest 1 kg
+
+ha“1 (Table 5.4.5) for the sake of convenience. The model is not meant to imply
+accuracy to the nearest 1 kg hav’.
+
+Table 5.4.5. Guideline for P-fertilization of maize
+
+Soil-P P-recommendation for yield potentials of (t ha”): Comments
+(Bray1)| 2/3 ]4]5] 6 7 8 9 | 10
+mg kg" kg ha™
+
+0-4 20 | 42 | 65 | 88 | 109 130 130 130 130 | Suboptimal-P:
+5-7 17 | 31 | 47 | 63 67 90 93 95 97 P-build-up +
+8-14 13 | 19 | 30 | 42 50 59 64 67 68 maintenance
+15-20 10 | 13 | 21 | 29 36 42 47 50 53
+
+21-27 7 | 10 | 15 | 19 26 31 34 38 A Optimal soil-P
+
+28 - 34 6 9 12 | 15 18 22 24 27 30 Above optimal
+soil-P:
+maintenance
+
+Potassium (K)
+
+K-deficiencies seldom occur in the maize producing areas of South Africa. There
+are two main reasons for this. Firstly, the export of K from the soil with relatively
+low yield levels is rather low, and secondly, most of the arable soils in South Africa
+have higher K-levels than the generally accepted sufficiency limits of 80 to 120 mg
+kg™1 K.
+
+Fertilizer Handbook
+184
+========== p-10 ==========
+There are well-documented positive responses to K-fertilization, especially in the
+higher rainfall areas and on soils with an inherently low K-status (i.e. less than 50
+mg kg*1). In such instances it has been found that large yield losses can occur if
+insufficient K is applied. A low K-status in the topsoil will also not necessarily
+guarantee a positive response with K-fertilization as higher levels of K in the sub-
+soil will provide adequate potassium in many instances.
+
+Table 5.4.6. Guideline for K-fertilization of maize on soils with low clay
+content (< 25%)
+
+Sttitteteel Stan Gah K-recommendation for yield potentials (t ha’):
+season
+(NH,OAc)
+2 3 4 5 6 7 8 9 10
+mg kg” kg ha
+10 10 19 28 37 46 55 64 73 82
+20 0 11 20 29 38 47 56 64 73
+40 0 5 13 22 30 39 47 56 64
+60 0 (e) 8 16 24 32 40 48 56
+80 (e) (e) 5 12 20 27 35 42 50
+100 (e) (e) (e) 10 17 24 31 38 45
+120 (e) (e) (e) 8 15 21 28 34 41
+
+The supply of potassium to the maize plant is determined to a large extent by the
+total potassium reserves in the root zone, but especially in the topsoil, the clay
+content, the type of clay mineral present and the water content of the soil. The
+occurrence of compaction with certain tillage practices can also reduce the K-
+supply to the plant.
+
+Yield responses are very variable due to these factors, and therefore the FSSA
+
+guideline for potassium must be considered to be a compromise of all the variable
+experimental results.
+
+Table 5.4.7. K-fertilization of maize on soils with high clay (> 25%)
+
+Soil-K at start K-recommendation for yield potentials of (t ha”):
+of season
+(NH,OAc) 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
+mg kg” kg ha”
+< 40 16 30 44 58 72 86 100 114 128
+40 5 16 27 38 49 60 71 81 93
+60 0 9 19 30 40 49 59 67 78
+80 0 5 13 22 31 40 49 57 67
+100 0 0 9 4 25 33 41 48 57
+120 0 0 6 13 20 27 34 41 48
+140 0 0 5 11 17 23 29 35 41
+160 0 0 5 10 15 20 25 30 35
+
+Fertilizer Handbook
+========== p-11 ==========
+Potassium deficiencies are indicated by yellow or necrotic leaf margins that first
+appear on older leaves and may spread fairly rapidly to the younger leaves,
+depending on the degree of deficiency. Leaf analysis of the leaves opposite the
+top ears during flowering may confirm a deficiency if potassium concentrations are
+considerably lower than 1.9% (ARC-Grain Crops Institute, 2002).
+
+Calcium (Ca) and magnesium (Mg)
+
+Liming of acid soils is an essential practice for the maintenance of soil fertility and
+soil productivity. Soils under cultivation are inclined to become more acid, and the
+rate of acidification is accelerated by fertilization, especially with ammonium-
+containing nitrogenous fertilizers. Research conducted by the FSSA on sandy
+loam soils of the Avalon and Hutton families on the highveld indicates a minimum
+acceptable pH (KCl) level of 4.5, and a maximum acceptable acid saturation per-
+centage of 10 to 15.
+
+In trials on the Mpumalanga highveld it was found that an application of at least 1
+ton of agricultural lime per hectare per annum is required to maintain the optimum
+pH and acid saturation levels. Magnesium levels in the soil should preferably not
+drop to lower than 50 mg kg™!. Should the magnesium content drop below this
+level, dolomitic lime should be applied.
+
+Sulphur (S)
+
+Sulphur is an essential micronutrient and is therefore just as important as the other
+macronutrients in plant nutrition. Deficiency symptoms are a yellow colouration of
+the entire plant which is often first observed on the new growth. Plants with a
+sulphur deficiency often also have thinner stems and smaller plants.
+
+The application of sulphur by means of fertilizer has decreased considerably in
+recent years, especially with the increasing use of higher-grade fertilizer
+compounds containing little or no sulphur. In addition, South African maize
+producing soils generally have a low capacity of sulphur supply. This can be
+ascribed to, among other things, low organic matter content, low pH and low clay
+percentage. The statutory limitation on industrial SO, emissions also contribute to
+a total decrease in indirect sulphur supply to crops. It is, however, not possible to
+exactly quantify this decrease. A 1993 study conducted by the Water Research
+Commission revealed that sulphate dioxide deposition in the Vaal Dam catchment
+area was in the range of 10 to 23 kg S ha™ yr1.
+
+The application of sulphur (4 kg S ha™! maintenance per ton of grain) may be
+considered where deficiencies are indicated by leaf and/or soil analyses.
+
+MICRONUTRIENTS
+
+Zinc (Zn)
+
+Zinc came to the forefront during the sixties when widespread zinc deficiencies
+were identified on young maize plants. These deficiencies were prominent where
+high concentrations of fertilizer were placed close to the seed, where the soil was
+recently limed, and when cool, cloudy conditions persisted. Zinc deficiencies have
+largely disappeared with the advent of Zn-containing compounds, and in some
+instances unnecessarily high reserves of Zn have been built up in soils.
+
+Fertilizer Handbook
+186
+========== p-12 ==========
+As a general rule, zinc fertilization is indicated where soil analyses are less than
+1.5 to 2 mg kg"! Zn.
+
+Boron (B)
+
+Positive yield responses have been obtained in trials where the leaf content of B
+at flowering was lower than 8 to 10 mg kg"! (G.C.J. Kruger, Sasol Fertilizers, per-
+sonal communication). These reactions were mainly on light textured soils of the
+eastern Free Estate and the highveld region of Mpumalanga, where leaf analyses
+during the previous season indicated a possible B-deficiency. An application of 0.5
+to 2 kg ha’! B will suffice to correct identified boron deficiencies. It should prefer-
+ably be applied as a water soluble product prior to planting.
+
+Molybdenum (Mo)
+
+Molybdenum deficiencies on soils with a low pH were a common occurrence
+during the sixties. The introduction of Mo treated seed has all but eliminated this
+problem. Mo-deficiencies are associated with very acid soils, and liming will make
+Mo more available in the soil.
+
+REFERENCES
+
+ARC-GCI, 2002. Maize Information Guide. MIG 2000.
+
+ARNON, L., 1975. Mineral nutrition of maize. Editor: International Potash Institute,
+P.O. Box CH-3048, Bern, Switzerland.
+
+BUYS, A.J., VENTER, G.C.H. & MCGEE, P.A.E., 1984. FSSA liming experiments
+on maize. Paper presented at FSSA symposium, Pietermaritzburg.
+September.
+
+BLOEM, DRIES, 2002. “Databasis- en navorsingsresultate dui stikstoflewering
+van gronde aan.” SA Graan/Grain, July, p. 44.
+
+MORR, P.J., 1977. “Mielieproduksie en die Mielierekenaar". FSSA Publication No.
+61.
+
+VENTER, G.C.H., 1984. "Mieliebemestingsriglyne 1984". Plantfood/Plantvoedsel,
+February, 8-9.
+
+VENTER, G.C.H., 1985. "Mielies: 'n Oorsig van resultate en evaluering van MVSA
+bemestingsnorme". Paper presented at FSSA Research Symposium,
+Sandton. September.
+
+Fertilizer Handbook
+187
