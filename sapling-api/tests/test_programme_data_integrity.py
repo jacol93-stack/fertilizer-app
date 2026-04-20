@@ -28,7 +28,7 @@ pytestmark = pytest.mark.integration
 CORE_CROPS_WITH_FULL_COVERAGE = [
     # Perennials the FERTASA/industry curves cover
     "Apple", "Pear",
-    "Peach/Nectarine", "Apricot", "Plum",
+    "Peach", "Apricot", "Plum",
     "Table Grape", "Wine Grape",
     "Olive", "Blueberry",
     "Avocado", "Macadamia", "Mango", "Litchi", "Pecan",
@@ -44,7 +44,7 @@ CORE_CROPS_WITH_FULL_COVERAGE = [
 
 PERENNIAL_CROPS_NEEDING_AGE_FACTORS = [
     "Apple", "Pear",
-    "Peach/Nectarine", "Apricot", "Plum",
+    "Peach", "Apricot", "Plum",
     "Table Grape", "Wine Grape",
     "Olive", "Blueberry",
     "Avocado", "Macadamia", "Mango", "Litchi", "Pecan",
@@ -104,7 +104,7 @@ def test_core_perennial_has_age_factors(crops_by_table, crop):
 # Crops that were miscategorised as perennial pre-migration 037.
 # These should now all be annual.
 FIXED_ANNUALS = [
-    "Butternut", "Canola", "Dry Beans", "Garlic", "Green Beans",
+    "Butternut", "Canola", "Bean (Dry)", "Garlic", "Bean (Green)",
     "Lentils", "Lettuce", "Maize (dryland)", "Maize (irrigated)",
     "Pepper (Bell)", "Potato", "Pumpkin", "Spinach", "Strawberry",
     "Sweetcorn", "Watermelon",
@@ -125,8 +125,8 @@ def test_fixed_annuals_are_annual(crops_by_table, crop):
 CORE_PERENNIALS_TO_KEEP = [
     "Apple", "Pear", "Avocado", "Macadamia", "Mango", "Citrus (Valencia)",
     "Table Grape", "Wine Grape", "Olive", "Blueberry",
-    "Lucerne/Alfalfa", "Sugarcane", "Asparagus",  # long-cycle crops that
-                                                   # stay perennial
+    "Lucerne", "Sugarcane", "Asparagus",  # long-cycle crops that
+                                           # stay perennial
 ]
 
 

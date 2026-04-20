@@ -23,8 +23,9 @@
 --      (preserves alias-only rows when canonical is missing)
 --   2. DELETE any remaining alias rows (canonical now wins)
 --
--- Pattern per user-facing table (programmes / blocks / leaf_analyses):
+-- Pattern per user-facing table (programme_blocks / leaf_analyses):
 --   Always UPDATE alias → canonical (unconditional rename)
+--   NB: `programmes` has no `crop` column — crop lives on programme_blocks.
 -- ============================================================
 
 BEGIN;
@@ -40,7 +41,6 @@ DECLARE
         'tissue_toxicity'
     ];
     user_tables TEXT[] := ARRAY[
-        'programmes',
         'programme_blocks',
         'leaf_analyses'
     ];
