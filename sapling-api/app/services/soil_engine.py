@@ -179,8 +179,20 @@ def lookup_rate_table(crop, nutrient, yield_target, soil_value, rate_table_rows,
                 return False
             if rmax is not None and rain >= float(rmax):
                 return False
-        # Region / prior_crop / water_regime: discrete equality
-        for field in ("region", "prior_crop", "water_regime"):
+        # Soil organic matter %
+        smin, smax = (row.get("soil_organic_matter_pct_min"),
+                       row.get("soil_organic_matter_pct_max"))
+        if smin is not None or smax is not None:
+            som = ctx.get("som_pct")
+            if som is None:
+                return False
+            som = float(som)
+            if smin is not None and som < float(smin):
+                return False
+            if smax is not None and som >= float(smax):
+                return False
+        # Region / prior_crop / water_regime / crop_cycle: discrete equality
+        for field in ("region", "prior_crop", "water_regime", "crop_cycle"):
             if row.get(field) is not None and ctx.get(field) != row.get(field):
                 return False
         return True
@@ -270,7 +282,8 @@ def lookup_rate_table(crop, nutrient, yield_target, soil_value, rate_table_rows,
     # Specificity: among rows that match the same yield AND soil band,
     # prefer the one with the most non-NULL third-axis columns.
     third_axis_cols = ("clay_pct_min", "texture", "rainfall_mm_min",
-                        "region", "prior_crop", "water_regime")
+                        "region", "prior_crop", "water_regime",
+                        "crop_cycle", "soil_organic_matter_pct_min")
     same_band = [
         r for r in candidates
         if r.get("yield_min_t_ha") == chosen.get("yield_min_t_ha")

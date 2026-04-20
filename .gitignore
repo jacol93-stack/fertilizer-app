@@ -12,6 +12,11 @@ sapling-api/data/fertasa_handbook/session_cookie.txt
 sapling-api/data/fertasa_handbook/maize_pdf_pages/
 sapling-api/data/fertasa_handbook/maize_ocr/
 
+# SASRI Information Sheets — explicit copyright notice forbids redistribution.
+# Numerical thresholds ARE facts (uncopyrightable) so we SEED them into
+# migrations with full citation, but keep the raw PDFs local-only.
+sapling-api/data/sasri/
+
 # OCR pipeline scratch (per-page PNGs + per-page OCR; combined .txt is kept)
 sapling-api/data/arc_gci/pages/
 sapling-api/data/arc_gci/ocr/
