@@ -2,7 +2,7 @@
 
 The premise: the programme builder's structure is sound; its numbers are a mix of FERTASA-direct and unsourced heuristic. This plan orders the sourcing work by credibility-per-hour, names a specific source for every row, and keeps gaps explicit.
 
-Every seeded row should carry `source`, `source_section`, `source_year`, `source_tier` — so an auditor can trace any recommendation back to the paper/handbook it came from.
+Every seeded row carries `source`, `source_section`, `source_year` — so an auditor can trace any recommendation back to the paper/handbook it came from.
 
 ---
 
@@ -21,186 +21,123 @@ We cite against these. A number only graduates into the calculator when it's Tie
 
 ---
 
-## Phase 0 — This weekend (hours)
+## Status — what got seeded 2026-04-20
 
-All data already in `sapling-api/data/fertasa_handbook/*.json`. Zero-research, pure transposition.
+**17 migrations (046-062), 851 cells across 30 crops / 83 nutrient slots.** Full session in a single day; 418/418 tests pass on every commit.
 
-| Crop | Data | Source (Tier 1) | Effort | Nutrient impact |
-|---|---|---|---|---|
-| Wheat | K table (yield × K-status × texture filter clay ≥35%) | FERTASA 5.4.3.1.3 | 1 hr | Covers WC + Free State K |
-| Potato | N dryland (clay × yield), N irrigation (clay × yield), P (6 soil-P × 8 yield), K | FERTASA 5.6.2 | 3 hr | All four NPK matrices |
-| Canola | N by region × rainfall × prior_crop | FERTASA 5.5.1 image 501 | 1 hr | 7 regional rows |
-| Maize | Re-scrape section 5.4.4 (current capture is OLD GUIDELINES placeholder) | FERTASA 5.4.4 or newer edition | 2-4 hr | Fixes the single biggest SA field crop |
+| Crop | Nutrients seeded | Source | Tier |
+|---|---|---|:---:|
+| Wheat | P, K | FERTASA 5.4.3 | 1 |
+| Maize | N | ARC-GCI MIG 2017 | 2 |
+| Sugarcane | N + leaf norms + S/Ca/Mg soil overrides | SASRI IS 7.2 / 7.6 / 7.7 / 7.15 | 1 |
+| Potato | N, P | FERTASA 5.6.2 | 1 |
+| Soybean | P, K | FERTASA 5.5.5 | 1 |
+| Sunflower | N, P, K | FERTASA 5.5.6 | 1 |
+| Canola | N | FERTASA 5.5.1 | 1 |
+| Lucerne | P, K, B | FERTASA 5.12.2 | 1 |
+| Cotton | N, P, K | FERTASA 5.9 | 1 |
+| Bean (Dry) | N, P, K | FERTASA 5.5.2 | 1 |
+| Groundnut | N (not-inoculated) | FERTASA 5.5.3 | 1 |
+| Banana | N, P, K | FERTASA 5.7.2 | 1 |
+| Sweetcorn | N, P, K | FERTASA 5.4.5 | 1 |
+| Tobacco (flue-cured) | N, P, K | FERTASA 5.11 | 1 |
+| Macadamia | N, P, K, Zn, B + K/mineral-N soil overrides | SAMAC Schoeman 2021 | 1 |
+| Avocado | leaf norms deficient/excess bounds | NZAGA 2008 ("Avocado Book" lineage) | 1 |
+| **16 vegetable crops** | N, P, K each | FERTASA 5.6.1 | 1 |
 
-**Delivery**: migrations 048-051, similar pattern to 047.
+Vegetable crops in the 5.6.1 block: Beetroot, Brinjal, Cabbage crops, Carrot, Chillies, Garlic, Gem squash, Green beans, Green peas, Lettuce, Onion, Pumpkin crops, Red/green peppers, Strawberry, Sweet melon, Sweet potato.
 
----
+**Tier split: 90% Tier 1, 10% Tier 2 (ARC-GCI maize).**
 
-## Phase 1 — Field crops full coverage (2-3 days)
-
-FERTASA covers the basics. Grain SA production manuals (freely downloadable, industry-standard) fill yield-target × region × tillage splits that FERTASA glosses.
-
-| Crop | Primary source | Secondary source | Data needed | Notes |
-|---|---|---|---|---|
-| Maize | Grain SA "Maize Producers' Manual" (T1) | ARC-GCI Maize Information Guide (T2) | N × texture × yield, P × soil-P × yield, K × soil-K, Zn/S guidelines | Grain SA publishes per-region tables; ARC-GCI publishes physiological curves |
-| Wheat | FERTASA 5.4.3 (have) + ARC-SGI manuals (T1) | Grain SA Wheat Handbook (T1) | Validate FERTASA Free State tables; seed the Western Cape table (5.4.3.2.5) separately with `region='Western Cape'` | Winter- vs summer-rainfall split matters |
-| Sorghum | Grain SA Sorghum Handbook (T1) | FERTASA 5.4.2 (have), ARC-GCI | Verify N removal + P/K calibration | SA sorghum area is small but trades at protein premium |
-| Barley | Grain SA malting barley protocol (T1) | FERTASA 5.4.1 (have) | **Malting barley ≠ feed barley**: low-protein target caps late N | Flagged in research memo |
-| Sunflower | Grain SA Sunflower Manual (T1) | FERTASA 5.5.6 (have), ARC-GCI | B deficiency critical — seed foliar protocol | |
-| Soybean | Grain SA Soybean Handbook (T1) | FERTASA 5.5.5 (have) | Inoculation reduces applied N to near zero — logic already in 042 | Validate P/K recommendations for SA clay soils |
-| Groundnut | Grain SA Groundnut Handbook (T1) | FERTASA 5.5.3 (have), ARC-GCI | Ca (gypsum at pegging) is the critical intervention | Not in removal × factor model today |
-| Dry bean | Dry Bean Producers' Organisation (T1) | FERTASA 5.5.2 (have) | "No N at flowering" window — seed `crop_application_windows` | |
-| Lucerne | FERTASA 5.12.2 (have) | ARC-Animal Production | Established stands = zero N; Ca/Mg/S matter more | 043 updated |
-| Cotton | Cotton SA technical docs (T1) | FERTASA 5.9 (have), ARC-IIC | N cutoff at week 13 (in 042) | Validate K timing |
-| Tobacco | FERTASA 5.11 (have) | Limpopo Tobacco Cooperative tech docs | Flue-cured vs oriental vs burley are different — need 4 variants | Currently only flue-cured seeded |
-| **Sugarcane** | **SASRI FAS** (T1) — per-mill-area recommendations | SASRI Information Sheets; *South African Sugarcane Research Institute Info Sheets* | N × rainfall/irrigation × soil, P × soil-P, K × soil-K, filter-mud residual, ripener N-cut-off | **Gold standard — SASRI publishes defensible rate tables for every mill area.** High priority. |
-
-**Delivery**: migrations 052-060 range; ~9 crops × ~15-30 cells each = ~200 seeded cells.
+Plus schema extensions: `fertilizer_rate_tables` (migration 046), `crop_application_windows` (046, schema only), `crop_cycle` + `soil_organic_matter_pct_min/max` columns (052 for sugarcane). Plus liquid-optimizer MILP incompatibility fix (separate from the data work but shipped the same day).
 
 ---
 
-## Phase 2 — Perennials (1-2 weeks)
+## Key decisions made along the way
 
-This is where the effort is. FERTASA rate tables effectively don't exist for perennials; Tier 1 industry bodies are the only defensible source.
+1. **FERTASA electronic handbook is accessible** via user's session cookie — a full re-scrape pulled all 26 crop sections plus 23 image-tables. The R850 physical handbook is **not** a priority, despite the initial audit (when we thought the electronic was gated). They contain the same content; no known edge cases worth R850 have surfaced.
 
-| Crop | Primary source (Tier 1) | What they publish | Access | Effort |
-|---|---|---|---|---|
-| Citrus (all types) | **CRI FertMap** — citrus fertilizer recommendation tool | Soil-test × leaf × yield-target → per-nutrient rec, by cultivar and rootstock | Member-gated; R500-ish annual; *Citrus Research International Technical Circulars* | 2 days |
-| Citrus | **CGA** newsletters + *Citrus Academy* | Seasonal application calendars | Mostly free | — |
-| Apple / Pear | **Hortgro Science "Pome Fruit Production Guide"** | Age-factor × leaf → N, orchard P/K rebuilds | Member/subscription; *Hortgro Production Guide* | 2 days |
-| Peach / Nectarine / Apricot / Plum | **Hortgro Science "Stone Fruit Production Guide"** | Similar to pome; cultivar-specific | Member | 1-2 days |
-| Wine grape | **Vinpro / Winetech** research portal | Conradie's SAJEV papers (canonical in research memo); cultivar-split targets | Partly free via Winetech; SAJEV behind DOI | 2-3 days |
-| Table grape | **SATI** Technical Bulletins | Smaller body than Vinpro; less published | Member portal | 1 day |
-| Blueberry / Strawberry / Raspberry / Blackberry | **SA Berry Producers' Association** | Limited local publishing | Partial | 1 day + IPI/IPNI Tier 3 top-up |
-| Macadamia | **SAMAC Technical Programme** (T1) | Leaf-based feed-forward; Mar-Oct N window | Member portal; partial free via Farmer's Weekly | 1 day |
-| Avocado | **SAAGA "Avocado Growers' Manual"** (T1) | Cultivar-split leaf norms (Hass / Fuerte / Pinkerton / Edranol / Ryan) | Member; some free via SAAGA Yearbook | 1 day |
-| Pecan | SA Pecan Producers' Assoc. (small); ARC-TSC; UGA Extension (Tier 3) | Limited SA data; US pecan research transfers | Mixed | 1-2 days |
-| Banana | ARC-TSC banana production guide (T2) + Subtrop | Soil-K heavy; leaf norms | Some free | 0.5 day |
-| Mango / Guava / Litchi | **Subtrop** + ARC-TSC | Sparse tables; often only removal figures | Member portal | 2 days combined |
-| Olive | SA Olive Growers' Assoc. + UC Davis (Tier 3) | SA publishing is thin; UC Davis transfers well | Member + open access | 1 day |
-| Fig / Pomegranate | ARC-Infruitec, Stellenbosch academic | Very thin | Academic search | 0.5 day (likely document-and-leave gaps) |
+2. **FERTASA 5.4.4 (Maize) is a dead link** in the electronic reader — it just points to an "OLD GUIDELINES" PDF. The authoritative SA maize source is the free **ARC-GCI Maize Information Guide 2017**, which traces to the same Bloem 2002 research FERTASA cites in its abbreviated subset. Seeded via image-OCR (PDF → PNG → tesseract → manual parse). Two cells flagged as possible OCR errors in the migration's source_note.
 
-**Delivery**: migrations 061+ as sources confirm. Expect ~15 crops × fewer cells (perennials are more prose-heavy than table-heavy) + leaf-norm extensions.
+3. **SASRI P and K are threshold-based, not 2-D rate tables** — IS 7.4 and 7.5 prescribe "apply enough to raise soil test to the soil-type-specific target," with the target values living inside the paid FAS lab report. Seeded sugarcane S/Ca/Mg soil thresholds as `crop_sufficiency_overrides`; P/K remain on the heuristic path for that crop.
+
+4. **Image-based OCR works for slide-format PDFs** where `pdftotext` fails (column collapse). Used successfully on ARC-GCI MIG 2017 (232 pages) and SAMAC Schoeman decks. Pipeline: `pdftoppm -r 250 -png` → `tesseract` → combined text.
+
+5. **Copyright-aware data handling** — SASRI Information Sheets carry an explicit no-redistribution notice; numerical thresholds (facts, not expression) are seeded with citations, but the source PDFs are `.gitignore`'d. Same pattern applies to any future Raath 2021 content.
 
 ---
 
-## Phase 3 — Specialty / small crops (as-needed)
+## Remaining paid-reference decision
 
-| Crop | Source | Notes |
+**Only one purchase currently justified**:
+
+- **Raath 2021 "Handbook for Fertilisation of Citrus in SA" — R250.** Citrus is a massive SA export industry with zero usable data in FERTASA (only young-tree per-tree rates, defers to leaf analysis for bearing). The Raath handbook is confirmed to contain leaf norms, soil/leaf/water interpretation, bearing vs non-bearing rates, and deficiency symptoms. One-time purchase, authoritative SA source. Buy.
+
+**Skipped on reconsideration**:
+
+- ~~FERTASA physical handbook (R850)~~ — electronic access makes this redundant.
+- ~~SATI "Fertilisation Guidelines for the Table Grape Industry" (R280)~~ — the user elected to skip both wine grape and table grape work for now.
+
+**Unchanged — do not subscribe**:
+- CRI FertMap / CGA membership / Hortgro Production Guide / Vinpro membership / SAMAC Production Planner. Content either unverified behind the paywall OR duplicates free sources (NZAGA 2008, Schoeman decks, Beyers 1958 Stellenbosch thesis, avocadosource.com mirror).
+
+---
+
+## What's left after today
+
+### Source-limited (needs external data)
+
+| Crop | Status | Next step |
 |---|---|---|
-| Vegetables (tomato, onion, cabbage, carrot, pumpkin, etc.) | FERTASA 5.6.1 (have) + **Starke Ayres variety guides** (T4) + ARC-VOPI (T2) | 041 already has decent research data; validate against Starke Ayres which quantifies weekly fertigation splits |
-| Sweet potato | ARC-VOPI, UKZN research | Thin |
-| Asparagus | FERTASA 5.6.3 (have, seeded in 042) | Done |
-| Rooibos | **SA Rooibos Council** + Stellenbosch research | Legume — `n_pct=0` breaks our schema assumption, flagged in research memos |
-| Coffee / Tea | ARC-TSC; KZN academic | SA-grown but small volumes |
+| **Citrus (all types)** | FERTASA has only per-tree young-tree rates; no 2-D rate tables | Buy Raath 2021 (R250); extract bearing-orchard data |
+| **Apple / pear / stone fruit** | Beyers 1958 Stellenbosch thesis has SA leaf norms (free); Hortgro content mostly postharvest, not nutrition | Extract Beyers 1958 leaf norms manually (no paywall gate; just extraction work) |
+| **Wine + table grape** | Skipped by decision (2026-04-20) | N/A |
+| **Pecan** | FERTASA has per-tree rates only; SA Pecan Producers Assoc. is thin | Low priority; ARC-TSC fallback if demand exists |
+| **Mango / litchi / guava** | No FERTASA; Subtrop publishes only training-level content | FERTASA-only, flagged in programme output |
+| **Berries (blueberry/strawberry/raspberry)** | Strawberry seeded in veg block; others thin | IPI / IPNI Tier-3 overlay if pushed |
+| **Olive** | No SA industry rate tables; UC Davis (Tier 3) transferable | Optional |
+| **Rooibos / coffee / tea** | Niche; rooibos legume schema breaks n_pct=0 convention (already flagged) | Optional |
 
----
+### Schema-limited (data is there; engine/schema needs work)
 
-## Phase 4 — Cross-cutting data (not per-crop)
+These are NOT source problems — the data is in our research folder or already cited. They need engine or schema changes to unblock:
 
-These fill the calculator's structural gaps after per-crop data is in.
-
-### 4a. Soil-type responsiveness (replaces the unsourced adjustment factors)
-
-The 1.5/1.25/1.0/0.5/0.0 multiplier is the single biggest credibility gap. Replace with published responsiveness curves where they exist.
-
-| Nutrient | Best source | Data shape |
-|---|---|---|
-| N | FERTASA 5.4.3.2 (wheat prose: "+10-15% for sandy, −10-15% for clayey"); ARC-ISCW soil-texture classification | `adjustment_factors_by_texture` — (nutrient, classification, texture, factor) |
-| P | FERTASA rate tables implicitly handle this via 2-D lookup; for non-FERTASA crops, use IPNI 4R texture guidance (T3) | Same table |
-| K | FERTASA wheat K table: "no K on soils < 35% clay" is an exemplar rule | Texture filter on rate-table lookup (already supported in schema 046) |
-
-### 4b. Method efficiency multipliers
-
-| Method | Efficiency relative to broadcast | Source |
-|---|---|---|
-| Broadcast | 1.00 (baseline) | Reference |
-| Band-place | 1.3-1.5 (P) | FERTASA 5.4.3; IPNI 4R |
-| Side-dress | 1.2 (N) | IPNI 4R |
-| Fertigation | 1.15-1.25 (N, K) | SASRI FAS; IPI fertigation monographs (Tier 3) |
-| Foliar | Nutrient-specific; typically 5-20% of soil-equivalent for macros, effective-enough for micros | Haifa / Yara bulletins (Tier 4); CRI + SAMAC for perennials |
-
-Schema addition: `method_efficiency` table — (method, nutrient, multiplier, source).
-
-### 4c. Application windows (seeds for the 046 `crop_application_windows` table)
-
-Start with the 10-15 most obvious rules across SA crops:
-
-| Crop | Nutrient | Rule | Source |
-|---|---|---|---|
-| Macadamia | N | Mar-Oct only | SAMAC Technical |
-| Dry bean | N | None at flowering | FERTASA 5.5.2 |
-| Lucerne (established) | N | Zero | FERTASA 5.12.2 |
-| Wheat | N | Split at planting / tillering / flag-leaf (irrigation only) | FERTASA 5.4.3.3.2 |
-| Citrus | N | Avoid immediately pre-flowering (Aug-Sep) | CRI |
-| Avocado | N | Jan-Feb peak (flowering/fruit set) | SAAGA |
-| Wine grape | N | Budbreak to bunch-closure, not after veraison | Conradie SAJEV |
-| Apple | Ca | Pre-harvest foliar sprays for bitter-pit control | Hortgro; Cheng 2013 Cornell |
-| Potato | N | Not after tuber bulking | FERTASA 5.6.2 |
-| Groundnut | Ca | At pegging (gypsum) | Grain SA |
-
-### 4d. Leaf → next-season feed-forward curves
-
-This is the big logic+data hybrid. For each crop with reliable leaf norms (we already have from 043 + FERTASA 5.3), decide:
-- Adjustment shape: additive (`+25% on deficient`) or multiplicative (`×1.25`)?
-- Does low leaf bump the soil-derived target, or replace the sufficiency factor?
-- Time horizon: one season, or decay across 2-3?
-
-Source for the curves:
-- Hortgro (pome fruit — boron, zinc, calcium)
-- CRI (citrus — the FertMap tool is literally this curve)
-- SAMAC (macadamia — boron primarily)
-- SAAGA (avocado)
-- Vinpro (wine grape)
-
-No single source publishes curves as neat tables; we'll likely synthesize from prose and flag the resulting numbers as Tier 6 (agronomist-captured) until industry-body data comes in.
-
-### 4e. N / S form awareness
-
-| Nutrient form | Behaviour | Data to add |
-|---|---|---|
-| Urea | Volatilization risk above 20°C + no rain | Flag on material; warn if broadcast without incorporation |
-| Ammonium | Soil acidification; lower leaching than nitrate | Material flag |
-| Nitrate | High leaching on sandy soils | Material flag |
-| Elemental S | Requires oxidation (weeks-months) | Material flag; reduce effective S availability for short-season crops |
-| Sulphate S | Immediately plant-available | Baseline |
-
-Source: Haifa / Yara technical bulletins (Tier 4) corroborated by IFA / IPNI (Tier 3). Add `n_form`, `s_form` columns to materials.
-
----
-
-## Provenance tracking (apply everywhere)
-
-Every numeric row we seed gets these columns. Retrofit existing data where cheap.
-
-| Column | What it records |
+| Item | Blocker |
 |---|---|
-| `source` | Short label — "FERTASA Handbook", "SASRI FAS 2024", "CRI FertMap" |
-| `source_section` | Handbook section, manual page, DOI, URL |
-| `source_year` | Year the source was published |
-| `source_tier` | 1-6 per the table above |
-| `notes` | Footnotes, caveats, "applies only to cv. Valencia", etc. |
+| Macadamia cultivar-split leaf norms | Schoeman deck's 3-column comparison table had column headers cut in OCR; verify attribution before overwriting FERTASA rows |
+| Macadamia P threshold by clay texture (SAMAC young-tree deck) | `crop_sufficiency_overrides` doesn't split on texture; small schema extension needed |
+| Macadamia B foliar protocol | No foliar_protocol schema for nut crops yet |
+| Tomato 5.6.4 rate tables | Scraper mangled column layout; re-scrape with colspan/rowspan handling OR image-OCR |
+| Groundnut inoculation axis | No `inoculation` column in rate_table schema; currently seed not-inoculated case only |
+| Tobacco air-cured / dark / burley | Removal table gives them different N requirements; no rate-table calibration in FERTASA though. May need `tobacco_variant` column or sub-crop entries |
+| Lucerne K-%-of-CEC alternative table | No `cec_pct_min/max` columns; alternative K table deferred |
+| Lucerne leaf norms by growth stage (EB / B / F) | Complex 5-band × 3-stage × 14-element structure; schema decision needed |
+| Wheat S for Western Cape (FERTASA image 484) | Simple 3-row table; easy seed, just hasn't been done |
 
-The existing `fertilizer_rate_tables` already has the first four under slightly different names. Standardize others (`crop_requirements`, `fertasa_leaf_norms`, `crop_growth_stages`, `adjustment_factors`) to match.
+### Cross-cutting data (Track A residual)
+
+Not per-crop; relevant to many crops:
+
+- **Soil-type responsiveness for the unsourced adjustment factors** — the 1.5/1.25/1.0/0.5/0.0 multipliers are the single biggest remaining credibility gap. Replace with texture-varying factors derived from FERTASA prose (e.g. wheat 5.4.3.2: "+10-15% for sandy, −10-15% for clayey"). Schema extension to `adjustment_factors` needed.
+- **Method efficiency multipliers** — band vs broadcast vs fertigation vs foliar efficiency factors. Data exists in FERTASA / IPNI 4R prose; schema extension needed.
+- **Application windows seed** — schema already exists (migration 046 `crop_application_windows`); ~15 concrete rules ready to seed (SAMAC Mar-Oct N, dry bean no N at flowering, wheat N split windows, etc.).
+- **Leaf → next-season feed-forward curves** — biggest logic+data hybrid. Design decision needed first (additive vs multiplicative) before sourcing makes sense.
 
 ---
 
-## Recommended execution order
+## Recommended order from here
 
-1. **This weekend** — Phase 0 (pure transposition, already scraped).
-2. **Next week** — Phase 1 field crops. SASRI sugarcane first (highest revenue × tier-1 source × well-structured tables).
-3. **Weeks 2-3** — Phase 2 perennials. CRI + Hortgro in parallel (subscription admin blocks nothing else); SAMAC/SAAGA concurrent.
-4. **Week 3-4** — Phase 4a (soil-type responsiveness) — unblocks *every* non-FERTASA crop by replacing the unsourced factor.
-5. **Week 4+** — Phase 4b-e in parallel tracks as Tier-1 sources arrive.
-6. **Ongoing** — Phase 3 specialty crops whenever a relevant user request arrives.
-
-**Pragmatic guardrail**: don't start Phase 2 perennials without at least one Tier-1 subscription (CRI or Hortgro). Trying to assemble perennial data from academic papers alone will burn time and still leave an auditor asking "why didn't you use the industry body?"
+1. **Buy Raath 2021 (R250).** Only paid item worth pursuing. Unlocks the biggest single untouched commercial crop (citrus).
+2. **Deciduous fruit leaf norms from Beyers 1958.** Free Stellenbosch thesis, zero gate, SA-specific data for apple/pear/peach/apricot/plum. Extraction work only.
+3. **Cross-cutting data ahead of new crops.** Soil-type responsiveness + method efficiency + application windows enforcement unlocks every crop at once, rather than adding the 5th banana decimal place. This is where the credibility-per-hour ratio is highest going forward.
+4. **Schema-limited items** in the table above, prioritised by how often the gap surfaces in real programmes.
+5. **Specialty / perennial long tail** as demand warrants — not blocking anyone now.
 
 ---
 
 ## What not to do
 
-- Don't synthesize a "SA-wide" number when regional tables exist. If FERTASA publishes Western Cape and Free State separately, seed both with region filters.
-- Don't backfill a Tier-3 international number into a Tier-1 slot when the SA-specific source is just behind a paywall. Either pay for it or mark the crop as "partial coverage".
-- Don't let commercial Tier-4 bulletins drive the primary recommendation — use for corroboration only.
-- Don't mix researched-heuristic values into the same table as FERTASA-direct without a `source_tier` column to distinguish them.
+- Don't synthesize a "SA-wide" number when regional tables exist. If FERTASA publishes Western Cape and Free State separately, seed both with region filters. (Applied today for wheat, not yet for potato.)
+- Don't backfill a Tier-3 international number into a Tier-1 slot when the SA-specific source is just behind a paywall. The Raath handbook is worth R250; anything Tier-3 should stay labeled as Tier-3.
+- Don't let commercial Tier-4 bulletins drive the primary recommendation — corroboration only.
+- Don't mix researched-heuristic values into the same table as FERTASA-direct without a source-tier distinction in the row. Currently every seeded rate-table row carries full provenance; keep that discipline.
