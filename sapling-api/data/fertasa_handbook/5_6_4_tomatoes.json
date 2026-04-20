@@ -1,0 +1,232 @@
+{
+  "section": "5.6.4",
+  "module_id": 358,
+  "title": "Tomatoes",
+  "slug": "tomatoes",
+  "prose": "A high level of soil fertility is regarded as essential for successful tomato production. Both quantity and quality of tomato fruits are important and are largely determined by the nutrient status of the soil and the fertilizer programme. Sufficient potassium fertilization on K-deficient soils will promote fruit solidity. Over-application of K on soils with high K-reserves can, however, induce deficiencies of magnesium and calcium. Cultivar differences may result in large differences in yield and, therefore, also plant nutrient requirements. NUTRIENT REMOVAL Authors have different opinions regarding the quantity of the nutrients which tomatoes remove from the soil. It is generally accepted that 1 ton of tomato fruits will remove 2 to 4 kg N, 0.5 to 1.0 kg P and 3 to 5 kg K. The total amount of nutrients removed by the whole plant for a tomato crop of 1 ton is approximately 5 to 6 kg N, 2 to 3 kg P and 7 to 8 kg K. SOIL REQUIREMENTS The \"ideal\" soil analysis should fall within the ranges given in Table 5.6.4.1 Table 5.6.4.1. Soil analysis for tomato production FERTILIZATION Nitrogen (N) The ratio of nitrate:ammonium nitrogen application is important. If the ammonium component is too high, the uptake of potassium, calcium and magnesium is suppressed. Growth will be retarded, with a resultant loss in yield. The N-application should be in a ratio of 60 NO 3 N:40 NH 4 - N. In practice, however, this ratio can vary between 50:50 and 65:35 NO 3 :NH 4 - N. Phosphorus (P) Phosphorus is very important for the early growth and development of plants. The aim is to raise soil-P levels to approximately 60 mg kg -1 , after which maintenance applications should suffice. Potassium (K) Potassium is vitally important for the yield and quality of tomatoes. The N:K ratio is also extremely important. Calcium and magnesium (Ca and Mg) Since a high level of potassium fertilization is maintained in tomato production, the uptake of calcium and magnesium may be suppressed. This can be overcome by calcium and magnesium nitrate supplementations. FERTILIZER PROGRAMME A basic fertilizer programme, based on the above, is set out in Table 5.6.4.2. The recommendations are of a general nature. For site-specific recommendations, an expert should be consulted. Table 5.6.4.2. A basic fertilizer programme Changes to this basic programme can be made according to soil analyses and cation ratios (Table 5.6.4.3). Assuming a soil analysis of 40 mg kg -1 P, Ca 70%, and K more than 5% of exchangeable cations (on an equivalent basis), and a pH of 7.2, then it can be calculated from Table 5.6.4.3 that 200 N, 100 P and 275 K, all in kg ha -1 , are required. Table 5.6.4.3. Factors to consider when estimating N-, P-, and Ca- fertilizer requirements * Element values in cmol c kg -1 A fertilizer programme can then be compiled as set out in Table 5.6.4.4. The same quantities of N, P and K can also be obtained with other products, including organically enriched mixtures. The potassium nitrate, LAN (28), and ammonium sulphate – or any other suitable potassium or nitrogen carrier – are applied as topdressings. Table 5.6.4.5. covers a basic schedule to supply these plant nutrients during the growing season. Calcium and magnesium nitrate are applied as foliar sprays. The schedule in Table 5.6.4.5. covers a basic fertilizer programme up to week 9. From week 10 – 18 the balance of the remaining N and K (approximately 30 – 35% of the total requirement) is applied in weekly or fortnightly instalments up until week 18, or according to the length of the growing season. Computer scheduling of products and application dates can refine the process. Table 5.6.4.4. Example of a basic fertilizer programme * Use alternately to maintain the correct NO 3 - : NH 4 + ratio. For higher yields, such as market tomatoes for example, the relevant N-, P- and K-applications are increased to the required levels. Additions and subtractions can be incorporated according to soil analyses and practical experience. Table 5.6.4.5. Fertilizer schedule ACKNOWLEDGEMENT The input of Mr. Schalk Grobbelaar in revising this chapter is gratefully acknowledged.",
+  "tables": [
+    [
+      [
+        "pH (H 2 0)",
+        "5.6 - 6.8"
+      ],
+      [
+        "Phosphorus",
+        "30 - 60 mg kg -1 (Bray 1)"
+      ],
+      [
+        "Potassium",
+        "100 - 250 mg kg -1"
+      ],
+      [
+        "Calcium",
+        "300 - 2000 mg kg -1"
+      ],
+      [
+        "Magnesium",
+        "120 - 300 mg kg -1"
+      ],
+      [
+        "Sodium",
+        "10 - 50 mg kg -1"
+      ]
+    ],
+    [
+      [
+        "Yield target",
+        "N",
+        "p",
+        "K"
+      ],
+      [
+        "t ha -1",
+        "kg ha -1"
+      ],
+      [
+        "70 100",
+        "200 290",
+        "60 - 125 75 - 150",
+        "275 - 325 400 - 435"
+      ]
+    ],
+    [
+      [
+        "P-ANALYSIS",
+        "P NEEDED FOR 70 t ha -1"
+      ],
+      [
+        "mg kg -1 (Bray 1)",
+        "kg ha -1"
+      ],
+      [
+        "> 50 30 - 50 20 - 30",
+        "60 100 125"
+      ],
+      [
+        "POTASSIUM K • 100 Ca+Mg+K",
+        "K",
+        "• 100",
+        "Ca+Mg+K",
+        "N:K APPLICATION RATIO"
+      ],
+      [
+        "K",
+        "• 100"
+      ],
+      [
+        "Ca+Mg+K"
+      ],
+      [
+        "> 5",
+        "N:K 1:1.4"
+      ],
+      [
+        "< 5",
+        "N:K 1:1.6"
+      ],
+      [
+        "CALCIUM Ca • 100* Ca+Mg+K",
+        "Ca",
+        "• 100*",
+        "Ca+Mg+K",
+        "CHOICE OF Ca- AND P-SOURCES"
+      ],
+      [
+        "Ca",
+        "• 100*"
+      ],
+      [
+        "Ca+Mg+K"
+      ]
+    ],
+    [
+      [
+        "K",
+        "• 100"
+      ],
+      [
+        "Ca+Mg+K"
+      ]
+    ],
+    [
+      [
+        "Ca",
+        "• 100*"
+      ],
+      [
+        "Ca+Mg+K"
+      ]
+    ],
+    [
+      [
+        "",
+        "N",
+        "P",
+        "K"
+      ],
+      [
+        "kg ha -1"
+      ],
+      [
+        "1 000 kg 2:3:4 (30) + Zn 360 kg Potassium nitrate 180 kg Ammonium sulphate (21)* 150 kg LAN (28)*",
+        "67.0 49.4 80.0",
+        "100",
+        "133.0 144.4"
+      ],
+      [
+        "",
+        "196.4",
+        "100",
+        "277.4"
+      ]
+    ],
+    [
+      [
+        "Product in kg ha -1"
+      ],
+      [
+        "Week",
+        "Potassium nitrate",
+        "Ammonium sulphate",
+        "LAN (28)",
+        "Calcium nitrate",
+        "Magnesium nitrate"
+      ],
+      [
+        "2",
+        "",
+        "",
+        "25",
+        "",
+        "5"
+      ],
+      [
+        "3",
+        "65",
+        "",
+        "",
+        "",
+        "5"
+      ],
+      [
+        "4",
+        "",
+        "100",
+        "",
+        "",
+        "5"
+      ],
+      [
+        "5",
+        "100",
+        "",
+        "",
+        "5",
+        ""
+      ],
+      [
+        "6",
+        "",
+        "80",
+        "50",
+        "5",
+        ""
+      ],
+      [
+        "7",
+        "135",
+        "",
+        "",
+        "5",
+        ""
+      ],
+      [
+        "8",
+        "",
+        "",
+        "75",
+        "5",
+        ""
+      ],
+      [
+        "9",
+        "80",
+        "",
+        "",
+        "",
+        "5"
+      ],
+      [
+        "Total",
+        "380",
+        "180",
+        "150",
+        "20",
+        "20"
+      ]
+    ]
+  ],
+  "image_tables": [],
+  "cross_ref": null,
+  "source_url": "https://www.fertasastats.co.za/pages/fh_bh_reader.php?moduleID=358"
+}

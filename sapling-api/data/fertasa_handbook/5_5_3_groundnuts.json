@@ -1,0 +1,104 @@
+{
+  "section": "5.5.3",
+  "module_id": 350,
+  "title": "Groundnuts",
+  "slug": "groundnuts",
+  "prose": "SOIL REQUIREMENTS In South Africa, groundnuts are grown on soils which vary from sandy loam to sandy. These soils are usually well drained but have the disadvantage that they do not have a good water-retention or storage capacity. However, they have a low physical resistance and therefore roots and pegs (gynaphores) penetrate the soil very easily, and the pods can grow and develop normally, provided there are no compaction layers. Light soils also facilitate easy lifting of the pods at harvest. To produce good yields, groundnuts, as with any other crop, require soils with a high plant nutrient status. A sound fertilizer programme for groundnuts depends on sound farming practices, which include regular and timely soil sampling. Plant nutrients should preferably be applied to the previous crop in a rotation system. If necessary, soil samples can be taken prior to planting to establish the nutrient status of the soil and to determine the necessity for direct fertilization. Soil acidity Root development of groundnuts is not unduly retarded by low pH, but acidity does have a detrimental effect on the development of root nodules essential for nitrogen fixation. Even in this respect, groundnuts are more tolerant than other legumes. When the acidity becomes too high it can affect the uptake or availability of certain nutrients, i.e. phosphorus. The ideal pH is around 6.0 (H 2 O) or 5.0 (KCl). NUTRIENT REMOVAL Table 5.5.3.1. Nutrients removed from the soil by 1 metric ton of unshelled groundnuts and 2 metric tons of hay MACRO-ELEMENTS Nitrogen (N) Under favourable conditions, the groundnut plant is self-sufficient regarding nitrogen, which it produces via Rhizobium bacteria found on the root nodules. However, during the seedling stage the plant relies on nitrogen readily available in the soil. This soil-N originates from fertilizer applied to the preceding crop, or should be applied at planting. On very sandy soils and especially after good rains, it is unlikely that sufficient nitrogen will be available from the preceding crop. In such cases, 10 to 15 kg N ha -1 should be applied to cater for the needs of the young plants. On very sandy soils under irrigation, nitrogen requirements have been found to be higher. In these cases, up to 25 kg N ha -1 can be applied at an early stage. Excessive N-applications hamper root nodule development.Usually sufficient Rhizobium bacteria are available in the soil, and this means that a favourable reaction from applied-N is normally the exception rather than the rule. Different Rhizobium strains are available for plants, and these differ in their capacity to fix nitrogen and make it available to the plant. One strain of Rhizobia may also suppress the development of another strain. Effective strains differ from non-effective strains in respect of the position of the nodules on the roots and the appearance of the nodules. Effective Rhizobium strains form nodules on the middle and upper root portions. These nodules are relatively large, and have a dark red colour when broken open. Conversely, nodules with ineffective Rhizobium strains are spread over the entire root, are smaller, and pinkish to colourless when opened. Farmers should inspect groundnuts regularly to ensure that sufficient and effective root nodules are being produced. If the majority of root nodules are found to be ineffective, supplementary nitrogen fertilizer will be necessary. Table 5.5.3.2. Guideline for N-fertilization of groundnuts Phosphorus (P) For practical reasons, groundnuts should preferably not be grown on soils with a P-status lower than 10 Bray 1. Applications of 10 to 20 kg P ha -1 should be made on soils with a low P-status. Preferably, grow groundnuts in rotation with other crops, and apply P-fertilizer to the preceding crop. Over-fertilization of phosphates can cause deficiencies of certain trace elements. Additional P- applications are uneconomical if soil-P levels are sufficient. Potassium (K) In South Africa, potassium deficiencies very seldom occur where groundnuts are grown, as most of our soils provide sufficient potassium. In addition, groundnuts usually form part of a crop rotation programme, where the preceding crops are fertilized with K. High direct applications of K, especially on soils with low calcium and magnesium levels, can lead to crop losses owing to a high percentage of pods not filling. For this reason the safest policy would be to fertilize the preceding crop and not to apply K directly to groundnuts. Calcium (Ca) Certain forms of calcium not only serve to rectify soil-pH, but are also applied for their nutritive value. Ca should be available in the root zone to provide for uptake by roots, pegs and pods. This applies in particular to the pod zone, since they require more calcium than the roots. When both pH and the Ca are low (Ca lower than 100 mg kg -1 ), this can be rectified by liming. Where only the calcium status is low, agricultural gypsum can be used. Additional applications of gypsum can increase yields on soils with low Ca. Under such conditions, the ideal rate is 200 to 300 kg ha -1 gypsum. Spanish type groundnuts have a much lower Ca requirement than other types. Under the same conditions, more empty pods were found where producers planted Robin compared to Natal Common, Sellie and other Spanish types. If the pH and Ca are rectified in good time, especially on soils with a high cation exchange capacity (CEC), Ca nutrition should not be a problem. Groundnuts are, however, seldom grown on these soils because of the high clay content associated with a high CEC. Magnesium (Mg) Magnesium has very seldom been found to be deficient in groundnuts, even though it is a macro-nutrient. This is true even for soils with very low Mg-levels. If the Mg is very low (< 30 to 40 mg kg -1 ) and the pH is also low, it is nevertheless advisable to supplement Mg with dolomitic lime. Sulphur (S) Sandy soils are invariably low in sulphur. This is, however, compensated for in that fertilizer compounds used for groundnuts contain either single super- phosphate or single ammoniated superphosphate, which both contain sufficient sulphur to prevent deficiencies. Where gypsum (CaSO 4 .X H 2 O) is applied (see Ca above), more than sufficient sulphur will be available to the crop. MICRO-ELEMENTS Micro-element deficiencies hardly ever occur in groundnuts, although molybdenum deficiencies can occur in very acid soils. If the pH is very high, deficiencies of zinc, iron, copper, boron and manganese may arise. Molybdenum (Mo) If the soil-pH is below 5.0 (KCl), it is advisable to treat the seed with sodium molybdate at 100 g ha -1 . Boron (B) Boron deficiencies have been identified in sandy soils in the high rainfall eastern regions, and in soils originating from Waterberg sandstone. Boron should be applied under such conditions (e.g. northern KwaZulu-Natal, North West and Limpopo provinces). Water-soluble boron compounds can be applied as a broadcast spray together with pre-plant herbicides at 1 kg B ha -1 . The alternative is to use a 1% B-containing fertilizer mixture at 100 kg ha -1 band- placed away from the seed.",
+  "tables": [
+    [
+      [
+        "Part of plant",
+        "Yield",
+        "N",
+        "P",
+        "K",
+        "Ca",
+        "Mg",
+        "s"
+      ],
+      [
+        "",
+        "kg",
+        "kg"
+      ],
+      [
+        "Hay",
+        "2 000",
+        "40",
+        "2.00",
+        "34",
+        "20",
+        "7.00",
+        ""
+      ],
+      [
+        "Nuts",
+        "640",
+        "28",
+        "3.00",
+        "5",
+        "0.4",
+        "1.20",
+        "10"
+      ],
+      [
+        "Pods",
+        "360",
+        "2",
+        "0.15",
+        "4",
+        "1",
+        "0.35",
+        ""
+      ],
+      [
+        "Total",
+        "3 000",
+        "70",
+        "5.15",
+        "43",
+        "21.4",
+        "8.55",
+        "10"
+      ],
+      [
+        "Other sources",
+        "80",
+        "8.00",
+        "65",
+        "",
+        "",
+        ""
+      ]
+    ],
+    [
+      [
+        "",
+        "N-application for yields (t ha -1 ):"
+      ],
+      [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+      ],
+      [
+        "Inoculated Not inoculated",
+        "kg N ha -1"
+      ],
+      [
+        "0 10",
+        "10 20",
+        "20 30",
+        "30 40",
+        "40 50",
+        "50 60"
+      ]
+    ]
+  ],
+  "image_tables": [],
+  "cross_ref": null,
+  "source_url": "https://www.fertasastats.co.za/pages/fh_bh_reader.php?moduleID=350"
+}

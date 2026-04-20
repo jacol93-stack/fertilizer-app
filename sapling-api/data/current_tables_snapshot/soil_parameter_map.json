@@ -1,0 +1,74 @@
+[
+  {
+    "id": "d14df39b-62ce-4116-8e17-d864c059b623",
+    "crop_nutrient": "N",
+    "soil_parameter": "N (total)",
+    "notes": "Total soil N or mineral N (NH4+NO3)"
+  },
+  {
+    "id": "4adcd06a-c742-4ad8-b709-d3f791bbf60d",
+    "crop_nutrient": "P",
+    "soil_parameter": "P (Bray-1)",
+    "notes": "Change to P (Citric acid) if that method is used"
+  },
+  {
+    "id": "95da58b5-ce4f-48ea-8ee8-97164a223114",
+    "crop_nutrient": "K",
+    "soil_parameter": "K",
+    "notes": "Exchangeable K"
+  },
+  {
+    "id": "1e232f93-0a2e-4410-9253-cb714a0c9d2c",
+    "crop_nutrient": "Ca",
+    "soil_parameter": "Ca",
+    "notes": "Exchangeable Ca"
+  },
+  {
+    "id": "5c0545e9-d84b-4edb-9821-7e5df1f37773",
+    "crop_nutrient": "Mg",
+    "soil_parameter": "Mg",
+    "notes": "Exchangeable Mg"
+  },
+  {
+    "id": "de68156b-c59a-44b9-8298-a934bc9690a1",
+    "crop_nutrient": "S",
+    "soil_parameter": "S",
+    "notes": "Sulphate-S"
+  },
+  {
+    "id": "9bec285f-129d-40b7-8e95-c3bf37df288c",
+    "crop_nutrient": "Fe",
+    "soil_parameter": "Fe",
+    "notes": "DTPA extractable Fe"
+  },
+  {
+    "id": "5d721181-5601-428b-b78b-13869b4a99df",
+    "crop_nutrient": "B",
+    "soil_parameter": "B",
+    "notes": "Hot water extractable B"
+  },
+  {
+    "id": "236de295-a013-466f-9a7e-6de889baab4c",
+    "crop_nutrient": "Mn",
+    "soil_parameter": "Mn",
+    "notes": "DTPA extractable Mn"
+  },
+  {
+    "id": "c4f88822-208e-486b-ad46-30ad03a645a8",
+    "crop_nutrient": "Zn",
+    "soil_parameter": "Zn",
+    "notes": "DTPA extractable Zn"
+  },
+  {
+    "id": "32699703-c3c4-48ee-bfe2-4f425c7e81d2",
+    "crop_nutrient": "Mo",
+    "soil_parameter": "Mo",
+    "notes": "Ammonium oxalate extractable Mo"
+  },
+  {
+    "id": "02f4f0e9-5dd2-430e-b818-e74fb4211e4a",
+    "crop_nutrient": "Cu",
+    "soil_parameter": "Cu",
+    "notes": "DTPA extractable Cu"
+  }
+]

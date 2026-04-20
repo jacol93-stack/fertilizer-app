@@ -1,0 +1,308 @@
+{
+  "section": "5.6.1",
+  "module_id": 355,
+  "title": "General vegetable crops",
+  "slug": "general_vegetables",
+  "prose": "There are approximately 30 different vegetables, and very little definite information is available on fertilization of some of the lesser-known types. The following general guidelines can be followed, but these guidelines must be adapted for each crop according to soil analysis and type of farming practice. FERTILIZER GUIDELINES Fertilizer guidelines are given for 16 vegetable types. Leaf analysis can also be used to assist in making recommendations for fertilization. There are critical values that are currently being used for many vegetables in interpreting leaf analysis results. Leaf analyses are expected to be used to a greater extent in future as an aid in making fertilizer recommendations. At present, numerous new cultivars are being developed, and it should be noted that the nutrition requirements of cultivars might differ greatly. For example, new cabbage cultivars are developed where no nitrogen is applied after six weeks because the heads could burst. The following fertilizer guidelines are in general use. Nitrogen (N) Table 5.6.1.1. Guidelines for N-fertilization (Tomatoes, potatoes and sweetcorn are dealt with in separate chapters.) Phosphorus (P) Table 5.6.1.2. Guidelines for P-fertilization Potassium (K) Table 5.6.1.3. Guidelines for K-fertilization These guidelines are for average yields. If the yields attained are generally much higher, these guidelines should be increased accordingly. However, fertilization alone will not always guarantee high yields. Factors such as soil type, management, rainfall (or irrigation) and weed control often have a greater positive effect on yield than fertilization on its own. Â ACKNOWLEDGEMENT The input of Mr. Schalk Grobbelaar in revising this chapter is gratefully acknowledged.",
+  "tables": [
+    [
+      [
+        "Crop",
+        "N-application"
+      ],
+      [
+        "Â",
+        "kg ha -1"
+      ],
+      [
+        "Beetroot",
+        "100 - 140"
+      ],
+      [
+        "Brinjal",
+        "120 - 140"
+      ],
+      [
+        "Cabbage crops",
+        "160 - 260"
+      ],
+      [
+        "Carrot",
+        "70 - 120"
+      ],
+      [
+        "Chillies",
+        "100 - 120"
+      ],
+      [
+        "Garlic",
+        "120 - 160"
+      ],
+      [
+        "Gem squash",
+        "120 - 150"
+      ],
+      [
+        "Green beans",
+        "100 - 160"
+      ],
+      [
+        "Green peas",
+        "20 - 45"
+      ],
+      [
+        "Lettuce",
+        "100 - 160"
+      ],
+      [
+        "Onion",
+        "150 - 180"
+      ],
+      [
+        "Pumpkin crops",
+        "80 - 120"
+      ],
+      [
+        "Red/green peppers",
+        "180 - 220"
+      ],
+      [
+        "Strawberry",
+        "150 - 200"
+      ],
+      [
+        "Sweet melon",
+        "120 - 160"
+      ],
+      [
+        "Sweet potato",
+        "80 - 120"
+      ]
+    ],
+    [
+      [
+        "Crop",
+        "P-application at soil-P (mg kg -1 , Bray 1)"
+      ],
+      [
+        "0 - 20",
+        "21 - 50",
+        "> 50"
+      ],
+      [
+        "Â",
+        "kg ha -1"
+      ],
+      [
+        "Beetroot",
+        "100",
+        "70",
+        "50"
+      ],
+      [
+        "Brinjal",
+        "90",
+        "70",
+        "40"
+      ],
+      [
+        "Cabbage crops",
+        "100",
+        "70",
+        "40"
+      ],
+      [
+        "Carrot",
+        "80",
+        "60",
+        "40"
+      ],
+      [
+        "Chillies",
+        "80",
+        "50",
+        "30"
+      ],
+      [
+        "Garlic",
+        "100",
+        "80",
+        "50"
+      ],
+      [
+        "Gem squash",
+        "120",
+        "90",
+        "60"
+      ],
+      [
+        "Green beans",
+        "70",
+        "50",
+        "30"
+      ],
+      [
+        "Green peas",
+        "70",
+        "50",
+        "20"
+      ],
+      [
+        "Lettuce",
+        "100",
+        "60",
+        "40"
+      ],
+      [
+        "Onion",
+        "120",
+        "90",
+        "60"
+      ],
+      [
+        "Pumpkin crops",
+        "90",
+        "70",
+        "40"
+      ],
+      [
+        "Red/green peppers",
+        "90",
+        "70",
+        "40"
+      ],
+      [
+        "Strawberry",
+        "120",
+        "80",
+        "50"
+      ],
+      [
+        "Sweet melon",
+        "120",
+        "90",
+        "60"
+      ],
+      [
+        "Sweet potato",
+        "80",
+        "60",
+        "40"
+      ]
+    ],
+    [
+      [
+        "Â Crop",
+        "K-application at soil-K (mg kg -1 , NH 4 0Ac)"
+      ],
+      [
+        "< 80",
+        "81 - 150",
+        ">150"
+      ],
+      [
+        "Â",
+        "kg ha -1"
+      ],
+      [
+        "Beetroot",
+        "120",
+        "80",
+        "40"
+      ],
+      [
+        "Brinjal",
+        "120",
+        "80",
+        "40"
+      ],
+      [
+        "Cabbage crops",
+        "160",
+        "120",
+        "60"
+      ],
+      [
+        "Carrot",
+        "100",
+        "80",
+        "60"
+      ],
+      [
+        "Chillies",
+        "80",
+        "60",
+        "40"
+      ],
+      [
+        "Garlic",
+        "110",
+        "70",
+        "40"
+      ],
+      [
+        "Gem squash",
+        "100",
+        "80",
+        "50"
+      ],
+      [
+        "Green beans",
+        "90",
+        "60",
+        "30"
+      ],
+      [
+        "Green peas",
+        "70",
+        "50",
+        "20"
+      ],
+      [
+        "Lettuce",
+        "120",
+        "80",
+        "40"
+      ],
+      [
+        "Onion",
+        "140",
+        "80",
+        "40"
+      ],
+      [
+        "Pumpkin crops",
+        "80",
+        "60",
+        "30"
+      ],
+      [
+        "Red/green peppers",
+        "160",
+        "120",
+        "60"
+      ],
+      [
+        "Strawberry",
+        "150",
+        "100",
+        "50"
+      ],
+      [
+        "Sweet melon",
+        "100",
+        "80",
+        "50"
+      ],
+      [
+        "Sweet potato",
+        "80",
+        "50",
+        "30"
+      ]
+    ]
+  ],
+  "image_tables": [],
+  "cross_ref": null,
+  "source_url": "https://www.fertasastats.co.za/pages/fh_bh_reader.php?moduleID=355"
+}

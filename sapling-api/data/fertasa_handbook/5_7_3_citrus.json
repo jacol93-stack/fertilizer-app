@@ -1,0 +1,124 @@
+{
+  "section": "5.7.3",
+  "module_id": 362,
+  "title": "Citrus",
+  "slug": "citrus",
+  "prose": "Citrus is grown successfully on a wide variety of soil types in Southern Africa. These soils provide some of the nutrients required by the citrus tree. Since maximum yield is of lesser importance in citrus production, fertilization plays an important role in optimum production. Fertilization also influences certain quality factors such as fruit size, skin thickness, skin texture, and to a lesser extent the juice, acid and solids content of citrus. A fertilizer programme for citrus is required only to supply the nutrients necessary to maintain or advance optimum production. Apart from the fact that the fertilizer programme for citrus changes continually, the marketing qualities of fresh citrus also change. Sometimes it may even be necessary to force trees into an unnatural production pattern to cater for consumer preferences. Adapting the fertilizer programme then becomes very important. The fertilization of citrus is not a short-term programme. It begins in the nursery to ensure the earliest optimum economic production phase and continues to sustain the citrus tree during a total productive life of 20 to 50 years. It can take from three to six years for a transplanted tree to produce its first commercial crop. Imbalances in nutrition manifest themselves very slowly whilst trees can also react slowly to certain fertilizers. This emphasises the necessity to start with a well- balanced nutritional programme and to continually monitor and adjust this programme as deemed necessary. PRE-PLANT Planting must be preceded by a thorough assessment of the proposed site, including comprehensive soil analyses to be determine its suitability for citrus cultivation. Apart from laboratory analyses, other aspects, including soil depth, drainage and limiting soil layers must also be studied in situ as these are important in determining the best-suited rootstock. If necessary, lime should be applied by broadcasting, while P-fertilizer is either mixed into the planting hole or applied in 3 m wide strips into which the trees are then transplanted. YOUNG NON-BEARING TREES Correct fertilization will ensure young trees come into production as soon as possible after planting, thereby limiting waiting-time before the first harvest. Consider the following aspects: A soil analysis is the basis which determines the type and quantity of fertilizer to be used from prior to planting until the first crop is harvested. The first fertilization after planting is given when the first shoots appear, approximately six weeks after establishment. All fertilizers are broadcast over an area from the base of the trunk (not against the trunk) to within 25 to 50 cm outside the leaf canopy. This fertilizer is not incorporated into the soil. The soil is watered to a depth of 300 to 450 mm directly after fertilization. Nitrogen (N) Five to six equal portions of nitrogen are applied during August to February (Table 5.7.3.1). Table 5.7.3.1. Guideline for N-application for a non-bearing citrus tree (g LAN tree -1 ) The nitrogen can be applied as LAN, urea or ammonium sulphate. Phosphorus (P) Phosphorus is applied as a single dressing between August and February. Annual applications should be given as set out in Table 5.7.3.2. Table 5.7.3.2. Guideline for P-application for a non-bearing citrus tree Potassium (K) Two or three applications of potassium salts are made between August and February. Potassium and nitrogen carriers must not be applied simultaneously but should be separated by at least two irrigations. In the first year apply 100 g K per tree, in the second 150 g, the third 200 g and the fourth 300 g. Either potassium chloride or potassium sulphate may be applied. Foliar feeding Two to four foliar applications can be made between August and February. All solutions must contain nitrogen, zinc and copper. Manganese and boron can also be included, depending on soil conditions. (Table 5.7.3.3.) Table 5.7.3.3. Composition of a foliar solution for young non-bearing citrus trees Note: Copper oxychloride must not be mixed with zinc nitrate or magnesium nitrate. Thorough wetting of the leaves, especially the undersides, must be ensured. Spraying should be limited to the cooler parts of the day (early in the morning or late in the afternoon). TREES IN PRODUCTION Fertilizer recommendations for citrus trees in production are based on soil and leaf analyses. Leaf samples should be analysed annually, and soil samples every 2 to 3 years. Leaf analysis It is recommended that leaf samples be taken from March to May when trees start coming into commercial production, usually 4 to 5 years after establishment. Leaf analysis remains the most reliable method of determining the nutrient requirements of citrus trees. The specific requirements for each orchard are determined by this method. The tree therefore serves as an indicator of its own requirements. Leaf analysis has little value without the necessary supporting information. It cannot be used to identify problems unrelated to nutrition such as poor irrigation, soil compaction, nematode infestation, etc. A leaf analysis is only of value if fertilizer is applied correctly, because the success of the analysis is based on changes or adjustments of the previous season's fertilizer applications. Therefore, if the applications were not done correctly, the whole exercise becomes worthless. A well-planned leaf analysis schedule will indicate the type (even the carriers) and quantity of fertilizer required to sustain or improve optimum production. Time of fertilizer applications Tables 5.7.3.4 and 5.7.3.5 serve as a general timetable for fertilization. However, it must be emphasised that certain circumstances may necessitate deviations from the proposed timetable. Soil application Table 5.7.3.4. Timetable for soil application of specific nutrients Comments: Never apply nitrogen and potassium salts simultaneously as this causes temporary salinity. Applications should be interspersed with at least two irrigations. Superphosphate can be applied with potassium or nitrogen fertilizers. Kraal manure should be of good quality and well-composted. Foliar application Table 5.7.3.5. Timetable for foliar feeding of citrus trees Comments: All the spring applications can be combined. Do not mix potassium nitrate with any other product. Wet all the leaves. Spray during cool weather. Fertigation The quantity and accuracy of application can be improved by using fertigation. It is important not to make the application rates too small (maximum 6 times) as this may limit uptake. Use only readily-soluble or liquid fertilizer products. Fertilizer applications should be made near the end of the irrigation cycle, after which the system should be run with water only for at least 30 minutes. RECORDS Future fertilization partly depends on the history of the orchard (previous fertilization, yield, and soil and leaf analyses). For this reason, accurate and separate records should be kept of all treatments for every orchard, and also of the response to these treatments. The more comprehensive the record-keeping, the better the recommendations will be.",
+  "tables": [
+    [
+      [
+        "N-application for trees at age (years):"
+      ],
+      [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      [
+        "g tree -1"
+      ],
+      [
+        "150",
+        "300",
+        "600",
+        "1 000"
+      ]
+    ],
+    [
+      [
+        "Year",
+        "Superphosphate g tree -1"
+      ],
+      [
+        "1",
+        "200"
+      ],
+      [
+        "2",
+        "400"
+      ],
+      [
+        "3",
+        "600"
+      ],
+      [
+        "4",
+        "800"
+      ]
+    ],
+    [
+      [
+        "Type of fertilizer",
+        "Concentration g per 100 litre water"
+      ],
+      [
+        "Urea (low biuret)",
+        "1 000"
+      ],
+      [
+        "Zinc oxide",
+        "200"
+      ],
+      [
+        "Copper oxychloride",
+        "200"
+      ],
+      [
+        "Manganese sulphate",
+        "200"
+      ],
+      [
+        "Sodium tetraborate",
+        "100"
+      ]
+    ],
+    [
+      [
+        "Nutrient",
+        "Time"
+      ],
+      [
+        "Nitrogen Phosphorus Potassium Lime Magnesium Organic matter Borate",
+        "July to November Any time of the year August/September/October After the last nitrogen application (any time of the year) As for lime As for lime During spring"
+      ]
+    ],
+    [
+      [
+        "Component",
+        "Time"
+      ],
+      [
+        "Urea (low biuret)",
+        "Spring, unless otherwise recommended"
+      ],
+      [
+        "Potassium nitrate",
+        "November to January (or as recommended)"
+      ],
+      [
+        "Magnesium nitrate",
+        "Spring"
+      ],
+      [
+        "Boron",
+        "Spring"
+      ],
+      [
+        "Zinc oxide",
+        "Spring"
+      ],
+      [
+        "Manganese sulphate",
+        "Spring"
+      ],
+      [
+        "Copper oxychloride",
+        "Before flowering"
+      ]
+    ]
+  ],
+  "image_tables": [],
+  "cross_ref": null,
+  "source_url": "https://www.fertasastats.co.za/pages/fh_bh_reader.php?moduleID=362"
+}

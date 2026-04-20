@@ -1,0 +1,132 @@
+[
+  {
+    "id": "9e121aa2-02c0-437d-a976-22820c316a66",
+    "created_at": "2026-03-26T12:56:31.227924+00:00",
+    "updated_at": "2026-03-26T12:56:31.227924+00:00",
+    "ratio": "Ca:Mg",
+    "ideal_min": 3.0,
+    "ideal_max": 5.0,
+    "unit": "ratio",
+    "notes": "Exchangeable cation ratio; <2 = Mg excess, >8 = Mg deficiency"
+  },
+  {
+    "id": "6e8e3a11-93b9-4d9a-905b-4b6c8bbdd76e",
+    "created_at": "2026-03-26T12:56:31.227924+00:00",
+    "updated_at": "2026-03-26T12:56:31.227924+00:00",
+    "ratio": "Ca:K",
+    "ideal_min": 10.0,
+    "ideal_max": 20.0,
+    "unit": "ratio",
+    "notes": "Below 5 = K excess relative to Ca"
+  },
+  {
+    "id": "7f2ac95d-cedb-461c-8fdc-b895137cdab4",
+    "created_at": "2026-03-26T12:56:31.227924+00:00",
+    "updated_at": "2026-03-26T12:56:31.227924+00:00",
+    "ratio": "Mg:K",
+    "ideal_min": 2.0,
+    "ideal_max": 4.0,
+    "unit": "ratio",
+    "notes": "Below 1 = K excess; above 8 = K deficiency"
+  },
+  {
+    "id": "59a95372-409c-4697-99f6-379c7ad08bc1",
+    "created_at": "2026-03-26T12:56:31.227924+00:00",
+    "updated_at": "2026-03-26T12:56:31.227924+00:00",
+    "ratio": "(Ca+Mg):K",
+    "ideal_min": 15.0,
+    "ideal_max": 30.0,
+    "unit": "ratio",
+    "notes": "Combined divalent to monovalent ratio"
+  },
+  {
+    "id": "dd68a9b2-18e1-46f7-b5bd-a8021ddd2eb3",
+    "created_at": "2026-03-26T12:56:31.227924+00:00",
+    "updated_at": "2026-03-26T12:56:31.227924+00:00",
+    "ratio": "Ca base sat.",
+    "ideal_min": 60.0,
+    "ideal_max": 70.0,
+    "unit": "%",
+    "notes": "Ideal Ca as % of CEC"
+  },
+  {
+    "id": "c0caef61-1b3e-4aa1-8d4b-1deb00efcf50",
+    "created_at": "2026-03-26T12:56:31.227924+00:00",
+    "updated_at": "2026-03-26T12:56:31.227924+00:00",
+    "ratio": "Mg base sat.",
+    "ideal_min": 12.0,
+    "ideal_max": 18.0,
+    "unit": "%",
+    "notes": "Ideal Mg as % of CEC"
+  },
+  {
+    "id": "848791c8-a596-4d4d-9ef4-f82cf4b02437",
+    "created_at": "2026-03-26T12:56:31.227924+00:00",
+    "updated_at": "2026-03-26T12:56:31.227924+00:00",
+    "ratio": "K base sat.",
+    "ideal_min": 3.0,
+    "ideal_max": 5.0,
+    "unit": "%",
+    "notes": "Ideal K as % of CEC"
+  },
+  {
+    "id": "61850956-bc52-4509-8f91-d035a84c7535",
+    "created_at": "2026-03-26T12:56:31.227924+00:00",
+    "updated_at": "2026-03-26T12:56:31.227924+00:00",
+    "ratio": "Na base sat.",
+    "ideal_min": 0.0,
+    "ideal_max": 3.0,
+    "unit": "%",
+    "notes": "Above 5% = sodic; above 15% = severe"
+  },
+  {
+    "id": "7a318824-f7e9-4930-af6e-319fc5fb6eb3",
+    "created_at": "2026-03-26T12:56:31.227924+00:00",
+    "updated_at": "2026-03-26T12:56:31.227924+00:00",
+    "ratio": "H+Al base sat.",
+    "ideal_min": 5.0,
+    "ideal_max": 15.0,
+    "unit": "%",
+    "notes": "Acid saturation; above 20% needs lime"
+  },
+  {
+    "id": "3ff9f6f7-d361-4256-adcf-e585b01e1eff",
+    "created_at": "2026-03-26T12:56:31.227924+00:00",
+    "updated_at": "2026-03-26T12:56:31.227924+00:00",
+    "ratio": "P:Zn",
+    "ideal_min": 8.0,
+    "ideal_max": 15.0,
+    "unit": "ratio",
+    "notes": "High P can induce Zn deficiency; >20 = risk"
+  },
+  {
+    "id": "b59446e9-1688-48f8-8734-8236d9455c91",
+    "created_at": "2026-03-26T12:56:31.227924+00:00",
+    "updated_at": "2026-03-26T12:56:31.227924+00:00",
+    "ratio": "Fe:Mn",
+    "ideal_min": 1.5,
+    "ideal_max": 3.0,
+    "unit": "ratio",
+    "notes": "Balance between Fe and Mn availability"
+  },
+  {
+    "id": "445013df-24e0-4a18-bb81-96755d5a39d9",
+    "created_at": "2026-03-26T12:56:31.227924+00:00",
+    "updated_at": "2026-03-26T12:56:31.227924+00:00",
+    "ratio": "N:S",
+    "ideal_min": 10.0,
+    "ideal_max": 15.0,
+    "unit": "ratio",
+    "notes": "For protein synthesis; above 18 = S deficiency"
+  },
+  {
+    "id": "d29b0b9a-e6d5-43a2-81d9-c38dd633ab7a",
+    "created_at": "2026-03-26T12:56:31.227924+00:00",
+    "updated_at": "2026-03-26T12:56:31.227924+00:00",
+    "ratio": "K:Na",
+    "ideal_min": 5.0,
+    "ideal_max": 999.0,
+    "unit": "ratio",
+    "notes": "K should dominate over Na; <3 = salinity concern"
+  }
+]

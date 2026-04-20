@@ -1,0 +1,175 @@
+{
+  "section": "5.3",
+  "module_id": 337,
+  "title": "Leaf analysis",
+  "slug": "leaf_analysis",
+  "prose": "The purpose of leaf analysis is to determine the nutrient status of a crop through the use of scientific techniques in addition to soil analysis. It is used as a useful tool in determining nutrient deficiencies and making meaningful fertilizer recommendations. A leaf sample must be representative of a planted crop. Different cultivars should be sampled separately. For fruit trees, usually only fruit-bearing trees should be sampled. INTERPRETATION Element concentrations Leaf analysis results are usually reported in element form and are expressed as the element concentration ratio to total dry matter. This ratio varies considerably during the growing season and is also dependent on the position of the leaf on the plant. For this reason, researchers have standardised the growth stage at which leaves are to be sampled, as well as the age and the position of the leaf on the plant. On the basis of the results of scientific experimental trials, where yield and/or quality of the grain or fruit are calibrated with the concentration of element(s) in the leaf, critical leaf analysis norms have been developed. Such norms appear in Tables 5.3.1 to 5.3.4. In order to make a meaningful interpretation of the analysis, the procedures indicated in Tables 5.3.5 and 5.3.6 for taking leaf samples should be followed. Table 5.3.1. Leaf analysis norms (critical values) for sugar cane + All cultivars except N12 ++ All cultivars except N14 * Summer cut ratoon can be sampled after 3 months. Sampling of planted sugar cane will usually only be possible after 5 to 6 months. MEYER, REIS, TURNER & MATHIAS, Good Management Practices Manual for Cane Sugar Industry. 2003 (Table adapted by courtesy of SASRI.) Table 5.3.2. Leaf analysis norms for citrus x = All varieties Table 5.3.3. Leaf analysis norms (critical values) for fruit trees (-) = Minimum; (+) = Maximum; (++) = Toxic Table 5.3.4. Leaf analysis norms (critical values) for maize, wheat, soya beans and lucerne DIAGNOSIS OF NUTRITIONAL PROBLEMS If the correct procedures are followed, leaf analysis is a valuable diagnostic aid in the hands of a competent adviser. Deficiencies of specific nutrients can be identified, and in the case of perennial crops corrective measures can be taken timeously. The value of leaf analysis as a diagnostic aid is further enhanced if relevant soil analyses and other growth and environmental factors are also taken into account, such as soil aeration, soil compaction, temperature and an excess or shortage of rain. GENERAL HINTS FOR TAKING LEAF SAMPLES The first leaf sample of a specific planting should be accompanied by a soil analysis. It is important to use the results of both analyses in order to make correct fertilization recommendations. Usually the samples will represent an area of approximately 3 ha. However, if soil differences occur in the sampled area, separate leaf and soil sampling is recommended. Table 5.3.5. Procedure to be followed when taking leaf samples for use of norms in Tables 5.3.2 to 5.3.4 Note: At least a kilogram of wet material is required. Take samples randomly and representatively over the entire field. Table 5.3.6. Correct procedure for taking leaf samples for tropical and subtropical crops Source: ARC-ITSC Manual Note the following: Sample different cultivars separately. Sample only fruit-bearing trees. The time of sampling is depicted in Table 5.3.6. Select approximately 20 healthy trees evenly distributed throughout the orchard. They should have a homogeneous appearance and be representative of the plantation. Mark the pre-selected trees, for example by a patch of paint on the trunk. Leaf and soil samples are then taken annually at these trees. Eighty leaves per sample are generally sufficient. Sample four leaves per tree, if possible on different sides of the tree, at shoulder height. Leaves should preferably be taken in the morning once the dew has evaporated. Sampled leaves should be free of sunburn, disease and insect damage. Samples should not be taken under cloudy conditions. Packing leaf samples Collect leaves in clean, perforated bags. Keep a lookout for possible contamination (B and Zn) via bags (paper and plastic). If the samples are not dispatched immediately, they should be tightly sealed and refrigerated. Pack leaf samples separately from other samples and mark them properly (see Chapter 1.4 on soil sampling). CONSIDERATIONS WHEN INTERPRETING LEAF ANALYSES The time of sampling in relation to the growth stages of the plant, as well as the vigour of the plants, should be taken into account when interpreting the results (see also Table 5.3.6). Major deviations in analysis results occur during periods of excessively wet or dry soil conditions. Other environmental conditions such as temperature, photoperiod and light intensity should be considered. The cultivar of the crop also plays a role in the standards stated for analysis results. Root uptake and the mobility of specific plant nutrients relative to the growth rate of plants will have an effect on the concentration of plant nutrients in the plant tissues. The application of fertilizers and lime shortly before sampling may change the concentration of one or more elements, which will render interpretation more difficult. REFERENCES CITRUS EXCHANGE, 1979. 264 Cradock Avenue, Verwoerdburg. CONRADIE, W.J. & TERBLANCHE, J.H., 1980. \"Blaarontleding by Vrugtebome en Wingerd - Somerreëngebied. Tafeldruiwe: Somerreën G.4/ 1980\". Pamphlet, Department of Agricultural Technical Services, Pretoria. KUPERUS, H., 2002. ARC-ITSC. Personal communication, as well as ARC-ITSC manual. MELSTED, S.W., MOTTO, H.L. & PECK, T.R., 1969. Critical plant Nutrient Composition Values Useful in Interpreting Plant Analysis Data. Agron. J. 61, 17-20. SOUTH AFRICAN SUGAR ASSOCIATION, Experiment Station, Mount Edge- combe. SUMNER, M.E., 1977. Preliminary N, P and K Foliar Diagnostic Norms for Soybeans. Agron. J. 69, 226-230. SUMNER, M.E., 1981. Diagnosing the Sulphur Requirements of Corn and Wheat using Foliar Analysis. Soil Sci. Soc. Am. J., 45, 87-90.",
+  "tables": [
+    [
+      [
+        "Crop",
+        "Part of plant",
+        "Position",
+        "Stage"
+      ],
+      [
+        "Grapes",
+        "Leaf and stem.",
+        "The first leaf of normal size from the base of shoots growing from year-old wood. No leaves to be taken above the fifth node. Preferably a fruit-bearing shoot.",
+        "25 January to 7 February"
+      ],
+      [
+        "Stonefruits",
+        "Leaf and stem.",
+        "Middle leaf of new shoots growing on year-old wood. Ten leaves around the tree at shoulder height.",
+        "25 January to 7 February"
+      ],
+      [
+        "Wheat",
+        "Whole plant or a single stalk per plant.",
+        "Top 4 leaves of the plant.",
+        "Flag leaf stage"
+      ],
+      [
+        "Lucerne",
+        "Stalks and leaves.",
+        "Top half of the stems.",
+        "Early flowering stage"
+      ],
+      [
+        "Maize",
+        "Leaf without sheath.",
+        "Leaf below and opposite the uppermost leaf.",
+        "50% flag leaf stage"
+      ],
+      [
+        "Citrus",
+        "Leaves and stem.",
+        "Leaves between waist and head height, and taken from new, fruit-bearing stems around the tree.",
+        "February to May"
+      ],
+      [
+        "Soya beans",
+        "Leaves with stems.",
+        "Youngest mature leaves on plant.",
+        "When first pods are formed."
+      ],
+      [
+        "Sugar cane",
+        "Leaves without sheaths.",
+        "Third leaf from tip. Start counting at first leaf that has opened more than 50%.",
+        "See Table 5.3.1."
+      ]
+    ],
+    [
+      [
+        "CROP",
+        "TIME OF SAMPLING",
+        "LEAF TO SAMPLE"
+      ],
+      [
+        "PECAN",
+        "First two weeks in January",
+        "The middle leaf pair of leaflets from leaves attached in the middle of new terminal shoots."
+      ],
+      [
+        "LEMON",
+        "February",
+        "The first young mature leaf behind a fruit with a diameter of 40-45 mm."
+      ],
+      [
+        "AVOCADO",
+        "February to April",
+        "Pick 6-8 month-old leaves from fruitless branches showing no signs of new growth."
+      ],
+      [
+        "CITRUS",
+        "March to April",
+        "The first young mature leaf behind the fruit stalk (5-7 month-old leaves)."
+      ],
+      [
+        "PAPAYA",
+        "September to November",
+        "The petiole of the youngest fully expanded mature leaf subtending the most recently opened flower. (Sample 10-20 plants per block.)"
+      ],
+      [
+        "GRANADILLA",
+        "September to December",
+        "Take leaf next to the first open flower (usually the 8th leaf)."
+      ],
+      [
+        "LITCHI",
+        "September to December",
+        "Middle pair of 8 month-old leaflets of the 2nd leaf below the fruit bunch."
+      ],
+      [
+        "BANANA",
+        "October to April, when 50% of the orchard is flowering.",
+        "10 cm on either side of the vein of the 3rd youngest leaf. Remove a third of the outer part of the sample. Sample only plants with bunches of which the first abortive hand is just visible."
+      ],
+      [
+        "MACADAMIA",
+        "October to November",
+        "Take young, fully developed leaves, from the 4th pair of leaves, from the tip of a primary branch."
+      ],
+      [
+        "COFFEE",
+        "October to November",
+        "4th leaf from the tip of a primary branch in the middle of the tree, during full flowering."
+      ],
+      [
+        "MANGO",
+        "November",
+        "Young leaves from fruit-bearing branches. NB : Flowers and fruit are often found on old branches. These leaves are too old for sampling."
+      ],
+      [
+        "GINGER",
+        "105 days after planting (± middle December)",
+        "3rd leaf from the tip of the first order shoots."
+      ],
+      [
+        "PINEAPPLE",
+        "Queens: 6 months after planting (Hluhluwe). Cayennes: 6 months after planting or red budding stage where sprouting crop is sampled.",
+        "D leaf (longest leaf)."
+      ],
+      [
+        "GUAVA",
+        "5 months after pruning.",
+        "The leaf just below the biggest fruit."
+      ],
+      [
+        "TEA",
+        "During the main growth flush.",
+        "3rd leaf during the main growth flush."
+      ]
+    ]
+  ],
+  "image_tables": [
+    {
+      "id": "466",
+      "url": "fhimg/466.jpg",
+      "local_path": "images/466.jpg",
+      "alt": ""
+    },
+    {
+      "id": "468",
+      "url": "fhimg/468.jpg",
+      "local_path": "images/468.jpg",
+      "alt": ""
+    },
+    {
+      "id": "470",
+      "url": "fhimg/470.jpg",
+      "local_path": "images/470.jpg",
+      "alt": ""
+    },
+    {
+      "id": "472",
+      "url": "fhimg/472.jpg",
+      "local_path": "images/472.jpg",
+      "alt": ""
+    }
+  ],
+  "cross_ref": null,
+  "source_url": "https://www.fertasastats.co.za/pages/fh_bh_reader.php?moduleID=337"
+}

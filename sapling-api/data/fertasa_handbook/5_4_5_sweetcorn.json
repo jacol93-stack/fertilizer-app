@@ -1,0 +1,213 @@
+{
+  "section": "5.4.5",
+  "module_id": 346,
+  "title": "Sweetcorn",
+  "slug": "sweetcorn",
+  "prose": "Sweetcorn is produced on a diversity of soils in many regions of South Africa. It is grown for the fresh market as well as for the canning, frozen and export markets. Soil types, climate and intensity of irrigation, together with the cultivar, have a major effect on yield potential, which is optimally utilised by manipulating the plant population. Therefore, not only yield is important but also quality, especially for the export market and for processing. Sweetcorn does well on a wide range of soils, provided they are reasonably deep and well drained. Sweetcorn is not very drought resistant, and moisture must be available throughout the season â”€ this is especially important during pollination, when cob development is directly affected. Sufficient nitrogen, phosphate and potassium are very important at high yield potentials. Rates of fertilization will be determined by the following: The quantity of plant nutrients in the soil, and the ratio in which they are found. The yield potential, which is determined by the soil potential and irrigation intensity. PLANT NUTRIENT REMOVAL Table 5.4.5.1 indicates the removal of plant nutrients from the soil by sweetcorn. MACRO-NUTRIENTS Nitrogen (N) The nitrogen requirement is dependent on the yield potential/plant population, and must be further adapted according to the texture of the soil (Table 5.12.2). The levels in Table 5.4.5.2 may be adjusted upwards by as much as 10% on sandy soils in the event of heavy rains prior to planting or during the early growing season. The optimum plant population under intensive irrigation will probably be between 40 000 and 60 000 plants per hectare. Table 5.4.5.1. Nutrients removed from the soil by 1 ton of fresh cobs, based on a yield of 15 t ha -1 (Lorenz and Maynard, 1980) Table 5.4.5.2. Guidelines for N-fertilization of sweetcorn (fresh cobs) * Yield is linked to plant population and therefore the yield increments are not always equal. The number of N-applications per season should increase as the soil texture decreases, as this will help to limit leaching losses. Phosphorus (P) The recommendations for phosphorus are based on soil analyses, whilst also taking yield target and plant population into consideration (Table 5.4.5.3). Potassium (K) The potassium guidelines in Table 5.4.5.4 are based on the removal of potassium by fresh cobs and stalks. Lime Sweetcorn is sensitive to high soil acidity and associated problems such as toxic aluminium and molybdenum deficiencies. The optimum pH (KCl) is between 5 and 6. A liming programme based on the determination of lime requirements is essential. The goal should be a lime saturation level of 0%. Table 5.4.5.3. Guidelines for P-fertilization of sweetcorn (fresh cobs) Table 5.4.5.4. Guidelines for K-fertilization of sweetcorn (fresh cobs) MICRO-NUTRIENTS Zinc (Zn) Zinc deficiencies are common, and the use of Zn-containing compounds at planting is advised. Molybdenum (Mo) In areas where sweetcorn is grown on soils that are inherently acid and where molybdenum deficiencies are expected, the seed should be treated with 90 g sodium molybdate per kg of seed just before planting. The sodium molybdate can be dissolved in 250 cm 3 water and applied to the seed with a wetting agent. Boron (B) Boron deficiencies normally occur on well-drained sandy soils, and it would seem that deficiencies are promoted by intensive practices â”€ i.e. high N-applications and high yields per hectare. Deficiencies can be prevented by applying 400 to 600 g B per hectare. Deficiency symptoms are characterised by deformed cobs â”€ often curved and/or with uneven size and distribution of kernels. Excessive application of boron can be toxic. REFERENCE LORENZ, O.A. & MAYNARD, D.N., 1980. Knott’s Handbook for Vegetable Growers . Canada: John Wiley & Sons, Inc.",
+  "tables": [
+    [
+      [
+        "Plant portion",
+        "Nutrients removed"
+      ],
+      [
+        "N",
+        "P",
+        "K"
+      ],
+      [
+        "Cobs (fresh) Plants",
+        "kg t -1 cobs"
+      ],
+      [
+        "3.0 5.3",
+        "0.4 0.6",
+        "1.6 4.0"
+      ],
+      [
+        "Total",
+        "8.3",
+        "1.0",
+        "5.6"
+      ]
+    ],
+    [
+      [
+        "Plant population",
+        "Yield * (fresh cobs)",
+        "N-application"
+      ],
+      [
+        "Plants ha -1",
+        "t ha -1",
+        "kg ha -1"
+      ],
+      [
+        "20 000",
+        "10",
+        "70"
+      ],
+      [
+        "30 000",
+        "15",
+        "120"
+      ],
+      [
+        "40 000",
+        "18",
+        "145"
+      ],
+      [
+        "60 000",
+        "25",
+        "200"
+      ],
+      [
+        "80 000",
+        "30",
+        "240"
+      ]
+    ],
+    [
+      [
+        "Soil-P (Bray 1)",
+        "P-application for yield potential (t ha -1 )"
+      ],
+      [
+        "10",
+        "15",
+        "18",
+        "25",
+        "30"
+      ],
+      [
+        "mg kg -1",
+        "kg ha -1"
+      ],
+      [
+        "0 - 3",
+        "65",
+        "109",
+        "130",
+        "130",
+        "130"
+      ],
+      [
+        "4 - 7",
+        "47",
+        "78",
+        "90",
+        "97",
+        "101"
+      ],
+      [
+        "8 - 14",
+        "30",
+        "50",
+        "59",
+        "68",
+        "72"
+      ],
+      [
+        "15 - 20",
+        "21",
+        "36",
+        "42",
+        "53",
+        "58"
+      ],
+      [
+        "21 - 27",
+        "15",
+        "26",
+        "31",
+        "41",
+        "48"
+      ],
+      [
+        "28 - 34",
+        "12",
+        "18",
+        "21",
+        "30",
+        "36"
+      ]
+    ],
+    [
+      [
+        "Soil-K (NH 4 OAc)",
+        "P-application for yield potential (t ha -1 )"
+      ],
+      [
+        "10",
+        "15",
+        "18",
+        "25",
+        "30"
+      ],
+      [
+        "mg kg -1",
+        "kg ha -1"
+      ],
+      [
+        "10",
+        "27",
+        "45",
+        "54",
+        "82",
+        "100"
+      ],
+      [
+        "20",
+        "20",
+        "39",
+        "47",
+        "74",
+        "92"
+      ],
+      [
+        "40",
+        "13",
+        "31",
+        "39",
+        "64",
+        "81"
+      ],
+      [
+        "60",
+        "8",
+        "25",
+        "33",
+        "56",
+        "71"
+      ],
+      [
+        "80",
+        "0",
+        "21",
+        "29",
+        "50",
+        "65"
+      ],
+      [
+        "100",
+        "0",
+        "18",
+        "25",
+        "45",
+        "59"
+      ],
+      [
+        "120",
+        "0",
+        "15",
+        "22",
+        "41",
+        "54"
+      ]
+    ]
+  ],
+  "image_tables": [],
+  "cross_ref": null,
+  "source_url": "https://www.fertasastats.co.za/pages/fh_bh_reader.php?moduleID=346"
+}

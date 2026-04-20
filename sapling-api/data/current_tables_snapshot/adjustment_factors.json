@@ -1,0 +1,182 @@
+[
+  {
+    "id": "dec18e8c-e042-47c5-ba31-dc5112017d73",
+    "created_at": "2026-03-26T12:56:30.790419+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "Very Low",
+    "factor": 1.5,
+    "description": "Severe deficiency - apply 150% of crop requirement to build soil reserves",
+    "nutrient_group": "cations"
+  },
+  {
+    "id": "1fd4a73a-fa27-426e-9706-81d82b19833c",
+    "created_at": "2026-03-26T12:56:30.790419+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "Low",
+    "factor": 1.25,
+    "description": "Below optimal - apply 125% to gradually correct",
+    "nutrient_group": "cations"
+  },
+  {
+    "id": "96ab8775-4afe-4c82-a710-1ab358693a7a",
+    "created_at": "2026-03-26T12:56:30.790419+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "Optimal",
+    "factor": 1.0,
+    "description": "Maintenance - apply 100% of crop requirement",
+    "nutrient_group": "cations"
+  },
+  {
+    "id": "fecd7762-85e3-49a8-bfd6-a46fe6ceaef8",
+    "created_at": "2026-03-26T12:56:30.790419+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "High",
+    "factor": 0.5,
+    "description": "Above optimal - apply 50% maintenance only",
+    "nutrient_group": "cations"
+  },
+  {
+    "id": "81cb72e8-3b65-4984-a2e8-b5c4229a1cdc",
+    "created_at": "2026-03-26T12:56:30.790419+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "Very High",
+    "factor": 0.0,
+    "description": "Excessive - no application needed, monitor levels",
+    "nutrient_group": "cations"
+  },
+  {
+    "id": "a5635e13-cbf3-446c-8f84-99ce4c6b9d82",
+    "created_at": "2026-04-06T20:14:24.881587+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "Very Low",
+    "factor": 1.0,
+    "description": null,
+    "nutrient_group": "N"
+  },
+  {
+    "id": "722dfeaf-0850-4918-80c2-f2dee987702d",
+    "created_at": "2026-04-06T20:14:24.881587+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "Low",
+    "factor": 1.0,
+    "description": null,
+    "nutrient_group": "N"
+  },
+  {
+    "id": "9023d875-13e0-41e5-b173-0064344c30d3",
+    "created_at": "2026-04-06T20:14:24.881587+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "Optimal",
+    "factor": 1.0,
+    "description": null,
+    "nutrient_group": "N"
+  },
+  {
+    "id": "61a2c349-16b6-444e-b8d0-a54517d3894c",
+    "created_at": "2026-04-06T20:14:24.881587+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "High",
+    "factor": 1.0,
+    "description": null,
+    "nutrient_group": "N"
+  },
+  {
+    "id": "ff7cecb9-922b-4608-bf81-00b2f0301ed0",
+    "created_at": "2026-04-06T20:14:24.881587+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "Very High",
+    "factor": 1.0,
+    "description": null,
+    "nutrient_group": "N"
+  },
+  {
+    "id": "6b19f9c1-2416-4281-a8b3-4022c5b5e70c",
+    "created_at": "2026-04-06T20:14:24.881587+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "Very Low",
+    "factor": 1.5,
+    "description": null,
+    "nutrient_group": "P"
+  },
+  {
+    "id": "fc0e2660-3243-4ab7-a2d8-5fd0264fb53d",
+    "created_at": "2026-04-06T20:14:24.881587+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "Low",
+    "factor": 1.25,
+    "description": null,
+    "nutrient_group": "P"
+  },
+  {
+    "id": "0cd50f76-0474-480d-be5b-82fd76d8b0f2",
+    "created_at": "2026-04-06T20:14:24.881587+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "Optimal",
+    "factor": 1.0,
+    "description": null,
+    "nutrient_group": "P"
+  },
+  {
+    "id": "fc1cd5c0-0580-476c-a261-1902798a57ec",
+    "created_at": "2026-04-06T20:14:24.881587+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "High",
+    "factor": 0.75,
+    "description": null,
+    "nutrient_group": "P"
+  },
+  {
+    "id": "4fc7ca31-128e-44c3-9d0a-597fa190ca5d",
+    "created_at": "2026-04-06T20:14:24.881587+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "Very High",
+    "factor": 0.5,
+    "description": null,
+    "nutrient_group": "P"
+  },
+  {
+    "id": "412689cc-65ff-42a8-b9d0-7d912417f543",
+    "created_at": "2026-04-06T20:14:24.881587+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "Very Low",
+    "factor": 1.0,
+    "description": null,
+    "nutrient_group": "micro"
+  },
+  {
+    "id": "574caadd-a6f6-47a2-9c46-574e63055f0c",
+    "created_at": "2026-04-06T20:14:24.881587+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "Low",
+    "factor": 1.0,
+    "description": null,
+    "nutrient_group": "micro"
+  },
+  {
+    "id": "60e65db3-e25c-4284-8422-174ddd7518bd",
+    "created_at": "2026-04-06T20:14:24.881587+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "Optimal",
+    "factor": 1.0,
+    "description": null,
+    "nutrient_group": "micro"
+  },
+  {
+    "id": "71681691-7e4f-414a-bef2-dc0893ac05a7",
+    "created_at": "2026-04-06T20:14:24.881587+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "High",
+    "factor": 1.0,
+    "description": null,
+    "nutrient_group": "micro"
+  },
+  {
+    "id": "de79e418-a29e-4e01-a1ce-b2330d798319",
+    "created_at": "2026-04-06T20:14:24.881587+00:00",
+    "updated_at": "2026-04-06T20:14:24.881587+00:00",
+    "classification": "Very High",
+    "factor": 1.0,
+    "description": null,
+    "nutrient_group": "micro"
+  }
+]

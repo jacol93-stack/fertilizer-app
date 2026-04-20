@@ -1,0 +1,98 @@
+{
+  "section": "5.8.2",
+  "module_id": 365,
+  "title": "Pecan nuts",
+  "slug": "pecan_nuts",
+  "prose": "The fertilization of pecan nuts is as complex as for any other tree crop, and both the quality and total yield of nuts should be taken into consideration. It is, therefore, advisable to fertilize according to the required nutrient balance rather than estimated removal of nutrients by the previous crop. PRE-PLANT Acid soils should be limed before planting, and all lime must be properly incorporated into the total volume of the soil. The liming of established orchards is not very successful. If the P-status of the soil is low, P-fertilizer should be applied. The ideal is a pH (H 2 O) of approximately 6.0 and a P-content of 25 mg P kg -1 (Bray 1). NON-BEARING TREES In young trees, fertilization is aimed mainly at achieving vegetative growth to ensure a sturdy frame. Small but regular applications of fertilizer are required. Macro-elements Table 5.8.2.1 gives an example of a general programme that can be followed, with adjustments if warranted by soil analysis. Table 5.8.2.1. General fertilizer programme for non-bearing pecan trees Nitrogen applications should be divided into four equal parts and applied every 6 to 8 weeks during the active growing season, except during the fourth season. From the fourth year, equal quantities of N should be given in August and October. Phosphorus is applied in August as a single application. All the potassium is applied in October. The fertilizer should be applied evenly over the entire tree canopy area. Micro-elements A foliar spray of micro-elements is applied every six to eight weeks. Table 5.8.2.2. Guideline for foliar application on non-bearing pecan trees Note: Although the uptake by plants of zinc nitrate is better than that of zinc oxide, it cannot be mixed with copper oxychloride. NUT-BEARING TREES A specific fertilizer programme must be planned for every orchard. These programmes should be based on soil and leaf analyses together with the records and information collected during previous seasons. This programme should be aimed at achieving the desired nutrient balance to ensure the most economic yield, and best quality nuts. The use of generalised recommendations has its limits and it is therefore advisable to consult with experts for specialised advice. Macro-elements Nitrogen (N) Pecan nut trees have a pronounced growth at the beginning of spring, and it is necessary to ensure sufficient leaf material for the new crop of nuts. For this reason, sufficient nitrogen should be supplied at the appropriate time, and just after or during light irrigation (see Table 5.8.2.3). However, care should be taken not to apply too much nitrogen, since this will retard the splitting open of the husks. Phosphorus (P) A too low P-status in the tree will impede the splitting open of the husks (see Table 5.8.2.3). Potassium (K) Potassium has a positive effect on nut size, and a deficiency will result in small nuts (see Table 5.8.2.3). Table 5.8.2.3. Fertilizer programme for nut-bearing pecan trees Magnesium (Mg) Magnesium deficiencies may occur on acid soils below pH (H 2 O) 6.5. Time of application Fertilizer should be applied evenly around the tree from the base of the trunk to 50 cm outside the tree canopy. Micro-elements Zinc (Zn) As zinc is immobile in the plant, several foliar sprays have to be applied. Foliar application: wet leaves with a solution of 150 ml zinc nitrate per 100 dm -3 water in spring when buds are 5 cm long. Repeat twice at intervals of three to four weeks. Soil application: 0 â”€ 45 kg ha -1 ZnSO 4 Boron (B) Spray once with a water soluble boron product at 30 g B 100 l -1 . This should be sufficient for some years. REFERENCES JAMES L. WALWORTH & ANDREW P. POND PAYNE & WOOD (1997)",
+  "tables": [
+    [
+      [
+        "Plant nutrient",
+        "Annual fertillizer applications for trees aged (years):"
+      ],
+      [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      [
+        "",
+        "g tree -1"
+      ],
+      [
+        "N P K",
+        "70 34 50",
+        "140 68 100",
+        "210 102 150",
+        "280 136 200"
+      ]
+    ],
+    [
+      [
+        "Plant nutrient",
+        "Concentration"
+      ],
+      [
+        "",
+        "g â„“ -1 water"
+      ],
+      [
+        "N: Urea (low biuret)",
+        "1000"
+      ],
+      [
+        "Zn: Zinc oxide",
+        "150"
+      ],
+      [
+        "Cu: Copper oxychloride",
+        "150"
+      ],
+      [
+        "B: Borax",
+        "150"
+      ]
+    ],
+    [
+      [
+        "Time of application",
+        "Percentage of plant nutrients to be applied"
+      ],
+      [
+        "N",
+        "P",
+        "K",
+        "Mg"
+      ],
+      [
+        "",
+        "%"
+      ],
+      [
+        "June/July",
+        "",
+        "",
+        "",
+        "100"
+      ],
+      [
+        "August",
+        "50",
+        "100",
+        "",
+        ""
+      ],
+      [
+        "October",
+        "50",
+        "",
+        "100",
+        ""
+      ]
+    ]
+  ],
+  "image_tables": [],
+  "cross_ref": null,
+  "source_url": "https://www.fertasastats.co.za/pages/fh_bh_reader.php?moduleID=365"
+}

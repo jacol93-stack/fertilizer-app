@@ -1,0 +1,168 @@
+{
+  "section": "5.7.2",
+  "module_id": 361,
+  "title": "Bananas",
+  "slug": "bananas",
+  "prose": "Bananas require large amounts of plant nutrients for growth and fruit production. Since the soil can supply only a small proportion of these nutrients, the rest has to be supplied in the form of fertilizers â”€ often in large quantities. This applies especially to high yielding bananas. With improved cultivation practices such as deep ripping, better irrigation, and the use of tissue culture seedlings, the yield potential of bananas has increased dramatically over the past decades. The fact that bananas are perennial results in plants of different growth stages being found in a single plantation. These differences increase as the orchard grows older. Young plants in ratoon crops are fertilized according to the nutrient status of the mother plants and the soil nutrient reserves. PRE-PLANT Representative soil samples should be taken before planting in order to determine the lime, phosphorus and potassium requirements. If large quantities of lime are required, these should be applied at least six months before planting and incorporated as deep as possible. Phosphorus can be applied at the same time as lime. As a rule, low-grade superphosphate (10.5% or less P) is recommended since it contains sulphur, which is also essential for high banana production. P-applications before planting, according to soil analysis, are indicated in Table 5.7.2.1. Large amounts of nitrogen and especially potassium are required for the plant crop. Since recycling of nutrients is not possible during this growth stage, soil nutrient reserves have to be supplemented by fertilization. The amount of potassium required, will be determined by the soil-K reserves and the yield potential of a specific plantation. Supplementing with K-fertilizer is indicated in Table 5.7.2.2. It can be applied as a single pre-plant broadcast application about a month before planting. AFTER PLANTING Plant crop Guidelines for nitrogen and potassium fertilization, based on yield target, are given in Table 5.7.2.3. These recommendations serve as general guidelines and should be adjusted in accordance with soil and leaf analyses. Leaf samples are taken when about 50% of the plants (plant crop) are in flower. Table 5.7.2.1. Recommendations for pre-plant P-applications for bananas Table 5.7.2.2. Recommendations for pre-plant K-applications (kg ha -1 ) for bananas Table 5.7.2.3. Recommendations for N- and K-applications according to the yield expectation of the plant crop Ratoon crops A fertilizer guideline for ratoon crops appears in Table 5.7.2.4. This should, however, also be adjusted in accordance with annual leaf and soil analyses. The N- and K-requirements of ratoon crops are generally lower than for the plant crop since a large proportion of the N, and especially K, is recycled from the plant crop. Table 5.7.2.4. Recommendations for NPK-applications according to the yield expectation of the ratoon crop Time of application Being a tropical plant species, bananas grow throughout the year. However, in the subtropical regions growth is slower during the cooler months (June to August). Optimum growth takes place from September to April or May. In practice, N- and K-fertilizers are applied in four equal instalments during September, November, January and March. However, many growers report better results with eight equal applications, especially in high rainfall areas where leaching of nitrogen may be a problem. Since phosphorus is less mobile in the soil it can be applied as a single application in September. For the plant crop the first five months are critical, especially for potassium uptake. Therefore, nitrogen and potassium should preferably be applied monthly for the first five months after planting. Lime application after planting Annual maintenance liming (maximum 2 to 3 tons ha -1 ) is essential in order to counter the acidifying effect of ammonium-containing nitrogen carriers and to replace the loss of bases from the root zone by leaching and uptake by the plant. Organic fertilization Research has shown that bananas respond favourably to organic fertilizers, particularly those enriched with inorganic sources of N, P and K. Kraal and chicken manure are suitable for plantations, in particular if applied before planting. It is advisable, however, to obtain an analysis of their nutrient content prior to application. As a general rule, kraal manure is applied at a rate of 20 to 40 tons ha -1 , and chicken manure at about 5 tons ha -1 , both prior to planting. Micro-elements Zinc and boron deficiencies are common in South Africa. Copper deficiencies may also occur, in particular on soils with a high organic matter and high P- content. The application of micro-elements should be evaluated annually on the basis of leaf analyses. A general guideline for micro-element applications appears in Table 5.7.2.5. Table 5.7.2.5. General guidelines for micro-element applications * According to company recommendations Foliar sprays are applied when the suckers have reached a height of about 1 m. Thoroughly wet the underside of the leaves and allow the spray to run into the calyx of the leaves. Repeat the spray two to three times, depending on the severity of deficiency indicated by leaf analyses. Fertilization of tissue cultures Consult with experts for information in this regard. ACKNOWLEDGEMENT The input of Mr. Richard Abercrombie, ARC-ITSC, Nelspruit, in revising this chapter is gratefully acknowledged.",
+  "tables": [
+    [
+      [
+        "Soil-P content (Bray 1)",
+        "P-application in kg ha -1"
+      ],
+      [
+        "< 10",
+        "100"
+      ],
+      [
+        "11 - 25",
+        "80"
+      ],
+      [
+        "26 - 60",
+        "50"
+      ],
+      [
+        "60+",
+        "0"
+      ]
+    ],
+    [
+      [
+        "Exchangeable K content on clay soil > 25% clay",
+        "K",
+        "Exchangeable K content on sandy soils < 25% clay",
+        "K"
+      ],
+      [
+        "(mg kg -1 )",
+        "(kg ha -1 )",
+        "(mg kg -1 )",
+        "(kg ha -1 )"
+      ],
+      [
+        "< 150",
+        "500",
+        "< 100",
+        "250"
+      ],
+      [
+        "150 - 200",
+        "250",
+        "100 - 150",
+        "125"
+      ],
+      [
+        "200 - 250",
+        "125",
+        "150+",
+        "0"
+      ],
+      [
+        "250+",
+        "0",
+        "",
+        ""
+      ]
+    ],
+    [
+      [
+        "Yield potential",
+        "N",
+        "K"
+      ],
+      [
+        "(ton ha -1 yr -1 )",
+        "(kg ha -1 )",
+        "(kg ha -1 )"
+      ],
+      [
+        "25 - 35",
+        "200",
+        "600"
+      ],
+      [
+        "36 - 45",
+        "300",
+        "900"
+      ],
+      [
+        "46 - 55",
+        "336",
+        "1 000"
+      ],
+      [
+        "56 - 65",
+        "400",
+        "1 200"
+      ]
+    ],
+    [
+      [
+        "Yield potential",
+        "N",
+        "p",
+        "K"
+      ],
+      [
+        "(ton ha -1 yr -1 )",
+        "(kg ha -1 )",
+        "(kg ha -1 )",
+        "(kg ha -1 )"
+      ],
+      [
+        "35 - 45",
+        "200",
+        "40",
+        "600"
+      ],
+      [
+        "46 - 55",
+        "270",
+        "54",
+        "800"
+      ],
+      [
+        "56 - 65",
+        "300",
+        "60",
+        "900"
+      ],
+      [
+        "66 - 75",
+        "360",
+        "72",
+        "1 000"
+      ]
+    ],
+    [
+      [
+        "Element",
+        "Product",
+        "Concentration",
+        "Description"
+      ],
+      [
+        "Zinc",
+        "Zinc nitrate or Zinc metalosates or Zinc sulphate",
+        "150 cm 3 / 100 dm -3 water * 50 - 75 g mat -1",
+        "Foliar spray Foliar spray Soil application"
+      ],
+      [
+        "Boron",
+        "Sodium tetraborate or equivalent, or Sodium tetraborate or equivalent, or Borax",
+        "100 g / 100 dm -3 water 5 g mat -1 10 g mat -1",
+        "Foliar spray Soil application Soil application"
+      ],
+      [
+        "Copper",
+        "Copper oxychloride",
+        "200 g / 100 dm -3 water",
+        "Foliar spray"
+      ]
+    ]
+  ],
+  "image_tables": [],
+  "cross_ref": null,
+  "source_url": "https://www.fertasastats.co.za/pages/fh_bh_reader.php?moduleID=361"
+}

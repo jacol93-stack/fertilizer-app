@@ -1,0 +1,230 @@
+{
+  "_note": "Manual transcriptions of FERTASA handbook image-tables, keyed by image id. Each transcription includes the FERTASA table number, a short title, the column headers, and the data as nested arrays. Transcribed by reading the source JPEG; spot-check against images/<id>.jpg if anything looks off.",
+
+  "466": {
+    "fertasa_table": "5.3.1",
+    "title": "Sugar cane leaf norms",
+    "source_module": "5.3 (leaf_analysis)",
+    "columns": ["Element", "Area", "Age (months)", "Month sampled", "Plant %", "Ratoon %"],
+    "rows_nitrogen": [
+      {"area": "Northern irrigation", "age": "3-5", "month": "Oct-Dec", "plant": "1.9", "ratoon": "1.8"},
+      {"area": "Northern irrigation", "age": "3-5", "month": "Jan-Feb", "plant": "1.8", "ratoon": "1.7"},
+      {"area": "Northern irrigation", "age": "3-5", "month": "Mar-Apr", "plant": "1.7", "ratoon": "1.6"},
+      {"area": "Coastal region", "age": "4-7*", "month": "Nov-Dec", "plant": "1.9", "ratoon": "1.8"},
+      {"area": "Coastal region", "age": "4-7*", "month": "Jan-Feb", "plant": "1.8", "ratoon": "1.7"},
+      {"area": "Coastal region", "age": "4-7*", "month": "Mar-Apr", "plant": "1.7", "ratoon": "1.6"},
+      {"area": "Midlands", "age": "4-9*", "month": "Nov-Dec", "plant": "1.9", "ratoon": "1.8"},
+      {"area": "Midlands", "age": "4-9*", "month": "Jan-Feb", "plant": "1.8", "ratoon": "1.7"},
+      {"area": "Midlands", "age": "4-9*", "month": "Mar", "plant": "1.7", "ratoon": "1.6"}
+    ],
+    "single_value_critical_pct": {
+      "P+": 0.19, "P (only N12)": 0.16, "K++": 1.05, "K (only N14)": 0.90,
+      "Ca": 0.15, "Mg": 0.08, "S": 0.12, "Si": 0.50
+    },
+    "single_value_critical_mg_kg": { "Zn": 13, "Cu": 3, "Mn": 15 }
+  },
+
+  "468": {
+    "fertasa_table": "5.3.2",
+    "title": "Citrus leaf norms (Valencia / Navels / Lemons / Grapefruit)",
+    "source_module": "5.3 (leaf_analysis)",
+    "columns": ["Element", "Variety", "Deficiency", "Below normal", "Normal", "Above normal", "Excess"],
+    "units": "% for macronutrients, mg/kg for micronutrients",
+    "N": {
+      "Valencia":   {"deficiency": "<1.80", "below": "1.80-2.09", "normal": "2.10-2.30", "above": "2.31-2.50", "excess": ">2.50"},
+      "Navels":     {"deficiency": "<1.90", "below": "1.90-2.39", "normal": "2.40-2.60", "above": "2.61-2.80", "excess": ">2.80"},
+      "Lemons":     {"deficiency": "<1.90", "below": "1.90-2.29", "normal": "2.30-2.60", "above": "2.61-2.80", "excess": ">2.80"},
+      "Grapefruit": {"deficiency": "<1.90", "below": "1.90-2.29", "normal": "2.30-2.50", "above": "2.51-2.80", "excess": ">2.80"}
+    },
+    "P": {
+      "Valencia":   {"deficiency": null, "below": null, "normal": null, "above": null, "excess": null, "note": "same as Navels (published under Navels row only)"},
+      "Navels":     {"deficiency": "<0.09", "below": "0.09-0.10", "normal": "0.11-0.14", "above": "0.15-0.17", "excess": ">0.17"},
+      "Lemons":     {"deficiency": "<0.09", "below": "0.09-0.10", "normal": "0.11-0.14", "above": "0.15-0.17", "excess": ">0.17"},
+      "Grapefruit": {"deficiency": "<0.08", "below": "0.08-0.09", "normal": "0.10-0.14", "above": "0.15-0.17", "excess": ">0.17"}
+    },
+    "K": {
+      "Valencia":   {"deficiency": "<0.60", "below": "0.60-0.89", "normal": "0.90-1.50", "above": "1.51-1.80", "excess": ">1.80"},
+      "Navels":     {"deficiency": "<0.40", "below": "0.40-0.69", "normal": "0.70-1.10", "above": "1.11-1.40", "excess": ">1.40"},
+      "Lemons":     {"deficiency": "<0.60", "below": "0.60-0.79", "normal": "0.80-1.20", "above": "1.21-1.70", "excess": ">1.70"},
+      "Grapefruit": {"deficiency": "<0.40", "below": "0.40-0.79", "normal": "0.80-1.00", "above": "1.01-1.20", "excess": ">1.20"}
+    },
+    "Ca": {"all": {"deficiency": "<2.50", "below": "2.50-3.49", "normal": "3.50-6.00", "above": "6.10-7.00", "excess": ">7.00"}},
+    "Mg": {"all": {"deficiency": "<0.25", "below": "0.25-0.34", "normal": "0.35-0.50", "above": "0.51-0.75", "excess": ">0.75"}},
+    "Na": {"all": {"normal": "0.01-0.20", "above": "0.21-0.40", "excess": ">0.40"}},
+    "Cl": {"all": {"normal": "0.02-0.40", "above": "0.41-0.65", "excess": ">0.65"}},
+    "S":  {"all": {"deficiency": "<0.14", "below": "0.14-0.19", "normal": "0.20-0.30", "above": "0.31-0.50", "excess": ">0.50"}},
+    "Fe_mg_kg": {"all": {"below": "40-49", "normal": "50-300"}},
+    "Cu_mg_kg": {"all": {"deficiency": "<3", "below": "4", "normal": "5-20", "above": "21-40", "excess": ">40"}},
+    "Mn_mg_kg": {"all": {"deficiency": "<25", "below": "25-39", "normal": "40-150", "above": "151-300", "excess": ">300"}},
+    "Zn_mg_kg": {"all": {"deficiency": "<15", "below": "15-24", "normal": "25-100", "above": "101-200", "excess": ">200"}},
+    "B_mg_kg":  {"all": {"deficiency": "<40", "below": "40-74", "normal": "75-200", "above": "201-300", "excess": ">300"}},
+    "Mo_mg_kg": {"all": {"deficiency": "<0.03", "below": "0.03-0.04", "normal": "0.05-3.00"}}
+  },
+
+  "470": {
+    "fertasa_table": "5.3.3",
+    "title": "Fruit trees leaf norms (Apple / Pear / Peach / Apricot / Plum / Prune / Grape)",
+    "source_module": "5.3 (leaf_analysis)",
+    "columns": ["Element", "Band (- / + / ++)", "Apple", "Pear", "Peach", "Apricot", "Plum", "Prune", "Grape"],
+    "units": "% for macronutrients, mg/kg for micronutrients",
+    "band_meaning": {"-": "lower threshold (deficiency)", "+": "upper threshold (approaching excess)", "++": "absolute excess"},
+    "N_pct": {
+      "-":  {"Apple": 2.00, "Pear": 2.00, "Peach": 2.20, "Apricot": 1.80, "Plum": 2.20, "Prune": 2.20, "Grape": 1.60},
+      "+":  {"Apple": 3.00, "Pear": 2.80, "Peach": 3.80, "Apricot": 2.80, "Plum": 3.00, "Prune": 2.80, "Grape": 2.40}
+    },
+    "P_pct": {
+      "-":  {"Apple": 0.12, "Pear": 0.10, "Peach": 0.12, "Apricot": 0.11, "Plum": 0.11, "Prune": 0.14, "Grape": 0.12},
+      "+":  {"Apple": 0.22, "Pear": 0.18, "Peach": 0.20, "Apricot": 0.20, "Plum": 0.20, "Prune": 0.30, "Grape": 0.40}
+    },
+    "K_pct": {
+      "-":  {"Apple": 0.80, "Pear": 0.70, "Peach": 0.80, "Apricot": 2.00, "Plum": 2.00, "Prune": 1.20, "Grape": 0.80},
+      "+":  {"Apple": 2.20, "Pear": 2.00, "Peach": 3.20, "Apricot": 3.60, "Plum": 3.20, "Prune": 2.80, "Grape": 1.60}
+    },
+    "Ca_pct": {
+      "-":  {"Apple": 0.70, "Pear": 0.80, "Peach": 1.20, "Apricot": 1.10, "Plum": 1.20, "Prune": 1.10, "Grape": 1.60},
+      "+":  {"Apple": 1.60, "Pear": 1.60, "Peach": 3.50, "Apricot": 1.80, "Plum": 2.60, "Prune": 2.20, "Grape": 2.40}
+    },
+    "Mg_pct": {
+      "-":  {"Apple": 0.30, "Pear": 0.25, "Peach": 0.35, "Apricot": 0.25, "Plum": 0.30, "Prune": 0.30, "Grape": 0.30},
+      "+":  {"Apple": 0.60, "Pear": 0.60, "Peach": 1.10, "Apricot": 0.70, "Plum": 0.60, "Prune": 0.60, "Grape": 0.60}
+    },
+    "Na_pct": {
+      "+":  {"Apple": 0.05, "Pear": 0.07, "Peach": 0.02, "Apricot": 0.02, "Plum": 0.03, "Prune": 0.07, "Grape": 0.12},
+      "++": {"Apple": 0.20, "Pear": 0.50, "Peach": 1.00, "Apricot": 1.00, "Plum": 0.50, "Prune": 0.50, "Grape": null}
+    },
+    "Cl_pct": {
+      "+":  {"Apple": 0.15, "Pear": 0.12, "Peach": 0.10, "Apricot": 0.20, "Plum": 0.10, "Prune": 0.14, "Grape": 0.25},
+      "++": {"Apple": 0.35, "Pear": 0.50, "Peach": 0.50, "Apricot": 0.50, "Plum": 0.50, "Prune": 0.50, "Grape": 0.50}
+    },
+    "Mn_mg_kg": {
+      "-":  {"Apple": 25, "Pear": 25, "Peach": 30, "Apricot": 30, "Plum": 25, "Prune": 30, "Grape": 20},
+      "+":  {"Apple": 140, "Pear": 100, "Peach": 140, "Apricot": 100, "Plum": 140, "Prune": 100, "Grape": 300},
+      "++": {"Apple": null, "Pear": null, "Peach": 400, "Apricot": null, "Plum": 600, "Prune": null, "Grape": 1000}
+    },
+    "Fe_mg_kg": {
+      "-":  {"Apple": 60, "Pear": 60, "Peach": 60, "Apricot": 60, "Plum": 60, "Prune": 60, "Grape": 60},
+      "+":  {"Apple": 240, "Pear": 240, "Peach": 240, "Apricot": 140, "Plum": 240, "Prune": 140, "Grape": 240}
+    },
+    "B_mg_kg": {
+      "-":  {"Apple": 25, "Pear": 22, "Peach": 24, "Apricot": 31, "Plum": 30, "Prune": 39, "Grape": 30},
+      "+":  {"Apple": 40, "Pear": 29, "Peach": 45, "Apricot": 42, "Plum": 45, "Prune": 42, "Grape": 65},
+      "++": {"Apple": 140, "Pear": null, "Peach": 80, "Apricot": 80, "Plum": 180, "Prune": 60, "Grape": 400}
+    },
+    "Zn_mg_kg": {
+      "-":  {"Apple": 15, "Pear": 10, "Peach": 18, "Apricot": 30, "Plum": null, "Prune": null, "Grape": null}
+    }
+  },
+
+  "472": {
+    "fertasa_table": "5.3.4",
+    "title": "Sufficient leaf norms — Maize / Wheat / Soya beans / Lucerne",
+    "source_module": "5.3 (leaf_analysis)",
+    "columns": ["Element", "Maize", "Wheat", "Soya beans", "Lucerne"],
+    "units": "% for macronutrients, mg/kg for micronutrients",
+    "note": "Single sufficient-level value per element per crop (not banded).",
+    "N_pct":  {"Maize": 3.00, "Wheat": 2.60, "Soya beans": null,  "Lucerne": null},
+    "P_pct":  {"Maize": 0.25, "Wheat": 0.30, "Soya beans": 0.35, "Lucerne": 0.35},
+    "K_pct":  {"Maize": 1.90, "Wheat": 1.80, "Soya beans": 2.20, "Lucerne": 2.20},
+    "Ca_pct": {"Maize": 0.40, "Wheat": 0.25, "Soya beans": 0.40, "Lucerne": 0.80},
+    "Mg_pct": {"Maize": 0.25, "Wheat": 0.15, "Soya beans": 0.30, "Lucerne": 0.40},
+    "Mn_mg_kg": {"Maize": 15, "Wheat": 30, "Soya beans": 20, "Lucerne": 25},
+    "Fe_mg_kg": {"Maize": 25, "Wheat": 25, "Soya beans": 30, "Lucerne": 30},
+    "B_mg_kg":  {"Maize": 10, "Wheat": 15, "Soya beans": 25, "Lucerne": 30},
+    "Cu_mg_kg": {"Maize":  5, "Wheat":  5, "Soya beans":  5, "Lucerne":  7},
+    "Zn_mg_kg": {"Maize": 15, "Wheat": 15, "Soya beans": 15, "Lucerne": 15},
+    "Mo_mg_kg": {"Maize": 0.2, "Wheat": 0.3, "Soya beans": 0.5, "Lucerne": 0.5}
+  },
+
+  "506": {
+    "fertasa_table": "5.5.5.1",
+    "title": "Soya bean nutrient removal",
+    "source_module": "5.5.5 (soya_beans)",
+    "columns": ["Fraction", "N (kg)", "P (kg)", "K (kg)"],
+    "units": "kg per the stated fraction",
+    "note": "FIXES a critical bug in current crop_requirements — N=10 was the uninoculated-starter rate from Table 5.5.5.2, NOT removal. True removal per t seed is 75-105 kg N.",
+    "rows": [
+      {"fraction": "1 ton soya bean seed",      "N": "75-105", "P": "8-9",  "K": "25-40"},
+      {"fraction": "3 ton soya bean grain",     "N": 187,       "P": 20,     "K": 57},
+      {"fraction": "Crop residues",             "N": 23,        "P": 3,      "K": 16},
+      {"fraction": "Total (3 t grain + residues)", "N": 210,     "P": 23,     "K": 73}
+    ],
+    "per_t_seed_midpoint": {"N": 90, "P": 8.5, "K": 32.5}
+  },
+
+  "474": {
+    "fertasa_table": "5.4.3.2.1",
+    "title": "Minimum pH(KCl) by crop + R-values for liming",
+    "source_module": "5.4.3 (wheat; applies cross-crop)",
+    "rows": [
+      {"crop": "Barley, canola, medic, lucerne", "min_pH_KCl": 5.5, "R_value_liming": 10},
+      {"crop": "Wheat and Triticale", "min_pH_KCl": 5.0, "R_value_liming": 5},
+      {"crop": "Oats", "min_pH_KCl": 4.5, "R_value_liming": 3}
+    ],
+    "note": "Use for crop_sufficiency_overrides — shows how pH(KCl) threshold varies per crop."
+  },
+
+  "501": {
+    "fertasa_table": "5.5.1.X",
+    "title": "Canola N requirement by region, rainfall and previous crop",
+    "source_module": "5.5.1 (canola)",
+    "units": "kg N/ha",
+    "columns": ["Area and rainfall", "Yield potential (t/ha)", "N after Lucerne", "N after Annual legume system", "N after Grain stubble"],
+    "rows": [
+      {"area": "Southern Cape 65% winter rainfall", "rainfall": "<350 mm", "yield": 1.25, "after_lucerne": 10,       "after_annual_legume": "25-30", "after_grain_stubble": "30-50"},
+      {"area": "Southern Cape 65% winter rainfall", "rainfall": "350-425 mm", "yield": 1.50, "after_lucerne": "10-20", "after_annual_legume": "30-35", "after_grain_stubble": "50-70"},
+      {"area": "Southern Cape 65% winter rainfall", "rainfall": "425-500 mm", "yield": 2.00, "after_lucerne": "20-30", "after_annual_legume": "30-45", "after_grain_stubble": "60-90"},
+      {"area": "Southern Cape 65% winter rainfall", "rainfall": ">500 mm", "yield": 2.50, "after_lucerne": "40-50", "after_annual_legume": "50-55", "after_grain_stubble": "80-110"},
+      {"area": "Swartland 83% winter rainfall", "rainfall": "<325 mm", "yield": 1.25, "after_lucerne": null, "after_annual_legume": "50-70", "after_grain_stubble": "70-90"},
+      {"area": "Swartland 83% winter rainfall", "rainfall": "325-425 mm", "yield": 1.75, "after_lucerne": null, "after_annual_legume": "70-90", "after_grain_stubble": "90-110"},
+      {"area": "Swartland 83% winter rainfall", "rainfall": ">425 mm", "yield": 2.50, "after_lucerne": null, "after_annual_legume": "90-110", "after_grain_stubble": "110-130"}
+    ],
+    "note": "Proof-of-concept for fertilizer_rate_tables schema: keyed on region × rainfall × yield × previous_crop. Flat multiplier cannot represent this."
+  },
+
+  "515": {
+    "fertasa_table": "5.6.2 (example calculation)",
+    "title": "Potato — unit conversion worked example (mg/kg to cmol_c/kg)",
+    "source_module": "5.6.2 (potatoes)",
+    "note": "Not a rate table — shows divisors to convert soil cation values from mg/kg to cmol_c/kg: K ÷ 390, Ca ÷ 200, Mg ÷ 120, Na ÷ 230. Worked example sums to 5.31 cmol_c/kg CEC.",
+    "divisors": {"K": 390, "Ca": 200, "Mg": 120, "Na": 230}
+  },
+
+  "517": {
+    "fertasa_table": "5.7.1.1",
+    "title": "Avocado soil + leaf norms",
+    "source_module": "5.7.1 (avocados)",
+    "soil_norms": {
+      "pH (water)":            "5.8 - 6.5",
+      "Resistance_ohms":       1000,
+      "Ca_mg_kg":              "350 - 1000",
+      "Mg_mg_kg":              "100 - 200",
+      "K_sand_mg_kg":          "70 - 150",
+      "K_clay_mg_kg":          "150 - 250",
+      "Na_mg_kg":              "< 30",
+      "P_Bray1_mg_kg":         30,
+      "Acid_saturation_pct":   "< 10 - 15"
+    },
+    "cation_ratios": {
+      "Ca:Mg":        "2.5 - 5.0",
+      "(Ca+Mg):K":    "4.0 - 5.0"
+    },
+    "leaf_norms": {
+      "N_Fuerte_pct":     "1.7 - 1.9",
+      "N_Hass_pct":       "2.2 - 2.3",
+      "N_Pinkerton_pct":  "2.00",
+      "N_Ryan_pct":       "2.10",
+      "N_Edranol_pct":    "2.00",
+      "P_pct":            "0.08 - 0.15",
+      "K_pct":            "0.75 - 1.15",
+      "Ca_pct":           "1.0 - 2.0",
+      "Mg_pct":           "0.4 - 0.8",
+      "S_pct":            "0.2 - 0.6",
+      "Zn_mg_kg":         "25 - 100",
+      "Cu_mg_kg":         "5 - 15",
+      "Mn_mg_kg":         "50 - 250",
+      "Fe_mg_kg":         "50 - 150",
+      "B_mg_kg":          "40 - 80"
+    },
+    "note": "Cultivar-specific N norms; Fuerte is lowest (1.7-1.9%), Hass is highest (2.2-2.3%)."
+  }
+}

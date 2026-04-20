@@ -1,0 +1,24 @@
+{
+  "section": "5.2",
+  "module_id": 336,
+  "title": "Interpretation of soil analysis",
+  "slug": "interpretation_soil",
+  "prose": "Soil analysis is an indispensable tool in the hands of the fertilizer adviser. It forms the basis for planning a fertilizer programme. The extent to which a soil analysis report gives an indication of the availability or output potential of specific nutrients is determined by research (calibration trials). In the absence of research results, the interpretation of a soil analysis is of course more subjective. Nevertheless, it remains a useful tool in the hands of a skilled adviser. Table 5.2.1. Degree of acidity (pH) The toxicity of Al and N is expressed in proportion to the presence of other cations. Formulae for the calculations are indicated in Table 5.2.2. Threshold is crop-specific and covered in the guidelines given for a particular crop. Table 5.2.2. Cation ratios Note : When calculating these ratios, “equivalent’’ values must be used and not mg kg -1 or mg dm -3 . Conversion of mg kg -1 to equivalent values: K: mg kg -1 ÷ 391 = cmol c kg -1 Ca: ÷ 200 Mg: ÷ 122 Na: ÷ 230 Al: ÷ 90 H: ÷ 10 “S” = K + Ca + Mg + Na in cmol c kg -1 “T” = S + (Al + H) = KUV",
+  "tables": [],
+  "image_tables": [
+    {
+      "id": "374",
+      "url": "fhimg/374.jpg",
+      "local_path": "images/374.jpg",
+      "alt": ""
+    },
+    {
+      "id": "376",
+      "url": "fhimg/376.jpg",
+      "local_path": "images/376.jpg",
+      "alt": ""
+    }
+  ],
+  "cross_ref": null,
+  "source_url": "https://www.fertasastats.co.za/pages/fh_bh_reader.php?moduleID=336"
+}

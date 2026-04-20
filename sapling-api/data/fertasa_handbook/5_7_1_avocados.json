@@ -1,0 +1,115 @@
+{
+  "section": "5.7.1",
+  "module_id": 360,
+  "title": "Avocados",
+  "slug": "avocados",
+  "prose": "In South Africa avocados are planted on a wide variety of soils, but preference should be given to deep, well-drained, sandy loam soils. Very wet soils must be avoided as the incidence of root rot increases under such conditions. The area for planting should therefore be carefully selected. In addition to good drainage, the soil should have an effective rooting depth of at least 1 metre. Avoid plantings in hollows where water may accumulate. PRE-PLANT Soil analysis should be carried out at least six months before planting. Agricultural lime and phosphorus fertilizer should be applied if the soil is acid and the phosphorus content is low. The ideal pH (H 2 O) is approximately 6.0. The phosphate status should be augmented to about 25 mg kg -1 P(Bray 1). Well-composted kraal or chicken manure may be applied to improve the physical and biological condition of the soil. YOUNG NON-BEARING TREES Cultivation practices for young trees are aimed at producing fast vegetative growth and trees with a sturdy framework. To achieve this, small but regular applications of fertilizer are necessary during the active growing season. It is important not to fertilize newly planted trees too soon. They should first be allowed to become well-established before being fertilized. Young trees may be fertilized with a mixture of 5 g N, 1.8 g P and 1.6 g K every 6 to 8 weeks. Light irrigation after application is advisable. These amounts may be doubled for one or two year old trees. Nitrogen fertilization might not be required on very fertile soil (for example old banana plantations or soils with a high organic matter content) for the first few years. Mulching around the trees will help to conserve soil moisture and will keep the root system cool and active. FRUIT-BEARING TREES Fertilization of fruit-bearing trees is based on soil and leaf analyses together with the history of the orchard. Previous recommendations, pruning practices, orchard health, yield data and current crop load are important in this regard. Leaf analysis is regarded as the most reliable indication of the orchard's nutrient status, and sampling should start from the second or third year, depending on the size of the trees. Mature leaves on non-bearing branches should be sampled when summer flush has come to an end (March to April). The sample should be representative of the orchard, and the same trees can be sampled every year. Soil samples (0 to 30 cm depth) are taken from underneath the tree canopy, within the wetted area of the sprinklers if using irrigation. Thoroughly mix sub-samples that are representative of one soil type in the orchard. (See Chapter 1.4 for more detail concerning soil sampling.) Soil and leaf analyses should be compared with optimum levels given in Table 5.7.1.1 If the results of the analyses are not satisfactory, consider and investigate all possible aspects affecting the results before deciding on a corrective fertilizer programme. Poor growth and low leaf nutrient levels may also be caused by Phytophthora root rot. If the norms are exceeded, the fertilizer programme should be adjusted downwards or even suspended for an entire season or longer. Table 5.7.1.1. Soil and leaf norms for avocados Source: SAAGA The standardisation of recommendations according to cultivar or tree size is not possible because of the complicated dynamics. Table 5.7.1.2 provides a broad NPK-guideline for avocado trees of increasing size. This guideline may be adapted according to leaf and soil analyses and current crop load. Table 5.7.1.2. General guideline for quantities of N, P and K per tree per year according to tree size Source: SAAGA Fertilizer should be applied evenly over the entire area from the trunk to 50 cm outside the canopy line. GENERAL GUIDELINES Applications should be adjusted in accordance with the tree's phenological cycle. The fertilizer programme should therefore be flexible and not calendar bound. By synchronising applications with the three growth phases, namely root, foliage and reproductive stages, a suitable programme can be implemented. Application rates are also calculated according to the so-called nutrient removal factor (Table 5.7.1.3), which is adjusted according to results obtained from soil and leaf analyses. The table can be used to determine the total fertilizer requirements for an estimated yield of the cultivar Hass, for a crop that has already set. Table 5.7.1.3. Nutrient removal for cultivar Hass Source: SAAGA Nitrogen (N) The timing of nitrogen fertilization is very important. Nitrogen promotes vegetative growth to the detriment of fruit growth. However, withholding nitrogen will improve fruit growth only temporarily. Nitrogen should be applied in three or four split applications, most of which will coincide with the summer flush during January/February. Earlier application may induce fruit drop, especially in Fuerte. Fertilization management during the summer flush is vital as it influences current crop and future productivity. However, nitrogen can be applied earlier than January/February; shortly after fruit set for Hass, or once the spring flush has fully expanded. Care should be taken not to induce excessive abscission of the fruitlets. Phosphorus, potassium, calcium and magnesium (P, K, Ca and Mg) Phosphorus fertilization is indicated on low P soils and P-fixing soils. A single application during the winter months is sufficient. Most of the potassium fertilizer should be applied after fruit-set to promote fruit size and quality. Avocado trees are susceptible to leaf scorch, which is caused by excessive chloride. For this reason, growers prefer using potassium sulphate. Calcium and magnesium applications should be considered on the basis of soil analysis (pH, quantities and Ca:Mg ratio). MICRO-ELEMENTS Boron and zinc are immobile in the plant, which renders foliar spraying ineffective as a general practice. Preference should be given to soil applications. These applications can be supplemented by foliar sprays of chelated zinc (Zn), boron (B) and copper (Cu) during the early flowering stage and at early fully developed foliage. Boron (B) Boron deficiencies are common in avocados in South Africa. Borax or sodium tetraborate is broadcast under the leaf canopy in the spring or summer. Even application is important to prevent toxicity. Experience has shown that two or more applications of borax to give a total of 0.8 g B m -2 are effective in supplementing low boron levels. Over-fertilization with boron, especially on sandy soils, can be extremely toxic to avocados. Zinc (Zn) Zinc sulphate (35% Zn) should be applied in spring at the rate of 3 g m -2 of the area under the canopy at Zn leaf levels of 30 to 40 mg kg -1 , and 6 g m -2 when leaf Zn levels are lower than 30 mg g -1 . ACKNOWLEDGEMENT The input of Messrs. Hans Boyum and Derek Donkin of the S.A. Avocado Growers’ Association is gratefully acknowledged.",
+  "tables": [
+    [
+      [
+        "Drip area diameter (m)",
+        "N (g)",
+        "p (g)",
+        "K (g)"
+      ],
+      [
+        "0.5",
+        "42",
+        "21",
+        "75"
+      ],
+      [
+        "1.5",
+        "84",
+        "42",
+        "150"
+      ],
+      [
+        "2.5",
+        "126",
+        "63",
+        "225"
+      ],
+      [
+        "4.5",
+        "168",
+        "95",
+        "300"
+      ],
+      [
+        "6",
+        "224",
+        "126",
+        "400"
+      ],
+      [
+        "7.5",
+        "280",
+        "158",
+        "500"
+      ],
+      [
+        "9",
+        "336",
+        "189",
+        "600"
+      ],
+      [
+        "10+",
+        "420",
+        "189",
+        "750"
+      ]
+    ],
+    [
+      [
+        "Nutrient removal: Hass"
+      ],
+      [
+        "Element",
+        "Removal"
+      ],
+      [
+        "(kg ton -1 fruit)"
+      ],
+      [
+        "N",
+        "7.1"
+      ],
+      [
+        "p",
+        "1.2"
+      ],
+      [
+        "K",
+        "10.2"
+      ],
+      [
+        "Ca",
+        "3.3"
+      ],
+      [
+        "Mg",
+        "2.3"
+      ],
+      [
+        "B",
+        "0.7"
+      ],
+      [
+        "Zn",
+        "0.25"
+      ]
+    ]
+  ],
+  "image_tables": [
+    {
+      "id": "517",
+      "url": "fhimg/517.jpg",
+      "local_path": "images/517.jpg",
+      "alt": ""
+    }
+  ],
+  "cross_ref": null,
+  "source_url": "https://www.fertasastats.co.za/pages/fh_bh_reader.php?moduleID=360"
+}

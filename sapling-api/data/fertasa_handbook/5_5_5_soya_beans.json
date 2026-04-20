@@ -1,0 +1,151 @@
+{
+  "section": "5.5.5",
+  "module_id": 352,
+  "title": "Soya beans",
+  "slug": "soya_beans",
+  "prose": "Soya beans are known to respond well to residual soil fertility. It is nevertheless necessary to pay proper attention to the crop's nutrient requirements, especially with regard to obtaining high yields and quality. Because of the crop's sensitivity to high salt concentrations near the seed, it may be necessary to broadcast part of the fertilizer and to incorporate it into the soil before planting. Consult an expert for further details. NUTRIENT REMOVAL Compared with maize and wheat, soya beans remove more macro-nutrients per unit of production. Crop removal of N, P and K is given in Table 5.5.5.1. Table 5.5.5.1. Removal of plant nutrients FERTILIZER REQUIREMENTS Nitrogen (N) If the seed has been properly inoculated with the correct rhizobia ( Rhizobium japonicum ) and other growth factors are favourable, a yield increase with N-fertilizer is unlikely. However, on sandy soils with less than 10% clay, an initial application of 10 to 20 kg ha -1 N could be advantageous. See Table 5.5.5.2. If nodulation is unsatisfactory (plants showing N-deficiency symptoms, low nodule counts and nodules showing a lack of pink colouration when freshly cut), soya beans should be fertilized in the same manner as maize. Table 5.5.5.2. Guideline for N-fertilization of soya beans, if the seed has not been inoculated It is important to use good quality commercial inoculants, since no effective N-fixing bacteria, as required by soya beans, occur naturally in South African soils. Under irrigation and in the event of higher yields, part of the N can be applied as a topdressing. Phosphorus (P) Timely soil analysis is required for planning a sound P-fertilizer programme. Soils with a P-status of 15 to 18 mg kg -1 (Bray 1) may be regarded as optimal. Soya beans respond well to broadcast P-fertilizer, although lower P- applications may be successfully band-placed away from the seed. A guideline for P-fertilization is given in Table 5.5.5.3. Table 5.5.5.3. Guideline for P-fertilization of soya beans Potassium (K) Soya beans are effective in utilising soil-K reserves. Per unit of production, soya beans remove much more potassium from the soil than maize (1 ton soya beans = 5 tons maize). This should be borne in mind where soya beans are grown in a crop rotation system. Responses to K-fertilizer are unlikely at K-soil test levels higher than 100 to 120 mg kg -1 . A general fertilizer guideline for potassium is given in Table 5.5.5.4. Table 5.5.5.4. Guideline for K-fertilization of soya beans Secondary elements (Ca, Mg, S) Calcium and sulphur deficiencies seldom occur. However, magnesium deficiencies have been found on acid soils (interveinal yellowing of older leaves). Where soils are acid and analyses show a low Mg-content, preference should be given to dolomitic agricultural lime to raise Mg-levels. Micro-elements To date, only zinc and molybdenum deficiencies are known to have been recorded on soya beans in South Africa. Zinc deficiencies are less common than in maize and are mostly limited to high pH-soils. Molybdenum availability decreases as soil acidity increases. Molybdenum deficiencies can drastically reduce yields. Molybdenum is required for symbiotic N-fixation, and deficiencies can therefore manifest in yellowing of leaves because of a lack of nitrogen. Seed treatment with sodium molybdate (35 g 50 kg -1 seed) is very effective. However, it should be noted that sodium molybdate is toxic to the bacterial inoculant. This problem can be overcome by applying the inoculant separately in suspended form during planting. Consult an expert in this regard. Soil acidity Although soya beans are more acid tolerant than maize, it is nevertheless recommended that the acid saturation percentage be kept as close to 0% as possible, especially where soya beans are grown in rotation with less acid tolerant crops. REFERENCE SMIT, M.A., 1998. \"Jou gids tot suksesvolle sojaboonproduksie\". ARC.",
+  "tables": [
+    [
+      [
+        "Yield potential",
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      [
+        "N-application (kg ha -1 )",
+        "15",
+        "27",
+        "40",
+        "55"
+      ]
+    ],
+    [
+      [
+        "Soil-P (Bray 1)",
+        "P-recommendations for yield potential (t ha -1 )"
+      ],
+      [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      [
+        "mg kg -1",
+        "kg ha -1"
+      ],
+      [
+        "5",
+        "20",
+        "40",
+        "60",
+        "80"
+      ],
+      [
+        "10",
+        "17",
+        "31",
+        "45",
+        "59"
+      ],
+      [
+        "15",
+        "15",
+        "25",
+        "35",
+        "45"
+      ],
+      [
+        "20",
+        "13",
+        "21",
+        "31",
+        "42"
+      ],
+      [
+        "25",
+        "11",
+        "19",
+        "28",
+        "38"
+      ],
+      [
+        "30",
+        "10",
+        "18",
+        "26",
+        "34"
+      ]
+    ],
+    [
+      [
+        "Soil-K",
+        "K-application for yield potential (t ha -1 )"
+      ],
+      [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      [
+        "mg kg -1",
+        "kg ha -1"
+      ],
+      [
+        "20",
+        "20",
+        "40",
+        "60",
+        "80"
+      ],
+      [
+        "40",
+        "16",
+        "31",
+        "47",
+        "63"
+      ],
+      [
+        "60",
+        "13",
+        "25",
+        "39",
+        "53"
+      ],
+      [
+        "80",
+        "11",
+        "22",
+        "34",
+        "46"
+      ],
+      [
+        "100",
+        "10",
+        "20",
+        "31",
+        "41"
+      ],
+      [
+        "120",
+        "9",
+        "19",
+        "30",
+        "40"
+      ]
+    ]
+  ],
+  "image_tables": [
+    {
+      "id": "506",
+      "url": "fhimg/506.jpg",
+      "local_path": "images/506.jpg",
+      "alt": ""
+    }
+  ],
+  "cross_ref": null,
+  "source_url": "https://www.fertasastats.co.za/pages/fh_bh_reader.php?moduleID=352"
+}
