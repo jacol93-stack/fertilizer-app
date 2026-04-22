@@ -23,9 +23,26 @@ We cite against these. A number only graduates into the calculator when it's Tie
 
 ## Status — what got seeded 2026-04-20 → 2026-04-22
 
-**21 migrations (046-066), 902 cells across 32 crops / 85 nutrient slots.** Sustained seeding sessions; 432/432 tests pass on every commit.
+**24 migrations (046-069), 935 cells across 32 crops / 87 nutrient slots.** 455/455 tests pass on every commit.
 
-**2026-04-22 — migration 066** (27 cells): cross-cutting texture work.
+**2026-04-22 afternoon — "provenance + honest heuristic elimination" session:** four migrations shipped (066, 067, 068, 069) targeting the north-star goal of zero `Source = "removal × factor (heuristic)"` rows in calculator output. Net effect: Ca/Mg heuristic eliminated for ~35 mainstream crops; `adjustment_factors` and `ideal_ratios` now carry full provenance; wheat N + asparagus K + canola S + lucerne S seeded. Remaining heuristic-path rows are now mostly micros (task #13, migration 070+) and a few S crops without rate tables.
+
+**2026-04-22 — migration 069** (6 cells): sulphur rate tables.
+- Canola S (5.5.1.5): 3 soil-test bands with Ca-phosphate extraction (<6 / 7-12 / >12 mg/kg → 15-20 / 15 / 10 kg S/ha). Canola S demand ~4× wheat per handbook prose.
+- Lucerne S (5.12.2.7): 3 yield bands (4-8 / 8-16 / 16+ t DM/ha → 25 / 30 / 40 kg S/ha/yr). Yield-band mapping from the lucerne P/K axis in migration 059; annual-maintenance mode; one-off sulphate-sulphur build-up option kept in source_note.
+- Deferred: wheat S (5.4.3.2.3 image 484 — needs OCR), tobacco S (excess-S quality constraint, not a rate), dry bean / groundnut / soya S (carrier-handled, no distinct FERTASA recommendation).
+
+**2026-04-22 — migration 068** (Ca/Mg cation-ratio engine path — **BIG LEVER**):
+- New function `calculate_cation_ratio_target()` computes Ca/Mg targets from FERTASA 5.2.2 base-saturation math (shortfall × CEC × equivalent weight × 2000 t/ha soil mass) instead of heuristic `removal × factor`. Applies to ~35 mainstream crops; skipped for 5 acid-loving crops via the new `crop_calc_flags` table (Blueberry, Raspberry, Blackberry, Rooibos, Honeybush) and for CEC < 3 cmol/kg sandy soils.
+- Preemption order per nutrient: rate-table > ratio-path (Ca/Mg only) > heuristic. Each target now carries a `Calc_Path` field so UI can distinguish FERTASA-direct from Tier-6 fallback.
+- `ideal_ratios` gained provenance columns; 11 of 13 rows are Tier 1 (FERTASA 5.2.2 direct). `adjust_targets_for_ratios` skips base-sat corrections on Ca/Mg that already came from the ratio path to avoid double-counting.
+- Defaults: 2000 t/ha soil mass (~15 cm × 1.33 g/cm³ — matches pre-existing convention in the same function); 2-season split correction; midpoint ideal base sat (Ca 65%, Mg 15%).
+
+**2026-04-22 — migration 067** (adjustment_factors provenance):
+- Added `source` / `source_section` / `source_year` / `source_note` / `tier` columns to `adjustment_factors`. Backfilled all 20 rows as **tier=6 (implementer convention)** with per-nutrient-group rationale notes. The 1.5 / 1.25 / 0.75 shape follows the FSSA/FERTASA drawdown principle from FERTASA 5.1 prose — but the specific numeric factors aren't handbook-published. This is now visibly labelled on every heuristic-path recommendation.
+- Engine: heuristic-path results carry `Tier` + `Adjustment_Factor_Source` dict so UI can surface provenance per nutrient. No calc values change; the honesty is on the label only.
+
+**2026-04-22 — migration 066** (cross-cutting texture work, 27 cells):
 - Wheat N Western Cape (5.4.3.2.2): 15 cells = 5 yield bands × 3 texture bands (sandy / loam / clayey). FERTASA prose multipliers (±10-15%) applied to the published N1 at midpoint factors (1.125 / 0.875); full envelope noted in source_note for auditors.
 - Asparagus K (5.6.3.3): 12 cells = 4 soil-K bands × (establishment sand + establishment clay + established-annual). Uses `crop_cycle` ('plant' / 'ratoon') per the convention established in migration 063 for blueberries.
 - Engine: `Matched_Band` extended to include clay_pct_min/max, texture, region, water_regime, crop_cycle for richer audit trail in UI output.
