@@ -21,9 +21,16 @@ We cite against these. A number only graduates into the calculator when it's Tie
 
 ---
 
-## Status — what got seeded 2026-04-20
+## Status — what got seeded 2026-04-20 → 2026-04-22
 
-**17 migrations (046-062), 851 cells across 30 crops / 83 nutrient slots.** Full session in a single day; 418/418 tests pass on every commit.
+**21 migrations (046-066), 902 cells across 32 crops / 85 nutrient slots.** Sustained seeding sessions; 432/432 tests pass on every commit.
+
+**2026-04-22 — migration 066** (27 cells): cross-cutting texture work.
+- Wheat N Western Cape (5.4.3.2.2): 15 cells = 5 yield bands × 3 texture bands (sandy / loam / clayey). FERTASA prose multipliers (±10-15%) applied to the published N1 at midpoint factors (1.125 / 0.875); full envelope noted in source_note for auditors.
+- Asparagus K (5.6.3.3): 12 cells = 4 soil-K bands × (establishment sand + establishment clay + established-annual). Uses `crop_cycle` ('plant' / 'ratoon') per the convention established in migration 063 for blueberries.
+- Engine: `Matched_Band` extended to include clay_pct_min/max, texture, region, water_regime, crop_cycle for richer audit trail in UI output.
+
+**Prior sessions (2026-04-20):**
 
 | Crop | Nutrients seeded | Source | Tier |
 |---|---|---|:---:|
@@ -118,7 +125,14 @@ These are NOT source problems — the data is in our research folder or already 
 
 Not per-crop; relevant to many crops:
 
-- **Soil-type responsiveness for the unsourced adjustment factors** — the 1.5/1.25/1.0/0.5/0.0 multipliers are the single biggest remaining credibility gap. Replace with texture-varying factors derived from FERTASA prose (e.g. wheat 5.4.3.2: "+10-15% for sandy, −10-15% for clayey"). Schema extension to `adjustment_factors` needed.
+- ~~**Soil-type responsiveness for the unsourced adjustment factors**~~ — **reframed and partially resolved 2026-04-22**. The 1.5/1.25/1.0/0.5/0.0 multipliers in `adjustment_factors` are classification (soil-test buildup/drawdown) multipliers, not texture multipliers — they compose with texture-aware rate tables rather than being replaced by them. FERTASA's texture adjustments are now handled in one of two ways:
+  - **Tabular-by-texture** — encoded directly in `fertilizer_rate_tables` via the `clay_pct_min/max` / `texture` / `crop_cycle` columns (already in the 046 schema). Seeded for potato N (049), wheat K (048), banana K (060), dry bean N (058), lucerne P (059), tobacco N (060), and now wheat N + asparagus K (066).
+  - **Prose multiplier** — applied to a base rate at migration time (wheat N, 066). Stored as three texture-banded rows (sandy / loam / clayey) against FERTASA's published N1, with the ±15% envelope in source_note.
+
+  The remaining per-crop texture prose (conditional / absolute adjustments — groundnut +10-25 kg N/ha on very sandy, soya +10-20 kg N/ha on <10% clay, sweetcorn +10% on sandy under heavy rain, lucerne +100 kg K/ha on <15% clay establishment) is too conditional to encode mechanically. Deferred to per-crop UI flags rather than calc-engine logic.
+
+- **Soil-N mineralization credit by texture** (cotton 5.9.3: sand 60 / loam 120 / clay 160 kg N/ha mineralized). FERTASA applies this as the explicit "A − (B+C+D)" N subtraction method at section 5.9. Most other FERTASA rate tables are already calibrated net of mineralization, so a universal N-supply credit would double-count. Needs a "crops-that-use-subtraction-method" flag before seeding — architectural decision, deferred.
+
 - **Method efficiency multipliers** — band vs broadcast vs fertigation vs foliar efficiency factors. Data exists in FERTASA / IPNI 4R prose; schema extension needed.
 - **Application windows seed** — schema already exists (migration 046 `crop_application_windows`); ~15 concrete rules ready to seed (SAMAC Mar-Oct N, dry bean no N at flowering, wheat N split windows, etc.).
 - **Leaf → next-season feed-forward curves** — biggest logic+data hybrid. Design decision needed first (additive vs multiplicative) before sourcing makes sense.

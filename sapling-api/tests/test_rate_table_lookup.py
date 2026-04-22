@@ -321,3 +321,242 @@ class TestCalculateNutrientTargetsRateTablePath:
         # Base 27.0 * 2.0 * 1.0 = 54
         assert n["Target_kg_ha"] == 54.0
         assert n["Source"] == "removal × factor (heuristic)"
+
+
+# ── Texture-banded rate tables (migration 066) ─────────────────────────────
+
+
+@pytest.fixture
+def wheat_n_western_cape_texture_table():
+    """15 rows mirroring migration 066's seed. FERTASA 5.4.3.2.2 Western
+    Cape N1 with explicit texture-adjusted bands (sandy / loam / clayey)
+    from the same section's prose. Duplicated in Python so the test can
+    run without a live DB — keep in sync with the migration."""
+    rows = []
+
+    def add(yield_min, yield_max, clay_min, clay_max, rmin, rmax):
+        rows.append({
+            "crop": "Wheat", "nutrient": "N", "nutrient_form": "elemental",
+            "yield_min_t_ha": yield_min, "yield_max_t_ha": yield_max,
+            "soil_test_method": None, "soil_test_unit": None,
+            "soil_test_min": None, "soil_test_max": None,
+            "clay_pct_min": clay_min, "clay_pct_max": clay_max,
+            "texture": None, "rainfall_mm_min": None, "rainfall_mm_max": None,
+            "region": "Western Cape", "prior_crop": None,
+            "water_regime": "dryland", "crop_cycle": None,
+            "rate_min_kg_ha": rmin, "rate_max_kg_ha": rmax,
+            "source": "FERTASA Handbook", "source_section": "5.4.3.2.2",
+            "source_year": 2019, "source_note": None,
+        })
+
+    # Loam band (15-35% clay) — published base
+    add(4, 5,    15, 35,  80, 130)
+    add(5, 6,    15, 35, 130, 160)
+    add(6, 7,    15, 35, 160, 180)
+    add(7, 8,    15, 35, 180, 200)
+    add(8, None, 15, 35, 200, 250)
+    # Sandy band (<15% clay) — base × 1.125
+    add(4, 5,    None, 15,  90, 146)
+    add(5, 6,    None, 15, 146, 180)
+    add(6, 7,    None, 15, 180, 202)
+    add(7, 8,    None, 15, 202, 225)
+    add(8, None, None, 15, 225, 281)
+    # Clayey band (>=35% clay) — base × 0.875
+    add(4, 5,    35, None,  70, 114)
+    add(5, 6,    35, None, 114, 140)
+    add(6, 7,    35, None, 140, 158)
+    add(7, 8,    35, None, 158, 175)
+    add(8, None, 35, None, 175, 219)
+    return rows
+
+
+@pytest.fixture
+def asparagus_k_rate_table():
+    """12 rows mirroring migration 066's seed. FERTASA 5.6.3.3 K with
+    establishment Sand/Clay split + established-annual (crop_cycle)."""
+    rows = []
+
+    def add(soil_min, soil_max, clay_min, clay_max, cycle, rate):
+        rows.append({
+            "crop": "Asparagus", "nutrient": "K", "nutrient_form": "elemental",
+            "yield_min_t_ha": 0, "yield_max_t_ha": None,
+            "soil_test_method": "NH4OAc", "soil_test_unit": "mg/kg",
+            "soil_test_min": soil_min, "soil_test_max": soil_max,
+            "clay_pct_min": clay_min, "clay_pct_max": clay_max,
+            "texture": None, "rainfall_mm_min": None, "rainfall_mm_max": None,
+            "region": None, "prior_crop": None, "water_regime": None,
+            "crop_cycle": cycle,
+            "rate_min_kg_ha": rate, "rate_max_kg_ha": rate,
+            "source": "FERTASA Handbook", "source_section": "5.6.3.3",
+            "source_year": 2019, "source_note": None,
+        })
+
+    for (smin, smax, est_sand, est_clay, estab_annual) in [
+        ( 66,  99, 187, 140, 93),
+        (100, 149, 140,  93, 47),
+        (150, 199,  93,  47, 24),
+        (200, 249,  47,  24,  0),
+    ]:
+        add(smin, smax, None,   25, "plant",  est_sand)
+        add(smin, smax,   25, None, "plant",  est_clay)
+        add(smin, smax, None, None, "ratoon", estab_annual)
+    return rows
+
+
+class TestWheatNWesternCapeTexture:
+    """Migration 066: wheat N by yield × texture (sandy / loam / clayey).
+    These lock in the FERTASA 5.4.3.2.2 prose adjustment: +10-15% sandy,
+    -10-15% clayey, applied to the published N1."""
+
+    def _ctx(self, clay_pct, region="Western Cape"):
+        return {"water_regime": "dryland", "region": region,
+                "clay_pct": clay_pct}
+
+    def test_loam_matches_published_base(self, wheat_n_western_cape_texture_table):
+        """clay=25% lands in the loam band [15, 35) → published base
+        (80-130 at 4-5 t/ha)."""
+        hit = lookup_rate_table(
+            "Wheat", "N", yield_target=4.5, soil_value=None,
+            rate_table_rows=wheat_n_western_cape_texture_table,
+            context=self._ctx(clay_pct=25),
+        )
+        assert hit is not None
+        assert hit["Rate_Min"] == 80
+        assert hit["Rate_Max"] == 130
+        assert hit["Matched_Band"]["clay_pct_min"] == 15
+        assert hit["Matched_Band"]["clay_pct_max"] == 35
+
+    def test_sandy_applies_plus_12_5_pct(self, wheat_n_western_cape_texture_table):
+        """clay=8% → sandy band; rate 1.125× base (90-146 at 4-5 t/ha)."""
+        hit = lookup_rate_table(
+            "Wheat", "N", yield_target=4.5, soil_value=None,
+            rate_table_rows=wheat_n_western_cape_texture_table,
+            context=self._ctx(clay_pct=8),
+        )
+        assert hit["Rate_Min"] == 90
+        assert hit["Rate_Max"] == 146
+
+    def test_clayey_applies_minus_12_5_pct(self, wheat_n_western_cape_texture_table):
+        """clay=45% → clayey band; rate 0.875× base (70-114 at 4-5 t/ha)."""
+        hit = lookup_rate_table(
+            "Wheat", "N", yield_target=4.5, soil_value=None,
+            rate_table_rows=wheat_n_western_cape_texture_table,
+            context=self._ctx(clay_pct=45),
+        )
+        assert hit["Rate_Min"] == 70
+        assert hit["Rate_Max"] == 114
+
+    def test_clay_15_is_loam_not_sandy(self, wheat_n_western_cape_texture_table):
+        """Boundary: sandy = [NULL, 15) so clay=15 lands in loam."""
+        hit = lookup_rate_table(
+            "Wheat", "N", yield_target=4.5, soil_value=None,
+            rate_table_rows=wheat_n_western_cape_texture_table,
+            context=self._ctx(clay_pct=15),
+        )
+        assert hit["Rate_Min"] == 80  # loam base
+
+    def test_clay_35_is_clayey_not_loam(self, wheat_n_western_cape_texture_table):
+        """Boundary: loam = [15, 35) so clay=35 lands in clayey."""
+        hit = lookup_rate_table(
+            "Wheat", "N", yield_target=4.5, soil_value=None,
+            rate_table_rows=wheat_n_western_cape_texture_table,
+            context=self._ctx(clay_pct=35),
+        )
+        assert hit["Rate_Min"] == 70  # clayey
+
+    def test_missing_clay_pct_misses(self, wheat_n_western_cape_texture_table):
+        """Every row requires clay_pct context. No context → no match."""
+        hit = lookup_rate_table(
+            "Wheat", "N", yield_target=4.5, soil_value=None,
+            rate_table_rows=wheat_n_western_cape_texture_table,
+            context={"water_regime": "dryland", "region": "Western Cape"},
+        )
+        assert hit is None
+
+    def test_wrong_region_misses(self, wheat_n_western_cape_texture_table):
+        """This is the Western Cape table; Free State context must miss."""
+        hit = lookup_rate_table(
+            "Wheat", "N", yield_target=4.5, soil_value=None,
+            rate_table_rows=wheat_n_western_cape_texture_table,
+            context=self._ctx(clay_pct=25, region="Free State"),
+        )
+        assert hit is None
+
+    def test_open_top_yield_clayey(self, wheat_n_western_cape_texture_table):
+        """Yield 10 t/ha (>8) + clayey → open-top 175-219."""
+        hit = lookup_rate_table(
+            "Wheat", "N", yield_target=10, soil_value=None,
+            rate_table_rows=wheat_n_western_cape_texture_table,
+            context=self._ctx(clay_pct=45),
+        )
+        assert hit["Rate_Min"] == 175
+        assert hit["Rate_Max"] == 219
+
+
+class TestAsparagusKCropCycle:
+    """Migration 066: asparagus K by soil-K × texture × crop_cycle.
+    FERTASA 5.6.3.3 splits establishment rates by sand/clay but bearing
+    rates by soil-K only."""
+
+    def test_establishment_sandy(self, asparagus_k_rate_table):
+        """Establishment (crop_cycle='plant') on sandy soil (clay=10%),
+        soil-K 80 (band 66-99) → 187 kg K/ha."""
+        hit = lookup_rate_table(
+            "Asparagus", "K", yield_target=0, soil_value=80,
+            rate_table_rows=asparagus_k_rate_table,
+            context={"crop_cycle": "plant", "clay_pct": 10},
+        )
+        assert hit is not None
+        assert hit["Rate_Min"] == 187
+        assert hit["Rate_Max"] == 187
+
+    def test_establishment_clay(self, asparagus_k_rate_table):
+        """Establishment on clay soil (clay=40%), soil-K 80 → 140 kg K/ha."""
+        hit = lookup_rate_table(
+            "Asparagus", "K", yield_target=0, soil_value=80,
+            rate_table_rows=asparagus_k_rate_table,
+            context={"crop_cycle": "plant", "clay_pct": 40},
+        )
+        assert hit["Rate_Min"] == 140
+
+    def test_established_annual_ignores_clay(self, asparagus_k_rate_table):
+        """Bearing years (crop_cycle='ratoon'): rate depends only on
+        soil-K, not texture. Even with clay_pct=5 or 60 the value is 93."""
+        for clay in (5, 40, 60):
+            hit = lookup_rate_table(
+                "Asparagus", "K", yield_target=0, soil_value=80,
+                rate_table_rows=asparagus_k_rate_table,
+                context={"crop_cycle": "ratoon", "clay_pct": clay},
+            )
+            assert hit["Rate_Min"] == 93, f"ratoon@clay={clay} should be 93"
+
+    def test_top_band_ratoon_is_zero(self, asparagus_k_rate_table):
+        """At soil-K 220 (band 200-249), bearing plantings need 0 K."""
+        hit = lookup_rate_table(
+            "Asparagus", "K", yield_target=0, soil_value=220,
+            rate_table_rows=asparagus_k_rate_table,
+            context={"crop_cycle": "ratoon"},
+        )
+        assert hit["Rate_Min"] == 0
+        assert hit["Rate_Max"] == 0
+
+    def test_establishment_missing_clay_misses(self, asparagus_k_rate_table):
+        """Establishment rows all require clay_pct. Missing context →
+        no establishment match. Since no ratoon row matches either in
+        a pure 'plant' context, result is None."""
+        hit = lookup_rate_table(
+            "Asparagus", "K", yield_target=0, soil_value=80,
+            rate_table_rows=asparagus_k_rate_table,
+            context={"crop_cycle": "plant"},
+        )
+        assert hit is None
+
+    def test_wrong_crop_cycle_misses(self, asparagus_k_rate_table):
+        """crop_cycle='plant' rows don't match a context asking for
+        something else entirely."""
+        hit = lookup_rate_table(
+            "Asparagus", "K", yield_target=0, soil_value=80,
+            rate_table_rows=asparagus_k_rate_table,
+            context={"crop_cycle": "fallow", "clay_pct": 10},
+        )
+        assert hit is None

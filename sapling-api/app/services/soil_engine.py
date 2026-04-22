@@ -314,6 +314,12 @@ def lookup_rate_table(crop, nutrient, yield_target, soil_value, rate_table_rows,
             "soil_test_min": chosen.get("soil_test_min"),
             "soil_test_max": chosen.get("soil_test_max"),
             "soil_test_method": chosen.get("soil_test_method"),
+            "clay_pct_min": chosen.get("clay_pct_min"),
+            "clay_pct_max": chosen.get("clay_pct_max"),
+            "texture": chosen.get("texture"),
+            "region": chosen.get("region"),
+            "water_regime": chosen.get("water_regime"),
+            "crop_cycle": chosen.get("crop_cycle"),
         },
     }
 
