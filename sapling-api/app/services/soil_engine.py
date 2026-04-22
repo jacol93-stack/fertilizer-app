@@ -19,6 +19,28 @@ NUTRIENT_GROUP_MAP = {
     "Cu": "micro",
 }
 
+# FERTASA 5.2.2: equivalent weights for mg/kg ↔ cmol_c/kg conversion.
+# 1 cmol_c/kg of the ion equals this many mg/kg.
+CATION_EQUIVALENT_WEIGHT_MG_PER_CMOL = {
+    "Ca": 200.4,   # atomic mass 40.08, charge 2 → eq wt 20.04 → 200.4 mg/kg per cmol_c/kg
+    "Mg": 121.56,  # atomic mass 24.31, charge 2
+    "K":  390.98,  # atomic mass 39.10, charge 1
+    "Na": 229.90,  # atomic mass 22.99, charge 1
+}
+
+# Soil-mass assumption for mg/kg → kg/ha conversion. Matches the
+# existing convention used in adjust_targets_for_ratios: ~15 cm topsoil
+# depth × 1.33 g/cm³ bulk density = 2,000,000 kg/ha = 2000 t/ha.
+# Hardcoded until per-field sample depth + bulk density are captured.
+CATION_SOIL_MASS_KG_PER_HA = 2_000_000
+
+# Below this measured CEC the base-saturation calculation becomes
+# numerically unstable (a small absolute Ca gives a misleadingly high
+# %), so we skip the ratio path. FERTASA doesn't publish this cut
+# explicitly — 3 cmol_c/kg is SA lab-interpretation convention for
+# "sandy soil, treat cautiously."
+CATION_RATIO_MIN_CEC = 3.0
+
 
 def classify_soil_value(value, param_name, sufficiency_rows, crop_override_rows=None):
     """Classify a soil analysis value against sufficiency thresholds.
@@ -338,16 +360,146 @@ def lookup_rate_table(crop, nutrient, yield_target, soil_value, rate_table_rows,
     }
 
 
+def calculate_cation_ratio_target(soil_values, cec, ratio_rows, nutrient,
+                                   crop_name=None, crop_calc_flags_rows=None,
+                                   seasons_to_spread=2):
+    """FERTASA 5.2.2 base-saturation target for Ca or Mg.
+
+    For normal mineral soils with measured CEC, this produces a
+    physically-grounded fertilizer recommendation by computing the
+    exchangeable-cation shortfall relative to target base saturation
+    and converting back to kg/ha using the FERTASA equivalent-weight
+    factors. It replaces the Tier-6 heuristic path for Ca/Mg.
+
+    Returns None (→ caller falls through to the next path) when:
+      * nutrient is not 'Ca' or 'Mg' (K handled by rate tables where
+        available; base-saturation targeting is less appropriate for
+        mobile K)
+      * CEC is missing, non-numeric, or below CATION_RATIO_MIN_CEC
+      * the crop is flagged skip_cation_ratio_path in crop_calc_flags
+        (acid-loving crops — blueberry, rooibos, etc.)
+      * no 'Ca base sat.' / 'Mg base sat.' row in ratio_rows
+      * the measured cation is already at or above the ideal-band lower
+        bound (no addition needed — existing adjust_targets_for_ratios
+        still surfaces the "already sufficient" state in diagnostics)
+
+    Otherwise returns a dict:
+      {
+        "Target_kg_ha": float,
+        "Source": "FERTASA Handbook",
+        "Source_Section": "5.2.2",
+        "Tier": 1,
+        "Source_Note": <diagnostic note incl. current/target sat + spread>,
+        "Current_Base_Sat_Pct": float,
+        "Target_Base_Sat_Pct": float,
+        "Shortfall_Pct": float,
+        "CEC": float,
+        "Seasons_To_Spread": int,
+      }
+
+    Args:
+        soil_values: dict {soil_parameter: value}
+        cec: measured CEC (cmol_c/kg). Pass None if not measured.
+        ratio_rows: list of dicts from ideal_ratios table
+        nutrient: 'Ca' or 'Mg'
+        crop_name: optional crop for flag lookup
+        crop_calc_flags_rows: optional list of dicts from crop_calc_flags
+        seasons_to_spread: default 2 — FERTASA convention is to spread
+            a full Ca/Mg correction over 2-3 seasons. Returns half of
+            the full shortfall to apply in one season.
+    """
+    if nutrient not in ("Ca", "Mg"):
+        return None
+
+    # Skip flag: acid-loving crops whose universal targets would damage.
+    if crop_name and crop_calc_flags_rows:
+        flag_row = next(
+            (r for r in crop_calc_flags_rows if r.get("crop") == crop_name),
+            None,
+        )
+        if flag_row and flag_row.get("skip_cation_ratio_path"):
+            return None
+
+    # CEC gate.
+    if cec is None:
+        return None
+    try:
+        cec_f = float(cec)
+    except (TypeError, ValueError):
+        return None
+    if cec_f < CATION_RATIO_MIN_CEC:
+        return None
+
+    # Measured cation in cmol_c/kg.
+    measured_mg_kg = soil_values.get(nutrient)
+    if measured_mg_kg is None:
+        return None
+    try:
+        measured_mg_kg_f = float(measured_mg_kg)
+    except (TypeError, ValueError):
+        return None
+    eq_wt = CATION_EQUIVALENT_WEIGHT_MG_PER_CMOL[nutrient]
+    current_cmol = measured_mg_kg_f / eq_wt
+    current_sat_pct = (current_cmol / cec_f) * 100 if cec_f > 0 else 0
+
+    # Target from ideal_ratios. Use ideal_min (conservative — only
+    # recommend addition if below the published-low-end target, matching
+    # the existing adjust_targets_for_ratios convention).
+    ratio_name = f"{nutrient} base sat."
+    ratio_row = next(
+        (r for r in ratio_rows if r.get("ratio") == ratio_name),
+        None,
+    )
+    if not ratio_row:
+        return None
+    ideal_min = float(ratio_row["ideal_min"])
+    ideal_max = float(ratio_row["ideal_max"])
+
+    if current_sat_pct >= ideal_min:
+        return None  # already adequate; no addition
+
+    shortfall_pct = ideal_min - current_sat_pct
+    shortfall_cmol = (shortfall_pct / 100) * cec_f
+    delta_mg_kg = shortfall_cmol * eq_wt
+    full_correction_kg_ha = delta_mg_kg * CATION_SOIL_MASS_KG_PER_HA / 1_000_000
+    # Spread over seasons_to_spread (conservative default 2).
+    per_season_kg_ha = round(full_correction_kg_ha / max(1, seasons_to_spread), 2)
+
+    return {
+        "Target_kg_ha": per_season_kg_ha,
+        "Source": ratio_row.get("source") or "FERTASA Handbook",
+        "Source_Section": ratio_row.get("source_section") or "5.2.2",
+        "Tier": ratio_row.get("tier") or 1,
+        "Source_Note": (
+            f"Base-saturation target: {nutrient} currently "
+            f"{current_sat_pct:.1f}% of CEC (ideal {ideal_min:.0f}-{ideal_max:.0f}%). "
+            f"Full correction {full_correction_kg_ha:.0f} kg {nutrient}/ha; "
+            f"split over {seasons_to_spread} seasons per FERTASA convention."
+        ),
+        "Current_Base_Sat_Pct": round(current_sat_pct, 1),
+        "Target_Base_Sat_Pct": ideal_min,
+        "Shortfall_Pct": round(shortfall_pct, 1),
+        "CEC": cec_f,
+        "Seasons_To_Spread": seasons_to_spread,
+    }
+
+
 def calculate_nutrient_targets(crop_name, yield_target, soil_values,
                                 crop_rows, sufficiency_rows, adjustment_rows, param_map_rows,
                                 crop_override_rows=None, rate_table_rows=None,
-                                rate_table_context=None):
+                                rate_table_context=None, ratio_rows=None,
+                                crop_calc_flags_rows=None):
     """Calculate adjusted nutrient targets (kg/ha) for a crop.
 
-    When a FERTASA (or equivalent) rate-table row exists for the
-    (crop, nutrient, yield, soil) combination, the table cell overrides
-    the `removal × factor` heuristic. The result dict's `Source` field
-    indicates which path was taken.
+    Preemption order per nutrient:
+      1. FERTASA (or equivalent) rate-table row — if a cell exists for
+         the (crop, nutrient, yield, soil) combination, it wins.
+      2. For Ca/Mg only: FERTASA 5.2.2 base-saturation ratio path
+         (skipped on low-CEC soils and acid-loving crops).
+      3. Heuristic: removal × yield × adjustment-factor (Tier 6).
+
+    The result dict's `Source` and `Tier` fields indicate which path
+    was taken so the UI can surface the provenance of each number.
 
     Args:
         crop_name: crop name matching crop_requirements table
@@ -364,6 +516,11 @@ def calculate_nutrient_targets(crop_name, yield_target, soil_values,
         rate_table_context: optional dict passed to lookup_rate_table()
             for third-axis filtering (clay_pct, texture, rainfall_mm,
             region, prior_crop, water_regime).
+        ratio_rows: optional list of dicts from ideal_ratios — when
+            provided, enables the Ca/Mg base-saturation path (FERTASA
+            5.2.2) as the preferred source for those two nutrients.
+        crop_calc_flags_rows: optional list of dicts from crop_calc_flags
+            — used to skip the ratio path for acid-loving crops.
     """
     crop_row = next((r for r in crop_rows if r["crop"] == crop_name), None)
     if not crop_row:
@@ -387,7 +544,7 @@ def calculate_nutrient_targets(crop_name, yield_target, soil_values,
         factor = float(adj_row["factor"]) if adj_row else 1.0
         adjusted = round(base_req * factor, 2)
 
-        # Rate-table override takes precedence when a matching cell exists.
+        # Path 1: rate-table override takes precedence when a matching cell exists.
         rate_hit = lookup_rate_table(
             crop=crop_name,
             nutrient=nut,
@@ -397,6 +554,19 @@ def calculate_nutrient_targets(crop_name, yield_target, soil_values,
             context=rate_table_context,
         ) if rate_table_rows else None
 
+        # Path 2: Ca/Mg base-saturation (FERTASA 5.2.2) when no rate-table hit.
+        ratio_hit = None
+        if rate_hit is None and nut in ("Ca", "Mg") and ratio_rows:
+            cec_value = soil_values.get("CEC")
+            ratio_hit = calculate_cation_ratio_target(
+                soil_values=soil_values,
+                cec=cec_value,
+                ratio_rows=ratio_rows,
+                nutrient=nut,
+                crop_name=crop_name,
+                crop_calc_flags_rows=crop_calc_flags_rows,
+            )
+
         if rate_hit is not None:
             target_kg_ha = rate_hit["Rate_Mid"]
             source_label = f"{rate_hit['Source']} ({rate_hit['Source_Section']})"
@@ -404,6 +574,13 @@ def calculate_nutrient_targets(crop_name, yield_target, soil_values,
             # numeric Tier from source strings is a separate follow-up.
             tier = None
             adj_provenance = None
+            calc_path = "rate_table"
+        elif ratio_hit is not None:
+            target_kg_ha = ratio_hit["Target_kg_ha"]
+            source_label = f"{ratio_hit['Source']} ({ratio_hit['Source_Section']})"
+            tier = ratio_hit["Tier"]
+            adj_provenance = None
+            calc_path = "cation_ratio"
         else:
             target_kg_ha = adjusted
             source_label = "removal × factor (heuristic)"
@@ -413,6 +590,7 @@ def calculate_nutrient_targets(crop_name, yield_target, soil_values,
                 "source_section": adj_row.get("source_section"),
                 "source_note": adj_row.get("source_note"),
             } if adj_row else None
+            calc_path = "heuristic"
 
         results.append({
             "Nutrient": nut,
@@ -424,8 +602,10 @@ def calculate_nutrient_targets(crop_name, yield_target, soil_values,
             "Target_kg_ha": target_kg_ha,
             "Source": source_label,
             "Tier": tier,
+            "Calc_Path": calc_path,
             "Adjustment_Factor_Source": adj_provenance,
             "Rate_Table_Hit": rate_hit,
+            "Cation_Ratio_Hit": ratio_hit,
         })
 
     return results
@@ -617,9 +797,16 @@ def adjust_targets_for_ratios(targets, ratio_results, soil_values, ratio_rows):
                         (f"K:Na ratio {actual:.1f} below ideal {ideal_min}-{ideal_max}", extra)
                     )
 
-        # Base saturation corrections — these already use exact calculations
+        # Base saturation corrections — these already use exact calculations.
+        # Skipped for Ca/Mg targets already computed via the cation_ratio
+        # base-target path (calculate_cation_ratio_target), since the ratio
+        # path already internalises the same shortfall formula. Double-
+        # applying would stack a full correction on top of itself.
         elif ratio_name == "Ca base sat." and status == "Below ideal":
-            if "Ca" in target_map and not is_high("Ca"):
+            ca_target = target_map.get("Ca", {})
+            if ca_target.get("Calc_Path") == "cation_ratio":
+                pass  # already handled by base-target path
+            elif "Ca" in target_map and not is_high("Ca"):
                 current = target_map["Ca"]["Target_kg_ha"]
                 shortfall_pct = ideal_min - actual
                 if cec and cec > 0:
@@ -649,7 +836,10 @@ def adjust_targets_for_ratios(targets, ratio_results, soil_values, ratio_rows):
                         )
 
         elif ratio_name == "Mg base sat." and status == "Below ideal":
-            if "Mg" in target_map and not is_high("Mg"):
+            mg_target = target_map.get("Mg", {})
+            if mg_target.get("Calc_Path") == "cation_ratio":
+                pass  # already handled by base-target path
+            elif "Mg" in target_map and not is_high("Mg"):
                 current = target_map["Mg"]["Target_kg_ha"]
                 shortfall_pct = ideal_min - actual
                 if cec and cec > 0:
