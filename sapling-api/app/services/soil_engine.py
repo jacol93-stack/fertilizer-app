@@ -69,8 +69,15 @@ def classify_soil_value(value, param_name, sufficiency_rows, crop_override_rows=
         return "Very High"
 
 
-def get_adjustment_factor(classification, adjustment_rows, nutrient=None):
-    """Look up adjustment factor for a soil classification level.
+def get_adjustment_factor_row(classification, adjustment_rows, nutrient=None):
+    """Resolve the adjustment_factors row for a (classification, nutrient) pair.
+
+    Returns the full row dict so callers can read not only the numeric
+    factor but also provenance (source, source_section, source_note,
+    tier) — the UI surfaces these so agronomists can distinguish a
+    FERTASA-rate-table-driven target from a Tier-6 implementer-convention
+    fallback. Returns None when no row matches and the calculator
+    should treat the factor as 1.0.
 
     Args:
         classification: string like "Very Low", "Low", etc.
@@ -78,9 +85,8 @@ def get_adjustment_factor(classification, adjustment_rows, nutrient=None):
         nutrient: optional nutrient name to look up group-specific factor
     """
     if not classification:
-        return 1.0
+        return None
 
-    # Try group-specific lookup first
     if nutrient:
         group = NUTRIENT_GROUP_MAP.get(nutrient)
         if group:
@@ -91,14 +97,22 @@ def get_adjustment_factor(classification, adjustment_rows, nutrient=None):
                 None,
             )
             if row:
-                return float(row["factor"])
+                return row
 
-    # Fallback: match by classification only (backward compat)
-    row = next(
+    # Fallback: match by classification only (backward compat with
+    # ungrouped fixtures and legacy callers).
+    return next(
         (r for r in adjustment_rows if r["classification"] == classification),
         None,
     )
-    if not row:
+
+
+def get_adjustment_factor(classification, adjustment_rows, nutrient=None):
+    """Numeric factor for (classification, nutrient). Thin wrapper over
+    get_adjustment_factor_row that returns only the factor and defaults
+    to 1.0 on miss. Retained for callers that don't need provenance."""
+    row = get_adjustment_factor_row(classification, adjustment_rows, nutrient)
+    if row is None:
         return 1.0
     return float(row["factor"])
 
@@ -369,7 +383,8 @@ def calculate_nutrient_targets(crop_name, yield_target, soil_values,
             soil_val = soil_values.get(nut)
 
         classification = classify_soil_value(soil_val, soil_param, sufficiency_rows, crop_override_rows)
-        factor = get_adjustment_factor(classification, adjustment_rows, nutrient=nut)
+        adj_row = get_adjustment_factor_row(classification, adjustment_rows, nutrient=nut)
+        factor = float(adj_row["factor"]) if adj_row else 1.0
         adjusted = round(base_req * factor, 2)
 
         # Rate-table override takes precedence when a matching cell exists.
@@ -385,9 +400,19 @@ def calculate_nutrient_targets(crop_name, yield_target, soil_values,
         if rate_hit is not None:
             target_kg_ha = rate_hit["Rate_Mid"]
             source_label = f"{rate_hit['Source']} ({rate_hit['Source_Section']})"
+            # Rate-table rows carry their own provenance; inferring a
+            # numeric Tier from source strings is a separate follow-up.
+            tier = None
+            adj_provenance = None
         else:
             target_kg_ha = adjusted
             source_label = "removal × factor (heuristic)"
+            tier = adj_row.get("tier") if adj_row else None
+            adj_provenance = {
+                "source": adj_row.get("source"),
+                "source_section": adj_row.get("source_section"),
+                "source_note": adj_row.get("source_note"),
+            } if adj_row else None
 
         results.append({
             "Nutrient": nut,
@@ -398,6 +423,8 @@ def calculate_nutrient_targets(crop_name, yield_target, soil_values,
             "Factor": factor,
             "Target_kg_ha": target_kg_ha,
             "Source": source_label,
+            "Tier": tier,
+            "Adjustment_Factor_Source": adj_provenance,
             "Rate_Table_Hit": rate_hit,
         })
 

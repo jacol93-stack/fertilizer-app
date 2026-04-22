@@ -560,3 +560,86 @@ class TestAsparagusKCropCycle:
             context={"crop_cycle": "fallow", "clay_pct": 10},
         )
         assert hit is None
+
+
+# ── Adjustment-factor provenance surfacing (migration 067) ─────────────────
+
+
+class TestAdjustmentFactorProvenanceSurfacing:
+    """Migration 067 added tier/source/source_note columns to
+    adjustment_factors. These tests lock in that the heuristic path
+    surfaces that provenance so the UI can distinguish Tier-6
+    fallback targets from FERTASA-direct rate-table hits."""
+
+    def test_heuristic_path_includes_tier_and_adjustment_source(
+        self, sufficiency_rows, adjustment_rows_grouped, param_map_rows,
+        wheat_crop_row,
+    ):
+        """Without a rate table, the P target takes the heuristic path
+        and the result dict carries Tier=6 + Adjustment_Factor_Source."""
+        soil = {
+            "K": 180, "P (Bray-1)": 8, "N (total)": 30, "Ca": 800, "Mg": 150,
+            "S": 15, "Zn": 2.0, "B": 1.0, "Mn": 20, "Fe": 20, "Cu": 1.0, "Mo": 0.2,
+        }
+        targets = calculate_nutrient_targets(
+            crop_name="Wheat", yield_target=2.0, soil_values=soil,
+            crop_rows=[wheat_crop_row],
+            sufficiency_rows=sufficiency_rows,
+            adjustment_rows=adjustment_rows_grouped,
+            param_map_rows=param_map_rows,
+            rate_table_rows=None,
+        )
+        p = next(t for t in targets if t["Nutrient"] == "P")
+        assert p["Source"] == "removal × factor (heuristic)"
+        assert p["Tier"] == 6
+        assert p["Adjustment_Factor_Source"] is not None
+        assert p["Adjustment_Factor_Source"]["source_section"] == "5.1"
+        assert "Implementer convention" in p["Adjustment_Factor_Source"]["source"]
+
+    def test_rate_table_path_has_no_adjustment_source(
+        self, sufficiency_rows, adjustment_rows_grouped, param_map_rows,
+        wheat_crop_row, wheat_p_rate_table,
+    ):
+        """When the rate-table path wins, the adjustment_factors row
+        didn't drive the target — so Adjustment_Factor_Source is None
+        and the heuristic Tier doesn't apply."""
+        soil = {
+            "K": 180, "P (Bray-1)": 8, "N (total)": 30, "Ca": 800, "Mg": 150,
+            "S": 15, "Zn": 2.0, "B": 1.0, "Mn": 20, "Fe": 20, "Cu": 1.0, "Mo": 0.2,
+        }
+        targets = calculate_nutrient_targets(
+            crop_name="Wheat", yield_target=2.0, soil_values=soil,
+            crop_rows=[wheat_crop_row],
+            sufficiency_rows=sufficiency_rows,
+            adjustment_rows=adjustment_rows_grouped,
+            param_map_rows=param_map_rows,
+            rate_table_rows=wheat_p_rate_table,
+            rate_table_context={"water_regime": "dryland"},
+        )
+        p = next(t for t in targets if t["Nutrient"] == "P")
+        assert p["Rate_Table_Hit"] is not None
+        assert p["Tier"] is None
+        assert p["Adjustment_Factor_Source"] is None
+
+    def test_missing_adjustment_row_leaves_fields_none(
+        self, sufficiency_rows, param_map_rows, wheat_crop_row,
+    ):
+        """If the adjustment_factors table is empty (e.g. a test run
+        without fixtures), the heuristic still runs at factor=1.0 but
+        the provenance fields are None — no false attribution."""
+        soil = {
+            "K": 180, "P (Bray-1)": 8, "N (total)": 30, "Ca": 800, "Mg": 150,
+            "S": 15, "Zn": 2.0, "B": 1.0, "Mn": 20, "Fe": 20, "Cu": 1.0, "Mo": 0.2,
+        }
+        targets = calculate_nutrient_targets(
+            crop_name="Wheat", yield_target=2.0, soil_values=soil,
+            crop_rows=[wheat_crop_row],
+            sufficiency_rows=sufficiency_rows,
+            adjustment_rows=[],  # empty
+            param_map_rows=param_map_rows,
+            rate_table_rows=None,
+        )
+        p = next(t for t in targets if t["Nutrient"] == "P")
+        assert p["Factor"] == 1.0
+        assert p["Tier"] is None
+        assert p["Adjustment_Factor_Source"] is None

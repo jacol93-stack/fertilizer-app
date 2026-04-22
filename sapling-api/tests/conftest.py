@@ -41,15 +41,32 @@ def sufficiency_rows():
     ]
 
 
+_TIER6_NOTE = (
+    "Implementer convention per FERTASA 5.1 drawdown principle; "
+    "specific numeric factors not handbook-published. See migration 067."
+)
+
+
+def _adj(cls, factor, group):
+    """Factory so every fixture row carries the Tier-6 provenance fields that
+    migration 067 enforces on the live table."""
+    return {
+        "classification": cls, "factor": factor, "nutrient_group": group,
+        "source": "Implementer convention (SA agronomy practice)",
+        "source_section": "5.1", "source_year": None,
+        "source_note": _TIER6_NOTE, "tier": 6,
+    }
+
+
 @pytest.fixture
 def adjustment_rows():
     """Adjustment factors by classification. Covers the universal fallback path."""
     return [
-        {"classification": "Very Low", "factor": 1.5, "nutrient_group": None},
-        {"classification": "Low",      "factor": 1.25, "nutrient_group": None},
-        {"classification": "Optimal",  "factor": 1.0,  "nutrient_group": None},
-        {"classification": "High",     "factor": 0.5,  "nutrient_group": None},
-        {"classification": "Very High","factor": 0.0,  "nutrient_group": None},
+        _adj("Very Low",  1.5,  None),
+        _adj("Low",       1.25, None),
+        _adj("Optimal",   1.0,  None),
+        _adj("High",      0.5,  None),
+        _adj("Very High", 0.0,  None),
     ]
 
 
@@ -67,7 +84,7 @@ def adjustment_rows_grouped():
     }
     for g in groups:
         for cls, factor in base.items():
-            rows.append({"classification": cls, "factor": factor, "nutrient_group": g})
+            rows.append(_adj(cls, factor, g))
     return rows
 
 
