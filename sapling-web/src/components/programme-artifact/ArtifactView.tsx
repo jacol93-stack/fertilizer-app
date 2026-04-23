@@ -11,6 +11,7 @@ import type {
   ProgrammeArtifact,
   RiskFlag,
   Severity,
+  ShoppingListEntry,
   SoilSnapshot,
   SourceCitation,
   StageSchedule,
@@ -28,6 +29,7 @@ import {
   Info,
   Leaf,
   ListChecks,
+  Package,
   Shovel,
   Sprout,
 } from "lucide-react";
@@ -88,6 +90,10 @@ export function ArtifactView({ artifact }: { artifact: ProgrammeArtifact }) {
         blockNameById={blockNameById}
       />
       <FoliarSection events={artifact.foliar_events} />
+      <ShoppingListSection
+        entries={artifact.shopping_list}
+        blockNameById={blockNameById}
+      />
       <RiskFlagsSection flags={artifact.risk_flags} />
       <OutstandingItemsSection items={artifact.outstanding_items} />
       <AssumptionsSection assumptions={artifact.assumptions} />
@@ -559,6 +565,88 @@ function FoliarSection({ events }: { events: FoliarEvent[] }) {
             <SourceTag source={e.source} />
           </div>
         ))}
+      </div>
+    </Section>
+  );
+}
+
+// ============================================================
+// Shopping List
+// ============================================================
+
+const CATEGORY_LABEL: Record<string, string> = {
+  drip: "Fertigation / drip",
+  drench: "Drench",
+  foliar: "Foliar",
+  dry_blend: "Dry blend / broadcast",
+};
+
+function ShoppingListSection({
+  entries,
+  blockNameById,
+}: {
+  entries: ShoppingListEntry[];
+  blockNameById: Record<string, string>;
+}) {
+  if (entries.length === 0) return null;
+  // Group by category and sort within each
+  const byCategory = new Map<string, ShoppingListEntry[]>();
+  for (const e of entries) {
+    const arr = byCategory.get(e.category) || [];
+    arr.push(e);
+    byCategory.set(e.category, arr);
+  }
+  const categories = Array.from(byCategory.keys()).sort();
+
+  return (
+    <Section icon={<Package className="h-4 w-4" />} title="Shopping list">
+      <div className="space-y-5">
+        {categories.map((cat) => {
+          const rows = byCategory.get(cat) || [];
+          const rowsSorted = [...rows].sort((a, b) => b.total_overall - a.total_overall);
+          const catTotal = rowsSorted.reduce((s, r) => s + r.total_overall, 0);
+          return (
+            <div key={cat}>
+              <div className="mb-2 flex items-baseline justify-between gap-3">
+                <h3 className="text-sm font-medium">
+                  {CATEGORY_LABEL[cat] || cat}
+                </h3>
+                <span className="text-xs text-muted-foreground">
+                  {rowsSorted.length} product{rowsSorted.length !== 1 ? "s" : ""}
+                  {rowsSorted[0]?.unit ? ` · ${catTotal.toFixed(0)} ${rowsSorted[0].unit} total` : ""}
+                </span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                      <th className="py-2 pr-3">Product</th>
+                      <th className="py-2 pr-3">Analysis</th>
+                      <th className="py-2 pr-3 text-right">Total</th>
+                      <th className="py-2 pr-3">Per block</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rowsSorted.map((r, i) => (
+                      <tr key={i} className="border-b border-border/50 last:border-0 align-top">
+                        <td className="py-2 pr-3 font-medium">{r.product}</td>
+                        <td className="py-2 pr-3 text-xs">{r.analysis}</td>
+                        <td className="py-2 pr-3 text-right font-mono text-xs tabular-nums">
+                          {r.total_overall.toFixed(0)} {r.unit}
+                        </td>
+                        <td className="py-2 pr-3 text-xs">
+                          {Object.entries(r.total_per_block)
+                            .map(([bid, q]) => `${prettyBlockLabel(bid, blockNameById)}: ${q.toFixed(0)} ${r.unit}`)
+                            .join(" · ")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </Section>
   );
