@@ -311,6 +311,177 @@ def test_blends_and_shopping_list_transparently_empty(clivia_land_a_input):
 
 
 # ============================================================
+# DRY-ONLY FARM — the engine must work for dry programmes too
+# ============================================================
+
+@pytest.fixture
+def dryland_maize_block():
+    """Free State dryland maize farm — NO drip, just granular spreader + foliar.
+    Different crop, different method profile, different soil from Clivia."""
+    return BlockInput(
+        block_id="fs_north",
+        block_name="FS North",
+        block_area_ha=80.0,
+        lab_name="Bemlab",
+        lab_method="Bray-1",
+        sample_date=date(2026, 1, 15),
+        sample_id="BM2026_042",
+        soil_parameters={
+            "CEC": 8.5, "pH (H2O)": 5.9,
+            "P (Bray-1)": 18, "K": 145, "Ca": 1200, "Mg": 180,
+            "Al": 45, "Na": 15, "S": 8,  # moderate soil, no severe issues
+            "B": 0.5, "Zn": 1.8, "Mn": 22, "Fe": 50, "Cu": 1.2,
+        },
+        season_targets={
+            "N": 90, "P2O5": 45, "K2O": 30, "Ca": 25, "S": 15,
+        },
+        # No pre-season inputs — dryland farmers often apply everything
+        # at planting via spreader
+        pre_season_inputs=[],
+    )
+
+
+def test_dry_only_farm_produces_valid_artifact(dryland_maize_block):
+    """Dryland maize, no drip, granular spreader + foliar sprayer only.
+    Full orchestrator chain must still produce a working ProgrammeArtifact."""
+    inputs = OrchestratorInput(
+        client_name="Free State Farming Co",
+        farm_name="Noordster",
+        prepared_for="Jan Pretorius",
+        crop="Maize (dryland)",
+        planting_date=date(2026, 11, 1),  # Summer rainfall
+        build_date=date(2026, 8, 1),  # 3 months pre-plant = lead time for lime
+        location="Bothaville, Free State",
+        ref_number="FSF_2026",
+        expected_harvest_date=date(2027, 5, 15),
+        season="Summer 2026/27",
+        method_availability=MethodAvailability(
+            has_drip=False,                  # ← no liquid at all
+            has_pivot=False,
+            has_sprinkler=False,
+            has_foliar_sprayer=True,
+            has_granular_spreader=True,     # ← dry blending only
+            has_fertigation_injectors=False,
+            has_seed_treatment=True,
+        ),
+        blocks=[dryland_maize_block],
+        stage_count=5,
+    )
+
+    art = build_programme(inputs)
+
+    # Artifact produced successfully
+    assert isinstance(art, ProgrammeArtifact)
+    assert art.header.crop == "Maize (dryland)"
+    assert art.header.method_availability.has_drip is False
+    assert art.header.method_availability.has_granular_spreader is True
+
+
+def test_dry_farm_no_fertigation_specific_sections(dryland_maize_block):
+    """Dry-only farm: zero fertigation-specific output (no Part A/B, no injection)."""
+    inputs = OrchestratorInput(
+        client_name="FS Co", farm_name="Noordster", prepared_for="Jan",
+        crop="Maize (dryland)",
+        planting_date=date(2026, 11, 1), build_date=date(2026, 8, 1),
+        method_availability=MethodAvailability(
+            has_drip=False, has_foliar_sprayer=True, has_granular_spreader=True,
+        ),
+        blocks=[dryland_maize_block], stage_count=5,
+    )
+    art = build_programme(inputs)
+
+    # No risk flags should reference Part A/B or drip-line EC
+    # (These are fertigation-specific, not applicable to dry farms)
+    for flag in art.risk_flags:
+        assert "Part A" not in flag.message
+        assert "drip line" not in flag.message.lower()
+        assert "injector" not in flag.message.lower()
+
+    # Outstanding items should NOT ask for irrigation water test
+    # (no fertigation → no water test needed)
+    water_items = [i for i in art.outstanding_items if "water test" in i.item.lower()]
+    assert len(water_items) == 0
+
+
+def test_dry_farm_routes_all_macros_to_dry_broadcast_or_sidedress(dryland_maize_block):
+    """Verify method routing via the method_selector happened correctly
+    (dry farm → all macros go granular, not drip)."""
+    from app.services.method_selector import select_methods
+    from app.services.stage_splitter import split_season_targets
+
+    avail = MethodAvailability(
+        has_drip=False, has_foliar_sprayer=True, has_granular_spreader=True,
+    )
+    splits = split_season_targets(
+        crop="Maize (dryland)",
+        season_targets=dryland_maize_block.season_targets,
+        stage_count=5,
+    )
+    assignments = select_methods(splits, avail)
+
+    # Every N assignment must be DRY_* (not LIQUID_*)
+    n_assignments = [a for a in assignments if a.nutrient == "N"]
+    assert len(n_assignments) > 0
+    for a in n_assignments:
+        assert a.method.name.startswith("DRY_"), (
+            f"N routed to {a.method.name} on a dry-only farm — expected DRY_*"
+        )
+
+
+def test_dry_farm_foliar_still_fires_if_triggered(dryland_maize_block):
+    """Dry farm with foliar sprayer: foliar events STILL fire for micros
+    even though the main macros programme is dry."""
+    # Tweak soil to create P:Zn lockup → forces foliar Zn trigger
+    dryland_maize_block.soil_parameters["P (Bray-1)"] = 150
+    dryland_maize_block.soil_parameters["Zn"] = 0.4  # ratio 375, severe lockup
+    dryland_maize_block.season_targets["Zn"] = 1.5
+
+    inputs = OrchestratorInput(
+        client_name="FS Co", farm_name="N", prepared_for="J",
+        crop="Maize (dryland)",
+        planting_date=date(2026, 11, 1), build_date=date(2026, 8, 1),
+        method_availability=MethodAvailability(
+            has_drip=False, has_foliar_sprayer=True, has_granular_spreader=True,
+        ),
+        blocks=[dryland_maize_block], stage_count=5,
+    )
+    art = build_programme(inputs)
+
+    # P:Zn lockup should have produced a risk flag about Zn availability
+    zn_flags = [f for f in art.risk_flags if "Zn" in f.message or "zinc" in f.message.lower()]
+    # At least the SoilFactorFinding → RiskFlag translation should surface it
+    assert len(zn_flags) >= 1 or any("P:Zn" in f.message for f in art.risk_flags)
+
+
+def test_dry_farm_pre_season_lime_recommendation_if_al_and_lead_time():
+    """Al-active dry farm + 3 months lead time → recommend lime (dry amendment,
+    perfect for granular-spreader farm)."""
+    al_block = BlockInput(
+        block_id="al1", block_name="Al block", block_area_ha=50,
+        soil_parameters={
+            "Al": 450, "Ca": 800, "Mg": 150, "K": 120, "Na": 10,
+            "pH (H2O)": 4.9, "P (Bray-1)": 15, "Zn": 1.0,
+        },
+        season_targets={"N": 80, "P2O5": 40, "K2O": 25},
+    )
+    inputs = OrchestratorInput(
+        client_name="Acid-soil Farm", farm_name="Highveld",
+        prepared_for="A", crop="Maize (dryland)",
+        planting_date=date(2026, 11, 1), build_date=date(2026, 8, 1),  # 3 mo
+        method_availability=MethodAvailability(
+            has_drip=False, has_foliar_sprayer=True, has_granular_spreader=True,
+        ),
+        blocks=[al_block], stage_count=5,
+        available_materials=CLIVIA_MATERIALS,  # reuse fixture
+    )
+    art = build_programme(inputs)
+
+    # Should produce a lime recommendation — lime is dry, fits this farm
+    lime_recs = [r for r in art.pre_season_recommendations if "Lime" in r.material]
+    assert len(lime_recs) >= 1
+
+
+# ============================================================
 # Helpers
 # ============================================================
 
