@@ -21,6 +21,8 @@ import {
 
 import type { Programme } from "@/lib/season-constants";
 import { STATUS_COLORS } from "@/lib/season-constants";
+import { listProgrammes } from "@/lib/programmes-v2";
+import type { ProgrammeListItem } from "@/lib/types/programme-artifact";
 
 export default function SeasonManagerPageWrapper() {
   return (
@@ -37,6 +39,8 @@ function SeasonManagerPage() {
   const [programmes, setProgrammes] = useState<Programme[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [artifacts, setArtifacts] = useState<ProgrammeListItem[]>([]);
+  const [artifactsLoading, setArtifactsLoading] = useState(true);
 
   // Redirect handoff from Quick Analysis to builder
   useEffect(() => {
@@ -53,6 +57,18 @@ function SeasonManagerPage() {
       .catch(() => toast.error("Failed to load programmes"))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    listProgrammes({ limit: 50 })
+      .then(setArtifacts)
+      .catch(() => {
+        // Silent: non-blocking — artifact list is additive, legacy list
+        // is the primary surface during the bridge window.
+      })
+      .finally(() => setArtifactsLoading(false));
+  }, []);
+
+  const visibleArtifacts = artifacts.filter((a) => a.state !== "archived");
 
   const activeProgrammes = programmes.filter((p) => p.status === "active");
   const filteredProgrammes = statusFilter
@@ -121,6 +137,55 @@ function SeasonManagerPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* New-engine artifacts — produced by the Build Artifact button
+            on the wizard's Review step. Separate from legacy programmes
+            during the bridge window (distinct table, distinct detail page). */}
+        {!artifactsLoading && visibleArtifacts.length > 0 && (
+          <div className="mb-8">
+            <div className="mb-3 flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-[var(--sapling-dark)]">Programme Artifacts</h2>
+              <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--sapling-orange)]">
+                New engine
+              </span>
+            </div>
+            <div className="space-y-2">
+              {visibleArtifacts.map((a) => (
+                <Card
+                  key={a.id}
+                  className="cursor-pointer border-l-4 border-l-[var(--sapling-orange)] transition-shadow hover:shadow-md"
+                  onClick={() => router.push(`/season-manager/artifact/${a.id}`)}
+                >
+                  <CardContent className="flex items-center justify-between py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-8 items-center justify-center rounded-lg bg-orange-50 text-[var(--sapling-orange)]">
+                        <Sparkles className="size-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-[var(--sapling-dark)]">
+                          {a.farm_name || "(unnamed farm)"} — {a.crop}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {a.blocks_count} block{a.blocks_count !== 1 ? "s" : ""} ·{" "}
+                          planting {new Date(a.planting_date).toLocaleDateString()} ·{" "}
+                          built {new Date(a.build_date).toLocaleDateString()}
+                          {a.foliar_events_count > 0 && ` · ${a.foliar_events_count} foliar`}
+                          {a.risk_flags_count > 0 && ` · ${a.risk_flags_count} risk flag${a.risk_flags_count !== 1 ? "s" : ""}`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-[var(--sapling-orange)]">
+                        {a.state}
+                      </span>
+                      <ChevronRight className="size-4 text-muted-foreground" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-16">
