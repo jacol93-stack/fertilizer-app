@@ -54,6 +54,7 @@ from app.models import (
     Tier,
     VariantKey,
 )
+from app.services.blend_validator import validate_blends
 from app.services.consolidator import consolidate_blends
 from app.services.foliar_trigger_engine import trigger_foliar_events
 from app.services.method_selector import aggregate_by_method, select_methods
@@ -396,6 +397,20 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
         decision_trace.append(
             "Orchestrator: ShoppingList empty — shopping-list aggregator "
             "not yet wired as standalone module. Derive from blends[].raw_products."
+        )
+
+    # Run blend validator over all blends (module 9) — catches stream purity,
+    # known incompat pairs, missing sources. Surfaces warnings as RiskFlags.
+    if all_blends and inputs.available_materials:
+        _validations, validation_flags = validate_blends(
+            blends=all_blends,
+            available_materials=inputs.available_materials,
+            compatibility_rules=None,  # caller can pass from materials_compatibility table
+        )
+        all_risk_flags.extend(validation_flags)
+        decision_trace.append(
+            f"Orchestrator: BlendValidator — {len(_validations)} blends validated, "
+            f"{len(validation_flags)} warnings/errors surfaced"
         )
 
     # Dedup sources_audit by source_id+section
