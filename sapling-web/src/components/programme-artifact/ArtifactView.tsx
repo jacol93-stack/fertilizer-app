@@ -70,6 +70,7 @@ function prettyBlockLabel(
 }
 
 export function ArtifactView({ artifact }: { artifact: ProgrammeArtifact }) {
+  const blockNameById = buildBlockNameMap(artifact.soil_snapshots);
   return (
     <div className="space-y-6">
       <HeaderCard artifact={artifact} />
@@ -78,10 +79,13 @@ export function ArtifactView({ artifact }: { artifact: ProgrammeArtifact }) {
         inputs={artifact.pre_season_inputs}
         recommendations={artifact.pre_season_recommendations}
       />
-      <StageScheduleSection schedules={artifact.stage_schedules} />
+      <StageScheduleSection
+        schedules={artifact.stage_schedules}
+        blockNameById={blockNameById}
+      />
       <BlendsSection
         blends={artifact.blends}
-        blockNameById={buildBlockNameMap(artifact.soil_snapshots)}
+        blockNameById={blockNameById}
       />
       <FoliarSection events={artifact.foliar_events} />
       <RiskFlagsSection flags={artifact.risk_flags} />
@@ -317,14 +321,22 @@ function PreSeasonSection({
 // Stage Schedule
 // ============================================================
 
-function StageScheduleSection({ schedules }: { schedules: StageSchedule[] }) {
+function StageScheduleSection({
+  schedules,
+  blockNameById,
+}: {
+  schedules: StageSchedule[];
+  blockNameById: Record<string, string>;
+}) {
   if (schedules.length === 0) return null;
   return (
     <Section icon={<Sprout className="h-4 w-4" />} title="Stage schedule">
       <div className="space-y-4">
         {schedules.map((sch) => (
           <div key={sch.block_id}>
-            <h3 className="text-sm font-medium mb-2">Block {sch.block_id}</h3>
+            <h3 className="text-sm font-medium mb-2">
+              {prettyBlockLabel(sch.block_id, blockNameById)}
+            </h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
