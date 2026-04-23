@@ -154,6 +154,37 @@ class PreSeasonInput(BaseModel):
     contribution_per_ha: str  # e.g. "~570 kg Ca + neutralising capacity"
     status_at_planting: str  # e.g. "50-70% reacted; pH lifted ~5.5-5.7"
     applied_date: Optional[date] = None
+    # Engine-computed effective nutrient contribution at planting
+    # (after reaction state + soil fixation)
+    effective_n_kg_per_ha: float = 0.0
+    effective_p2o5_kg_per_ha: float = 0.0
+    effective_k2o_kg_per_ha: float = 0.0
+    effective_ca_kg_per_ha: float = 0.0
+    effective_mg_kg_per_ha: float = 0.0
+    effective_s_kg_per_ha: float = 0.0
+
+
+class PreSeasonRecommendation(BaseModel):
+    """Engine recommendation for soil-improvement actions BEFORE planting.
+
+    Fired when the programme is built far enough ahead of the planting
+    date that there's lead time for slow-reacting soil amendments (lime,
+    gypsum, P-rock, OM amendments) to do their work. Different from
+    PreSeasonInput — that's already-applied; this is to-be-applied.
+
+    Engine produces these in Mode A. If build_date is too close to
+    planting (Mode C), engine produces RiskFlags + OutstandingItems
+    instead, noting what could have been done with more lead time.
+    """
+    block_id: str
+    material: str  # canonical materials.material name
+    target_rate_per_ha: str  # e.g. "2 t/ha"
+    purpose: str  # from materials.soil_improvement_purpose
+    reason: str  # why this is recommended (which finding it addresses)
+    recommended_apply_by_date: date  # latest date to apply for full reaction by planting
+    reaction_time_months: float  # min reaction time at planting from today
+    expected_status_at_planting: str  # e.g. "50-70% reacted; pH lifted ~0.3 units"
+    source: SourceCitation
 
 
 # ============================================================
@@ -355,6 +386,7 @@ class ProgrammeArtifact(BaseModel):
     header: ProgrammeHeader
     soil_snapshots: list[SoilSnapshot]  # per block
     pre_season_inputs: list[PreSeasonInput] = Field(default_factory=list)
+    pre_season_recommendations: list["PreSeasonRecommendation"] = Field(default_factory=list)
     stage_schedules: list[StageSchedule]  # per block
 
     blends: list[Blend] = Field(default_factory=list)  # cross-block
