@@ -30,7 +30,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from app.auth import CurrentUser, get_current_user
-from app.models import MethodAvailability, OutstandingItem, PreSeasonInput, RiskFlag
+from app.models import (
+    MethodAvailability,
+    OutstandingItem,
+    PreSeasonInput,
+    RiskFlag,
+    SoilSnapshot,
+)
 from app.services.block_clustering import (
     ClusterAggregate,
     cluster_and_aggregate,
@@ -162,7 +168,7 @@ async def build_programme_endpoint(
     # area-weighted (equal-weight fallback if any block lacks area_ha).
     # Blocks carrying pre_season_inputs are kept as singletons — those
     # inputs are per-block history, not safely aggregatable here.
-    effective_blocks, cluster_aggs = _cluster_block_inputs(block_inputs)
+    effective_blocks, cluster_aggs, cluster_sources = _cluster_block_inputs(block_inputs)
 
     build_date = request.build_date or date.today()
 
@@ -207,6 +213,11 @@ async def build_programme_endpoint(
     # the Wilding thresholds. Also append cluster-mapping notes to the
     # decision trace.
     _append_cluster_narrative(artifact, cluster_aggs)
+
+    # Per-block soil snapshots under multi-block clusters, so the
+    # agronomist still sees each block's raw soil data alongside the
+    # cluster's aggregated view.
+    _append_per_block_soil_snapshots(artifact, cluster_sources)
 
     # Persist
     artifact_json = artifact.model_dump(mode="json")
@@ -403,17 +414,21 @@ async def archive_programme(
 
 def _cluster_block_inputs(
     block_inputs: list[BlockInput],
-) -> tuple[list[BlockInput], list[ClusterAggregate]]:
+) -> tuple[list[BlockInput], list[ClusterAggregate], dict[str, list[BlockInput]]]:
     """Group similar blocks into clusters + build the effective block
     list the orchestrator sees.
 
-    Returns (effective_blocks, cluster_aggregates):
+    Returns (effective_blocks, cluster_aggregates, cluster_sources):
       * effective_blocks: what the orchestrator processes. For singleton
         clusters this is the original BlockInput untouched. For multi-
         block clusters it's a synthetic BlockInput built from the
         cluster aggregate.
       * cluster_aggregates: kept so the caller can emit per-cluster
         RiskFlags + decision-trace notes after the build.
+      * cluster_sources: map cluster_id → the original BlockInputs that
+        went into it. Used post-build to emit per-original-block
+        SoilSnapshots under multi-block clusters so the agronomist
+        keeps per-block drill-down.
 
     Blocks with non-empty pre_season_inputs are excluded from clustering
     (kept as singletons) — those inputs are per-block history and
@@ -427,7 +442,11 @@ def _cluster_block_inputs(
 
     effective: list[BlockInput] = []
     by_id = {b.block_id: b for b in clusterable}
+    cluster_sources: dict[str, list[BlockInput]] = {}
+
     for agg in cluster_aggs:
+        cluster_sources[agg.cluster_id] = [by_id[bid] for bid in agg.block_ids]
+
         if len(agg.block_ids) == 1:
             # Singleton — pass the original through so lab metadata +
             # any other per-block detail survive untouched.
@@ -455,7 +474,37 @@ def _cluster_block_inputs(
     # Non-clusterable blocks (those with pre_season_inputs) always run
     # as singletons through the orchestrator.
     effective.extend(non_clusterable)
-    return effective, cluster_aggs
+    return effective, cluster_aggs, cluster_sources
+
+
+def _append_per_block_soil_snapshots(
+    artifact,
+    cluster_sources: dict[str, list[BlockInput]],
+) -> None:
+    """Add per-original-block SoilSnapshots under each multi-block
+    cluster so the agronomist keeps per-block drill-down even when
+    aggregation happens. The cluster-level snapshot already carries
+    headline_signals; these per-block additions are raw data only.
+
+    Singleton clusters produce nothing — the orchestrator already emits
+    one snapshot per input, and for singletons the input is the real
+    block.
+    """
+    for cluster_id, sources in cluster_sources.items():
+        if len(sources) <= 1:
+            continue
+        for b in sources:
+            artifact.soil_snapshots.append(SoilSnapshot(
+                block_id=b.block_id,
+                block_name=f"{b.block_name} (in Cluster {cluster_id})",
+                block_area_ha=b.block_area_ha,
+                lab_name=b.lab_name,
+                lab_method=b.lab_method,
+                sample_date=b.sample_date,
+                sample_id=b.sample_id,
+                parameters=b.soil_parameters,
+                headline_signals=[],
+            ))
 
 
 def _append_cluster_narrative(artifact, cluster_aggs: list[ClusterAggregate]) -> None:

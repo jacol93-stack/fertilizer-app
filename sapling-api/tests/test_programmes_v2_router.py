@@ -1,10 +1,11 @@
 """Router-level unit tests for /api/programmes/v2 helpers."""
 from __future__ import annotations
 
-from app.models import OutstandingItem, PreSeasonInput, RiskFlag
+from app.models import OutstandingItem, PreSeasonInput, RiskFlag, SoilSnapshot
 from app.routers.programmes_v2 import (
     SkippedBlockRequest,
     _append_cluster_narrative,
+    _append_per_block_soil_snapshots,
     _append_skipped_block_items,
     _cluster_block_inputs,
 )
@@ -13,13 +14,15 @@ from app.services.programme_builder_orchestrator import BlockInput
 
 class _StubArtifact:
     """Minimal stand-in for ProgrammeArtifact — all we need is mutable
-    outstanding_items, risk_flags, and decision_trace lists. Lets us
-    test router helpers without spinning up the orchestrator.
+    outstanding_items, risk_flags, decision_trace, and soil_snapshots
+    lists. Lets us test router helpers without spinning up the
+    orchestrator.
     """
     def __init__(self) -> None:
         self.outstanding_items: list[OutstandingItem] = []
         self.risk_flags: list[RiskFlag] = []
         self.decision_trace: list[str] = []
+        self.soil_snapshots: list[SoilSnapshot] = []
 
 
 def test_append_skipped_block_items_empty_input_is_noop():
@@ -95,7 +98,7 @@ def test_cluster_block_inputs_preserves_singleton_blocks_by_reference():
     untouched — preserves lab metadata etc."""
     b1 = _bi("1", "Land A", 10.0, {"N": 120, "P2O5": 40, "K2O": 60})
     b2 = _bi("2", "Land B", 10.0, {"N": 20, "P2O5": 40, "K2O": 200})
-    effective, aggs = _cluster_block_inputs([b1, b2])
+    effective, aggs, _sources = _cluster_block_inputs([b1, b2])
     assert len(effective) == 2
     assert b1 in effective
     assert b2 in effective
@@ -109,7 +112,7 @@ def test_cluster_block_inputs_aggregates_similar_blocks():
     BlockInput with area-weighted targets."""
     b1 = _bi("1", "Land A", 2.0, {"N": 100, "P2O5": 40, "K2O": 60})
     b2 = _bi("2", "Land B", 8.0, {"N": 100, "P2O5": 40, "K2O": 60})
-    effective, aggs = _cluster_block_inputs([b1, b2])
+    effective, aggs, _sources = _cluster_block_inputs([b1, b2])
     assert len(effective) == 1
     assert len(aggs) == 1
     assert len(aggs[0].block_ids) == 2
@@ -133,7 +136,7 @@ def test_cluster_block_inputs_excludes_blocks_with_pre_season_inputs():
     )]
     b1 = _bi("1", "Land A", 10.0, {"N": 100, "P2O5": 40, "K2O": 60}, pre_season=ps)
     b2 = _bi("2", "Land B", 10.0, {"N": 100, "P2O5": 40, "K2O": 60})
-    effective, _ = _cluster_block_inputs([b1, b2])
+    effective, _aggs, _sources = _cluster_block_inputs([b1, b2])
     # b1 kept singleton (pre-season); b2 clusters alone → 2 effective blocks
     assert len(effective) == 2
     assert b1 in effective
@@ -143,7 +146,7 @@ def test_append_cluster_narrative_adds_trace_for_multi_block_clusters():
     """Multi-block clusters get a decision_trace note; singletons don't."""
     b1 = _bi("1", "Land A", 2.0, {"N": 100, "P2O5": 40, "K2O": 60})
     b2 = _bi("2", "Land B", 8.0, {"N": 100, "P2O5": 40, "K2O": 60})
-    _, aggs = _cluster_block_inputs([b1, b2])
+    _, aggs, _ = _cluster_block_inputs([b1, b2])
 
     artifact = _StubArtifact()
     _append_cluster_narrative(artifact, aggs)
@@ -153,13 +156,51 @@ def test_append_cluster_narrative_adds_trace_for_multi_block_clusters():
 def test_append_cluster_narrative_no_trace_for_all_singletons():
     b1 = _bi("1", "Land A", 10.0, {"N": 200, "P2O5": 40, "K2O": 20})
     b2 = _bi("2", "Land B", 10.0, {"N": 20, "P2O5": 40, "K2O": 200})
-    _, aggs = _cluster_block_inputs([b1, b2])
+    _, aggs, _ = _cluster_block_inputs([b1, b2])
 
     artifact = _StubArtifact()
     _append_cluster_narrative(artifact, aggs)
     # No multi-block clusters → no trace, no risk flags
     assert artifact.decision_trace == []
     assert artifact.risk_flags == []
+
+
+def test_append_per_block_soil_snapshots_for_multi_block_cluster():
+    """Multi-block cluster → per-original-block SoilSnapshots appended,
+    each with the block's raw soil_parameters + lab metadata, labelled
+    with '(in Cluster X)' so the viewer knows the context."""
+    b1 = _bi("1", "Land A", 2.0, {"N": 100, "P2O5": 40, "K2O": 60},
+             soil={"pH": 5.5, "P_mgkg": 10})
+    b2 = _bi("2", "Land B", 8.0, {"N": 100, "P2O5": 40, "K2O": 60},
+             soil={"pH": 6.5, "P_mgkg": 30})
+    _effective, _aggs, sources = _cluster_block_inputs([b1, b2])
+
+    artifact = _StubArtifact()
+    _append_per_block_soil_snapshots(artifact, sources)
+
+    # Two per-block snapshots added
+    assert len(artifact.soil_snapshots) == 2
+    names = [s.block_name for s in artifact.soil_snapshots]
+    assert any("Land A (in Cluster" in n for n in names)
+    assert any("Land B (in Cluster" in n for n in names)
+    # Raw parameters preserved — not the cluster's aggregated mean
+    land_a = next(s for s in artifact.soil_snapshots if "Land A" in s.block_name)
+    assert land_a.parameters["pH"] == 5.5
+    assert land_a.parameters["P_mgkg"] == 10
+
+
+def test_append_per_block_soil_snapshots_noop_for_singletons():
+    """All-singleton input → no per-block snapshots added. The
+    orchestrator already emitted one-snapshot-per-real-block."""
+    b1 = _bi("1", "Land A", 10.0, {"N": 200, "P2O5": 40, "K2O": 20},
+             soil={"pH": 5.5})
+    b2 = _bi("2", "Land B", 10.0, {"N": 20, "P2O5": 40, "K2O": 200},
+             soil={"pH": 7.0})
+    _effective, _aggs, sources = _cluster_block_inputs([b1, b2])
+
+    artifact = _StubArtifact()
+    _append_per_block_soil_snapshots(artifact, sources)
+    assert artifact.soil_snapshots == []
 
 
 def test_append_cluster_narrative_emits_risk_flag_on_heterogeneity():
@@ -171,7 +212,7 @@ def test_append_cluster_narrative_emits_risk_flag_on_heterogeneity():
     b1 = _bi("1", "Land A", 10.0, {"N": 120, "P2O5": 60, "K2O": 60})
     b2 = _bi("2", "Land B", 10.0, {"N": 360, "P2O5": 180, "K2O": 180})
     b3 = _bi("3", "Land C", 10.0, {"N": 480, "P2O5": 240, "K2O": 240})
-    effective, aggs = _cluster_block_inputs([b1, b2, b3])
+    effective, aggs, _sources = _cluster_block_inputs([b1, b2, b3])
     # All three have the same ratio (2:1:1) → one cluster
     assert len(aggs) == 1
     assert len(aggs[0].block_ids) == 3
