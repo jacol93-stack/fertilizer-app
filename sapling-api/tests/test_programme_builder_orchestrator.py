@@ -298,16 +298,38 @@ def test_stage_schedule_covers_full_season(clivia_land_a_input):
 # Transparent empties
 # ============================================================
 
-def test_blends_and_shopping_list_transparently_empty(clivia_land_a_input):
-    """Until consolidator + two-stream packaging ship, blends remain empty.
-    Fail transparent: the trace documents this."""
+def test_blends_populated_when_materials_provided(clivia_land_a_input):
+    """Consolidator (module 8) wired — blends populate when materials given."""
     inputs = _minimal_inputs(clivia_land_a_input)
     art = build_programme(inputs)
-    assert art.blends == []
+    # Clivia has materials catalog → blends should populate
+    assert len(art.blends) > 0
+    # Shopping list still pending (not yet wired)
     assert art.shopping_list == []
-    # Trace should explicitly note this
     trace = "\n".join(art.decision_trace)
-    assert "pending" in trace.lower() or "not yet" in trace.lower()
+    # Trace should explicitly note consolidator ran + shopping list pending
+    assert "Consolidator" in trace or "consolidator" in trace.lower()
+
+
+def test_blends_empty_when_no_materials():
+    """When no materials catalog is provided, blends stay empty — honest."""
+    block = BlockInput(
+        block_id="b1", block_name="Block 1", block_area_ha=1.0,
+        soil_parameters={"pH (H2O)": 6.0},
+        season_targets={"N": 100, "P2O5": 40, "K2O": 80},
+    )
+    inputs = OrchestratorInput(
+        client_name="Test", farm_name="T", prepared_for="T",
+        crop="Maize (dryland)",
+        planting_date=date(2026, 11, 1), build_date=date(2026, 8, 1),
+        method_availability=MethodAvailability(has_granular_spreader=True),
+        blocks=[block], stage_count=4,
+        # NOTE: no available_materials
+    )
+    art = build_programme(inputs)
+    assert art.blends == []
+    trace = "\n".join(art.decision_trace)
+    assert "materials catalog" in trace.lower()
 
 
 # ============================================================

@@ -54,6 +54,7 @@ from app.models import (
     Tier,
     VariantKey,
 )
+from app.services.consolidator import consolidate_blends
 from app.services.foliar_trigger_engine import trigger_foliar_events
 from app.services.method_selector import aggregate_by_method, select_methods
 from app.services.pre_season_module import (
@@ -146,6 +147,7 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
     stage_schedules: list[StageSchedule] = []
     updated_pre_season_inputs: list[PreSeasonInput] = []
     soil_snapshots_out: list[SoilSnapshot] = []
+    all_blends = []  # populated by consolidator per block
 
     for block in inputs.blocks:
         decision_trace.append(f"Block {block.block_id}: start reasoning")
@@ -316,7 +318,29 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
         )
         stage_schedules.append(schedule)
 
-        # 9. Block totals — assemble from adjusted_targets
+        # 9. Consolidator — group method_assignments into typed Blends
+        #    (populates ProgrammeArtifact.blends[], producing real
+        #    Blend / BlendPart / Concentrate objects for the renderer).
+        if inputs.available_materials:
+            block_blends = consolidate_blends(
+                assignments=method_assignments,
+                available_materials=inputs.available_materials,
+                block_id=block.block_id,
+                block_area_ha=block.block_area_ha,
+                stage_schedule=schedule.stages,
+            )
+            all_blends.extend(block_blends)
+            decision_trace.append(
+                f"Block {block.block_id}: Consolidator — {len(block_blends)} blends "
+                f"(greedy material-cover Tier 6; final MILP optimization pending module 10)"
+            )
+        else:
+            decision_trace.append(
+                f"Block {block.block_id}: Consolidator skipped — "
+                f"no materials catalog provided (Blend section stays empty)"
+            )
+
+        # 10. Block totals — assemble from adjusted_targets
         block_totals[block.block_id] = adjusted_targets
 
         # 10. Soil snapshot for output
@@ -361,13 +385,18 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
     )
 
     # Note unimplemented sections transparently
-    unshipped_modules = (
-        "Blend + Concentrate + ShoppingList sections empty — consolidator, "
-        "two-stream packaging, and target-compute-with-provenance modules "
-        "not yet shipped (Phase 2 modules 7-10). Downstream renderer should "
-        "surface this as 'blend assembly pending' not produce fake numbers."
-    )
-    decision_trace.append(f"Orchestrator: {unshipped_modules}")
+    if not all_blends:
+        decision_trace.append(
+            "Orchestrator: Blend section empty — either no materials "
+            "catalog provided OR method assignments produced no groupable "
+            "events. ShoppingList pending Phase 2 module (shopping-list "
+            "aggregator not yet wired)."
+        )
+    else:
+        decision_trace.append(
+            "Orchestrator: ShoppingList empty — shopping-list aggregator "
+            "not yet wired as standalone module. Derive from blends[].raw_products."
+        )
 
     # Dedup sources_audit by source_id+section
     deduped_sources = _dedup_sources(sources_audit)
@@ -378,7 +407,7 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
         pre_season_inputs=updated_pre_season_inputs,
         pre_season_recommendations=all_pre_season_recs,
         stage_schedules=stage_schedules,
-        blends=[],  # module 8 pending
+        blends=all_blends,
         foliar_events=all_foliar_events,
         block_totals=block_totals,
         risk_flags=all_risk_flags,
