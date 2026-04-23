@@ -22,6 +22,14 @@ import { ScheduleReview, type BlockInfo, type UserApplication } from "@/componen
 import { BlendGroups, type BlendGroupData } from "@/components/season-manager/blend-groups";
 import type { Programme, Block, CropNorm, SoilAnalysis } from "@/lib/season-constants";
 import { emptyBlock } from "@/lib/season-constants";
+import type { MethodAvailability } from "@/lib/types/programme-artifact";
+import {
+  wizardStateToBuildRequest,
+  defaultMethodAvailability,
+  WizardAdapterError,
+  type SoilAnalysisMeta,
+} from "@/lib/adapters/wizard-to-v2";
+import { buildProgramme } from "@/lib/programmes-v2";
 
 export default function SeasonBuilderPageWrapper() {
   return (
@@ -71,6 +79,13 @@ function SeasonBuilderPage() {
 
   // Blend groups data (from generate)
   const [blendGroupsData, setBlendGroupsData] = useState<BlendGroupData[]>([]);
+
+  // Method availability — captured on step 0, consumed by "Build Artifact"
+  // on the Review step. Not used by the legacy generate flow.
+  const [methodAvailability, setMethodAvailability] = useState<MethodAvailability>(
+    defaultMethodAvailability(),
+  );
+  const [buildingArtifact, setBuildingArtifact] = useState(false);
 
   // Reference data
   const [crops, setCrops] = useState<CropNorm[]>([]);
@@ -288,6 +303,83 @@ function SeasonBuilderPage() {
     }
   };
 
+  // Build programme artifact via the new v2 engine. Runs alongside the
+  // legacy generate flow — needs plantingMonths (step 2) + blockInfoData
+  // so it can resolve server block_ids back to block names.
+  const handleBuildArtifact = async () => {
+    try {
+      setBuildingArtifact(true);
+      const validBlocks = blocks.filter((b) => b.crop && b.name && b.soil_analysis_id);
+      if (validBlocks.length === 0) {
+        toast.error("No blocks with a soil analysis linked");
+        return;
+      }
+
+      // Build block_id → block_name from preview-schedule output, so we
+      // can project plantingMonths (keyed by server block_id) onto names.
+      const nameByBlockId = new Map(blockInfoData.map((bi) => [bi.block_id, bi.block_name]));
+      const plantingMonthByBlockName: Record<string, number> = {};
+      for (const [bid, month] of Object.entries(plantingMonths)) {
+        const name = nameByBlockId.get(bid);
+        if (name) plantingMonthByBlockName[name] = month;
+      }
+
+      // Fetch soil_values per analysis (list view doesn't include them)
+      const analysisIds = Array.from(
+        new Set(validBlocks.map((b) => b.soil_analysis_id!).filter(Boolean)),
+      );
+      const analyses = await Promise.all(
+        analysisIds.map((id) =>
+          api.get<Record<string, unknown>>(`/api/soil/${id}`).then((a) => ({ id, row: a })),
+        ),
+      );
+      const soilValuesByAnalysisId: Record<string, Record<string, number>> = {};
+      const soilMetaByAnalysisId: Record<string, SoilAnalysisMeta> = {};
+      for (const { id, row } of analyses) {
+        const sv = (row.soil_values as Record<string, number> | null) ?? {};
+        soilValuesByAnalysisId[id] = sv;
+        soilMetaByAnalysisId[id] = {
+          id,
+          lab_name: (row.lab_name as string | null) ?? null,
+          analysis_date: (row.analysis_date as string | null) ?? null,
+        };
+      }
+
+      const request = wizardStateToBuildRequest({
+        clientName,
+        farmName,
+        preparedFor: clientName,
+        season,
+        clientId: clientId || null,
+        blocks: validBlocks.map((b) => ({
+          name: b.name,
+          area_ha: b.area_ha,
+          crop: b.crop,
+          cultivar: b.cultivar,
+          yield_target: b.yield_target,
+          yield_unit: b.yield_unit,
+          soil_analysis_id: b.soil_analysis_id,
+        })),
+        plantingMonthByBlockName,
+        soilValuesByAnalysisId,
+        soilMetaByAnalysisId,
+        methodAvailability,
+      });
+
+      const response = await buildProgramme(request);
+      toast.success("Programme artifact built");
+      router.push(`/season-manager/artifact/${response.id}`);
+    } catch (e) {
+      if (e instanceof WizardAdapterError) {
+        toast.error(e.message);
+      } else {
+        toast.error(e instanceof Error ? e.message : "Build failed");
+      }
+    } finally {
+      setBuildingArtifact(false);
+    }
+  };
+
   // Final: navigate to programme detail
   const handleFinish = (activate: boolean) => {
     if (!programmeId) return;
@@ -408,6 +500,39 @@ function SeasonBuilderPage() {
                       onChange={(e) => setSeason(e.target.value)}
                       placeholder="e.g. 2026/2027"
                     />
+                  </div>
+                </div>
+
+                <div className="mt-2 rounded-lg border border-dashed border-gray-300 p-4">
+                  <Label className="mb-2 block text-sm font-medium">
+                    Application methods available on this farm
+                  </Label>
+                  <p className="mb-3 text-xs text-muted-foreground">
+                    Used by the new-engine artifact builder to decide which methods
+                    to route nutrients through (drip, foliar, broadcast, etc.).
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {([
+                      ["has_drip", "Drip fertigation"],
+                      ["has_pivot", "Pivot fertigation"],
+                      ["has_sprinkler", "Sprinkler fertigation"],
+                      ["has_foliar_sprayer", "Foliar sprayer"],
+                      ["has_granular_spreader", "Granular spreader"],
+                      ["has_fertigation_injectors", "Fertigation injectors (A/B)"],
+                      ["has_seed_treatment", "Seed treatment"],
+                    ] as Array<[keyof MethodAvailability, string]>).map(([key, label]) => (
+                      <label key={key} className="flex cursor-pointer items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={methodAvailability[key]}
+                          onChange={(e) =>
+                            setMethodAvailability((m) => ({ ...m, [key]: e.target.checked }))
+                          }
+                          className="size-4 rounded border-gray-300 text-[var(--sapling-orange)] focus:ring-[var(--sapling-orange)]"
+                        />
+                        <span>{label}</span>
+                      </label>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -560,7 +685,7 @@ function SeasonBuilderPage() {
               {wizardStep === 1 ? "Preview Schedule" : wizardStep === 2 ? "Generate Blends" : "Next"}
             </Button>
           ) : (
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <Button variant="outline" onClick={() => handleFinish(false)}>
                 Save as Draft
               </Button>
@@ -570,6 +695,19 @@ function SeasonBuilderPage() {
               >
                 <Check className="size-4" />
                 Activate Programme
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleBuildArtifact}
+                disabled={buildingArtifact}
+                className="border-[var(--sapling-orange)] text-[var(--sapling-orange)] hover:bg-orange-50"
+              >
+                {buildingArtifact ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Leaf className="size-4" />
+                )}
+                Build Artifact (new engine)
               </Button>
             </div>
           )}

@@ -39,9 +39,7 @@ import { api } from "@/lib/api";
 const mainLinks = [
   { href: "/quick-blend", label: "Quick Blend", icon: FlaskConical },
   { href: "/quick-analysis", label: "Quick Analysis", icon: Leaf },
-  { href: "/programme-builder", label: "Programme Builder", icon: Calendar },
-  { href: "/season-tracker", label: "Season Tracker", icon: Calendar },
-  { href: "/season-manager", label: "Season Manager (legacy)", icon: Calendar },
+  { href: "/season-manager", label: "Season Manager", icon: Calendar },
   { href: "/quotes", label: "Quotes", icon: FileText },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/records", label: "Records", icon: Archive },

@@ -66,7 +66,7 @@ export default function ProgrammeArtifactPage() {
     try {
       await archiveProgramme(params.id);
       toast.success("Programme archived");
-      router.push("/programme-builder");
+      router.push("/season-manager");
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       toast.error(`Archive failed: ${msg}`);
@@ -78,7 +78,7 @@ export default function ProgrammeArtifactPage() {
   if (loading) {
     return (
       <AppShell>
-        <div className="mx-auto max-w-5xl px-4 py-8 flex items-center justify-center">
+        <div className="mx-auto flex max-w-5xl items-center justify-center px-4 py-8">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       </AppShell>
@@ -93,9 +93,9 @@ export default function ProgrammeArtifactPage() {
               Programme not found.
               <Button
                 variant="link"
-                onClick={() => router.push("/programme-builder")}
+                onClick={() => router.push("/season-manager")}
               >
-                Back to list
+                Back to Season Manager
               </Button>
             </CardContent>
           </Card>
@@ -106,15 +106,15 @@ export default function ProgrammeArtifactPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-5xl px-4 py-8 space-y-6">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push("/programme-builder")}
+            onClick={() => router.push("/season-manager")}
           >
             <ArrowLeft className="h-4 w-4" />
-            All programmes
+            Back to Season Manager
           </Button>
           <StateActions
             state={data.state as ProgrammeState}
@@ -140,7 +140,6 @@ function StateActions({
   onArchive: () => void;
   disabled: boolean;
 }) {
-  // Permitted transitions — mirrors backend allowed-map
   const allowed: Record<ProgrammeState, ProgrammeState[]> = {
     [State.DRAFT]: [State.APPROVED],
     [State.APPROVED]: [State.ACTIVATED, State.DRAFT],
@@ -151,7 +150,7 @@ function StateActions({
   };
   const nexts = allowed[state] || [];
   return (
-    <div className="flex gap-2 flex-wrap">
+    <div className="flex flex-wrap gap-2">
       {nexts.map((n) => (
         <Button
           key={n}
