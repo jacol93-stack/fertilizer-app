@@ -134,3 +134,33 @@
     @apply font-sans;
   }
 }
+
+/* Print styles — drive agronomy-report output via browser "Save as PDF".
+   Hides nav + action bars, tightens spacing for A4, forces black-on-
+   white. Tailwind's `print:hidden` utility handles explicit "hide for
+   print" markup; this sheet covers the rest. */
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm 12mm;
+  }
+  html, body {
+    background: white !important;
+    color: black !important;
+    font-size: 10.5pt;
+    line-height: 1.35;
+  }
+  header, [class*="sticky"] {
+    position: static !important;
+    box-shadow: none !important;
+    border-bottom: 1px solid #ddd !important;
+  }
+  [data-next-mark-loading], [aria-label^="Notifications"] {
+    display: none !important;
+  }
+  main > div > section, main > div > div {
+    page-break-inside: avoid;
+  }
+  tr { page-break-inside: avoid; }
+  button, a[href] { color: black !important; text-decoration: none !important; }
+}

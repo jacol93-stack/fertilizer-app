@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, CheckCircle2, Archive } from "lucide-react";
+import { Loader2, ArrowLeft, CheckCircle2, Archive, Printer } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -107,7 +107,7 @@ export default function ProgrammeArtifactPage() {
   return (
     <AppShell>
       <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 print:hidden">
           <Button
             variant="ghost"
             size="sm"
@@ -116,12 +116,22 @@ export default function ProgrammeArtifactPage() {
             <ArrowLeft className="h-4 w-4" />
             Back to Season Manager
           </Button>
-          <StateActions
-            state={data.state as ProgrammeState}
-            onTransition={onTransition}
-            onArchive={onArchive}
-            disabled={transitioning}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.print()}
+            >
+              <Printer className="h-4 w-4" />
+              Print / Save as PDF
+            </Button>
+            <StateActions
+              state={data.state as ProgrammeState}
+              onTransition={onTransition}
+              onArchive={onArchive}
+              disabled={transitioning}
+            />
+          </div>
         </div>
         <ArtifactView artifact={data.artifact} />
       </div>
