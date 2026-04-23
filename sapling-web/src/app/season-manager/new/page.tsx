@@ -309,9 +309,28 @@ function SeasonBuilderPage() {
   const handleBuildArtifact = async () => {
     try {
       setBuildingArtifact(true);
+
+      // Pre-flight — Build Artifact sits on the last wizard step, so
+      // all of these should already be populated. Guard with specific
+      // messages so the agronomist doesn't stare at a generic error
+      // when they skipped a step.
       const validBlocks = blocks.filter((b) => b.crop && b.name && b.soil_analysis_id);
       if (validBlocks.length === 0) {
-        toast.error("No blocks with a soil analysis linked");
+        toast.error(
+          "No blocks have a soil analysis linked. Go back to Step 1 and link one.",
+        );
+        return;
+      }
+      if (blockInfoData.length === 0) {
+        toast.error(
+          "Schedule hasn't been generated. Go back to Step 2 (Schedule) first.",
+        );
+        return;
+      }
+      if (Object.keys(plantingMonths).length === 0) {
+        toast.error(
+          "No planting months set. Set one on Step 2 (Schedule) for each block.",
+        );
         return;
       }
 
@@ -324,14 +343,23 @@ function SeasonBuilderPage() {
         if (name) plantingMonthByBlockName[name] = month;
       }
 
-      // Fetch soil_values per analysis (list view doesn't include them)
+      // Fetch soil_values per analysis (list view doesn't include them).
+      // A single failing fetch shouldn't break the whole build — wrap
+      // each in a .catch so one bad analysis becomes a skipped block
+      // (via empty soil_values), not a hard error.
       const analysisIds = Array.from(
         new Set(validBlocks.map((b) => b.soil_analysis_id!).filter(Boolean)),
       );
       const analyses = await Promise.all(
-        analysisIds.map((id) =>
-          api.get<Record<string, unknown>>(`/api/soil/${id}`).then((a) => ({ id, row: a })),
-        ),
+        analysisIds.map(async (id) => {
+          try {
+            const row = await api.get<Record<string, unknown>>(`/api/soil/${id}`);
+            return { id, row };
+          } catch (err) {
+            console.error(`Failed to fetch soil analysis ${id}`, err);
+            return { id, row: {} as Record<string, unknown> };
+          }
+        }),
       );
       const soilValuesByAnalysisId: Record<string, Record<string, number>> = {};
       const soilMetaByAnalysisId: Record<string, SoilAnalysisMeta> = {};
@@ -381,10 +409,15 @@ function SeasonBuilderPage() {
       }
       router.push(`/season-manager/artifact/${response.id}`);
     } catch (e) {
+      // Always log — toast messages are short; console gets the raw
+      // exception for actual debugging.
+      console.error("handleBuildArtifact failed", e);
       if (e instanceof WizardAdapterError) {
         toast.error(e.message);
+      } else if (e instanceof Error) {
+        toast.error(`Build failed: ${e.message}`);
       } else {
-        toast.error(e instanceof Error ? e.message : "Build failed");
+        toast.error("Build failed (unknown error — check console)");
       }
     } finally {
       setBuildingArtifact(false);

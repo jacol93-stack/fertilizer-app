@@ -38,6 +38,37 @@ import { Card, CardContent } from "@/components/ui/card";
 // Main container
 // ============================================================
 
+/**
+ * Build a block_id → display-name map from the artifact's soil
+ * snapshots so downstream sections can render human labels instead of
+ * raw IDs (especially useful under Phase 3 clustering, where
+ * block_id can be e.g. "cluster_A"). Multi-block clusters have both a
+ * cluster-level snapshot and per-original-block snapshots; we prefer
+ * whichever entry's block_id exactly matches the lookup, so the
+ * labels come out right in both layers.
+ */
+function buildBlockNameMap(snapshots: SoilSnapshot[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const s of snapshots) {
+    if (!out[s.block_id]) out[s.block_id] = s.block_name;
+  }
+  return out;
+}
+
+function prettyBlockLabel(
+  blockId: string,
+  nameById: Record<string, string>,
+): string {
+  const name = nameById[blockId];
+  if (name) return name;
+  // Fallback when blends reference an id that's not in the snapshots
+  // (shouldn't happen but defensive). Cluster-ID prettifying:
+  if (blockId.startsWith("cluster_")) {
+    return `Cluster ${blockId.slice("cluster_".length)}`;
+  }
+  return `Block ${blockId}`;
+}
+
 export function ArtifactView({ artifact }: { artifact: ProgrammeArtifact }) {
   return (
     <div className="space-y-6">
@@ -48,7 +79,10 @@ export function ArtifactView({ artifact }: { artifact: ProgrammeArtifact }) {
         recommendations={artifact.pre_season_recommendations}
       />
       <StageScheduleSection schedules={artifact.stage_schedules} />
-      <BlendsSection blends={artifact.blends} />
+      <BlendsSection
+        blends={artifact.blends}
+        blockNameById={buildBlockNameMap(artifact.soil_snapshots)}
+      />
       <FoliarSection events={artifact.foliar_events} />
       <RiskFlagsSection flags={artifact.risk_flags} />
       <OutstandingItemsSection items={artifact.outstanding_items} />
@@ -336,7 +370,13 @@ function StageScheduleSection({ schedules }: { schedules: StageSchedule[] }) {
 // Blends
 // ============================================================
 
-function BlendsSection({ blends }: { blends: Blend[] }) {
+function BlendsSection({
+  blends,
+  blockNameById,
+}: {
+  blends: Blend[];
+  blockNameById: Record<string, string>;
+}) {
   if (blends.length === 0) {
     return (
       <Section icon={<Droplets className="h-4 w-4" />} title="Blends">
@@ -359,7 +399,9 @@ function BlendsSection({ blends }: { blends: Blend[] }) {
       <div className="space-y-4">
         {[...byBlock.entries()].map(([blockId, blockBlends]) => (
           <div key={blockId}>
-            <h3 className="text-sm font-medium mb-2">Block {blockId}</h3>
+            <h3 className="text-sm font-medium mb-2">
+              {prettyBlockLabel(blockId, blockNameById)}
+            </h3>
             <div className="space-y-3">
               {blockBlends.map((b, i) => (
                 <BlendCard key={i} blend={b} />
