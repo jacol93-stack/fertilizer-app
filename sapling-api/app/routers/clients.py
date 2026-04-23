@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from app.auth import CurrentUser, get_current_user, require_admin
 from app.pagination import Page, PageParams, apply_page
-from app.supabase_client import get_supabase_admin
+from app.supabase_client import get_supabase_admin, run_sb
 
 router = APIRouter(tags=["Clients"])
 
@@ -129,7 +129,9 @@ def _audit(sb, user: CurrentUser, action: str, table: str, record_id: str | None
 
 def _check_client_access(sb, client_id: str, user: CurrentUser) -> dict:
     """Fetch a client and verify the current user has access."""
-    result = sb.table("clients").select("*").eq("id", client_id).execute()
+    result = run_sb(lambda: sb.table("clients").select("*").eq(
+        "id", client_id
+    ).execute())
     if not result.data:
         raise HTTPException(status_code=404, detail="Client not found")
     client = result.data[0]
@@ -140,7 +142,9 @@ def _check_client_access(sb, client_id: str, user: CurrentUser) -> dict:
 
 def _check_farm_access(sb, farm_id: str, user: CurrentUser) -> dict:
     """Fetch a farm and verify access via its parent client."""
-    result = sb.table("farms").select("*, clients(agent_id)").eq("id", farm_id).execute()
+    result = run_sb(lambda: sb.table("farms").select(
+        "*, clients(agent_id)"
+    ).eq("id", farm_id).execute())
     if not result.data:
         raise HTTPException(status_code=404, detail="Farm not found")
     farm = result.data[0]
@@ -152,7 +156,9 @@ def _check_farm_access(sb, farm_id: str, user: CurrentUser) -> dict:
 
 def _check_field_access(sb, field_id: str, user: CurrentUser) -> dict:
     """Fetch a field and verify access via its parent farm → client."""
-    result = sb.table("fields").select("*, farms(client_id, clients(agent_id))").eq("id", field_id).execute()
+    result = run_sb(lambda: sb.table("fields").select(
+        "*, farms(client_id, clients(agent_id))"
+    ).eq("id", field_id).execute())
     if not result.data:
         raise HTTPException(status_code=404, detail="Field not found")
     field = result.data[0]
@@ -257,7 +263,9 @@ def list_farms(client_id: str, user: CurrentUser = Depends(get_current_user)):
     """List farms for a client."""
     sb = get_supabase_admin()
     _check_client_access(sb, client_id, user)
-    result = sb.table("farms").select("*").eq("client_id", client_id).order("name").execute()
+    result = run_sb(lambda: sb.table("farms").select("*").eq(
+        "client_id", client_id
+    ).order("name").execute())
     return result.data
 
 
@@ -321,15 +329,17 @@ def list_fields(farm_id: str, user: CurrentUser = Depends(get_current_user)):
     """
     sb = get_supabase_admin()
     _check_farm_access(sb, farm_id, user)
-    result = sb.table("fields").select("*").eq("farm_id", farm_id).order("name").execute()
+    result = run_sb(lambda: sb.table("fields").select("*").eq(
+        "farm_id", farm_id
+    ).order("name").execute())
     fields_data = result.data or []
 
     analysis_ids = [f["latest_analysis_id"] for f in fields_data if f.get("latest_analysis_id")]
     composites: dict[str, dict] = {}
     if analysis_ids:
-        analyses = sb.table("soil_analyses").select(
+        analyses = run_sb(lambda: sb.table("soil_analyses").select(
             "id, composition_method, replicate_count"
-        ).in_("id", analysis_ids).execute()
+        ).in_("id", analysis_ids).execute())
         for a in (analyses.data or []):
             composites[a["id"]] = {
                 "composition_method": a.get("composition_method") or "single",
