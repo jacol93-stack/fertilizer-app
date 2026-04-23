@@ -30,7 +30,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from app.auth import CurrentUser, get_current_user
-from app.models import MethodAvailability, OutstandingItem, PreSeasonInput
+from app.models import MethodAvailability, OutstandingItem, PreSeasonInput, RiskFlag
+from app.services.block_clustering import (
+    ClusterAggregate,
+    cluster_and_aggregate,
+)
 from app.services.programme_builder_orchestrator import (
     BlockInput,
     OrchestratorInput,
@@ -153,6 +157,13 @@ async def build_programme_endpoint(
             leaf_deficiencies=b.leaf_deficiencies,
         ))
 
+    # Phase 3 — block aggregation. Blocks with similar NPK ratios share
+    # a cluster; per-nutrient targets + soil parameters are combined
+    # area-weighted (equal-weight fallback if any block lacks area_ha).
+    # Blocks carrying pre_season_inputs are kept as singletons — those
+    # inputs are per-block history, not safely aggregatable here.
+    effective_blocks, cluster_aggs = _cluster_block_inputs(block_inputs)
+
     build_date = request.build_date or date.today()
 
     orchestrator_input = OrchestratorInput(
@@ -168,7 +179,7 @@ async def build_programme_endpoint(
         ref_number=request.ref_number,
         stage_count=request.stage_count,
         method_availability=request.method_availability,
-        blocks=block_inputs,
+        blocks=effective_blocks,
         high_al_soil=request.high_al_soil,
         wet_summer_between_apply_and_plant=request.wet_summer_between_apply_and_plant,
         has_gypsum_in_plan=request.has_gypsum_in_plan,
@@ -191,6 +202,11 @@ async def build_programme_endpoint(
     # surfaced as outstanding items so the agronomist sees what's still
     # pending. Keeps the artifact honest about which blocks it covers.
     _append_skipped_block_items(artifact, request.skipped_blocks)
+
+    # Phase 3 — emit a RiskFlag per cluster whose nutrient CV breached
+    # the Wilding thresholds. Also append cluster-mapping notes to the
+    # decision trace.
+    _append_cluster_narrative(artifact, cluster_aggs)
 
     # Persist
     artifact_json = artifact.model_dump(mode="json")
@@ -384,6 +400,97 @@ async def archive_programme(
 # ============================================================
 # Helpers
 # ============================================================
+
+def _cluster_block_inputs(
+    block_inputs: list[BlockInput],
+) -> tuple[list[BlockInput], list[ClusterAggregate]]:
+    """Group similar blocks into clusters + build the effective block
+    list the orchestrator sees.
+
+    Returns (effective_blocks, cluster_aggregates):
+      * effective_blocks: what the orchestrator processes. For singleton
+        clusters this is the original BlockInput untouched. For multi-
+        block clusters it's a synthetic BlockInput built from the
+        cluster aggregate.
+      * cluster_aggregates: kept so the caller can emit per-cluster
+        RiskFlags + decision-trace notes after the build.
+
+    Blocks with non-empty pre_season_inputs are excluded from clustering
+    (kept as singletons) — those inputs are per-block history and
+    combining them across blocks would risk double-counting in the
+    pre-season residual subtraction.
+    """
+    clusterable = [b for b in block_inputs if not b.pre_season_inputs]
+    non_clusterable = [b for b in block_inputs if b.pre_season_inputs]
+
+    cluster_aggs = cluster_and_aggregate(clusterable)
+
+    effective: list[BlockInput] = []
+    by_id = {b.block_id: b for b in clusterable}
+    for agg in cluster_aggs:
+        if len(agg.block_ids) == 1:
+            # Singleton — pass the original through so lab metadata +
+            # any other per-block detail survive untouched.
+            original = by_id[agg.block_ids[0]]
+            effective.append(original)
+            continue
+
+        # Multi-block cluster — build a synthetic BlockInput. No lab
+        # metadata because it'd be misleading (mix of source analyses);
+        # the cluster_aggs list is the provenance record.
+        effective.append(BlockInput(
+            block_id=f"cluster_{agg.cluster_id}",
+            block_name=f"Cluster {agg.cluster_id}: {', '.join(agg.block_names)}",
+            block_area_ha=agg.total_area_ha,
+            soil_parameters=agg.aggregated_soil_parameters,
+            season_targets=agg.aggregated_targets,
+            lab_name=None,
+            lab_method=None,
+            sample_date=None,
+            sample_id=None,
+            pre_season_inputs=[],
+            leaf_deficiencies=None,
+        ))
+
+    # Non-clusterable blocks (those with pre_season_inputs) always run
+    # as singletons through the orchestrator.
+    effective.extend(non_clusterable)
+    return effective, cluster_aggs
+
+
+def _append_cluster_narrative(artifact, cluster_aggs: list[ClusterAggregate]) -> None:
+    """Emit heterogeneity RiskFlags + decision-trace notes for each
+    multi-block cluster. Singleton clusters produce nothing."""
+    for agg in cluster_aggs:
+        if len(agg.block_ids) > 1:
+            artifact.decision_trace.append(
+                f"Clustered blocks [{', '.join(agg.block_names)}] into "
+                f"'{agg.cluster_id}' ({agg.total_area_ha} ha, "
+                f"{agg.weight_strategy} weighting)."
+            )
+        if agg.heterogeneity.any_warn or agg.heterogeneity.any_split:
+            warnings_text = ", ".join(
+                f"{w.nutrient} CV {w.cv_pct}% "
+                f"(≥{w.threshold_pct}% {w.level})"
+                for w in agg.heterogeneity.warnings
+            )
+            severity = "critical" if agg.heterogeneity.any_split else "watch"
+            action = (
+                "Consider splitting this cluster into per-block plans."
+                if agg.heterogeneity.any_split
+                else "Review whether one blend fits both blocks."
+            )
+            artifact.risk_flags.append(RiskFlag(
+                message=(
+                    f"Cluster {agg.cluster_id} "
+                    f"({len(agg.block_ids)} blocks: "
+                    f"{', '.join(agg.block_names)}) spans high nutrient "
+                    f"variation: {warnings_text}. {action} "
+                    f"[{agg.heterogeneity.citation}]"
+                ),
+                severity=severity,
+            ))
+
 
 def _append_skipped_block_items(artifact, skipped_blocks: list[SkippedBlockRequest]) -> None:
     """Append one OutstandingItem per skipped block to the artifact.
