@@ -409,6 +409,11 @@ export interface BlockRequest {
   leaf_deficiencies?: Record<string, number> | null;
 }
 
+export interface SkippedBlockRequest {
+  block_name: string;
+  reason: string;
+}
+
 export interface BuildProgrammeRequest {
   client_name: string;
   farm_name: string;
@@ -431,6 +436,9 @@ export interface BuildProgrammeRequest {
   planned_n_fertilizers?: string[] | null;
   subtract_harvested_removal?: boolean;
   client_id?: string | null;
+  /** Blocks the caller couldn't plan (e.g. no soil analysis) — backend
+   * appends one OutstandingItem per entry to the resulting artifact. */
+  skipped_blocks?: SkippedBlockRequest[];
 }
 
 export interface BuildProgrammeResponse {

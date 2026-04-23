@@ -345,13 +345,18 @@ function SeasonBuilderPage() {
         };
       }
 
-      const request = wizardStateToBuildRequest({
+      // Pass ALL named blocks (not just those with soil data) so the
+      // adapter can split them into planned vs skipped; the skipped set
+      // flows to the artifact as OutstandingItems instead of being
+      // silently dropped.
+      const namedBlocks = blocks.filter((b) => b.crop && b.name);
+      const { request, skippedBlocks } = wizardStateToBuildRequest({
         clientName,
         farmName,
         preparedFor: clientName,
         season,
         clientId: clientId || null,
-        blocks: validBlocks.map((b) => ({
+        blocks: namedBlocks.map((b) => ({
           name: b.name,
           area_ha: b.area_ha,
           crop: b.crop,
@@ -367,7 +372,13 @@ function SeasonBuilderPage() {
       });
 
       const response = await buildProgramme(request);
-      toast.success("Programme artifact built");
+      if (skippedBlocks.length > 0) {
+        toast.warning(
+          `${skippedBlocks.length} block${skippedBlocks.length !== 1 ? "s" : ""} not planned (no soil analysis) — see Outstanding Items`,
+        );
+      } else {
+        toast.success("Programme artifact built");
+      }
       router.push(`/season-manager/artifact/${response.id}`);
     } catch (e) {
       if (e instanceof WizardAdapterError) {

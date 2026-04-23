@@ -30,7 +30,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from app.auth import CurrentUser, get_current_user
-from app.models import MethodAvailability, PreSeasonInput
+from app.models import MethodAvailability, OutstandingItem, PreSeasonInput
 from app.services.programme_builder_orchestrator import (
     BlockInput,
     OrchestratorInput,
@@ -66,6 +66,16 @@ class BlockRequest(BaseModel):
     leaf_deficiencies: Optional[dict[str, float]] = None
 
 
+class SkippedBlockRequest(BaseModel):
+    """Block the caller couldn't plan (e.g. no soil analysis linked).
+
+    Appended to artifact.outstanding_items so the agronomist sees what
+    remains to complete, instead of the UI silently dropping them.
+    """
+    block_name: str
+    reason: str
+
+
 class BuildProgrammeRequest(BaseModel):
     """Lightweight API surface — server loads the full catalog."""
     client_name: str
@@ -89,6 +99,7 @@ class BuildProgrammeRequest(BaseModel):
     planned_n_fertilizers: Optional[list[str]] = None
     subtract_harvested_removal: bool = False
     client_id: Optional[UUID] = None
+    skipped_blocks: list[SkippedBlockRequest] = Field(default_factory=list)
 
 
 class BuildProgrammeResponse(BaseModel):
@@ -175,6 +186,11 @@ async def build_programme_endpoint(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Programme build failed: {exc}",
         )
+
+    # Caller-supplied skipped blocks (e.g. no soil analysis linked) are
+    # surfaced as outstanding items so the agronomist sees what's still
+    # pending. Keeps the artifact honest about which blocks it covers.
+    _append_skipped_block_items(artifact, request.skipped_blocks)
 
     # Persist
     artifact_json = artifact.model_dump(mode="json")
@@ -363,6 +379,31 @@ async def archive_programme(
     if not result.data:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Programme not found")
     return None
+
+
+# ============================================================
+# Helpers
+# ============================================================
+
+def _append_skipped_block_items(artifact, skipped_blocks: list[SkippedBlockRequest]) -> None:
+    """Append one OutstandingItem per skipped block to the artifact.
+
+    Kept separate from the endpoint so it's unit-testable without
+    spinning up FastAPI + Supabase.
+    """
+    for sb in skipped_blocks:
+        artifact.outstanding_items.append(OutstandingItem(
+            item=f"Block '{sb.block_name}' not planned ({sb.reason})",
+            why_it_matters=(
+                "This block is on the farm but wasn't included in the "
+                "programme build — no per-block plan, no shopping list "
+                "contribution, no foliar schedule."
+            ),
+            impact_if_skipped=(
+                "Link a soil analysis and rebuild, or record applications "
+                "manually; otherwise the block has no programme guidance."
+            ),
+        ))
 
 
 # ============================================================

@@ -70,16 +70,37 @@ function monthToDate(year: number, month: number): string {
   return `${year}-${m}-01`;
 }
 
+export interface SkippedBlock {
+  block_name: string;
+  reason: string;
+}
+
+export interface WizardToV2Result {
+  request: BuildProgrammeRequest;
+  /**
+   * Blocks the adapter could not include in the build (no soil analysis).
+   * Carried alongside the request so the caller can surface them — the
+   * backend attaches them to the artifact as OutstandingItem[] so they
+   * appear in the final programme instead of being silently dropped.
+   */
+  skippedBlocks: SkippedBlock[];
+}
+
 /**
  * Map the wizard's collected state to a v2 BuildProgrammeRequest.
  *
  * Single-crop programmes only: if blocks span multiple crops, throws —
  * v2 expects one crop per build call. Multi-crop programmes should be
  * built as separate artifacts (one per crop group).
+ *
+ * Blocks without a linked soil analysis are surfaced via `skippedBlocks`
+ * in the result (not silently dropped). Hard-invariant failures
+ * (missing area_ha, yield_target, planting month, soil_values) still
+ * throw — those are upstream bugs, not "come back later" situations.
  */
 export function wizardStateToBuildRequest(
   input: WizardToV2Input,
-): BuildProgrammeRequest {
+): WizardToV2Result {
   const {
     clientName,
     farmName,
@@ -93,9 +114,14 @@ export function wizardStateToBuildRequest(
     methodAvailability,
   } = input;
 
-  const usableBlocks = blocks.filter(
-    (b) => b.name && b.crop && b.soil_analysis_id,
-  );
+  const namedBlocks = blocks.filter((b) => b.name && b.crop);
+  const usableBlocks = namedBlocks.filter((b) => b.soil_analysis_id);
+  const skippedBlocks: SkippedBlock[] = namedBlocks
+    .filter((b) => !b.soil_analysis_id)
+    .map((b) => ({
+      block_name: b.name,
+      reason: "no soil analysis linked",
+    }));
   if (usableBlocks.length === 0) {
     throw new WizardAdapterError(
       "No blocks with a linked soil analysis. Add one before building.",
@@ -157,7 +183,7 @@ export function wizardStateToBuildRequest(
     };
   });
 
-  return {
+  const request: BuildProgrammeRequest = {
     client_name: clientName || "Unknown client",
     farm_name: farmName || "Unknown farm",
     prepared_for: preparedFor || clientName || "Unknown recipient",
@@ -167,7 +193,9 @@ export function wizardStateToBuildRequest(
     client_id: clientId,
     blocks: blockRequests,
     method_availability: methodAvailability,
+    skipped_blocks: skippedBlocks,
   };
+  return { request, skippedBlocks };
 }
 
 /**
