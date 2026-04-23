@@ -221,13 +221,16 @@ async def get_programme_artifact(
     user: CurrentUser = Depends(get_current_user),
 ):
     supabase = get_supabase_admin()
-    result = (
+    query = (
         supabase.table("programme_artifacts")
         .select("*")
         .eq("id", str(artifact_id))
-        .limit(1)
-        .execute()
     )
+    # Admin sees any; non-admin scoped to their own rows (admin client bypasses
+    # RLS so we enforce the scope explicitly)
+    if user.role != "admin":
+        query = query.eq("user_id", user.id)
+    result = query.limit(1).execute()
     if not result.data:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Programme not found")
     row = result.data[0]
@@ -257,6 +260,8 @@ async def list_programmes(
         .order("created_at", desc=True)
         .limit(limit)
     )
+    if user.role != "admin":
+        query = query.eq("user_id", user.id)
     if state:
         query = query.eq("state", state)
     if crop:
@@ -288,13 +293,14 @@ async def transition_state(
         completed → archived
     """
     supabase = get_supabase_admin()
-    current = (
+    select_query = (
         supabase.table("programme_artifacts")
         .select("state,artifact")
         .eq("id", str(artifact_id))
-        .limit(1)
-        .execute()
     )
+    if user.role != "admin":
+        select_query = select_query.eq("user_id", user.id)
+    current = select_query.limit(1).execute()
     if not current.data:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Programme not found")
 
@@ -321,12 +327,14 @@ async def transition_state(
     elif new_state == "completed":
         update["completed_at"] = datetime.utcnow().isoformat()
 
-    updated = (
+    update_query = (
         supabase.table("programme_artifacts")
         .update(update)
         .eq("id", str(artifact_id))
-        .execute()
     )
+    if user.role != "admin":
+        update_query = update_query.eq("user_id", user.id)
+    updated = update_query.execute()
     if not updated.data:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Update failed")
     row = updated.data[0]
@@ -344,12 +352,14 @@ async def archive_programme(
 ):
     """Archive (soft delete) — sets state='archived'. Row is retained."""
     supabase = get_supabase_admin()
-    result = (
+    query = (
         supabase.table("programme_artifacts")
         .update({"state": "archived"})
         .eq("id", str(artifact_id))
-        .execute()
     )
+    if user.role != "admin":
+        query = query.eq("user_id", user.id)
+    result = query.execute()
     if not result.data:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Programme not found")
     return None
