@@ -523,7 +523,7 @@ def _append_cluster_narrative(artifact, cluster_aggs: list[ClusterAggregate]) ->
                 f"(≥{w.threshold_pct}% {w.level})"
                 for w in agg.heterogeneity.warnings
             )
-            severity = "critical" if agg.heterogeneity.any_split else "watch"
+            severity = "critical" if agg.heterogeneity.any_split else "warn"
             action = (
                 "Consider splitting this cluster into per-block plans."
                 if agg.heterogeneity.any_split
