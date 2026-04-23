@@ -36,6 +36,7 @@ from typing import Optional
 
 from app.models import (
     Assumption,
+    Blend,
     DataCompleteness,
     FoliarEvent,
     MethodAvailability,
@@ -47,6 +48,7 @@ from app.models import (
     ProgrammeState,
     ReplanReason,
     RiskFlag,
+    ShoppingListEntry,
     SoilSnapshot,
     SourceCitation,
     StageSchedule,
@@ -421,6 +423,11 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
     deduped_risk_flags = _dedup_risk_flags(all_risk_flags)
     deduped_assumptions = _dedup_assumptions(assumptions)
 
+    # Roll up per-product totals across all blends + foliar events
+    # into a shopping list. Categorises by method so the doc can
+    # show separate drip / foliar / dry_blend tables.
+    shopping_list = _build_shopping_list(all_blends, all_foliar_events)
+
     return ProgrammeArtifact(
         header=header,
         soil_snapshots=soil_snapshots_out,
@@ -433,7 +440,7 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
         risk_flags=deduped_risk_flags,
         assumptions=deduped_assumptions,
         outstanding_items=deduped_outstanding,
-        shopping_list=[],  # module 8 pending
+        shopping_list=shopping_list,
         sources_audit=deduped_sources,
         decision_trace=decision_trace,
     )
@@ -575,3 +582,106 @@ def _dedup_assumptions(assumptions: list[Assumption]) -> list[Assumption]:
             seen.add(key)
             result.append(a)
     return result
+
+
+def _parse_quantity(raw: Optional[str]) -> tuple[float, str]:
+    """Parse a quantity string like '233 kg' or '976380 L' → (233.0, 'kg').
+
+    Returns (0.0, 'kg') on anything it can't parse cleanly — the caller
+    then drops the row from the shopping list, which is safer than
+    bogus totals.
+    """
+    if not raw:
+        return 0.0, "kg"
+    # Strip any thousands separators or spaces before the unit
+    s = raw.strip().replace(",", "")
+    # Find where the unit starts — first non-digit/non-dot after a digit
+    num = ""
+    i = 0
+    while i < len(s) and (s[i].isdigit() or s[i] == "." or s[i] == "-"):
+        num += s[i]
+        i += 1
+    unit = s[i:].strip() or "kg"
+    # Normalise common unit forms
+    unit_lower = unit.lower()
+    if unit_lower in {"l", "litres", "litre", "liters", "liter"}:
+        unit = "L"
+    elif unit_lower in {"kg", "kgs", "kilograms", "kilogram"}:
+        unit = "kg"
+    try:
+        return float(num), unit
+    except ValueError:
+        return 0.0, unit or "kg"
+
+
+def _blend_category(blend: Blend) -> str:
+    """Map the blend's method to a shopping-list category label.
+
+    Matches ShoppingListEntry.category docstring values:
+    'drip' | 'drench' | 'foliar' | 'dry_blend'.
+    """
+    kind = str(getattr(blend.method, "kind", "")).lower()
+    if "liquid" in kind or "fertigation" in kind:
+        return "drip"
+    if "drench" in kind:
+        return "drench"
+    if "dry" in kind or "broadcast" in kind or "band" in kind or "side_dress" in kind:
+        return "dry_blend"
+    return "dry_blend"  # safe default for unknown dry kinds
+
+
+def _build_shopping_list(
+    blends: list[Blend],
+    foliar_events: list[FoliarEvent],
+) -> list[ShoppingListEntry]:
+    """Roll per-product quantities across all blends + foliar events
+    into a season-total shopping list, keyed per block.
+
+    Grouping key: (category, product, analysis) so a product used by
+    both fertigation and dry applications stays distinct.
+    """
+    buckets: dict[tuple[str, str, str], dict] = {}
+
+    for blend in blends:
+        category = _blend_category(blend)
+        for part in blend.raw_products:
+            qty, unit = _parse_quantity(part.batch_total)
+            if qty <= 0:
+                continue
+            key = (category, part.product, part.analysis)
+            row = buckets.setdefault(key, {
+                "unit": unit,
+                "per_block": {},
+                "total": 0.0,
+            })
+            row["total"] += qty
+            row["per_block"][blend.block_id] = (
+                row["per_block"].get(blend.block_id, 0.0) + qty
+            )
+
+    for ev in foliar_events:
+        qty, unit = _parse_quantity(ev.total_for_block)
+        if qty <= 0:
+            continue
+        key = ("foliar", ev.product, ev.analysis)
+        row = buckets.setdefault(key, {
+            "unit": unit,
+            "per_block": {},
+            "total": 0.0,
+        })
+        row["total"] += qty
+        row["per_block"][ev.block_id] = (
+            row["per_block"].get(ev.block_id, 0.0) + qty
+        )
+
+    return [
+        ShoppingListEntry(
+            category=cat,
+            product=product,
+            analysis=analysis,
+            total_per_block={bid: round(q, 1) for bid, q in row["per_block"].items()},
+            total_overall=round(row["total"], 1),
+            unit=row["unit"],
+        )
+        for (cat, product, analysis), row in buckets.items()
+    ]

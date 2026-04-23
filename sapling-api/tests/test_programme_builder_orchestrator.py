@@ -304,10 +304,16 @@ def test_blends_populated_when_materials_provided(clivia_land_a_input):
     art = build_programme(inputs)
     # Clivia has materials catalog → blends should populate
     assert len(art.blends) > 0
-    # Shopping list still pending (not yet wired)
-    assert art.shopping_list == []
+    # Shopping list aggregator now wired — rolls up per-product totals
+    # from the populated blends. Each entry has a valid category and
+    # non-zero total.
+    assert len(art.shopping_list) > 0, "shopping_list should be populated when blends are"
+    valid_categories = {"drip", "drench", "foliar", "dry_blend"}
+    for entry in art.shopping_list:
+        assert entry.category in valid_categories
+        assert entry.total_overall > 0
+        assert entry.product
     trace = "\n".join(art.decision_trace)
-    # Trace should explicitly note consolidator ran + shopping list pending
     assert "Consolidator" in trace or "consolidator" in trace.lower()
 
 
