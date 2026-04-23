@@ -405,7 +405,7 @@ function SeasonBuilderPage() {
           `${skippedBlocks.length} block${skippedBlocks.length !== 1 ? "s" : ""} not planned (no soil analysis) — see Outstanding Items`,
         );
       } else {
-        toast.success("Programme artifact built");
+        toast.success("Programme generated");
       }
       router.push(`/season-manager/artifact/${response.id}`);
     } catch (e) {
@@ -552,8 +552,8 @@ function SeasonBuilderPage() {
                     Application methods available on this farm
                   </Label>
                   <p className="mb-3 text-xs text-muted-foreground">
-                    Used by the new-engine artifact builder to decide which methods
-                    to route nutrients through (drip, foliar, broadcast, etc.).
+                    The programme will route nutrients through the methods you tick
+                    here — fertigation, foliar, granular broadcast, etc.
                   </p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {([
@@ -751,7 +751,7 @@ function SeasonBuilderPage() {
                 ) : (
                   <Leaf className="size-4" />
                 )}
-                Build Artifact (new engine)
+                Generate Full Programme
               </Button>
             </div>
           )}

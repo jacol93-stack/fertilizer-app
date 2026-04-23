@@ -132,7 +132,7 @@ async def build_programme_endpoint(
 
     # Load catalog rows (one batch of queries)
     catalog = _load_soil_catalog(supabase)
-    materials = _load_materials(supabase)
+    materials = _load_materials_for_user(supabase, user)
 
     # Build per-block inputs, computing targets server-side if not provided
     block_inputs: list[BlockInput] = []
@@ -594,6 +594,42 @@ def _load_soil_catalog(supabase) -> SoilCatalog:
     )
 
 
-def _load_materials(supabase) -> list[dict]:
-    result = supabase.table("materials").select("*").execute()
-    return result.data or []
+def _load_materials_for_user(supabase, user: CurrentUser) -> list[dict]:
+    """Return the materials list the orchestrator should plan against.
+
+    Admins get everything — the full catalog is theirs to curate.
+    Agents get the admin-approved subset from `default_materials.materials`
+    + `default_materials.liquid_materials`, with "Manure Compost" always
+    included (matches the legacy auto-blend flow's behavior).
+
+    If no default_materials row exists yet (fresh install), agents fall
+    back to the full catalog with a warning logged — safer than
+    blocking the build.
+    """
+    all_mats = supabase.table("materials").select("*").execute().data or []
+    if getattr(user, "role", None) == "admin":
+        return all_mats
+
+    defaults_res = supabase.table("default_materials").select("*").execute()
+    if not defaults_res.data:
+        logger.warning(
+            "No default_materials row found — agent user %s falling back "
+            "to full materials catalog. Admin should configure defaults.",
+            user.id,
+        )
+        return all_mats
+    row = defaults_res.data[0]
+    approved = set(row.get("materials") or [])
+    approved.update(row.get("liquid_materials") or [])
+    approved.add("Manure Compost")  # compost always available
+    filtered = [m for m in all_mats if m.get("material") in approved]
+    if not filtered:
+        # Defaults row exists but empty — don't silently cripple the
+        # build. Log and return the full catalog.
+        logger.warning(
+            "default_materials for agent %s resolves to zero matches — "
+            "falling back to full catalog.",
+            user.id,
+        )
+        return all_mats
+    return filtered

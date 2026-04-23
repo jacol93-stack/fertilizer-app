@@ -144,10 +144,7 @@ function SeasonManagerPage() {
         {!artifactsLoading && visibleArtifacts.length > 0 && (
           <div className="mb-8">
             <div className="mb-3 flex items-center gap-2">
-              <h2 className="text-lg font-semibold text-[var(--sapling-dark)]">Programme Artifacts</h2>
-              <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--sapling-orange)]">
-                New engine
-              </span>
+              <h2 className="text-lg font-semibold text-[var(--sapling-dark)]">Full-Season Programmes</h2>
             </div>
             <div className="space-y-2">
               {visibleArtifacts.map((a) => (
