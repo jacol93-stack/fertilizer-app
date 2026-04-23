@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from app.auth import CurrentUser, get_current_user, require_admin
 from app.pagination import Page, PageParams, apply_page
 from app.services.aggregation import AggregationResult, aggregate_samples
-from app.supabase_client import get_supabase_admin
+from app.supabase_client import get_supabase_admin, run_sb
 
 router = APIRouter(tags=["Programmes"])
 
@@ -82,8 +82,15 @@ def _audit(sb, user: CurrentUser, action: str, record_id: str | None = None, det
 
 
 def _check_access(sb, programme_id: str, user: CurrentUser) -> dict:
-    """Load a programme and verify access. Returns the programme dict."""
-    result = sb.table("programmes").select("*").eq("id", programme_id).is_("deleted_at", "null").execute()
+    """Load a programme and verify access. Returns the programme dict.
+
+    Wrapped in run_sb so transient httpx.ReadError from Supabase's
+    HTTP/2 connection pool gets one retry before surfacing as a 500.
+    Reproduced on /season-manager/[id] when the pool had stale conns.
+    """
+    result = run_sb(lambda: sb.table("programmes").select("*").eq(
+        "id", programme_id
+    ).is_("deleted_at", "null").execute())
     if not result.data:
         raise HTTPException(404, "Programme not found")
     prog = result.data[0]
