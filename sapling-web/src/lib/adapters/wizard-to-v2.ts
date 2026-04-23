@@ -115,16 +115,33 @@ export function wizardStateToBuildRequest(
   } = input;
 
   const namedBlocks = blocks.filter((b) => b.name && b.crop);
-  const usableBlocks = namedBlocks.filter((b) => b.soil_analysis_id);
-  const skippedBlocks: SkippedBlock[] = namedBlocks
-    .filter((b) => !b.soil_analysis_id)
-    .map((b) => ({
-      block_name: b.name,
-      reason: "no soil analysis linked",
-    }));
+  const skippedBlocks: SkippedBlock[] = [];
+  const usableBlocks: WizardBlock[] = [];
+  for (const b of namedBlocks) {
+    if (!b.soil_analysis_id) {
+      skippedBlocks.push({
+        block_name: b.name,
+        reason: "no soil analysis linked",
+      });
+      continue;
+    }
+    const sv = soilValuesByAnalysisId[b.soil_analysis_id];
+    if (!sv || Object.keys(sv).length === 0) {
+      // Linked analysis exists but has no usable soil_values (e.g.
+      // legacy row pre-dating soil_values column, or an incomplete
+      // lab upload). Surface as skipped — same UX as "no analysis"
+      // so the agronomist sees the gap on the artifact.
+      skippedBlocks.push({
+        block_name: b.name,
+        reason: "linked soil analysis has no soil_values",
+      });
+      continue;
+    }
+    usableBlocks.push(b);
+  }
   if (usableBlocks.length === 0) {
     throw new WizardAdapterError(
-      "No blocks with a linked soil analysis. Add one before building.",
+      "No blocks with usable soil values. Link or upload a complete soil analysis before building.",
     );
   }
 
@@ -153,13 +170,10 @@ export function wizardStateToBuildRequest(
   const plantingDate = monthToDate(year, plantingMonth);
 
   const blockRequests: BlockRequest[] = usableBlocks.map((b) => {
+    // Earlier usableBlocks filter guarantees soil_analysis_id and
+    // non-empty soil_values; remaining checks are on block-level
+    // fields the wizard should have captured upstream.
     const soilValues = soilValuesByAnalysisId[b.soil_analysis_id!];
-    if (!soilValues) {
-      throw new WizardAdapterError(
-        `Missing soil_values for block "${b.name}" ` +
-        `(analysis ${b.soil_analysis_id}). Fetch before adapting.`,
-      );
-    }
     if (!b.area_ha || b.area_ha <= 0) {
       throw new WizardAdapterError(
         `Block "${b.name}" has no area_ha — required for v2 build.`,
