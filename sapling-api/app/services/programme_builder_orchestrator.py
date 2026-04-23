@@ -413,8 +413,13 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
             f"{len(validation_flags)} warnings/errors surfaced"
         )
 
-    # Dedup sources_audit by source_id+section
+    # Dedup all list fields where the orchestrator fan-out produces
+    # identical per-block entries (e.g. cluster A and cluster B both
+    # emit the same "irrigation water test" OutstandingItem).
     deduped_sources = _dedup_sources(sources_audit)
+    deduped_outstanding = _dedup_outstanding(all_outstanding)
+    deduped_risk_flags = _dedup_risk_flags(all_risk_flags)
+    deduped_assumptions = _dedup_assumptions(assumptions)
 
     return ProgrammeArtifact(
         header=header,
@@ -425,9 +430,9 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
         blends=all_blends,
         foliar_events=all_foliar_events,
         block_totals=block_totals,
-        risk_flags=all_risk_flags,
-        assumptions=assumptions,
-        outstanding_items=all_outstanding,
+        risk_flags=deduped_risk_flags,
+        assumptions=deduped_assumptions,
+        outstanding_items=deduped_outstanding,
         shopping_list=[],  # module 8 pending
         sources_audit=deduped_sources,
         decision_trace=decision_trace,
@@ -526,4 +531,47 @@ def _dedup_sources(sources: list[SourceCitation]) -> list[SourceCitation]:
         if key not in seen:
             seen.add(key)
             result.append(s)
+    return result
+
+
+def _dedup_outstanding(items: list[OutstandingItem]) -> list[OutstandingItem]:
+    """Cluster A and cluster B often emit the same OutstandingItem (e.g.
+    'irrigation water test' fires per-fertigation-block). De-dup by the
+    item + why_it_matters tuple so the agronomist sees each unique
+    action once. Preserve first-seen order.
+    """
+    seen = set()
+    result = []
+    for item in items:
+        key = (item.item, item.why_it_matters)
+        if key not in seen:
+            seen.add(key)
+            result.append(item)
+    return result
+
+
+def _dedup_risk_flags(flags: list[RiskFlag]) -> list[RiskFlag]:
+    """Same rationale as OutstandingItem dedup — per-block fan-out
+    produces identical RiskFlags. Dedup by (message, severity).
+    """
+    seen = set()
+    result = []
+    for f in flags:
+        key = (f.message, f.severity)
+        if key not in seen:
+            seen.add(key)
+            result.append(f)
+    return result
+
+
+def _dedup_assumptions(assumptions: list[Assumption]) -> list[Assumption]:
+    """Dedup per-block duplicates by (field, assumed_value). Keep the
+    first occurrence to preserve the most-specific provenance."""
+    seen = set()
+    result = []
+    for a in assumptions:
+        key = (a.field, a.assumed_value)
+        if key not in seen:
+            seen.add(key)
+            result.append(a)
     return result
