@@ -318,29 +318,41 @@ function SeasonBuilderPage() {
       if (validBlocks.length === 0) {
         toast.error(
           "No blocks have a soil analysis linked. Go back to Step 1 and link one.",
+          { duration: 8000 },
         );
         return;
       }
       if (blockInfoData.length === 0) {
         toast.error(
           "Schedule hasn't been generated. Go back to Step 2 (Schedule) first.",
-        );
-        return;
-      }
-      if (Object.keys(plantingMonths).length === 0) {
-        toast.error(
-          "No planting months set. Set one on Step 2 (Schedule) for each block.",
+          { duration: 8000 },
         );
         return;
       }
 
-      // Build block_id → block_name from preview-schedule output, so we
-      // can project plantingMonths (keyed by server block_id) onto names.
+      // Build block_id → block_name from preview-schedule output.
+      // plantingMonths is user-set via ScheduleReview dropdown — only
+      // populated when the user *interacts* with the dropdown. If the
+      // user accepted the defaults without clicking, it stays empty.
+      // Fall back to the first growth-stage month for each block (same
+      // default ScheduleReview shows visually), so a "no click" flow
+      // still produces a valid request.
       const nameByBlockId = new Map(blockInfoData.map((bi) => [bi.block_id, bi.block_name]));
       const plantingMonthByBlockName: Record<string, number> = {};
-      for (const [bid, month] of Object.entries(plantingMonths)) {
-        const name = nameByBlockId.get(bid);
-        if (name) plantingMonthByBlockName[name] = month;
+      for (const bi of blockInfoData) {
+        const userSet = plantingMonths[bi.block_id];
+        const fallback = bi.growth_stages?.[0]?.month_start;
+        const month = userSet ?? fallback;
+        if (typeof month === "number" && month >= 1 && month <= 12) {
+          plantingMonthByBlockName[bi.block_name] = month;
+        }
+      }
+      if (Object.keys(plantingMonthByBlockName).length === 0) {
+        toast.error(
+          "No planting months available. Set one on Step 2 (Schedule) for each block.",
+          { duration: 8000 },
+        );
+        return;
       }
 
       // Fetch soil_values per analysis (list view doesn't include them).
