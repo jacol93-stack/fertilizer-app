@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.auth import CurrentUser, get_current_user, require_admin
-from app.supabase_client import get_supabase_admin
+from app.supabase_client import get_supabase_admin, run_sb
 
 router = APIRouter(tags=["crop_norms"])
 
@@ -54,10 +54,10 @@ def get_effective_crop_requirements(user: CurrentUser = Depends(get_current_user
     """Get effective crop requirements (admin defaults merged with agent overrides)."""
     sb = get_supabase_admin()
     try:
-        result = sb.rpc(
+        result = run_sb(lambda: sb.rpc(
             "get_effective_crop_requirements",
             {"p_agent_id": user.id},
-        ).execute()
+        ).execute())
         return result.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -68,7 +68,7 @@ def get_admin_crop_requirements(user: CurrentUser = Depends(require_admin)):
     """Admin only — raw crop_requirements table."""
     sb = get_supabase_admin()
     try:
-        result = sb.table("crop_requirements").select("*").execute()
+        result = run_sb(lambda: sb.table("crop_requirements").select("*").execute())
         return result.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
