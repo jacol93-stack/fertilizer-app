@@ -15,12 +15,14 @@ Sits on top of soil_engine.evaluate_ratios() and extends it with:
      - Al saturation > crop-specific threshold → lime priority + Ca-Nitrate
      - SAR > 13 → sodic soil flag → gypsum/amelioration
      - EC > 2 mS/cm in topsoil → salinity flag
+  4. Lime-need from N-fertilizer acidification — compute_lime_needed_for_n()
+     using IFA 1992 CaO equivalents per kg N per fertilizer type.
 
 Returns structured SoilFactorFindings that the orchestrator converts
 into RiskFlags + FoliarEvent triggers + risk-flag narratives.
 
 Provenance discipline:
-  - Thresholds sourced to FERTASA / SASRI / ICAR / Foth-Ellis where
+  - Thresholds sourced to FERTASA / SASRI / ICAR / Foth-Ellis / IFA where
     published, Tier 1-3 flagged.
   - Common agronomy thresholds without a specific handbook citation
     are Tier 6 (implementer convention) — user can override.
@@ -74,6 +76,47 @@ AL_SAT_SOURCE = ("IMPLEMENTER_CONVENTION", "FERTASA 5.1 qualitative Al discussio
 
 # Acid-tolerant crops (per crop_calc_flags.skip_cation_ratio_path)
 ACID_TOLERANT_CROPS = {"Blueberry", "Raspberry", "Blackberry", "Honeybush", "Rooibos"}
+
+# ------------------------------------------------------------
+# N-fertilizer soil acidification (IFA World Fertilizer Use Manual
+# 1992 Table 1 — "Soil acidification by nitrogen fertilizers").
+# Values = kg CaO needed to neutralise the acidification from 1 kg N
+# at 50% N utilization rate. Tier 3 (international industry body).
+#
+# Use: when a programme applies X kg N of a given fertilizer type, the
+# lime budget should include X * CAO_PER_KG_N_BY_N_TYPE[fert_type]
+# additional CaO to keep pH stable over time.
+# ------------------------------------------------------------
+CAO_PER_KG_N_BY_N_TYPE: dict[str, float] = {
+    # Calcium ammonium nitrate — mildly acidifying (intrinsic Ca offsets some)
+    "calcium_ammonium_nitrate": 0.6,  # 27% N blends
+    "can": 0.6,  # alias
+    # Ammonia / urea / ammonium nitrate — standard 1.0 acidification
+    "ammonia": 1.0,
+    "urea": 1.0,
+    "ammonium_nitrate": 1.0,
+    # Diammonium phosphate / ammonium sulphate nitrate
+    "dap": 2.0,
+    "diammonium_phosphate": 2.0,
+    "ammonium_sulphate_nitrate": 2.0,
+    "asn": 2.0,  # alias
+    # Ammonium sulphate — most acidifying (SO₄ oxidation adds to NH₄ nitrification)
+    "ammonium_sulphate": 3.0,
+    "ams": 3.0,  # alias
+}
+IFA_N_ACIDIFICATION_SOURCE = (
+    "IFA_WFM_1992",
+    "World Fertilizer Use Manual Table 1, intro chapter by Prof. A. Finck",
+    3,
+)
+
+# Typical first-year N utilization rate (IFA 1992: "mostly 50-70%")
+N_UTILIZATION_RATE_FIRST_YEAR = (0.50, 0.70)
+N_UTILIZATION_DEFAULT = 0.60  # midpoint for budget calc
+
+# P utilization year 1 (IFA 1992: ~15% in year 1, 1-2% per year after)
+P_UTILIZATION_YEAR_1 = 0.15
+P_UTILIZATION_PER_YEAR_AFTER = 0.015
 
 
 # ============================================================
@@ -179,6 +222,46 @@ def compute_sar(soil_values: dict) -> Optional[float]:
         return None
 
     return round(na_cmol / (divisor_sq ** 0.5), 2)
+
+
+def compute_lime_needed_for_n(
+    n_applied_kg_per_ha: float,
+    fertilizer_type: str,
+) -> Optional[dict]:
+    """CaO required to offset soil acidification from an N application.
+
+    Per IFA 1992 Table 1 (Finck intro, tier 3). Assumes 50% N utilization
+    rate — the rest converts to nitrate, drives H⁺ release + base cation
+    leaching.
+
+    Args:
+        n_applied_kg_per_ha: kg N/ha applied as the given fertilizer
+        fertilizer_type: key into CAO_PER_KG_N_BY_N_TYPE (case-insensitive,
+            underscore-tolerant). Unknown types return None.
+
+    Returns:
+        dict with CaO (kg/ha), citation info. None if fertilizer_type
+        is unrecognised.
+
+    Example:
+        compute_lime_needed_for_n(150, "urea")
+        → {"cao_kg_per_ha": 150.0, "factor": 1.0, ...}
+    """
+    if n_applied_kg_per_ha <= 0:
+        return None
+    key = fertilizer_type.strip().lower().replace(" ", "_").replace("-", "_")
+    factor = CAO_PER_KG_N_BY_N_TYPE.get(key)
+    if factor is None:
+        return None
+    return {
+        "cao_kg_per_ha": round(n_applied_kg_per_ha * factor, 1),
+        "factor": factor,
+        "fertilizer_type": key,
+        "basis": "50% N utilization rate",
+        "source_id": IFA_N_ACIDIFICATION_SOURCE[0],
+        "source_section": IFA_N_ACIDIFICATION_SOURCE[1],
+        "tier": IFA_N_ACIDIFICATION_SOURCE[2],
+    }
 
 
 def compute_cn_ratio(soil_values: dict) -> Optional[float]:

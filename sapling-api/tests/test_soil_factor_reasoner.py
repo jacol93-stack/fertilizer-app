@@ -11,8 +11,10 @@ from app.services.soil_factor_reasoner import (
     AL_SAT_HIGH_PCT,
     AL_SAT_MODERATE_PCT,
     CA_B_ANTAGONISM_THRESHOLD,
+    CAO_PER_KG_N_BY_N_TYPE,
     EC_HIGH_THRESHOLD,
     EC_MODERATE_THRESHOLD,
+    N_UTILIZATION_DEFAULT,
     P_ZN_ANTAGONISM_THRESHOLD,
     SAR_HIGH_THRESHOLD,
     SAR_MODERATE_THRESHOLD,
@@ -20,6 +22,7 @@ from app.services.soil_factor_reasoner import (
     SoilFactorReport,
     compute_al_saturation_pct,
     compute_cn_ratio,
+    compute_lime_needed_for_n,
     compute_sar,
     reason_soil_factors,
 )
@@ -231,6 +234,66 @@ def test_ec_ok_no_finding():
     report = reason_soil_factors({"EC": 0.5}, crop="Maize")
     ec_findings = [f for f in report.findings if f.parameter == "EC"]
     assert len(ec_findings) == 0
+
+
+# ============================================================
+# N-fertilizer lime-need (IFA 1992 Table 1)
+# ============================================================
+
+def test_lime_need_urea():
+    """150 kg N as urea → 150 kg CaO (factor 1.0)."""
+    result = compute_lime_needed_for_n(150, "urea")
+    assert result is not None
+    assert result["cao_kg_per_ha"] == 150.0
+    assert result["factor"] == 1.0
+    assert result["tier"] == 3
+    assert "IFA" in result["source_id"]
+
+
+def test_lime_need_ammonium_sulphate_most_acidifying():
+    """Ammonium sulphate is the worst: factor 3.0."""
+    result = compute_lime_needed_for_n(100, "ammonium_sulphate")
+    assert result is not None
+    assert result["cao_kg_per_ha"] == 300.0
+    assert result["factor"] == 3.0
+
+
+def test_lime_need_can_mildest():
+    """CAN (27% N calcium ammonium nitrate) is mildest: 0.6."""
+    result = compute_lime_needed_for_n(100, "CAN")
+    assert result is not None
+    assert result["factor"] == 0.6
+
+
+def test_lime_need_aliases_work():
+    """DAP / diammonium_phosphate / AmS / ams all resolve."""
+    assert compute_lime_needed_for_n(100, "DAP")["factor"] == 2.0
+    assert compute_lime_needed_for_n(100, "diammonium phosphate")["factor"] == 2.0
+    assert compute_lime_needed_for_n(100, "AmS")["factor"] == 3.0
+    assert compute_lime_needed_for_n(100, "ammonium-sulphate")["factor"] == 3.0
+
+
+def test_lime_need_unknown_type_returns_none():
+    assert compute_lime_needed_for_n(100, "unobtainium-nitrate") is None
+
+
+def test_lime_need_zero_n_returns_none():
+    assert compute_lime_needed_for_n(0, "urea") is None
+
+
+def test_n_utilization_constant_reasonable():
+    """IFA published 50-70%; default should be midpoint."""
+    assert 0.5 <= N_UTILIZATION_DEFAULT <= 0.7
+
+
+def test_cao_table_ordering_matches_ifa():
+    """CAN < urea < DAP < AmS acidification ordering per IFA Table 1."""
+    assert (
+        CAO_PER_KG_N_BY_N_TYPE["can"]
+        < CAO_PER_KG_N_BY_N_TYPE["urea"]
+        < CAO_PER_KG_N_BY_N_TYPE["dap"]
+        < CAO_PER_KG_N_BY_N_TYPE["ams"]
+    )
 
 
 # ============================================================
