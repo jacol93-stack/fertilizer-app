@@ -138,6 +138,68 @@ def test_block_area_scales_total():
 
 
 # ============================================================
+# Citrus parent-variant foliar rule matching
+# ============================================================
+
+def test_citrus_parent_rule_fires_for_valencia():
+    """A STAGE_PEAK_RULE defined for 'Citrus' parent must fire when the
+    actual crop is 'Citrus (Valencia)' — parent-variant matching."""
+    soil = {"pH": 6.2, "K": 200}
+    report = reason_soil_factors(soil, crop="Citrus (Valencia)")
+    events = trigger_foliar_events(
+        block_id="b1", crop="Citrus (Valencia)",
+        planting_date=date(2026, 8, 1),
+        soil_factor_report=report,
+    )
+    b_events = [e for e in events if "B" in e.analysis and "Pre-bloom" in e.stage_name]
+    zn_events = [e for e in events if "Zn" in e.analysis and "Pre-bloom" in e.stage_name]
+    assert len(b_events) >= 1, "Citrus B pre-bloom foliar must fire for Valencia"
+    assert len(zn_events) >= 1, "Citrus Zn pre-bloom foliar must fire for Valencia"
+
+
+def test_citrus_parent_rule_fires_for_navel():
+    soil = {"pH": 6.5, "K": 250}
+    report = reason_soil_factors(soil, crop="Citrus (Navel)")
+    events = trigger_foliar_events(
+        block_id="b1", crop="Citrus (Navel)",
+        planting_date=date(2026, 7, 15),
+        soil_factor_report=report,
+    )
+    b_events = [e for e in events if "B" in e.analysis and "Pre-bloom" in e.stage_name]
+    assert len(b_events) >= 1
+
+
+def test_citrus_parent_rule_does_not_fire_for_apple():
+    """Parent-variant matching must not over-match unrelated crops."""
+    soil = {"pH": 6.0, "K": 180}
+    report = reason_soil_factors(soil, crop="Apple")
+    events = trigger_foliar_events(
+        block_id="b1", crop="Apple",
+        planting_date=date(2026, 8, 1),
+        soil_factor_report=report,
+    )
+    citrus_b = [e for e in events if "Pre-bloom" in e.stage_name and "B" in e.analysis]
+    # Apple has its own Ca quality-window rule, but no Citrus B rule should fire
+    assert not any(
+        "Citrus" in (e.trigger_reason or "") or "FERTASA 5.7.3" in (e.source.section or "")
+        for e in events
+    )
+
+
+def test_citrus_parent_rule_fires_for_exact_citrus():
+    """Rule defined as 'Citrus' also matches exactly 'Citrus'."""
+    soil = {"pH": 6.0, "K": 180}
+    report = reason_soil_factors(soil, crop="Citrus")
+    events = trigger_foliar_events(
+        block_id="b1", crop="Citrus",
+        planting_date=date(2026, 8, 1),
+        soil_factor_report=report,
+    )
+    b_events = [e for e in events if "B" in e.analysis and "Pre-bloom" in e.stage_name]
+    assert len(b_events) >= 1
+
+
+# ============================================================
 # Risk Flag Generator
 # ============================================================
 

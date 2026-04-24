@@ -114,7 +114,49 @@ STAGE_PEAK_RULES: list[StagePeakRule] = [
         source_section="Cheng 2013",
         tier=3,
     ),
+    # Citrus — FERTASA 5.7.3 foliar calendar. Rules are defined at the
+    # 'Citrus' parent level; variant-specific matching (Valencia, Navel,
+    # Lemon, Soft Citrus, Grapefruit) falls through to the parent via
+    # `_matches_crop` below. Programme "planting date" for a mature
+    # perennial is the season-start / post-harvest date (typically
+    # Jul-Aug for Valencia / Navel); week 3 lands on pre-bloom.
+    StagePeakRule(
+        crop="Citrus", nutrient="B",
+        week_offset_from_planting=3, stage_label="Pre-bloom / bud break",
+        rate_per_ha="0.1% Solubor",
+        product="Solubor", analysis="20.5% B",
+        reason="FERTASA 5.7.3: annual B foliar at bud break for flower quality + fruit set. B xylem-mobile only — timing matters.",
+        source_id="FERTASA_5_7_3",
+        source_section="5.7.3",
+        tier=1,
+    ),
+    StagePeakRule(
+        crop="Citrus", nutrient="Zn",
+        week_offset_from_planting=3, stage_label="Pre-bloom / bud break",
+        rate_per_ha="0.5% ZnSO4",
+        product="Zinc Sulphate", analysis="36% Zn",
+        reason="FERTASA 5.7.3: Zn foliar at bud break — new leaf tissue expansion + enzyme activation. Soil Zn typically unavailable on alkaline SA citrus soils.",
+        source_id="FERTASA_5_7_3",
+        source_section="5.7.3",
+        tier=1,
+    ),
 ]
+
+
+def _matches_crop(rule_crop: str, actual_crop: str) -> bool:
+    """A stage-peak rule matches the exact crop OR is a parent rule that
+    applies to all variants of that crop.
+
+    Example: a rule defined for 'Citrus' also fires for 'Citrus (Valencia)',
+    'Citrus (Navel)', etc. Lets us maintain one set of citrus / apple /
+    tobacco foliar rules at the parent level without per-variant duplication.
+    """
+    if rule_crop == actual_crop:
+        return True
+    return (
+        actual_crop.startswith(rule_crop + " (")
+        and actual_crop.endswith(")")
+    )
 
 
 # ============================================================
@@ -204,7 +246,7 @@ def trigger_foliar_events(
 
     # ----- Trigger 2 + 3: stage-peak crop rules + quality-window -----
     for rule in STAGE_PEAK_RULES:
-        if rule.crop != crop:
+        if not _matches_crop(rule.crop, crop):
             continue
         spray_date = planting_date + timedelta(weeks=rule.week_offset_from_planting)
         trigger_kind = (
