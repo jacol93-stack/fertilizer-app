@@ -188,7 +188,9 @@ export default function BulkUploadPage() {
       setMode("upload");
       toast.success(`Extracted ${newRows.length} samples`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Extraction failed");
+      toast.error(e instanceof Error ? e.message : "Extraction failed", {
+        duration: 10000,
+      });
     } finally {
       setExtracting(false);
     }
@@ -253,7 +255,9 @@ export default function BulkUploadPage() {
       toast.success(`Saved ${result.saved} analyses`);
       router.push(`/season-manager/${programmeId}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
+      toast.error(e instanceof Error ? e.message : "Save failed", {
+        duration: 10000,
+      });
     } finally {
       setSaving(false);
     }

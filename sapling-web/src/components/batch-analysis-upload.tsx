@@ -158,7 +158,12 @@ export function BatchAnalysisUpload({
         });
 
         if (!res.ok) {
-          toast.error(`Failed to extract ${file.name}`);
+          const body = await res.json().catch(() => ({}));
+          const detail = (body as { detail?: string }).detail;
+          toast.error(
+            `Failed to extract ${file.name}: ${detail || `HTTP ${res.status}`}`,
+            { duration: 10000 },
+          );
           continue;
         }
 
@@ -230,8 +235,10 @@ export function BatchAnalysisUpload({
 
         setRows((prev) => [...prev, ...newRows]);
         toast.success(`Extracted ${samples.length} sample${samples.length !== 1 ? "s" : ""} from ${file.name}`);
-      } catch {
-        toast.error(`Error processing ${file.name}`);
+      } catch (err) {
+        console.error(`batch extract failed for ${file.name}`, err);
+        const msg = err instanceof Error ? err.message : "unknown error";
+        toast.error(`Error processing ${file.name}: ${msg}`, { duration: 10000 });
       }
     }
 
@@ -524,7 +531,9 @@ export function BatchAnalysisUpload({
         setPendingConflicts(conflicts);
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to save");
+      toast.error(e instanceof Error ? e.message : "Failed to save", {
+        duration: 10000,
+      });
     } finally {
       setSaving(false);
     }
@@ -548,7 +557,9 @@ export function BatchAnalysisUpload({
       onSaved();
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to save");
+      toast.error(e instanceof Error ? e.message : "Failed to save", {
+        duration: 10000,
+      });
     } finally {
       setSaving(false);
       pendingPayloadRef.current = null;

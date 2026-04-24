@@ -142,27 +142,34 @@ export function DocumentUpload({ labNameHint, clientId, onExtracted, onError }: 
           {files.map((f, i) => (
             <div
               key={i}
-              className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+              className={`rounded-md border px-3 py-2 text-sm ${
+                f.status === "error" ? "border-red-300 bg-red-50" : ""
+              }`}
             >
-              <div className="flex items-center gap-2">
-                {f.status === "extracting" && <Loader2 className="size-4 animate-spin text-[var(--sapling-orange)]" />}
-                {f.status === "done" && <Check className="size-4 text-green-600" />}
-                {f.status === "error" && <X className="size-4 text-red-500" />}
-                <span className="font-medium">{f.file.name}</span>
-                {f.department && (
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                    {f.department}
-                  </span>
-                )}
-                {f.status === "done" && (
-                  <span className="text-xs text-muted-foreground">
-                    {f.samples.length} sample{f.samples.length !== 1 ? "s" : ""}
-                  </span>
-                )}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {f.status === "extracting" && <Loader2 className="size-4 animate-spin text-[var(--sapling-orange)]" />}
+                  {f.status === "done" && <Check className="size-4 text-green-600" />}
+                  {f.status === "error" && <X className="size-4 text-red-500" />}
+                  <span className="font-medium">{f.file.name}</span>
+                  {f.department && (
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                      {f.department}
+                    </span>
+                  )}
+                  {f.status === "done" && (
+                    <span className="text-xs text-muted-foreground">
+                      {f.samples.length} sample{f.samples.length !== 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
+                <button onClick={() => removeFile(f.file)} className="text-muted-foreground hover:text-foreground">
+                  <X className="size-3.5" />
+                </button>
               </div>
-              <button onClick={() => removeFile(f.file)} className="text-muted-foreground hover:text-foreground">
-                <X className="size-3.5" />
-              </button>
+              {f.status === "error" && f.error && (
+                <p className="mt-1 pl-6 text-xs text-red-700">{f.error}</p>
+              )}
             </div>
           ))}
         </div>

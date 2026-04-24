@@ -1,10 +1,13 @@
 """Soil analysis endpoints: classification, targets, and CRUD."""
 
+import logging
 from datetime import datetime, timezone
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 # Conflict resolution values accepted on write endpoints when a field already
 # has a recent analysis. Phase 1 supports "replace" only; the other values are
@@ -597,6 +600,7 @@ async def extract_lab_report(
     except ValueError as e:
         raise HTTPException(400, str(e))
     except Exception as e:
+        logger.exception("lab extract failed for user %s (%s, %d bytes)", user.id, file.content_type, len(contents))
         raise HTTPException(500, f"Extraction failed: {str(e)}")
 
     sb = get_supabase_admin()
@@ -615,8 +619,10 @@ async def extract_lab_report(
             file_options={"content-type": file.content_type},
         )
         source_document_url = storage_path
-    except Exception:
-        pass  # Non-critical — extraction still works without storage
+    except Exception as e:
+        # Non-critical — extraction still works without storage. Log so
+        # a misconfigured bucket doesn't leave a silent gap in the audit.
+        logger.warning("lab-report storage upload failed for user %s: %s", user.id, e)
 
     _audit(sb, user, "lab_extract", "soil_analyses", detail={
         "lab_name": result.get("lab_name"),
@@ -641,8 +647,8 @@ async def extract_lab_report(
                     "file_type": file.content_type,
                 },
             }).execute()
-        except Exception:
-            pass  # Never block for usage logging
+        except Exception as e:
+            logger.warning("ai_usage insert failed for user %s: %s", user.id, e)
 
     if source_document_url:
         result["source_document_url"] = source_document_url

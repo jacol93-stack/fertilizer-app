@@ -428,14 +428,16 @@ function SeasonBuilderPage() {
       router.push(`/season-manager/artifact/${response.id}`);
     } catch (e) {
       // Always log — toast messages are short; console gets the raw
-      // exception for actual debugging.
+      // exception for actual debugging. Long duration on the toast so
+      // an agronomist on a slow network can read the detail string
+      // before it fades (default 4s clips long detail messages).
       console.error("handleBuildArtifact failed", e);
       if (e instanceof WizardAdapterError) {
-        toast.error(e.message);
+        toast.error(e.message, { duration: 10000 });
       } else if (e instanceof Error) {
-        toast.error(`Build failed: ${e.message}`);
+        toast.error(`Build failed: ${e.message}`, { duration: 10000 });
       } else {
-        toast.error("Build failed (unknown error — check console)");
+        toast.error("Build failed (unknown error — check console)", { duration: 10000 });
       }
     } finally {
       setBuildingArtifact(false);
