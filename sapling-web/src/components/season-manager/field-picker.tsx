@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { ComboBox } from "@/components/client-selector";
 import type { Block, CropNorm, SoilAnalysis } from "@/lib/season-constants";
+import { blockCompleteness } from "@/lib/block-completeness";
 
 interface FieldRow {
   id: string;
@@ -298,8 +299,23 @@ function FieldRowCard({
   field, selected, block, onToggle, onUpdate, expanded, onExpand, crops, analyses,
 }: FieldRowCardProps) {
   const crop = block?.crop || "";
-  const hasAnalysis = !!block?.soil_analysis_id;
-  const ready = !!crop && hasAnalysis;
+  // Build a CheckableBlock off the selected wizard block. If crop is
+  // set, pass its crop_type through so perennial-only checks fire
+  // (tree_age, pop_per_ha).
+  const cropType = crops.find((c) => c.crop === crop)?.crop_type ?? null;
+  const completeness = block
+    ? blockCompleteness({
+        name: block.name,
+        crop: block.crop,
+        area_ha: block.area_ha,
+        yield_target: block.yield_target,
+        yield_unit: block.yield_unit,
+        tree_age: block.tree_age,
+        pop_per_ha: block.pop_per_ha,
+        soil_analysis_id: block.soil_analysis_id,
+        crop_type: cropType,
+      })
+    : null;
 
   return (
     <Card className={selected ? "border-[var(--sapling-orange)]/40" : "bg-white"}>
@@ -313,27 +329,30 @@ function FieldRowCard({
           />
           <div className="flex flex-1 min-w-0 items-center gap-3">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="truncate font-medium text-sm">{field.name}</span>
                 {field.size_ha != null && (
                   <span className="shrink-0 text-xs text-muted-foreground">
                     · {field.size_ha} ha
                   </span>
                 )}
-                {selected && (
-                  <>
-                    {ready ? (
-                      <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700">
-                        <CheckCircle2 className="size-2.5" />
-                        ready
-                      </span>
-                    ) : (
-                      <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
-                        <AlertCircle className="size-2.5" />
-                        needs {!crop && "crop"}{!crop && !hasAnalysis && " + "}{!hasAnalysis && "analysis"}
-                      </span>
-                    )}
-                  </>
+                {selected && completeness && (
+                  completeness.complete ? (
+                    <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700">
+                      <CheckCircle2 className="size-2.5" />
+                      {completeness.softIssues.length === 0
+                        ? "ready"
+                        : `ready · ${completeness.softIssues.length} soft`}
+                    </span>
+                  ) : (
+                    <span
+                      className="flex shrink-0 items-center gap-0.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"
+                      title={completeness.hardIssues.map((i) => i.label).join(", ")}
+                    >
+                      <AlertCircle className="size-2.5" />
+                      needs: {completeness.hardIssues.map((i) => i.label.toLowerCase()).join(", ")}
+                    </span>
+                  )
                 )}
               </div>
               {selected && (
