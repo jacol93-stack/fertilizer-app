@@ -100,9 +100,35 @@ def _display_product(part: BlendPart) -> str:
     This is the ONLY content rendered to client-facing output.
     """
     analysis = (part.analysis or "").strip()
-    if analysis:
-        return f"{analysis} source"
-    return "compound fertiliser source"
+    # Handle the placeholder strings the catalog uses when a product's
+    # composition isn't fully specified. We lose specificity but keep
+    # the output client-compliant (no raw material name leaks through).
+    lower = analysis.lower()
+    if (
+        not analysis
+        or lower in {"—", "-", "n/a", "none"}
+        or "not specified" in lower
+        or "composition" in lower and "specified" in lower
+    ):
+        return "supplementary blend product"
+    return f"{analysis} source"
+
+
+def _method_short_label(method_kind) -> str:
+    """Short human label for a method kind, used in stage cards."""
+    name = getattr(method_kind, "name", str(method_kind))
+    return {
+        "DRY_BROADCAST": "Dry broadcast",
+        "DRY_BAND": "Dry band",
+        "DRY_SIDE_DRESS": "Dry side-dress",
+        "DRY_FERTIGATION": "Dry fertigation",
+        "LIQUID_DRIP": "Fertigation (drip)",
+        "LIQUID_PIVOT": "Fertigation (pivot)",
+        "LIQUID_SPRINKLER": "Fertigation (sprinkler)",
+        "FOLIAR": "Foliar",
+        "DRENCH": "Drench",
+        "SEED_TREAT": "Seed treatment",
+    }.get(name, name.replace("_", " ").title())
 
 
 def _pct(val: Optional[float]) -> str:
@@ -429,7 +455,11 @@ def _render_applications(ctx: ApplicationsContext) -> str:
 
 def _render_blend_card(blend: Blend) -> str:
     lines = []
-    lines.append(f"**Stage {blend.stage_number} — {blend.stage_name}** ({blend.weeks}, {blend.events} event{'' if blend.events == 1 else 's'})")
+    method_label = _method_short_label(blend.method.kind)
+    lines.append(
+        f"**Stage {blend.stage_number} — {blend.stage_name} · {method_label}** "
+        f"({blend.weeks}, {blend.events} event{'' if blend.events == 1 else 's'})"
+    )
     lines.append(f"*{blend.dates_label}*")
     lines.append("")
     if blend.raw_products:
@@ -470,14 +500,22 @@ def _render_foliar_table(events: list[FoliarEvent]) -> str:
 
 @dataclass
 class NutrientBalanceContext:
+    # block_label (display name) → nutrient totals
     block_totals: dict[str, dict[str, float]]
     single_block: bool
 
 
 def _pack_nutrient_balance(artifact: ProgrammeArtifact) -> NutrientBalanceContext:
+    # Resolve block_id → block_name for display; engine emits block_totals
+    # keyed by block_id which isn't farmer-friendly.
+    id_to_name = {s.block_id: s.block_name for s in artifact.soil_snapshots}
+    labelled = {
+        id_to_name.get(bid, bid): totals
+        for bid, totals in artifact.block_totals.items()
+    }
     return NutrientBalanceContext(
-        block_totals=artifact.block_totals,
-        single_block=len(artifact.block_totals) <= 1,
+        block_totals=labelled,
+        single_block=len(labelled) <= 1,
     )
 
 
@@ -694,6 +732,7 @@ class MultiYearRationaleContext:
     total_organic_c_kg_per_ha: float  # estimated from organic carrier application
     is_perennial: bool
     crop: str
+    has_sodium_issue: bool  # soil has elevated ESP — mention gypsum narrative
 
 
 def _pack_multiyear_rationale(artifact: ProgrammeArtifact) -> MultiYearRationaleContext:
@@ -736,11 +775,17 @@ def _pack_multiyear_rationale(artifact: ProgrammeArtifact) -> MultiYearRationale
     }
     is_perennial = any(crop.startswith(p) or p in crop for p in perennials)
 
+    has_sodium_issue = any(
+        (s.computed_ratios.get("soil_ESP_pct", 0) or 0) >= 5
+        for s in artifact.soil_snapshots
+    )
+
     return MultiYearRationaleContext(
         has_organic_anchor=has_organic_anchor,
         total_organic_c_kg_per_ha=total_organic_c,
         is_perennial=is_perennial,
         crop=crop,
+        has_sodium_issue=has_sodium_issue,
     )
 
 
@@ -757,11 +802,20 @@ def _render_multiyear_rationale(ctx: MultiYearRationaleContext) -> str:
         "different jobs on three different timescales:"
     )
     lines.append("")
-    lines.append(
-        "**Inside the first month** — soluble nutrients + available organic "
-        "fraction release fast, covering the immediate crop demand. The gypsum "
-        "fraction of the pellet begins displacing sodium off the exchange."
-    )
+    if ctx.has_sodium_issue:
+        lines.append(
+            "**Inside the first month** — soluble nutrients + available organic "
+            "fraction release fast, covering the immediate crop demand. The "
+            "gypsum fraction of the pellet begins displacing sodium off the "
+            "exchange."
+        )
+    else:
+        lines.append(
+            "**Inside the first month** — soluble nutrients + available organic "
+            "fraction release fast, covering the immediate crop demand. Calcium "
+            "and sulphur from the carrier support cell-wall integrity and root "
+            "function through establishment."
+        )
     lines.append("")
     lines.append(
         "**Inside the first season** — roughly 20–30 % of the carrier's nitrogen "

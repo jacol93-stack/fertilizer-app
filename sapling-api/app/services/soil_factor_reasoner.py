@@ -429,6 +429,24 @@ def reason_soil_factors(
     if cn is not None:
         report.computed["C:N"] = cn
 
+    # Ca:Mg ratio — prefer the lab's directly-reported equivalent-basis
+    # figure (Ca%/Mg% from base saturation, or Ca_cmol/Mg_cmol). The
+    # lab-reported ratio is the agronomic one; deriving from mg/kg Ca
+    # and Mg gives a *mass* ratio which is 1.65× higher and not what
+    # agronomists reference against the 3-7:1 target band.
+    direct_ca_mg = soil_values.get("Ca:Mg")
+    if direct_ca_mg is not None:
+        try:
+            report.computed["Ca:Mg"] = round(float(direct_ca_mg), 2)
+        except (ValueError, TypeError):
+            direct_ca_mg = None
+    if direct_ca_mg is None:
+        # Fallback: compute from base-saturation % (still equivalent-basis)
+        ca_pct = soil_values.get("Ca_base_sat_pct") or soil_values.get("Ca%")
+        mg_pct = soil_values.get("Mg_base_sat_pct") or soil_values.get("Mg%")
+        if ca_pct and mg_pct and float(mg_pct) > 0:
+            report.computed["Ca:Mg"] = round(float(ca_pct) / float(mg_pct), 2)
+
     # ----- P:Zn antagonism -----
     p = _sv(soil_values, "P (Bray-1)", "P (Citric acid)", "P (Mehlich-3)", "P")
     zn = _sv(soil_values, "Zn")
