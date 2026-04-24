@@ -67,6 +67,7 @@ from app.services.pre_season_module import (
     recommend_pre_season_actions,
 )
 from app.services.risk_flag_generator import generate_outstanding_items, generate_risk_flags
+from app.services.similarity_merger import merge_similar_blends
 from app.services.soil_factor_reasoner import reason_soil_factors
 from app.services.stage_splitter import (
     StageSplit,
@@ -467,11 +468,24 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
                 ),
                 planting_date=inputs.planting_date,
             )
-            all_blends.extend(block_blends)
-            decision_trace.append(
-                f"Block {block.block_id}: Consolidator — {len(block_blends)} blends "
-                f"(greedy material-cover Tier 6; final MILP optimization pending module 10)"
+            pre_merge_count = len(block_blends)
+            block_blends = merge_similar_blends(
+                block_blends, crop=inputs.crop, block_area_ha=block.block_area_ha,
             )
+            all_blends.extend(block_blends)
+            merged_count = pre_merge_count - len(block_blends)
+            if merged_count > 0:
+                decision_trace.append(
+                    f"Block {block.block_id}: Consolidator — {pre_merge_count} blends → "
+                    f"SimilarityMerger collapsed {merged_count} adjacent pair(s) to "
+                    f"{len(block_blends)} blends (same recipe across spans, ±10% rate tolerance, "
+                    f"no timing wall in gap)"
+                )
+            else:
+                decision_trace.append(
+                    f"Block {block.block_id}: Consolidator — {len(block_blends)} blends "
+                    f"(SimilarityMerger scanned; no adjacent pairs met merge criteria)"
+                )
         else:
             decision_trace.append(
                 f"Block {block.block_id}: Consolidator skipped — "
