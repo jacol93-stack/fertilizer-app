@@ -75,8 +75,10 @@ def render_programme_document(
         _render_soil_reading(_pack_soil_reading(artifact)),
         _render_strategy(_pack_strategy(artifact)),
         _render_applications(_pack_applications(artifact)),
+        _render_multiyear_rationale(_pack_multiyear_rationale(artifact)),
         _render_nutrient_balance(_pack_nutrient_balance(artifact)),
         _render_ratios(_pack_ratios(artifact)),
+        _render_year_two_outlook(_pack_year_two_outlook(artifact)),
         _render_assumptions(_pack_assumptions(artifact)),
         _render_outstanding_items(_pack_outstanding_items(artifact)),
     ]
@@ -521,33 +523,89 @@ def _render_nutrient_balance(ctx: NutrientBalanceContext) -> str:
 
 
 # ============================================================
-# Section 7 — Ratios (placeholder; depends on computed ratios
-# from soil_factor_reasoner, which aren't currently promoted to
-# artifact level — defer to A5 follow-up or Phase C)
+# Section 7 — Ratios (now live: reads SoilSnapshot.computed_ratios)
 # ============================================================
+
+# Render-order + labels + target-band text for each metric. Only ratios
+# listed here get surfaced — anything else in computed_ratios is
+# intentionally kept internal (e.g. SAR for soil is a reasoner input,
+# not a farmer-friendly metric on its own).
+# Target bands are FARMER-FRIENDLY — not a full agronomic treatise,
+# just "where you are vs where you want to be" guidance.
+_RATIO_DISPLAY_ORDER = [
+    ("Ca:Mg", "Ca : Mg", "Target 3–7 : 1 depending on crop. 5 : 1 is classic for lucerne + mac; tighter (3 : 1) is fine for cereals."),
+    ("soil_ESP_pct", "Sodium saturation (ESP %)", "Below 5 % is clean; 10–15 % is trending sodic; above 15 % needs active gypsum work."),
+    ("SAR", "Soil SAR", "Below 13 is non-sodic; 13–20 moderately sodic; above 20 severe."),
+    ("Al_saturation_pct", "Al saturation %", "Below 10 % is clean for most crops; above 20 % needs lime on non-acid-tolerant crops."),
+    ("P:Zn", "P : Zn", "Below ~100 : 1 is comfortable; above 150 : 1 restricts Zn uptake regardless of soil Zn."),
+    ("Ca:B", "Ca : B", "Target below ~1000 : 1 for most crops; excess Ca locks B away from uptake."),
+    ("C:N", "C : N (soil)", "Around 10 : 1 is ideal for mineralisation; above 25 : 1 means N immobilised, slow early-season release."),
+    ("water_SAR", "Irrigation water SAR", "Below 3 no restriction; 3–9 moderate; above 9 severe sodium hazard on water."),
+    ("water_RSC_meq", "Irrigation water RSC (meq/L)", "Below 1.25 safe; above 2.5 bicarbonate concentrates Na on the exchange."),
+]
+
 
 @dataclass
 class RatiosContext:
-    ratios_by_block: dict[str, dict[str, float]]
+    # block_id → list of (label, value, guidance)
+    per_block: list[tuple[str, list[tuple[str, float, str]]]]
 
 
 def _pack_ratios(artifact: ProgrammeArtifact) -> RatiosContext:
-    # Not yet populated in the artifact — placeholder. Future work:
-    # promote SoilFactorReport.computed into artifact.block_ratios so
-    # the renderer can surface Ca:Mg, (Ca+Mg):K, ESP, SAR here.
-    return RatiosContext(ratios_by_block={})
+    per_block: list[tuple[str, list[tuple[str, float, str]]]] = []
+    for snap in artifact.soil_snapshots:
+        if not snap.computed_ratios:
+            continue
+        rows: list[tuple[str, float, str]] = []
+        for key, label, guidance in _RATIO_DISPLAY_ORDER:
+            val = snap.computed_ratios.get(key)
+            if val is None:
+                continue
+            rows.append((label, float(val), guidance))
+        if rows:
+            per_block.append((snap.block_name, rows))
+    return RatiosContext(per_block=per_block)
 
 
 def _render_ratios(ctx: RatiosContext) -> str:
-    if not ctx.ratios_by_block:
-        return ""  # gracefully drop
+    if not ctx.per_block:
+        return ""
     lines = ["## Ratios — Where You Are", ""]
-    for block_id, ratios in ctx.ratios_by_block.items():
-        lines.append(f"**{block_id}**")
-        for name, val in ratios.items():
-            lines.append(f"- {name}: {val}")
+    lines.append(
+        "These are the nutrient and soil ratios that shape how the programme "
+        "is sized. Where you are today, and what the target band looks like."
+    )
+    lines.append("")
+
+    multi_block = len(ctx.per_block) > 1
+    for block_name, rows in ctx.per_block:
+        if multi_block:
+            lines.append(f"### {block_name}")
+            lines.append("")
+        lines.append("| Metric | Value | Target band |")
+        lines.append("|---|---:|---|")
+        for label, val, guidance in rows:
+            # Format value sensibly — percentages, ratios, meq/L all
+            # render to 1-2 decimals; integers for large ratios.
+            val_str = _format_ratio_value(label, val)
+            lines.append(f"| {label} | {val_str} | {guidance} |")
         lines.append("")
     return "\n".join(lines).rstrip()
+
+
+def _format_ratio_value(label: str, val: float) -> str:
+    """Tight formatter so Ca:Mg shows as '5.3 : 1', ESP as '14.7 %',
+    SAR as '8.4', etc."""
+    label_lc = label.lower()
+    if ":" in label:
+        # Ratio — display as 'X : 1'
+        return f"{val:.1f} : 1" if val < 100 else f"{val:.0f} : 1"
+    if "%" in label_lc:
+        return f"{val:.1f} %"
+    if "meq" in label_lc:
+        return f"{val:.2f}"
+    # Plain scalar (SAR, etc.)
+    return f"{val:.1f}"
 
 
 # ============================================================
@@ -622,4 +680,203 @@ def _render_outstanding_items(ctx: OutstandingContext) -> str:
                 bits.append(f"*Impact if skipped: {o.impact_if_skipped}*")
             lines.append("- " + " — ".join(bits))
         lines.append("")
+    return "\n".join(lines).rstrip()
+
+
+# ============================================================
+# Section 5b — Why the Programme Works Over Multiple Years
+# (stub: Phase C upgrades this to full narrative via Opus)
+# ============================================================
+
+@dataclass
+class MultiYearRationaleContext:
+    has_organic_anchor: bool
+    total_organic_c_kg_per_ha: float  # estimated from organic carrier application
+    is_perennial: bool
+    crop: str
+
+
+def _pack_multiyear_rationale(artifact: ProgrammeArtifact) -> MultiYearRationaleContext:
+    # Rough estimate of organic carbon delivery: assume organic carrier
+    # delivers ~30 % carbon by mass; sum dry-blend organic mass across
+    # passes. Conservative; real number lives in the artifact after
+    # future engine work.
+    organic_mass_kg_per_ha = 0.0
+    has_organic_anchor = False
+    for blend in (artifact.blends or []):
+        if not blend.method.kind.name.startswith("DRY_"):
+            continue
+        # If any raw_product in the blend has no 'stream' and rate is
+        # substantial (>400 kg/ha per stage), treat it as the organic
+        # anchor under Sapling's house rule.
+        for part in blend.raw_products:
+            rate_str = part.rate_per_stage_per_ha or ""
+            # Parse "XXX kg" — best-effort
+            try:
+                rate_num = float(rate_str.replace("kg", "").strip().split()[0])
+            except (ValueError, IndexError):
+                continue
+            if rate_num >= 400:
+                organic_mass_kg_per_ha += rate_num * 0.5  # assume 50 % of this is organic fraction
+                has_organic_anchor = True
+                break
+    total_organic_c = organic_mass_kg_per_ha * 0.30  # ~30 % C by mass
+
+    crop = artifact.header.crop
+    # crude perennial detection — will be replaced by proper crop-type
+    # flag from crop_requirements in a follow-up. For the stub, the
+    # list covers the common SA perennials.
+    perennials = {
+        "Macadamia", "Pecan", "Avocado", "Citrus", "Apple", "Pear",
+        "Peach", "Plum", "Apricot", "Nectarine", "Cherry", "Fig",
+        "Mango", "Guava", "Litchi", "Olive", "Lucerne", "Sugarcane",
+        "Tea", "Rooibos", "Honeybush", "Blueberry", "Raspberry",
+        "Blackberry", "Strawberry", "Banana", "Pineapple", "Passion Fruit",
+        "Pomegranate", "Persimmon", "Table Grape", "Wine Grape",
+    }
+    is_perennial = any(crop.startswith(p) or p in crop for p in perennials)
+
+    return MultiYearRationaleContext(
+        has_organic_anchor=has_organic_anchor,
+        total_organic_c_kg_per_ha=total_organic_c,
+        is_perennial=is_perennial,
+        crop=crop,
+    )
+
+
+def _render_multiyear_rationale(ctx: MultiYearRationaleContext) -> str:
+    # Only fire this section when an organic anchor is carrying the
+    # multi-year story. Fertigation-only or foliar-only programmes
+    # don't earn this section.
+    if not ctx.has_organic_anchor:
+        return ""
+
+    lines = ["## Why the Programme Works Over Multiple Years", ""]
+    lines.append(
+        "The organic carrier at the heart of every dry blend is doing three "
+        "different jobs on three different timescales:"
+    )
+    lines.append("")
+    lines.append(
+        "**Inside the first month** — soluble nutrients + available organic "
+        "fraction release fast, covering the immediate crop demand. The gypsum "
+        "fraction of the pellet begins displacing sodium off the exchange."
+    )
+    lines.append("")
+    lines.append(
+        "**Inside the first season** — roughly 20–30 % of the carrier's nitrogen "
+        "mineralises and becomes plant-available, along with the full "
+        "micronutrient package (boron, zinc, manganese, copper). This is why "
+        "separate boron or micro broadcasts are usually unnecessary when the "
+        "carrier is doing the work."
+    )
+    lines.append("")
+    if ctx.total_organic_c_kg_per_ha > 0:
+        lines.append(
+            f"**Over the next 2–4 years** — the remaining 70 % of nitrogen releases "
+            f"gradually as soil biology mineralises the organic fraction. Carbon "
+            f"accumulates: this programme delivers roughly {ctx.total_organic_c_kg_per_ha:.0f} kg "
+            f"organic C per hectare this season. On OM-poor SA soils that's "
+            f"measurable lift in next year's soil test, and it compounds when "
+            f"the programme is repeated annually."
+        )
+    else:
+        lines.append(
+            "**Over the next 2–4 years** — the slow-release nitrogen + organic "
+            "carbon + phosphorus release gradually as soil biology mineralises "
+            "the organic fraction. The soil's carrying capacity for every future "
+            "crop improves with each annual application."
+        )
+    lines.append("")
+    if ctx.is_perennial:
+        lines.append(
+            f"For a {ctx.crop.lower()} stand this matters especially: perennial "
+            "root systems depend on soil structure and biology as much as on "
+            "chemistry. The long-run programme is building the field the crop "
+            "lives in, not just feeding this season's growth."
+        )
+    return "\n".join(lines).rstrip()
+
+
+# ============================================================
+# Section 9 — Year 2 and Beyond
+# (stub: Phase C upgrades this to crop-and-context-specific outlook)
+# ============================================================
+
+@dataclass
+class YearTwoContext:
+    is_perennial: bool
+    crop: str
+    has_sodic_flag: bool
+    has_ph_flag: bool
+    soil_organic_matter_low: bool
+
+
+def _pack_year_two_outlook(artifact: ProgrammeArtifact) -> YearTwoContext:
+    crop = artifact.header.crop
+    perennials = {
+        "Macadamia", "Pecan", "Avocado", "Citrus", "Apple", "Pear",
+        "Peach", "Plum", "Apricot", "Nectarine", "Cherry", "Fig",
+        "Mango", "Guava", "Litchi", "Olive", "Lucerne", "Sugarcane",
+        "Tea", "Rooibos", "Honeybush", "Blueberry", "Raspberry",
+        "Blackberry", "Strawberry", "Banana", "Pineapple", "Passion Fruit",
+        "Pomegranate", "Persimmon", "Table Grape", "Wine Grape",
+    }
+    is_perennial = any(crop.startswith(p) or p in crop for p in perennials)
+
+    has_sodic = any(
+        (s.computed_ratios.get("soil_ESP_pct", 0) or 0) >= 10
+        for s in artifact.soil_snapshots
+    )
+    has_ph_flag = any(
+        "pH" in (msg := rf.message) and ("alkaline" in msg.lower() or "acid" in msg.lower())
+        for rf in artifact.risk_flags
+    )
+    # Simple low-OM heuristic — look for "OM" or "organic" in any risk-flag
+    # message at warn+ severity.
+    low_om = any(
+        "om" in rf.message.lower() or "organic matter" in rf.message.lower()
+        for rf in artifact.risk_flags
+        if rf.severity in ("warn", "critical")
+    )
+    return YearTwoContext(
+        is_perennial=is_perennial,
+        crop=crop,
+        has_sodic_flag=has_sodic,
+        has_ph_flag=has_ph_flag,
+        soil_organic_matter_low=low_om,
+    )
+
+
+def _render_year_two_outlook(ctx: YearTwoContext) -> str:
+    # Only fire for programmes where a multi-season view genuinely matters.
+    # Single-season annuals without sodic/pH/OM trajectory don't earn this.
+    if not ctx.is_perennial and not (ctx.has_sodic_flag or ctx.soil_organic_matter_low):
+        return ""
+
+    lines = ["## Year 2 and Beyond", ""]
+    if ctx.is_perennial:
+        lines.append(
+            f"This is a perennial {ctx.crop.lower()} programme, so Year 1 is the "
+            "establishment or maintenance baseline — the real story is what the "
+            "stand looks like after a few seasons on the same approach."
+        )
+        lines.append("")
+    lines.append("**Three-year targets to track:**")
+    lines.append("")
+    if ctx.soil_organic_matter_low or ctx.is_perennial:
+        lines.append("- **Soil organic matter** lifting toward 2 % (or higher for orchards). Measurable on next year's soil test.")
+    if ctx.has_sodic_flag:
+        lines.append("- **Sodium saturation** trending below 10 % (if currently above) through sustained gypsum inputs.")
+    if ctx.has_ph_flag:
+        lines.append("- **Soil pH** moving toward the crop's preferred band. This is a multi-season lift; year-on-year re-test tracks progress.")
+    lines.append("- **Phosphorus** building from Low toward Optimal on soil test.")
+    lines.append("- **Boron** in the crop-optimal band (varies by crop; typical 1.0–2.5 mg/kg).")
+    lines.append("")
+    lines.append(
+        "**The ongoing programme to get there is straightforward:** continue the "
+        "carrier + targeted synthetic approach at similar cadence annually, and "
+        "top up phosphorus, potassium, and any flagged limiting nutrients each "
+        "season against real post-harvest soil data rather than speculation."
+    )
     return "\n".join(lines).rstrip()

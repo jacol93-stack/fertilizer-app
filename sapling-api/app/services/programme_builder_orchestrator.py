@@ -355,6 +355,13 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
 
         # 10. Soil snapshot for output
         headline = [f.message for f in sf_report.by_severity_at_least("warn")[:3]]
+        # Computed ratios + derived metrics — copied from the soil-factor
+        # reasoner's report so the renderer can surface Ca:Mg, ESP, SAR,
+        # etc. in the Ratios section without re-computing.
+        computed_ratios = {
+            k: float(v) for k, v in (sf_report.computed or {}).items()
+            if isinstance(v, (int, float))
+        }
         soil_snapshots_out.append(SoilSnapshot(
             block_id=block.block_id,
             block_name=block.block_name,
@@ -364,6 +371,7 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
             sample_date=block.sample_date,
             sample_id=block.sample_id,
             parameters=block.soil_parameters,
+            computed_ratios=computed_ratios,
             headline_signals=headline,
         ))
 

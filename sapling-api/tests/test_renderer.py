@@ -391,3 +391,157 @@ def test_default_mode_is_client():
     output = render_programme_document(_artifact())
     # Would raise on operator mode — reaching here means client default worked
     assert output
+
+
+# ============================================================
+# Ratios section — now live
+# ============================================================
+
+def test_ratios_section_renders_from_computed_ratios():
+    """SoilSnapshot.computed_ratios drives the ratios table."""
+    snap = _minimal_soil(
+        block_name="Block A",
+        block_area_ha=5.0,
+    )
+    snap.computed_ratios = {
+        "Ca:Mg": 5.3,
+        "soil_ESP_pct": 14.7,
+        "SAR": 8.2,
+        "Al_saturation_pct": 0.5,
+    }
+    artifact = _artifact(soil_snapshots=[snap])
+    output = render_programme_document(artifact)
+    assert "## Ratios" in output
+    assert "Ca : Mg" in output  # display label format
+    assert "5.3" in output
+    assert "Sodium saturation" in output
+    assert "14.7" in output
+
+
+def test_ratios_section_dropped_when_no_computed_ratios():
+    """No computed_ratios in any snapshot → no Ratios section."""
+    artifact = _artifact()  # default soil snapshot has empty computed_ratios
+    output = render_programme_document(artifact)
+    assert "## Ratios" not in output
+
+
+def test_ratios_section_renders_per_block_when_multi_block():
+    """Multi-block programmes render separate ratio tables per block."""
+    a = _minimal_soil(block_id="B1", block_name="Land A")
+    a.computed_ratios = {"Ca:Mg": 5.3, "soil_ESP_pct": 8.7}
+    b = _minimal_soil(block_id="B2", block_name="Land B")
+    b.computed_ratios = {"Ca:Mg": 3.3, "soil_ESP_pct": 14.7}
+    artifact = _artifact(
+        soil_snapshots=[a, b],
+        stage_schedules=[_minimal_stage_schedule("B1"), _minimal_stage_schedule("B2")],
+    )
+    output = render_programme_document(artifact)
+    assert "## Ratios" in output
+    assert "### Land A" in output
+    assert "### Land B" in output
+    assert "5.3" in output and "3.3" in output
+    assert "8.7" in output and "14.7" in output
+
+
+def test_ratios_section_formats_values_correctly():
+    """ESP % renders as 'X.X %', ratios as 'X.X : 1', SAR as plain scalar."""
+    snap = _minimal_soil()
+    snap.computed_ratios = {
+        "Ca:Mg": 5.3,
+        "soil_ESP_pct": 14.7,
+        "SAR": 8.2,
+        "water_RSC_meq": 2.34,
+    }
+    artifact = _artifact(soil_snapshots=[snap])
+    output = render_programme_document(artifact)
+    assert "5.3 : 1" in output  # ratio format
+    assert "14.7 %" in output  # percentage format
+    assert "8.2" in output  # scalar SAR
+    assert "2.34" in output  # meq/L two decimals
+
+
+# ============================================================
+# Multi-year rationale stub
+# ============================================================
+
+def _dry_blend_with_organic(block_id: str = "B1") -> Blend:
+    """Dry blend where one product is a big organic carrier (rate >= 400
+    kg/ha), so the multi-year rationale section fires."""
+    return Blend(
+        block_id=block_id,
+        stage_number=1,
+        stage_name="Establishment",
+        weeks="Week 2",
+        events=1,
+        dates_label="15 May 2026",
+        method=DryBlendMethod(kind=MethodKind.DRY_BROADCAST),
+        raw_products=[
+            BlendPart(
+                product="Manure Compost",
+                analysis="OC 35%, N 2.1%, P 1.0%, K 1.6%",
+                rate_per_stage_per_ha="800 kg",
+            ),
+            BlendPart(
+                product="Ammonium Sulphate",
+                analysis="N 21%, S 24%",
+                rate_per_stage_per_ha="100 kg",
+            ),
+        ],
+        nutrients_delivered={"N": 21.0},
+    )
+
+
+def test_multiyear_rationale_fires_when_organic_anchor_present():
+    artifact = _artifact(blends=[_dry_blend_with_organic()])
+    output = render_programme_document(artifact)
+    assert "## Why the Programme Works Over Multiple Years" in output
+    assert "organic carbon" in output.lower() or "organic c" in output.lower()
+
+
+def test_multiyear_rationale_dropped_when_no_organic_anchor():
+    """Fertigation-only programme shouldn't render the multi-year section."""
+    artifact = _artifact(blends=[_fertigation_blend()])
+    output = render_programme_document(artifact)
+    assert "## Why the Programme Works Over Multiple Years" not in output
+
+
+def test_multiyear_rationale_mentions_crop_for_perennial():
+    artifact = _artifact(
+        header=_minimal_header(crop="Macadamia", variant_key=VariantKey(canonical_crop="Macadamia")),
+        blends=[_dry_blend_with_organic()],
+    )
+    output = render_programme_document(artifact)
+    assert "## Why the Programme Works Over Multiple Years" in output
+    assert "macadamia" in output.lower()
+
+
+# ============================================================
+# Year 2 and Beyond stub
+# ============================================================
+
+def test_year_two_outlook_fires_for_perennial():
+    artifact = _artifact(
+        header=_minimal_header(crop="Lucerne", variant_key=VariantKey(canonical_crop="Lucerne")),
+    )
+    output = render_programme_document(artifact)
+    assert "## Year 2 and Beyond" in output
+    assert "perennial" in output.lower()
+
+
+def test_year_two_outlook_fires_for_annual_with_sodic_flag():
+    """Even an annual programme gets the Y2+ section when soil state
+    has a multi-season trajectory (sodic soil takes years to move)."""
+    snap = _minimal_soil()
+    snap.computed_ratios = {"soil_ESP_pct": 14.7}
+    artifact = _artifact(soil_snapshots=[snap])
+    output = render_programme_document(artifact)
+    assert "## Year 2 and Beyond" in output
+    assert "sodium" in output.lower()
+
+
+def test_year_two_outlook_dropped_for_simple_annual():
+    """One-shot annual programme with no multi-season trajectory: skip
+    the Year 2+ section."""
+    artifact = _artifact()  # annual crop (Barley), no sodic / OM flags
+    output = render_programme_document(artifact)
+    assert "## Year 2 and Beyond" not in output

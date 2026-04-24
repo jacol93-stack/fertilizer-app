@@ -139,6 +139,13 @@ class SoilSnapshot(BaseModel):
         description="e.g. {'pH_H2O': 5.38, 'CEC': 13.14, 'P_Mehlich3': 2, 'K': 227, ...}"
     )
 
+    # Computed ratios + derived metrics from SoilFactorReasoner.
+    # Populated by the orchestrator from `SoilFactorReport.computed`.
+    # Keys: 'Ca:Mg', '(Ca+Mg):K', 'SAR', 'soil_ESP_pct', 'P:Zn', 'Ca:B',
+    # 'C:N', 'Al_saturation_pct', 'water_SAR', 'water_RSC_meq', etc.
+    # Surfaced in the renderer's Ratios section.
+    computed_ratios: dict[str, float] = Field(default_factory=dict)
+
     # "Three loudest signals" — agronomist narrative, engine-derived
     headline_signals: list[str] = Field(default_factory=list)
 
