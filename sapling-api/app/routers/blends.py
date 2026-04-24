@@ -15,7 +15,7 @@ from app.rate_limit import limiter
 from app.services.notation import pct_to_sa_notation
 from app.services.optimizer import find_closest_blend, run_optimizer
 from app.services.pricing import suggest_price
-from app.supabase_client import get_supabase_admin
+from app.supabase_client import get_supabase_admin, run_sb
 
 router = APIRouter(tags=["blends"])
 
@@ -645,7 +645,7 @@ def list_blends(
         query = query.eq("field_id", field_id)
 
     query = apply_page(query, page, default_order="created_at")
-    result = query.execute()
+    result = run_sb(lambda: query.execute())
     blends = [BlendOut(**_strip_liquid_meta(b)).model_dump() for b in (result.data or [])]
     stripped = _strip_costs(blends, user.role == "admin")
     return Page.from_list(stripped, page, total=getattr(result, "count", None))
@@ -657,7 +657,7 @@ def list_blends(
 def get_nutrient_limits(user: CurrentUser = Depends(get_current_user)):
     """Get nutrient safety limits for liquid blend input validation."""
     sb = get_supabase_admin()
-    result = sb.table("nutrient_limits").select("nutrient,liquid_max_g_per_l,foliar_max_g_per_l").execute()
+    result = run_sb(lambda: sb.table("nutrient_limits").select("nutrient,liquid_max_g_per_l,foliar_max_g_per_l").execute())
     if result.data:
         return {row["nutrient"]: {
             "liquid_max": float(row["liquid_max_g_per_l"]) if row.get("liquid_max_g_per_l") else None,
@@ -675,7 +675,7 @@ def get_nutrient_limits(user: CurrentUser = Depends(get_current_user)):
 def list_liquid_materials(user: CurrentUser = Depends(get_current_user)):
     """List all liquid-compatible materials with solubility data."""
     sb = get_supabase_admin()
-    result = sb.table("materials").select("*").eq("liquid_compatible", True).execute()
+    result = run_sb(lambda: sb.table("materials").select("*").eq("liquid_compatible", True).execute())
     return result.data or []
 
 

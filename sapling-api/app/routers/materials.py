@@ -145,7 +145,7 @@ def _apply_markups(materials: list[dict], markups: dict[str, float]) -> list[dic
 def get_default_materials(user: CurrentUser = Depends(get_current_user)):
     """Get the admin-configured defaults: materials list + blend settings."""
     sb = get_supabase_admin()
-    result = sb.table("default_materials").select("*").execute()
+    result = run_sb(lambda: sb.table("default_materials").select("*").execute())
     if result.data:
         row = result.data[0]
         return DefaultMaterialsOut(
@@ -199,7 +199,7 @@ def set_default_materials(
 def get_markups(user: CurrentUser = Depends(require_admin)):
     """Admin only. Get all material markups."""
     sb = get_supabase_admin()
-    result = sb.table("material_markups").select("*").execute()
+    result = run_sb(lambda: sb.table("material_markups").select("*").execute())
     return [MarkupOut(**r) for r in (result.data or [])]
 
 

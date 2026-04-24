@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from app.auth import CurrentUser, get_current_user, require_admin
 from app.pagination import Page, PageParams, apply_page
-from app.supabase_client import get_supabase_admin
+from app.supabase_client import get_supabase_admin, run_sb
 
 router = APIRouter(tags=["Leaf Analysis"])
 
@@ -127,14 +127,14 @@ def list_leaf_analyses(
     if field_id:
         query = query.eq("field_id", field_id)
     query = apply_page(query, page, default_order="created_at")
-    return Page.from_result(query.execute(), page)
+    return Page.from_result(run_sb(lambda: query.execute()), page)
 
 
 @router.get("/{analysis_id}")
 def get_leaf_analysis(analysis_id: str, user: CurrentUser = Depends(get_current_user)):
     """Get a leaf analysis by ID."""
     sb = get_supabase_admin()
-    result = sb.table("leaf_analyses").select("*").eq("id", analysis_id).execute()
+    result = run_sb(lambda: sb.table("leaf_analyses").select("*").eq("id", analysis_id).execute())
     if not result.data:
         raise HTTPException(404, "Leaf analysis not found")
     record = result.data[0]
