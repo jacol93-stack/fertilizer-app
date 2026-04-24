@@ -61,6 +61,85 @@ MAX_PRODUCTS_PER_BLEND = 6
 DEFICIT_STOP_TOLERANCE = 0.05  # within 5% of target = done
 
 # ============================================================
+# Organic-carrier policy (Sapling house rule)
+# ============================================================
+# Every dry-blend Sapling produces is anchored by an organic carrier at
+# ≥ 50 % of blend mass. The carrier (manure compost / pellet) delivers
+# organic carbon, slow-release N, micronutrients, and gives the
+# programme its multi-year soil-health trajectory. Synthetic products
+# layer on top to close remaining nutrient gaps.
+#
+# This policy applies only to dry blends — fertigation and foliar
+# blends are liquid pipelines and use different materials.
+
+MIN_ORGANIC_FRACTION_DRY = 0.5  # 50 % of blend mass = organic carrier
+
+# Starter organic-carrier rate (kg/ha) when no stronger signal drives it.
+# A post-check bumps this if synthetic mass ends up requiring more organic
+# to satisfy the 50 % rule.
+ORGANIC_CARRIER_STARTER_KG_HA = 500.0
+
+# Year-1 plant-available fractions for organic carrier nutrients. The
+# remainder mineralises across Y2-Y4 as soil biology works on the
+# organic fraction (see feedback_visibility_over_fabrication memory —
+# these are conservative SA norms, not farm-specific).
+ORGANIC_Y1_AVAILABILITY = {
+    "N":  0.25,   # FERTASA §5.5.2: 20-30 % Y1 typical for SA composts
+    "P":  0.50,   # slower than synthetic but much faster than N
+    "K":  0.80,   # mostly mineral in manure ash, rapidly available
+    "Ca": 0.90,
+    "Mg": 0.90,
+    "S":  0.60,
+    "B":  0.70,
+    "Zn": 0.70,
+    "Mn": 0.70,
+    "Cu": 0.70,
+    "Fe": 0.70,
+    "Mo": 0.70,
+}
+
+
+def _is_organic_carrier(material: dict) -> bool:
+    """Identify a bulk organic carrier: solid manure-compost-class product
+    carrying carbon + nitrogen in meaningful quantities.
+
+    Keeps liquid organics (molasses, humic acid) and acid bio-stimulants
+    (propionic) out of the dry-blend 50 %-rule pool.
+    """
+    if material.get("type") != "Organic":
+        return False
+    if material.get("form") != "solid":
+        return False
+    try:
+        n_pct = float(material.get("n") or 0)
+        c_pct = float(material.get("c") or 0)
+    except (ValueError, TypeError):
+        return False
+    return n_pct >= 0.5 and c_pct >= 10.0
+
+
+def _find_organic_carrier(materials: list[dict]) -> Optional[dict]:
+    """Pick the single best organic carrier from the catalog. Prefer the
+    one with highest carbon content — that's the metric the multi-year
+    soil-building narrative leans on."""
+    candidates = [m for m in materials if _is_organic_carrier(m)]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda m: float(m.get("c") or 0))
+
+
+def _is_dry_blend_method(method_kind: MethodKind) -> bool:
+    """The 50 %-organic rule applies only to dry blends. Fertigation +
+    foliar are liquid pipelines; the organic pellet can't participate
+    there."""
+    return method_kind.name.startswith("DRY_")
+
+
+def _material_total_mass(selected: list[tuple[dict, float]]) -> float:
+    """Sum of rates across selected (material, rate) pairs."""
+    return sum(rate for _, rate in selected)
+
+# ============================================================
 # Part A / Part B stream classification (liquid only)
 # ============================================================
 # Ca ↔ SO₄ / PO₄ incompatibility means Part A (Calcium stream) must not
@@ -203,6 +282,12 @@ def _select_materials_greedy(
 ) -> list[tuple[dict, float]]:
     """Pick materials iteratively — best deficit-coverage first.
 
+    For dry blends, anchors the blend with an organic carrier at ≥ 50 %
+    of blend mass per Sapling's house rule. The carrier's Y1-available
+    nutrients reduce the deficit before the synthetic greedy pass; if
+    the post-synthetic mass balance would drop organic below 50 %, the
+    organic rate is bumped to restore it.
+
     Returns: list of (material_dict, kg_per_ha_to_apply) tuples.
     """
     # Filter materials by method compatibility
@@ -215,6 +300,19 @@ def _select_materials_greedy(
 
     selected: list[tuple[dict, float]] = []
     picked_names: set[str] = set()
+
+    # ── Organic carrier anchor (dry blends only) ───────────────────
+    # Seed the blend with an organic carrier before the synthetic pass.
+    # Its Y1-available nutrients reduce the deficit; its full mass is
+    # locked in as the ≥ 50 % foundation.
+    organic_carrier = None
+    if _is_dry_blend_method(method_kind):
+        organic_carrier = _find_organic_carrier(candidates)
+        if organic_carrier is not None:
+            organic_rate = ORGANIC_CARRIER_STARTER_KG_HA
+            _subtract_organic_contribution(deficit, organic_carrier, organic_rate)
+            selected.append((organic_carrier, organic_rate))
+            picked_names.add(organic_carrier["material"])
 
     while len([n for n in deficit.values() if n > 0.01]) > 0 and len(selected) < MAX_PRODUCTS_PER_BLEND:
         best_material = None
@@ -245,7 +343,40 @@ def _select_materials_greedy(
         ):
             break
 
+    # ── Post-check: enforce organic ≥ 50 % of blend mass ──────────
+    # If the synthetic products ended up weighing more than the organic
+    # carrier, bump the carrier rate so organic mass equals synthetic
+    # mass (= 50 % exactly). This preserves nutrient coverage while
+    # honouring Sapling's house rule that every dry blend is carrier-
+    # anchored.
+    if organic_carrier is not None and len(selected) > 1:
+        synthetic_mass = sum(
+            rate for mat, rate in selected if mat is not organic_carrier
+        )
+        organic_idx, organic_rate = next(
+            (i, rate) for i, (mat, rate) in enumerate(selected) if mat is organic_carrier
+        )
+        if synthetic_mass > organic_rate:
+            selected[organic_idx] = (organic_carrier, synthetic_mass)
+
     return selected
+
+
+def _subtract_organic_contribution(
+    deficit: dict[str, float], organic: dict, rate: float,
+) -> None:
+    """Subtract the Y1-plant-available portion of an organic carrier's
+    delivery from the deficit. The full mass is applied, but only the
+    fraction that mineralises in the current season counts against the
+    deficit — the remainder is the multi-year soil-building investment.
+    """
+    for nutrient in list(deficit.keys()):
+        pct = _material_pct_for(organic, nutrient)
+        if pct <= 0:
+            continue
+        y1_frac = ORGANIC_Y1_AVAILABILITY.get(nutrient, 0.7)
+        available = rate * pct * y1_frac
+        deficit[nutrient] = max(0.0, deficit[nutrient] - available)
 
 
 def _evaluate_material(material: dict, deficit: dict[str, float]) -> tuple[float, float]:
