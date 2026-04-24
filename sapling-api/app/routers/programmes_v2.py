@@ -138,6 +138,10 @@ async def build_programme_endpoint(
 
     # Build per-block inputs, computing targets server-side if not provided
     block_inputs: list[BlockInput] = []
+    # Collected target-computation metadata (calc_path mix + unadjusted
+    # nutrients per block) for post-build narrative rendering.
+    calc_path_tally: dict[str, int] = {}
+    unadjusted_by_block: list[tuple[str, list[str]]] = []
     for b in request.blocks:
         targets = b.season_targets
         if targets is None:
@@ -154,6 +158,10 @@ async def build_programme_endpoint(
                 block_pop_per_ha=b.pop_per_ha,
             )
             targets = result.targets
+            for path in result.calc_path_by_nutrient.values():
+                calc_path_tally[path] = calc_path_tally.get(path, 0) + 1
+            if result.unadjusted_nutrients:
+                unadjusted_by_block.append((b.block_name, list(result.unadjusted_nutrients)))
         block_inputs.append(BlockInput(
             block_id=b.block_id,
             block_name=b.block_name,
@@ -224,6 +232,15 @@ async def build_programme_endpoint(
     # agronomist still sees each block's raw soil data alongside the
     # cluster's aggregated view.
     _append_per_block_soil_snapshots(artifact, cluster_sources)
+
+    # Provenance + blind-spot narrative: calc-path mix in the decision
+    # trace (so the Sources Audit section shows how many nutrients
+    # came from rate-table vs cation-ratio vs heuristic vs unadjusted),
+    # plus an OutstandingItem per block that had unadjusted fallbacks
+    # (missing soil test for that nutrient).
+    _append_calc_path_narrative(
+        artifact, calc_path_tally, unadjusted_by_block,
+    )
 
     # Persist
     artifact_json = artifact.model_dump(mode="json")
@@ -545,6 +562,64 @@ def _append_cluster_narrative(artifact, cluster_aggs: list[ClusterAggregate]) ->
                 ),
                 severity=severity,
             ))
+
+
+def _append_calc_path_narrative(
+    artifact,
+    calc_path_tally: dict[str, int],
+    unadjusted_by_block: list[tuple[str, list[str]]],
+) -> None:
+    """Surface target-computation provenance + blind spots on the artifact.
+
+    Two outputs:
+      * decision_trace line tallying how many nutrient-target cells
+        came from each calc path — rate_table / cation_ratio /
+        heuristic / unadjusted. Gives the agronomist an honest
+        read on how data-driven the programme is.
+      * OutstandingItem per block that hit 'unadjusted' on any
+        nutrient (soil test missing for the mapped parameter). Target
+        is raw removal × yield with factor=1.0 for those, which may
+        over- or under-fertilize the actual soil. Uploading the
+        missing parameter refines the target.
+    """
+    if calc_path_tally:
+        path_order = ["rate_table", "cation_ratio", "heuristic", "unadjusted"]
+        parts = []
+        for p in path_order:
+            n = calc_path_tally.get(p, 0)
+            if n:
+                parts.append(f"{n} {p}")
+        # Append any non-standard paths we haven't listed above
+        for p, n in calc_path_tally.items():
+            if p not in path_order:
+                parts.append(f"{n} {p}")
+        if parts:
+            artifact.decision_trace.append(
+                "Target-computation path mix: " + ", ".join(parts)
+            )
+
+    for block_name, nutrients in unadjusted_by_block:
+        nutrient_list = ", ".join(nutrients)
+        artifact.outstanding_items.append(OutstandingItem(
+            item=(
+                f"Block '{block_name}': {nutrient_list} computed from "
+                f"unadjusted removal (no soil test for that parameter)"
+            ),
+            why_it_matters=(
+                "When the soil test is missing for a nutrient, the engine "
+                "falls back to base removal × yield with no soil-state "
+                "adjustment factor. The target is a reasonable starting "
+                "point but is not informed by the actual soil reserve, so "
+                "it may over- or under-fertilize vs what the soil really "
+                "needs."
+            ),
+            impact_if_skipped=(
+                "Upload a complete soil analysis including this parameter "
+                "to get a soil-state-adjusted target. Safe to proceed with "
+                "the current target, but expect variance from a refined "
+                "target after the next soil test."
+            ),
+        ))
 
 
 def _append_skipped_block_items(artifact, skipped_blocks: list[SkippedBlockRequest]) -> None:

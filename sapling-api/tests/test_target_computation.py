@@ -200,7 +200,35 @@ def test_calc_path_populated(minimal_catalog):
         soil_values=soil, catalog=minimal_catalog,
     )
     for nut in result.targets:
-        assert result.calc_path_by_nutrient[nut] in ("rate_table", "cation_ratio", "heuristic")
+        assert result.calc_path_by_nutrient[nut] in (
+            "rate_table", "cation_ratio", "heuristic", "unadjusted",
+        )
+
+
+def test_unadjusted_path_when_soil_missing(minimal_catalog):
+    """Nutrients with no soil test land on the 'unadjusted' path and
+    surface via unadjusted_nutrients so callers can emit warnings."""
+    # N (total) absent from soil_values → N falls through to unadjusted
+    soil = {"pH (H2O)": 6.0, "P (Bray-1)": 25, "K": 150,
+            "Ca": 1000, "Mg": 150, "S": 15}  # no N (total) key
+    result = compute_season_targets(
+        crop="Maize (dryland)", yield_target=5.0,
+        soil_values=soil, catalog=minimal_catalog,
+    )
+    assert "N" in result.unadjusted_nutrients
+    assert result.calc_path_by_nutrient.get("N") == "unadjusted"
+    assert any(a.field == "unadjusted_removal_nutrients" for a in result.assumptions)
+
+
+def test_no_unadjusted_when_all_soil_present(minimal_catalog):
+    soil = {"pH (H2O)": 6.0, "P (Bray-1)": 25, "K": 150,
+            "Ca": 1000, "Mg": 150, "S": 15, "N (total)": 30}
+    result = compute_season_targets(
+        crop="Maize (dryland)", yield_target=5.0,
+        soil_values=soil, catalog=minimal_catalog,
+    )
+    assert result.unadjusted_nutrients == []
+    assert all(p != "unadjusted" for p in result.calc_path_by_nutrient.values())
 
 
 # ============================================================

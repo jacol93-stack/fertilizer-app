@@ -58,9 +58,14 @@ class TargetComputationResult:
     """Structured output of target computation — direct feed to orchestrator."""
     targets: dict[str, float]  # {nutrient: kg/ha} — uses P2O5/K2O oxide form
     sources: dict[str, SourceCitation]
-    calc_path_by_nutrient: dict[str, str]  # 'rate_table' | 'cation_ratio' | 'heuristic'
+    calc_path_by_nutrient: dict[str, str]  # 'rate_table' | 'cation_ratio' | 'heuristic' | 'unadjusted'
     assumptions: list[Assumption] = field(default_factory=list)
     worst_tier: Optional[Tier] = None  # rollup — the least-authoritative tier used
+    # Nutrients that fell all the way through to unadjusted removal
+    # because the soil test was missing for that parameter. Caller
+    # should surface these prominently — the target is uninformed by
+    # soil state and may over- or under-fertilize for the actual soil.
+    unadjusted_nutrients: list[str] = field(default_factory=list)
 
 
 # ============================================================
@@ -122,6 +127,7 @@ def compute_season_targets(
     calc_paths: dict[str, str] = {}
     assumptions: list[Assumption] = []
     tiers_used: list[int] = []
+    unadjusted_nutrients: list[str] = []
 
     macro_and_secondary = {"N", "P", "K", "Ca", "Mg", "S"}
     micros = {"Fe", "B", "Mn", "Zn", "Mo", "Cu"}
@@ -147,7 +153,19 @@ def compute_season_targets(
             kg = kg * K_TO_K2O
 
         targets[output_nutrient] = round(kg, 2)
-        calc_paths[output_nutrient] = row.get("Calc_Path") or "heuristic"
+        base_path = row.get("Calc_Path") or "heuristic"
+
+        # Unadjusted detection: heuristic path + empty classification
+        # means the soil test for this nutrient's mapped parameter was
+        # missing, so factor defaulted to 1.0 and the target is raw
+        # removal × yield. Promote to its own path label so the mix
+        # tally surfaces it distinctly.
+        classification = (row.get("Classification") or "").strip()
+        if base_path == "heuristic" and not classification:
+            calc_paths[output_nutrient] = "unadjusted"
+            unadjusted_nutrients.append(output_nutrient)
+        else:
+            calc_paths[output_nutrient] = base_path
 
         # Build provenance
         source_id, section, tier_val = _parse_source_from_row(row)
@@ -204,6 +222,22 @@ def compute_season_targets(
                 if nut in targets:
                     targets[nut] = max(0.0, round(targets[nut] - kg, 2))
 
+    # Unadjusted-removal assumption — surfaced on the artifact so the
+    # agronomist knows which nutrients got a soil-state-blind target.
+    if unadjusted_nutrients:
+        assumptions.append(Assumption(
+            field="unadjusted_removal_nutrients",
+            assumed_value=", ".join(unadjusted_nutrients),
+            override_guidance=(
+                "These nutrients had no soil test for their mapped parameter, "
+                "so the target is base removal × yield (no soil-state scaling). "
+                "May over- or under-fertilize vs the actual soil. Upload a "
+                "complete soil analysis to refine."
+            ),
+            source=None,
+            tier=Tier.IMPLEMENTER_CONVENTION,
+        ))
+
     # Worst tier rollup (least authoritative tier drives caveats)
     worst_tier = None
     if tiers_used:
@@ -215,6 +249,7 @@ def compute_season_targets(
         calc_path_by_nutrient=calc_paths,
         assumptions=assumptions,
         worst_tier=worst_tier,
+        unadjusted_nutrients=unadjusted_nutrients,
     )
 
 
