@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, CheckCircle2, Archive, Printer } from "lucide-react";
+import { Loader2, ArrowLeft, CheckCircle2, Archive, Printer, ShieldCheck } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { ArtifactView } from "@/components/programme-artifact/ArtifactView";
 import {
   archiveProgramme,
@@ -17,6 +18,7 @@ import {
 import type {
   BuildProgrammeResponse,
   ProgrammeState,
+  ReviewInfo,
 } from "@/lib/types/programme-artifact";
 import { ProgrammeState as State } from "@/lib/types/programme-artifact";
 
@@ -46,10 +48,10 @@ export default function ProgrammeArtifactPage() {
     };
   }, [params.id]);
 
-  const onTransition = async (newState: ProgrammeState) => {
+  const onTransition = async (newState: ProgrammeState, notes?: string) => {
     setTransitioning(true);
     try {
-      const res = await transitionProgrammeState(params.id, newState);
+      const res = await transitionProgrammeState(params.id, newState, notes);
       setData(res);
       toast.success(`Programme ${newState}`);
     } catch (e) {
@@ -133,10 +135,104 @@ export default function ProgrammeArtifactPage() {
             />
           </div>
         </div>
+        <ReviewPanel
+          state={data.state as ProgrammeState}
+          review={data.review ?? null}
+          disabled={transitioning}
+          onApprove={(notes) => onTransition(State.APPROVED, notes)}
+        />
         <ArtifactView artifact={data.artifact} />
       </div>
     </AppShell>
   );
+}
+
+function ReviewPanel({
+  state,
+  review,
+  disabled,
+  onApprove,
+}: {
+  state: ProgrammeState;
+  review: ReviewInfo | null;
+  disabled: boolean;
+  onApprove: (notes: string) => void;
+}) {
+  const [notes, setNotes] = useState("");
+
+  // Approved / activated / etc. — show reviewer attribution. Prints too.
+  const reviewedStates = new Set<ProgrammeState>([
+    State.APPROVED, State.ACTIVATED, State.IN_PROGRESS,
+    State.COMPLETED, State.ARCHIVED,
+  ]);
+  if (reviewedStates.has(state) && review?.reviewer_id) {
+    const displayName = review.reviewer_name || review.reviewer_email || "agronomist";
+    const reviewedDate = review.reviewed_at
+      ? new Date(review.reviewed_at).toLocaleDateString(undefined, {
+          year: "numeric", month: "short", day: "numeric",
+        })
+      : null;
+    return (
+      <Card className="border-l-4 border-l-green-600 bg-green-50/50 print:bg-transparent">
+        <CardContent className="flex items-start gap-3 p-4">
+          <ShieldCheck className="mt-0.5 size-5 shrink-0 text-green-700" />
+          <div className="flex-1 text-sm">
+            <div className="font-medium text-green-900">
+              Reviewed & approved by {displayName}
+              {reviewedDate && <> · {reviewedDate}</>}
+            </div>
+            {review.reviewer_notes && (
+              <div className="mt-1 whitespace-pre-wrap text-green-900/80">
+                {review.reviewer_notes}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Draft — show the approve panel. Hidden from print (draft should
+  // never reach a farmer anyway).
+  if (state === State.DRAFT) {
+    return (
+      <Card className="border-dashed print:hidden">
+        <CardContent className="space-y-3 p-4">
+          <div className="flex items-start gap-2">
+            <ShieldCheck className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+            <div>
+              <Label className="text-sm font-medium">Agronomist review</Label>
+              <p className="text-xs text-muted-foreground">
+                Approve this programme to add your name + optional notes
+                (e.g. "K reduced 15% — leaf norms already adequate").
+                Approved programmes carry your attribution to the farmer.
+              </p>
+            </div>
+          </div>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Optional notes — any adjustments, caveats, or follow-ups you want the farmer to see…"
+            className="min-h-20 w-full rounded-md border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sapling-orange)]"
+            rows={3}
+          />
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              disabled={disabled}
+              onClick={() => onApprove(notes.trim())}
+              className="bg-green-600 text-white hover:bg-green-700"
+            >
+              <CheckCircle2 className="size-4" />
+              Approve as reviewer
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return null;
 }
 
 function StateActions({
@@ -150,8 +246,11 @@ function StateActions({
   onArchive: () => void;
   disabled: boolean;
 }) {
+  // Draft → approved runs through the ReviewPanel (captures reviewer
+  // notes); every other transition stays as a lightweight StateActions
+  // button. The `approved` entry is intentionally absent under draft.
   const allowed: Record<ProgrammeState, ProgrammeState[]> = {
-    [State.DRAFT]: [State.APPROVED],
+    [State.DRAFT]: [],
     [State.APPROVED]: [State.ACTIVATED, State.DRAFT],
     [State.ACTIVATED]: [State.IN_PROGRESS],
     [State.IN_PROGRESS]: [State.COMPLETED],

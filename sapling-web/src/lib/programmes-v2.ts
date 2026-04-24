@@ -44,14 +44,19 @@ export async function listProgrammes(params?: {
   );
 }
 
-/** Transition a programme's lifecycle state. */
+/** Transition a programme's lifecycle state. On draft→approved the
+ * optional `reviewerNotes` are persisted alongside the reviewer id. */
 export async function transitionProgrammeState(
   id: string,
   newState: ProgrammeState,
+  reviewerNotes?: string,
 ): Promise<BuildProgrammeResponse> {
   return api.patch<BuildProgrammeResponse>(
     `${BASE}/${id}/state`,
-    { new_state: newState },
+    {
+      new_state: newState,
+      ...(reviewerNotes !== undefined ? { reviewer_notes: reviewerNotes } : {}),
+    },
   );
 }
 

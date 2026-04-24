@@ -47,7 +47,7 @@ from app.services.programme_builder_orchestrator import (
     build_programme,
 )
 from app.services.target_computation import SoilCatalog, compute_season_targets
-from app.supabase_client import get_supabase_admin
+from app.supabase_client import get_supabase_admin, run_sb
 
 
 logger = logging.getLogger(__name__)
@@ -114,10 +114,21 @@ class BuildProgrammeRequest(BaseModel):
     skipped_blocks: list[SkippedBlockRequest] = Field(default_factory=list)
 
 
+class ReviewInfo(BaseModel):
+    """Reviewer attribution surfaced alongside an artifact. Populated
+    once a draft is approved."""
+    reviewer_id: Optional[UUID] = None
+    reviewer_email: Optional[str] = None
+    reviewer_name: Optional[str] = None
+    reviewer_notes: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+
+
 class BuildProgrammeResponse(BaseModel):
     id: UUID
     state: str
     artifact: dict  # full ProgrammeArtifact as dict — TS type matches Pydantic model
+    review: Optional[ReviewInfo] = None
 
 
 # ============================================================
@@ -303,7 +314,7 @@ async def get_programme_artifact(
     # RLS so we enforce the scope explicitly)
     if user.role != "admin":
         query = query.eq("user_id", user.id)
-    result = query.limit(1).execute()
+    result = run_sb(lambda: query.limit(1).execute())
     if not result.data:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Programme not found")
     row = result.data[0]
@@ -311,6 +322,7 @@ async def get_programme_artifact(
         id=UUID(row["id"]),
         state=row["state"],
         artifact=row["artifact"],
+        review=_build_review_info(supabase, row),
     )
 
 
@@ -348,6 +360,9 @@ class StateTransitionRequest(BaseModel):
         ...,
         pattern=r"^(draft|approved|activated|in_progress|completed|archived)$",
     )
+    # Optional reviewer notes — recorded on draft→approved transition.
+    # For other transitions, ignored server-side.
+    reviewer_notes: Optional[str] = Field(None, max_length=4000)
 
 
 @router.patch("/{artifact_id}/state", response_model=BuildProgrammeResponse)
@@ -364,6 +379,11 @@ async def transition_state(
         activated → in_progress, archived
         in_progress → completed, archived
         completed → archived
+
+    On draft → approved: records user.id as reviewer_id, sets
+    reviewed_at=now(), and stores optional reviewer_notes. The
+    agronomist review workflow uses this to attach a signature +
+    comments before the programme reaches the farmer.
     """
     supabase = get_supabase_admin()
     select_query = (
@@ -399,6 +419,13 @@ async def transition_state(
         update["activated_at"] = datetime.utcnow().isoformat()
     elif new_state == "completed":
         update["completed_at"] = datetime.utcnow().isoformat()
+    # Agronomist review: capture reviewer + notes + timestamp on the
+    # draft→approved transition. Other transitions ignore notes.
+    if curr_state == "draft" and new_state == "approved":
+        update["reviewer_id"] = user.id
+        update["reviewed_at"] = datetime.utcnow().isoformat()
+        if request.reviewer_notes is not None:
+            update["reviewer_notes"] = request.reviewer_notes
 
     update_query = (
         supabase.table("programme_artifacts")
@@ -415,6 +442,7 @@ async def transition_state(
         id=UUID(row["id"]),
         state=row["state"],
         artifact=row["artifact"],
+        review=_build_review_info(supabase, row),
     )
 
 
@@ -573,6 +601,37 @@ def _append_cluster_narrative(artifact, cluster_aggs: list[ClusterAggregate]) ->
 
 N_CAP_CRITICAL_KG_HA = 500.0  # impossible in any SA crop — almost certainly yield typo
 N_CAP_WARN_KG_HA = 350.0      # unusually high — worth double-checking
+
+
+def _build_review_info(supabase, row: dict) -> Optional["ReviewInfo"]:
+    """Pull reviewer attribution off a programme_artifacts row and
+    hydrate with the reviewer's email + name from profiles.
+
+    Returns None when the artifact hasn't been reviewed yet. One
+    extra query per GET — acceptable; could denormalise into the
+    artifact row if it becomes hot.
+    """
+    reviewer_id = row.get("reviewer_id")
+    if not reviewer_id:
+        return None
+    email = None
+    name = None
+    try:
+        prof = run_sb(lambda: supabase.table("profiles").select(
+            "email,name"
+        ).eq("id", reviewer_id).limit(1).execute())
+        if prof.data:
+            email = prof.data[0].get("email")
+            name = prof.data[0].get("name")
+    except Exception as e:
+        logger.warning("reviewer profile lookup failed for %s: %s", reviewer_id, e)
+    return ReviewInfo(
+        reviewer_id=UUID(reviewer_id),
+        reviewer_email=email,
+        reviewer_name=name,
+        reviewer_notes=row.get("reviewer_notes"),
+        reviewed_at=row.get("reviewed_at"),
+    )
 
 
 def _append_n_cap_flags(artifact) -> None:

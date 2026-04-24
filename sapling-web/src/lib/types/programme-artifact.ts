@@ -443,10 +443,19 @@ export interface BuildProgrammeRequest {
   skipped_blocks?: SkippedBlockRequest[];
 }
 
+export interface ReviewInfo {
+  reviewer_id?: string | null;
+  reviewer_email?: string | null;
+  reviewer_name?: string | null;
+  reviewer_notes?: string | null;
+  reviewed_at?: string | null;
+}
+
 export interface BuildProgrammeResponse {
   id: string;
   state: ProgrammeState;
   artifact: ProgrammeArtifact;
+  review?: ReviewInfo | null;
 }
 
 export interface ProgrammeListItem {
