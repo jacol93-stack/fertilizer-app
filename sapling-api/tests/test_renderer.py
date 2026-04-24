@@ -27,6 +27,7 @@ from app.models.methods import (
     MethodKind,
 )
 from app.models.programme_artifact import (
+    ApplicationEvent,
     Assumption,
     Blend,
     BlendPart,
@@ -95,9 +96,11 @@ def _dry_blend(block_id: str = "B1", stage: int = 1) -> Blend:
         block_id=block_id,
         stage_number=stage,
         stage_name="Planting",
-        weeks=f"Week {stage}",
-        events=1,
-        dates_label="1 May 2026",
+        applications=[ApplicationEvent(
+            event_index=stage,
+            event_date=date(2026, 5, 1),
+            week_from_planting=stage,
+        )],
         method=DryBlendMethod(kind=MethodKind.DRY_BROADCAST),
         raw_products=[
             BlendPart(
@@ -120,9 +123,17 @@ def _fertigation_blend(block_id: str = "B1") -> Blend:
         block_id=block_id,
         stage_number=2,
         stage_name="Vegetative",
-        weeks="Weeks 3-7",
-        events=5,
-        dates_label="20 May – 25 Jun 2026",
+        applications=[
+            ApplicationEvent(
+                event_index=i + 1,
+                event_date=date(2026, 5, 20 + 7 * i) if (20 + 7 * i) <= 31
+                else date(2026, 6, (20 + 7 * i) - 31),
+                week_from_planting=3 + i,
+                event_of_stage_index=i + 1,
+                total_events_in_stage=5,
+            )
+            for i in range(5)
+        ],
         method=FertigationMethod(kind=MethodKind.LIQUID_DRIP),
         raw_products=[
             BlendPart(
@@ -471,9 +482,11 @@ def _dry_blend_with_organic(block_id: str = "B1") -> Blend:
         block_id=block_id,
         stage_number=1,
         stage_name="Establishment",
-        weeks="Week 2",
-        events=1,
-        dates_label="15 May 2026",
+        applications=[ApplicationEvent(
+            event_index=1,
+            event_date=date(2026, 5, 15),
+            week_from_planting=2,
+        )],
         method=DryBlendMethod(kind=MethodKind.DRY_BROADCAST),
         raw_products=[
             BlendPart(

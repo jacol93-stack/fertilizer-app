@@ -22,7 +22,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from .confidence import ConfidenceBand, DataCompleteness, Tier
 from .methods import ApplicationMethod, MethodAvailability, MethodKind
@@ -251,19 +251,40 @@ class Concentrate(BaseModel):
     injection_notes: Optional[str] = None
 
 
+class ApplicationEvent(BaseModel):
+    """One concrete application pass across the field.
+
+    A `Blend` carries a recipe; the Blend's `applications` list enumerates
+    each concrete date on which that recipe is applied. One recipe can
+    serve multiple application dates — e.g. a fertigation stage that runs
+    across 3 weekly events, or a dry blend split across two broadcast
+    passes.
+
+    Timing is denormalised from the month allocator's output so the
+    renderer can iterate without having to cross-reference the schedule.
+    """
+    event_index: int  # 1..N sequential across the programme
+    event_date: date
+    week_from_planting: int
+    # 1-of-N within the parent stage (for "applications 2 of 3" labels)
+    event_of_stage_index: int = 1
+    total_events_in_stage: int = 1
+
+
 class Blend(BaseModel):
-    """One blend for one stage for one block.
+    """One recipe applied to one block across one or more dates.
 
     Method-agnostic: fertigation blends have concentrates; dry blends
     have no concentrates (just the raw_products list); foliar is a
     FoliarEvent not a Blend.
+
+    `applications` holds every date on which this recipe is applied.
+    `weeks`, `events`, and `dates_label` are computed from the list.
     """
     block_id: str
     stage_number: int
     stage_name: str
-    weeks: str  # "Weeks 3-7"
-    events: int
-    dates_label: str  # "13 May - 16 Jun 2026"
+    applications: list[ApplicationEvent] = Field(..., min_length=1)
     method: ApplicationMethod  # dispatches rendering
 
     raw_products: list[BlendPart]
@@ -276,6 +297,34 @@ class Blend(BaseModel):
     )
     sources: list[SourceCitation] = Field(default_factory=list)
     confidence: Optional[ConfidenceBand] = None
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def events(self) -> int:
+        return len(self.applications)
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def weeks(self) -> str:
+        if not self.applications:
+            return ""
+        start = min(a.week_from_planting for a in self.applications)
+        end = max(a.week_from_planting for a in self.applications)
+        return f"Week {start}" if start == end else f"Weeks {start}-{end}"
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def dates_label(self) -> str:
+        if not self.applications:
+            return ""
+        dates = sorted(a.event_date for a in self.applications)
+        start = dates[0]
+        end = dates[-1]
+        if start == end:
+            return start.strftime("%-d %b %Y")
+        if start.year == end.year:
+            return f"{start.strftime('%-d %b')} – {end.strftime('%-d %b %Y')}"
+        return f"{start.strftime('%-d %b %Y')} – {end.strftime('%-d %b %Y')}"
 
 
 # ============================================================

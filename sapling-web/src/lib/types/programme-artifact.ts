@@ -278,12 +278,26 @@ export interface Concentrate {
   injection_notes?: string | null;
 }
 
+/** One concrete application pass across the field. A Blend's
+ * `applications` list enumerates every date on which the recipe runs. */
+export interface ApplicationEvent {
+  event_index: number;
+  event_date: string; // ISO date
+  week_from_planting: number;
+  event_of_stage_index?: number;
+  total_events_in_stage?: number;
+}
+
 export interface Blend {
   block_id: string;
   stage_number: number;
   stage_name: string;
+  applications: ApplicationEvent[];
+  /** Computed by backend from applications (Pydantic @computed_field). */
   weeks: string;
+  /** Computed by backend from applications (= applications.length). */
   events: number;
+  /** Computed by backend from applications (first..last event_date). */
   dates_label: string;
   method: ApplicationMethod;
   raw_products: BlendPart[];

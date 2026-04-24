@@ -277,6 +277,12 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
         # event (redistributed to unblocked events in the same stage if
         # possible). When application_months is None, falls through with
         # a 1-event-per-stage schedule — identical to legacy behaviour.
+        #
+        # The allocator's per-event nutrient totals are summed back to
+        # real-stage totals so method_selector + consolidator operate at
+        # real-stage granularity (one Blend per real stage × method).
+        # Per-event timing is preserved on the Blend's applications[] list
+        # (see F3 — ApplicationEvent model).
         month_allocation = None
         if inputs.application_months:
             initial_schedule = _build_stage_schedule(
@@ -295,17 +301,26 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
                 season_end=inputs.expected_harvest_date,
             )
             month_allocation = allocation
-            # Reshape stage_splits → virtual splits (one per application event)
+            # Sum per-event nutrients back to real-stage totals. Walls may
+            # have zeroed some per-event amounts (redistributed within the
+            # stage where possible); the summed total reflects the true
+            # deliverable amount per real stage.
+            real_stage_nutrients: dict[int, dict[str, float]] = {}
+            for app in allocation.applications:
+                bucket = real_stage_nutrients.setdefault(app.stage_number, {})
+                for nut, kg in app.nutrients.items():
+                    bucket[nut] = bucket.get(nut, 0.0) + kg
             stage_splits = [
                 StageSplit(
-                    stage_number=a.event_index,
-                    stage_name=a.stage_name,
-                    nutrients=a.nutrients,
+                    stage_number=split.stage_number,
+                    stage_name=split.stage_name,
+                    nutrients=real_stage_nutrients.get(split.stage_number, {}),
                     source_id=stage_src,
                     source_section=stage_section,
                     tier=stage_tier,
                 )
-                for a in allocation.applications
+                for split in stage_splits
+                if split.stage_number in real_stage_nutrients
             ]
             decision_trace.append(
                 f"Block {block.block_id}: MonthAllocator — {len(allocation.applications)} "
@@ -381,16 +396,18 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
         )
         all_outstanding.extend(outstanding)
 
-        # 8. Stage schedule — reflects the reshaped stages when the
-        # month allocator ran, otherwise the default stage-count-aligned
-        # timeline from planting.
+        # 8. Stage schedule — per-event StageWindows when the allocator
+        # ran (so the timeline surface shows each concrete application
+        # date), otherwise the default per-real-stage timeline from
+        # planting. The consolidator receives the real-stage schedule
+        # plus the allocator's events separately (see step 9).
         if month_allocation is not None:
-            # One StageWindow per application event, dated exactly where
-            # the farmer will apply. Events for the same stage get
-            # disambiguated via "(1 of 2)" suffix in the stage_name.
+            # One StageWindow per application event for the timeline. The
+            # stage_number on the window carries the global event index
+            # so the renderer can order them; event-of-stage metadata is
+            # preserved on the Blend's ApplicationEvents.
             schedule_windows: list[StageWindow] = []
-            apps = month_allocation.applications
-            for app in apps:
+            for app in month_allocation.applications:
                 display_name = app.stage_name
                 if app.total_events_in_stage > 1:
                     display_name = (
@@ -406,10 +423,6 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
                     date_end=app.event_date,
                     events=1,
                 ))
-            # Rename stage_splits to match the display labels so the
-            # consolidator's blend output stays consistent.
-            for split, win in zip(stage_splits, schedule_windows):
-                split.stage_name = win.stage_name
             schedule = StageSchedule(
                 block_id=block.block_id,
                 planting_date=inputs.planting_date,
@@ -417,6 +430,16 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
                 cadence="per-application",
                 stages=schedule_windows,
             )
+            # Real-stage schedule for the consolidator fallback path.
+            # (When allocations is provided the consolidator uses those
+            # directly; this stays as a safety net.)
+            consolidator_schedule = _build_stage_schedule(
+                block_id=block.block_id,
+                planting_date=inputs.planting_date,
+                harvest_date=inputs.expected_harvest_date,
+                stage_count=inputs.stage_count,
+                stage_names=[s.stage_name for s in stage_splits],
+            ).stages
         else:
             stage_names = [s.stage_name for s in stage_splits]
             schedule = _build_stage_schedule(
@@ -426,6 +449,7 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
                 stage_count=inputs.stage_count,
                 stage_names=stage_names,
             )
+            consolidator_schedule = schedule.stages
         stage_schedules.append(schedule)
 
         # 9. Consolidator — group method_assignments into typed Blends
@@ -437,7 +461,11 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
                 available_materials=inputs.available_materials,
                 block_id=block.block_id,
                 block_area_ha=block.block_area_ha,
-                stage_schedule=schedule.stages,
+                stage_schedule=consolidator_schedule,
+                allocations=(
+                    month_allocation.applications if month_allocation else None
+                ),
+                planting_date=inputs.planting_date,
             )
             all_blends.extend(block_blends)
             decision_trace.append(

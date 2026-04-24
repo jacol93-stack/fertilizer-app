@@ -7,6 +7,7 @@ from datetime import date
 import pytest
 
 from app.models import (
+    ApplicationEvent,
     Blend,
     BlendPart,
     Concentrate,
@@ -37,10 +38,32 @@ MATERIALS = [
 ]
 
 
+def _fert_applications():
+    return [
+        ApplicationEvent(
+            event_index=i + 1,
+            event_date=date(2026, 5, 13 + 7 * i) if (13 + 7 * i) <= 31
+            else date(2026, 6, (13 + 7 * i) - 31),
+            week_from_planting=3 + i,
+            event_of_stage_index=i + 1,
+            total_events_in_stage=5,
+        )
+        for i in range(5)
+    ]
+
+
+def _dry_applications():
+    return [ApplicationEvent(
+        event_index=1,
+        event_date=date(2026, 5, 1),
+        week_from_planting=1,
+    )]
+
+
 def _make_fertigation_blend(parts, nutrients_delivered=None, stage_num=1):
     return Blend(
         block_id="b1", stage_number=stage_num, stage_name="vegetative",
-        weeks="Wks 3-7", events=5, dates_label="13 May - 16 Jun 2026",
+        applications=_fert_applications(),
         method=FertigationMethod(kind=MethodKind.LIQUID_DRIP),
         raw_products=parts,
         concentrates=[],
@@ -51,7 +74,7 @@ def _make_fertigation_blend(parts, nutrients_delivered=None, stage_num=1):
 def _make_dry_blend(parts, nutrients_delivered=None, stage_num=1):
     return Blend(
         block_id="b1", stage_number=stage_num, stage_name="establishment",
-        weeks="Wk 1", events=1, dates_label="1 May 2026",
+        applications=_dry_applications(),
         method=DryBlendMethod(kind=MethodKind.DRY_BROADCAST),
         raw_products=parts,
         concentrates=[],

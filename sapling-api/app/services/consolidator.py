@@ -33,7 +33,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+from datetime import date, timedelta
+
 from app.models import (
+    ApplicationEvent,
     ApplicationMethod,
     Blend,
     BlendPart,
@@ -46,6 +49,7 @@ from app.models import (
     Tier,
 )
 from app.services.method_selector import MethodAssignment
+from app.services.month_allocator import AllocatedApplication
 
 
 # ============================================================
@@ -182,6 +186,8 @@ def consolidate_blends(
     block_id: str,
     block_area_ha: float,
     stage_schedule: Optional[list] = None,  # list of StageWindow for per-event math
+    allocations: Optional[list[AllocatedApplication]] = None,
+    planting_date: Optional[date] = None,
 ) -> list[Blend]:
     """Group method assignments into typed Blend objects.
 
@@ -192,6 +198,14 @@ def consolidate_blends(
         block_area_ha: for per-block totals
         stage_schedule: optional StageWindow list — provides events per stage
                         for fertigation per-event dose math
+        allocations: optional AllocatedApplication list from the month
+                     allocator. When present, populates each Blend's
+                     applications[] with one ApplicationEvent per allocator
+                     event falling in the Blend's real stage. When absent,
+                     falls back to one synthesised ApplicationEvent per
+                     stage derived from stage_schedule.
+        planting_date: used to compute week_from_planting for synthesised
+                       events when allocations is None.
 
     Returns:
         list of Blend objects. One blend per (stage × method) that has
@@ -212,6 +226,12 @@ def consolidate_blends(
         for sw in stage_schedule:
             events_lookup[sw.stage_number] = (sw.events, sw.week_start, sw.week_end, sw.date_start, sw.date_end)
 
+    # Index allocations by real stage_number for per-Blend ApplicationEvent population
+    allocations_by_stage: dict[int, list[AllocatedApplication]] = {}
+    if allocations:
+        for app in allocations:
+            allocations_by_stage.setdefault(app.stage_number, []).append(app)
+
     blends: list[Blend] = []
     for (stage_num, method_kind, stage_name), data in sorted(grouped.items()):
         nutrient_targets = data["nutrients"]
@@ -219,9 +239,16 @@ def consolidate_blends(
             continue
 
         events_info = events_lookup.get(stage_num)
-        events_count = events_info[0] if events_info else 1
-        dates_label = _build_dates_label(stage_num, events_info)
-        weeks_label = _build_weeks_label(stage_num, events_info)
+
+        # Build ApplicationEvents — one per allocator event in this stage,
+        # or one synthesised event from stage_schedule when allocator didn't run.
+        application_events = _build_application_events(
+            stage_num=stage_num,
+            stage_allocations=allocations_by_stage.get(stage_num, []),
+            stage_window=_first_stage_window(stage_schedule, stage_num),
+            planting_date=planting_date,
+        )
+        events_count = len(application_events)
 
         # Greedy material selection for this (stage, method)
         selected = _select_materials_greedy(
@@ -254,9 +281,7 @@ def consolidate_blends(
             block_id=block_id,
             stage_number=stage_num,
             stage_name=stage_name,
-            weeks=weeks_label,
-            events=events_count,
-            dates_label=dates_label,
+            applications=application_events,
             method=method_obj,
             raw_products=raw_products,
             concentrates=concentrates,
@@ -269,6 +294,78 @@ def consolidate_blends(
         ))
 
     return blends
+
+
+def _first_stage_window(stage_schedule: Optional[list], stage_num: int):
+    if not stage_schedule:
+        return None
+    for sw in stage_schedule:
+        if sw.stage_number == stage_num:
+            return sw
+    return None
+
+
+def _build_application_events(
+    stage_num: int,
+    stage_allocations: list[AllocatedApplication],
+    stage_window,
+    planting_date: Optional[date],
+) -> list[ApplicationEvent]:
+    """Produce the ApplicationEvent list for one Blend.
+
+    When the month allocator ran, every allocator event in this real stage
+    becomes one ApplicationEvent — dates, week offsets, and 1-of-N counters
+    all flow through.
+
+    When the allocator did not run (no application_months input), we
+    synthesise a single ApplicationEvent anchored to the stage window's
+    midpoint — preserving the legacy single-event-per-stage semantics.
+    """
+    if stage_allocations:
+        return [
+            ApplicationEvent(
+                event_index=a.event_index,
+                event_date=a.event_date,
+                week_from_planting=a.week_from_planting,
+                event_of_stage_index=a.event_of_stage_index,
+                total_events_in_stage=a.total_events_in_stage,
+            )
+            for a in sorted(stage_allocations, key=lambda x: x.event_date)
+        ]
+
+    if stage_window is not None:
+        # Spread the stage's annotated event count evenly across its window.
+        n_events = max(1, int(getattr(stage_window, "events", 1) or 1))
+        span_days = (stage_window.date_end - stage_window.date_start).days
+        span_weeks = stage_window.week_end - stage_window.week_start
+        events_list: list[ApplicationEvent] = []
+        for i in range(n_events):
+            # Spacing: at n_events=1 → midpoint; at n_events>1 → evenly
+            # distributed between date_start and date_end.
+            if n_events == 1:
+                frac = 0.5
+            else:
+                frac = i / (n_events - 1)
+            day_offset = int(round(span_days * frac))
+            wk_offset = int(round(span_weeks * frac))
+            events_list.append(ApplicationEvent(
+                event_index=stage_num * 100 + i + 1,  # unique-ish within programme
+                event_date=stage_window.date_start + timedelta(days=day_offset),
+                week_from_planting=stage_window.week_start + wk_offset,
+                event_of_stage_index=i + 1,
+                total_events_in_stage=n_events,
+            ))
+        return events_list
+
+    # No schedule, no allocations — build a placeholder anchored at planting
+    anchor = planting_date or date.today()
+    return [ApplicationEvent(
+        event_index=stage_num,
+        event_date=anchor + timedelta(weeks=max(0, stage_num - 1) * 4),
+        week_from_planting=max(1, (stage_num - 1) * 4 + 1),
+        event_of_stage_index=1,
+        total_events_in_stage=1,
+    )]
 
 
 # ============================================================
@@ -598,17 +695,3 @@ def _fmt_kg(v: float) -> str:
     return f"{v:.1f} kg"
 
 
-def _build_weeks_label(stage_num: int, events_info: Optional[tuple]) -> str:
-    if events_info:
-        _, wk_start, wk_end, _, _ = events_info
-        if wk_start == wk_end:
-            return f"Week {wk_start}"
-        return f"Weeks {wk_start}-{wk_end}"
-    return f"Stage {stage_num}"
-
-
-def _build_dates_label(stage_num: int, events_info: Optional[tuple]) -> str:
-    if events_info:
-        _, _, _, d_start, d_end = events_info
-        return f"{d_start.strftime('%-d %b')} – {d_end.strftime('%-d %b %Y')}"
-    return ""

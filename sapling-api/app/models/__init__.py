@@ -31,6 +31,7 @@ from .methods import (
     SoilBasalMethod,
 )
 from .programme_artifact import (
+    ApplicationEvent,
     Assumption,
     Blend,
     BlendPart,
@@ -65,6 +66,7 @@ __all__ = [
     "StageSchedule",
     "StageWindow",
     "PreSeasonRecommendation",
+    "ApplicationEvent",
     "Blend",
     "BlendPart",
     "Concentrate",
