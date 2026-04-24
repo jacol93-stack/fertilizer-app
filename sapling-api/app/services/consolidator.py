@@ -70,16 +70,25 @@ DEFICIT_STOP_TOLERANCE = 0.05  # within 5% of target = done
 def _classify_stream(material: dict) -> str:
     """Returns 'A' (calcium stream) or 'B' (sulphate/phosphate stream).
 
-    Rule: if material contains Ca >= 5% and NOT S or P2O5 >= 2% → Part A.
-    Everything else → Part B.
-    Borderline (Ca-containing sulphate/phosphate like Metabophos) goes
-    Part B because the SO₄/PO₄ dominates compatibility behavior.
+    Rule: if material carries a dominant cation (Ca OR Mg ≥ 5%) and is
+    NOT dominated by S or P2O5 (< 2% of each) → Part A. Everything
+    else → Part B.
+
+    Why both Ca AND Mg: both go in the "calcium stream" in FERTASA §11
+    fertigation compatibility. Mg Nitrate (N 11%, Mg 15%, S 0%) is a
+    Part A product; missing the Mg limb classifies it B and it ends
+    up in the sulphate/phosphate stock tank, which is wrong.
+
+    Borderline cases (Ca-containing sulphate/phosphate like
+    Metabophos) stay Part B because the SO₄/PO₄ dominates
+    compatibility behavior — MgSO4 stays B because S ≥ 2.
     """
     ca = float(material.get("ca") or 0)
+    mg = float(material.get("mg") or 0)
     s = float(material.get("s") or 0)
     # materials.p column in this DB is P2O5 equivalent
     p = float(material.get("p") or 0)
-    if ca >= 5 and s < 2 and p < 2:
+    if (ca >= 5 or mg >= 5) and s < 2 and p < 2:
         return "A"
     return "B"
 

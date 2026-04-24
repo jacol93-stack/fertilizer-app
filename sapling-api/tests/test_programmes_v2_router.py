@@ -5,10 +5,12 @@ from app.models import OutstandingItem, PreSeasonInput, RiskFlag, SoilSnapshot
 from app.routers.programmes_v2 import (
     SkippedBlockRequest,
     _append_cluster_narrative,
+    _append_n_cap_flags,
     _append_per_block_soil_snapshots,
     _append_skipped_block_items,
     _cluster_block_inputs,
 )
+from app.services.consolidator import _classify_stream
 from app.services.programme_builder_orchestrator import BlockInput
 
 
@@ -227,3 +229,75 @@ def test_append_cluster_narrative_emits_risk_flag_on_heterogeneity():
     assert artifact.risk_flags[0].severity == "critical"
     assert "splitting" in msg.lower()
     assert "Wilding" in msg
+
+
+# ============================================================
+# N/ha sanity cap
+# ============================================================
+
+class _StubArtifactWithTotals(_StubArtifact):
+    def __init__(self, totals: dict):
+        super().__init__()
+        self.block_totals = totals
+
+
+def test_n_cap_flag_critical_above_500():
+    """N > 500 kg/ha = almost certainly a yield-target typo."""
+    a = _StubArtifactWithTotals({"Block A": {"N": 550.0}})
+    _append_n_cap_flags(a)
+    assert len(a.risk_flags) == 1
+    assert a.risk_flags[0].severity == "critical"
+    assert "Block A" in a.risk_flags[0].message
+    assert "yield-target typo" in a.risk_flags[0].message.lower()
+
+
+def test_n_cap_flag_warn_between_350_and_500():
+    a = _StubArtifactWithTotals({"Block B": {"N": 400.0}})
+    _append_n_cap_flags(a)
+    assert len(a.risk_flags) == 1
+    assert a.risk_flags[0].severity == "warn"
+
+
+def test_n_cap_no_flag_below_350():
+    """Normal range (300 kg/ha for high-yield maize etc) gets no flag."""
+    a = _StubArtifactWithTotals({"Block C": {"N": 280.0}})
+    _append_n_cap_flags(a)
+    assert a.risk_flags == []
+
+
+def test_n_cap_handles_missing_n_totals():
+    """block_totals without an N key should no-op, not crash."""
+    a = _StubArtifactWithTotals({"Block D": {"P2O5": 80.0}})
+    _append_n_cap_flags(a)
+    assert a.risk_flags == []
+
+
+# ============================================================
+# Part A/B stream classifier — Mg inclusion
+# ============================================================
+
+def test_classify_stream_mg_nitrate_goes_part_a():
+    """Mg Nitrate (N 11%, Mg 15%, S 0%) is a calcium-stream product
+    per FERTASA §11 — previously misclassified as B because Ca < 5."""
+    mg_nitrate = {"n": 11, "ca": 0, "mg": 15, "s": 0, "p": 0}
+    assert _classify_stream(mg_nitrate) == "A"
+
+
+def test_classify_stream_mgso4_stays_part_b():
+    """Epsom salts (Mg 16%, S 13%) goes B because S ≥ 2 dominates —
+    otherwise it'd form CaSO4 precipitate with Ca Nitrate."""
+    mgso4 = {"ca": 0, "mg": 16, "s": 13, "p": 0}
+    assert _classify_stream(mgso4) == "B"
+
+
+def test_classify_stream_ca_nitrate_still_part_a():
+    """Regression: adding the Mg limb must not demote Ca products."""
+    ca_nitrate = {"n": 15, "ca": 19, "mg": 0, "s": 0, "p": 0}
+    assert _classify_stream(ca_nitrate) == "A"
+
+
+def test_classify_stream_metabophos_stays_part_b():
+    """Metabophos (N 0, P 19, Ca 19, S 11): Ca ≥ 5 but S ≥ 2 and P ≥ 2
+    dominate → B (sulphate+phosphate stream). Original corner case."""
+    metab = {"n": 0, "p": 19, "ca": 19, "mg": 0, "s": 11}
+    assert _classify_stream(metab) == "B"

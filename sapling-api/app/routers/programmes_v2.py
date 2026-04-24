@@ -242,6 +242,13 @@ async def build_programme_endpoint(
         artifact, calc_path_tally, unadjusted_by_block,
     )
 
+    # Sanity-cap guardrail: catch yield-target typos (a mistyped 100 t/ha
+    # maize produces ~500 kg N/ha, well beyond anything physically
+    # reasonable). Not crop-specific yet — universal thresholds derived
+    # from the highest plausible SA programmes (sugarcane ~240, maize
+    # ~300, heavy-feeder veg ~250). 500 is a red flag in every crop.
+    _append_n_cap_flags(artifact)
+
     # Persist
     artifact_json = artifact.model_dump(mode="json")
     row = {
@@ -561,6 +568,50 @@ def _append_cluster_narrative(artifact, cluster_aggs: list[ClusterAggregate]) ->
                     f"[{agg.heterogeneity.citation}]"
                 ),
                 severity=severity,
+            ))
+
+
+N_CAP_CRITICAL_KG_HA = 500.0  # impossible in any SA crop — almost certainly yield typo
+N_CAP_WARN_KG_HA = 350.0      # unusually high — worth double-checking
+
+
+def _append_n_cap_flags(artifact) -> None:
+    """Scan soil_snapshots + block_totals for N targets beyond plausible
+    SA ceilings and emit a RiskFlag.
+
+    Heavy feeders (maize at 15 t/ha, sugarcane, potato) top out around
+    250-300 kg N/ha total. Anything above 500 kg N/ha is almost
+    certainly a yield-target typo (e.g. user typed "100 t/ha" for
+    a maize block they meant to be "10 t/ha"). Between 350 and 500
+    is unusual but possible for specific high-demand systems —
+    flagged as warn so the agronomist double-checks.
+
+    Future refinement: per-crop FERTASA-cited ceiling on
+    crop_requirements.max_n_kg_ha, checked here with crop-specific
+    messaging. Today's thresholds are universal and conservative.
+    """
+    for block_id, totals in (artifact.block_totals or {}).items():
+        n_total = float(totals.get("N", 0) or 0)
+        if n_total >= N_CAP_CRITICAL_KG_HA:
+            artifact.risk_flags.append(RiskFlag(
+                message=(
+                    f"Block '{block_id}': total N target {n_total:.0f} kg/ha "
+                    f"exceeds the {int(N_CAP_CRITICAL_KG_HA)} kg/ha sanity "
+                    f"cap for any SA crop. Almost always a yield-target typo "
+                    f"— verify the yield value (e.g. 10 t/ha not 100 t/ha) "
+                    f"before activating the programme."
+                ),
+                severity="critical",
+            ))
+        elif n_total >= N_CAP_WARN_KG_HA:
+            artifact.risk_flags.append(RiskFlag(
+                message=(
+                    f"Block '{block_id}': total N target {n_total:.0f} kg/ha "
+                    f"is above {int(N_CAP_WARN_KG_HA)} kg/ha — unusual for "
+                    f"most SA crops. Double-check the yield target if this "
+                    f"isn't an intentional high-demand system."
+                ),
+                severity="warn",
             ))
 
 
