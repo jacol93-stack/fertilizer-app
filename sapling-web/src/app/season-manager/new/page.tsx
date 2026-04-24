@@ -38,7 +38,7 @@ export default function SeasonBuilderPageWrapper() {
   );
 }
 
-const STEPS = ["Client & Farm", "Blocks", "Schedule", "Blends", "Review"];
+const STEPS = ["Client", "Blocks", "Schedule", "Blends", "Review"];
 
 function SeasonBuilderPage() {
   const router = useRouter();
@@ -512,7 +512,7 @@ function SeasonBuilderPage() {
             <button
               key={s}
               onClick={() => i <= wizardStep && setWizardStep(i)}
-              className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              className={`flex-1 truncate whitespace-nowrap rounded-md px-2 py-2 text-xs font-medium transition-colors sm:px-3 sm:text-sm ${
                 wizardStep === i
                   ? "bg-white text-[var(--sapling-dark)] shadow-sm"
                   : i <= wizardStep
