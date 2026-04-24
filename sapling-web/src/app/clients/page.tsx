@@ -36,6 +36,10 @@ interface Client {
   notes: string | null;
   company_details: { name?: string; [key: string]: unknown } | null;
   agent_id: string;
+  // Server-computed aggregates from GET /api/clients/ list
+  // (fallback 0 if an older backend without these fields is hit).
+  farm_count?: number;
+  field_count?: number;
 }
 
 interface Farm {
@@ -112,48 +116,24 @@ function ClientsPage() {
     setFormNotes("");
   };
 
-  // Fetch farm/field counts for the CURRENT page only. This used to run for
-  // every client on screen (O(N*M) with no pagination) — now it runs for at
-  // most `limit` clients per page, which is a big improvement for big books.
+  // Server now returns farm_count + field_count directly on each
+  // client row (GET /api/clients/ enrichment). The old N+1 fan-out
+  // was flooding the Supabase HTTP/2 pool and producing CORS-looking
+  // 500s that silently left every card showing "0 farms 0 fields."
   useEffect(() => {
     if (!clients.length) {
       setFarmCounts({});
       setFieldCounts({});
       return;
     }
-    let cancelled = false;
-    (async () => {
-      const fc: Record<string, number> = {};
-      const flc: Record<string, number> = {};
-      await Promise.all(
-        clients.map(async (c) => {
-          try {
-            const farms = await api.get<Farm[]>(`/api/clients/${c.id}/farms`);
-            fc[c.id] = farms.length;
-            let totalFields = 0;
-            await Promise.all(
-              farms.map(async (f) => {
-                try {
-                  const fields = await api.get<Field[]>(`/api/clients/farms/${f.id}/fields`);
-                  totalFields += fields.length;
-                } catch {}
-              })
-            );
-            flc[c.id] = totalFields;
-          } catch {
-            fc[c.id] = 0;
-            flc[c.id] = 0;
-          }
-        }),
-      );
-      if (!cancelled) {
-        setFarmCounts(fc);
-        setFieldCounts(flc);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    const fc: Record<string, number> = {};
+    const flc: Record<string, number> = {};
+    for (const c of clients) {
+      fc[c.id] = c.farm_count ?? 0;
+      flc[c.id] = c.field_count ?? 0;
+    }
+    setFarmCounts(fc);
+    setFieldCounts(flc);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clients.map((c) => c.id).join(",")]);
 

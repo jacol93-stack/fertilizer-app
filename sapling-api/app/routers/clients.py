@@ -199,7 +199,37 @@ def list_clients(
     if page.skip:
         query = query.offset(page.skip)
     query = query.limit(page.limit)
-    result = query.execute()
+    result = run_sb(lambda: query.execute())
+
+    # Enrich each client with farm_count + field_count in two batch
+    # queries so the frontend doesn't have to fire N + N*M follow-ups
+    # (which was flooding the Supabase HTTP/2 pool and producing CORS-
+    # looking 500s on the /clients page).
+    client_ids = [c["id"] for c in (result.data or [])]
+    farm_counts: dict[str, int] = {}
+    field_counts: dict[str, int] = {}
+    farm_to_client: dict[str, str] = {}
+    if client_ids:
+        farm_rows = run_sb(lambda: sb.table("farms").select(
+            "id,client_id"
+        ).in_("client_id", client_ids).execute()).data or []
+        for fr in farm_rows:
+            cid = fr["client_id"]
+            farm_counts[cid] = farm_counts.get(cid, 0) + 1
+            farm_to_client[fr["id"]] = cid
+        if farm_to_client:
+            field_rows = run_sb(lambda: sb.table("fields").select(
+                "farm_id"
+            ).in_("farm_id", list(farm_to_client.keys())).execute()).data or []
+            for fd in field_rows:
+                cid = farm_to_client.get(fd["farm_id"])
+                if cid:
+                    field_counts[cid] = field_counts.get(cid, 0) + 1
+
+    for c in (result.data or []):
+        c["farm_count"] = farm_counts.get(c["id"], 0)
+        c["field_count"] = field_counts.get(c["id"], 0)
+
     return Page.from_result(result, page)
 
 
