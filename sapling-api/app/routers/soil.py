@@ -27,7 +27,7 @@ from app.services.soil_engine import (
     adjust_targets_for_ratios,
 )
 from app.services.comparison_engine import calculate_crop_impact, generate_recommendations
-from app.supabase_client import get_supabase_admin
+from app.supabase_client import get_supabase_admin, run_sb
 
 router = APIRouter(tags=["Soil"])
 
@@ -1330,7 +1330,7 @@ def list_soil_analyses(
         query = query.eq("field_id", field_id)
 
     query = apply_page(query, page, default_order="created_at")
-    result = query.execute()
+    result = run_sb(lambda: query.execute())
     return Page.from_result(result, page)
 
 
@@ -1339,7 +1339,7 @@ def get_soil_analysis(analysis_id: str, user: CurrentUser = Depends(get_current_
     """Retrieve a single soil analysis."""
     sb = get_supabase_admin()
 
-    result = sb.table("soil_analyses").select("*").eq("id", analysis_id).execute()
+    result = run_sb(lambda: sb.table("soil_analyses").select("*").eq("id", analysis_id).execute())
     if not result.data:
         raise HTTPException(status_code=404, detail="Soil analysis not found")
 
