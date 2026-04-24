@@ -14,16 +14,23 @@ from app.services.soil_factor_reasoner import (
     CAO_PER_KG_N_BY_N_TYPE,
     EC_HIGH_THRESHOLD,
     EC_MODERATE_THRESHOLD,
+    ESP_SODIC_THRESHOLD,
+    ESP_TRENDING_THRESHOLD,
     N_UTILIZATION_DEFAULT,
     P_ZN_ANTAGONISM_THRESHOLD,
     SAR_HIGH_THRESHOLD,
     SAR_MODERATE_THRESHOLD,
+    WATER_SAR_MODERATE,
+    WATER_SAR_SEVERE,
     SoilFactorFinding,
     SoilFactorReport,
     compute_al_saturation_pct,
     compute_cn_ratio,
     compute_lime_needed_for_n,
     compute_sar,
+    compute_soil_esp_pct,
+    compute_water_rsc_meq,
+    compute_water_sar,
     reason_soil_factors,
 )
 
@@ -332,3 +339,131 @@ def test_clivia_land_a_full_reasoning():
     # by_severity_at_least helper
     critical_findings = report.by_severity_at_least("critical")
     assert len(critical_findings) >= 1
+
+
+# ============================================================
+# A4 — Soil ESP + Irrigation water quality
+# ============================================================
+
+def test_compute_soil_esp_from_base_saturation():
+    """Lab reports Na base saturation % directly — use it."""
+    assert compute_soil_esp_pct({"Na_base_sat_pct": 14.7}) == 14.7
+
+
+def test_compute_soil_esp_from_cmol_and_cec():
+    """Fallback: Na (cmol/kg) / CEC × 100."""
+    # Gamka Land 1-4: Na 2.0 cmol/kg, T-value 13.63 → 14.7 % ESP
+    result = compute_soil_esp_pct({"Na": 2.0, "T Value": 13.63})
+    assert abs(result - 14.7) < 0.5
+
+
+def test_compute_soil_esp_returns_none_without_inputs():
+    assert compute_soil_esp_pct({"Ca": 10}) is None
+
+
+def test_compute_water_sar_typical_karoo_borehole():
+    """Typical Karoo borehole: Na ~200 mg/L, Ca ~60 mg/L, Mg ~30 mg/L.
+    Computed SAR should land in the moderate-to-severe band."""
+    water = {"Na": 200, "Ca": 60, "Mg": 30}
+    sar = compute_water_sar(water)
+    assert sar is not None
+    assert 5 < sar < 12
+
+
+def test_compute_water_rsc_positive_bicarbonate_excess():
+    """HCO3 meaningfully exceeds Ca+Mg → positive RSC → sodification risk."""
+    water = {"HCO3": 400, "Ca": 40, "Mg": 20}
+    rsc = compute_water_rsc_meq(water)
+    assert rsc is not None
+    assert rsc > 0  # bicarbonate-loaded water
+
+
+def test_compute_water_rsc_negative_balanced():
+    """Ca+Mg exceed HCO3 → negative RSC → safe."""
+    water = {"HCO3": 80, "Ca": 80, "Mg": 40}
+    rsc = compute_water_rsc_meq(water)
+    assert rsc is not None
+    assert rsc < 0
+
+
+def test_soil_esp_trending_fires_warn():
+    """ESP in the 10–15 % band fires a watch-level finding."""
+    # Kraan-pattern: Na 1.5 cmol/kg, CEC 17.18 → 8.7 % (below threshold)
+    # Gamka-pattern: Na 2.0 cmol/kg, CEC 13.63 → 14.7 % (trending)
+    soil = {"Na": 2.0, "T Value": 13.63, "Ca": 9.7, "Mg": 1.6, "K": 0.33}
+    report = reason_soil_factors(soil_values=soil, crop="Lucerne")
+    esp_finding = next(
+        (f for f in report.findings if f.parameter == "soil_ESP_pct"),
+        None,
+    )
+    assert esp_finding is not None
+    assert esp_finding.severity == "warn"
+
+
+def test_soil_esp_above_15_fires_critical():
+    """ESP ≥ 15 % = sodic, critical."""
+    soil = {"Na_base_sat_pct": 18.0, "Ca": 10, "Mg": 2}
+    report = reason_soil_factors(soil_values=soil, crop="Lucerne")
+    esp_finding = next(
+        (f for f in report.findings if f.parameter == "soil_ESP_pct"),
+        None,
+    )
+    assert esp_finding is not None
+    assert esp_finding.severity == "critical"
+
+
+def test_water_sar_severe_fires_warn_on_water_alone():
+    soil = {"Ca": 10, "Mg": 3, "K": 0.3}  # benign soil
+    water = {"Na": 400, "Ca": 40, "Mg": 15}  # high-Na water
+    report = reason_soil_factors(soil_values=soil, crop="Lucerne",
+                                 water_values=water)
+    water_finding = next(
+        (f for f in report.findings if f.parameter == "water_SAR"),
+        None,
+    )
+    assert water_finding is not None
+    assert water_finding.severity in ("warn", "watch")
+
+
+def test_compounding_sodic_soil_plus_sodic_water_critical():
+    """The Karoo-Prince-Albert pattern: trending soil ESP + sodic water
+    → critical compounding hazard, gypsum alone won't solve it."""
+    # Gamka soil (ESP 14.7 %)
+    soil = {"Na": 2.0, "T Value": 13.63, "Ca": 9.7, "Mg": 1.6}
+    # Karoo borehole (SAR ~7)
+    water = {"Na": 200, "Ca": 50, "Mg": 30}
+    report = reason_soil_factors(soil_values=soil, crop="Lucerne",
+                                 water_values=water)
+    compounding = next(
+        (f for f in report.findings if f.parameter == "soil_ESP_x_water_SAR"),
+        None,
+    )
+    assert compounding is not None
+    assert compounding.severity == "critical"
+    # Message should flag the compounding nature
+    assert "compound" in compounding.message.lower() or "treading" in compounding.recommended_action.lower()
+
+
+def test_no_water_no_water_findings():
+    """When water_values is None, no water-quality findings are emitted."""
+    soil = {"Na": 0.3, "T Value": 15, "Ca": 10, "Mg": 3}
+    report = reason_soil_factors(soil_values=soil, crop="Lucerne",
+                                 water_values=None)
+    assert not any(
+        f.parameter.startswith("water_") or f.parameter == "soil_ESP_x_water_SAR"
+        for f in report.findings
+    )
+
+
+def test_benign_water_no_compounding_finding():
+    """Low-SAR water on trending soil should NOT fire the compounding
+    rule — only escalate when both limbs exceed threshold."""
+    soil = {"Na": 2.0, "T Value": 13.63, "Ca": 9.7, "Mg": 1.6}  # trending ESP
+    water = {"Na": 30, "Ca": 60, "Mg": 30}  # clean water, low SAR
+    report = reason_soil_factors(soil_values=soil, crop="Lucerne",
+                                 water_values=water)
+    compounding = next(
+        (f for f in report.findings if f.parameter == "soil_ESP_x_water_SAR"),
+        None,
+    )
+    assert compounding is None

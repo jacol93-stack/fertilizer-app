@@ -120,6 +120,9 @@ class OrchestratorInput:
     has_recent_leaf_analysis: bool = False
     planned_n_fertilizers: Optional[list[str]] = None
     available_materials: Optional[list[dict]] = None
+    # Irrigation water analysis applied to every block unless per-block
+    # override exists. Keys: EC (dS/m), Na/Ca/Mg/HCO3 (mg/L), pH, etc.
+    water_values: Optional[dict] = None
 
 
 # ============================================================
@@ -162,6 +165,7 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
         sf_report = reason_soil_factors(
             soil_values=block.soil_parameters,
             crop=inputs.crop,
+            water_values=inputs.water_values,
         )
         soil_factor_reports[block.block_id] = sf_report
         decision_trace.append(

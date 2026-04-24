@@ -111,6 +111,7 @@ class BuildProgrammeRequest(BaseModel):
     planned_n_fertilizers: Optional[list[str]] = None
     subtract_harvested_removal: bool = False
     harvest_mode: Optional[str] = None  # 'grain' | 'hay' | 'silage' | 'fruit' | 'nuts' | ...
+    water_values: Optional[dict] = None  # {'EC': dS/m, 'Na': mg/L, 'Ca': mg/L, 'Mg': mg/L, 'HCO3': mg/L, 'pH': ...}
     client_id: Optional[UUID] = None
     skipped_blocks: list[SkippedBlockRequest] = Field(default_factory=list)
 
@@ -220,6 +221,7 @@ async def build_programme_endpoint(
         has_recent_leaf_analysis=request.has_recent_leaf_analysis,
         planned_n_fertilizers=request.planned_n_fertilizers,
         available_materials=materials,
+        water_values=request.water_values,
     )
 
     try:

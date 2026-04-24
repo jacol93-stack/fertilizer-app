@@ -59,6 +59,40 @@ SAR_MODERATE_THRESHOLD = 13.0
 SAR_HIGH_THRESHOLD = 20.0
 SAR_SOURCE = ("USSL_1954", "USDA Agriculture Handbook 60", 3)
 
+# ── Soil ESP (Exchangeable Sodium Percentage) ────────────────────────
+# ESP = Na_cmol_per_kg / CEC_cmol_per_kg × 100. Classification per USSL
+# + FERTASA: ≥ 15 % = sodic soil; 10-15 % = trending sodic (early
+# intervention); < 10 % = non-sodic. The 10 % threshold is the point
+# where irrigation-water sodium additions can push the system into
+# structural trouble within a season or two.
+ESP_TRENDING_THRESHOLD = 10.0
+ESP_SODIC_THRESHOLD = 15.0
+
+# ── Irrigation water quality (FAO Irrigation & Drainage Paper 29,
+#    Ayers & Westcot 1985, adopted by SA guidelines) ─────────────────
+# All thresholds assume water values reported in SA-standard units:
+#   EC in dS/m (= mS/cm), ions (Na, Ca, Mg, HCO3) in mg/L
+# Water SAR uses the same formula as soil SAR but on water chemistry.
+WATER_EC_MODERATE_DS_M = 0.7    # Ayers & Westcot: slight-to-moderate restriction
+WATER_EC_SEVERE_DS_M = 3.0      # severe restriction
+WATER_SAR_MODERATE = 3.0
+WATER_SAR_SEVERE = 9.0
+WATER_RSC_MODERATE_MEQ = 1.25   # residual sodium carbonate
+WATER_RSC_SEVERE_MEQ = 2.5
+WATER_HCO3_MODERATE_MG_L = 90.0
+WATER_HCO3_SEVERE_MG_L = 520.0
+WATER_QUALITY_SOURCE = ("FAO_IRRIGATION_29", "FAO Ayers & Westcot 1985", 3)
+
+# Ion equivalent weights for mg/L ↔ meq/L conversion
+# (atomic weight ÷ charge)
+_EQ_WEIGHT_MG_PER_MEQ = {
+    "Na": 22.99,
+    "Ca": 20.04,
+    "Mg": 12.15,
+    "HCO3": 61.02,
+    "CO3": 30.00,
+}
+
 # EC salinity thresholds (saturated paste extract, mS/cm at 25°C)
 EC_MODERATE_THRESHOLD = 2.0  # affects salt-sensitive crops
 EC_HIGH_THRESHOLD = 4.0      # salinity stress for most crops
@@ -264,6 +298,84 @@ def compute_lime_needed_for_n(
     }
 
 
+def compute_soil_esp_pct(soil_values: dict) -> Optional[float]:
+    """Soil Exchangeable Sodium Percentage. Preferred path: read from
+    base-saturation Na %. Fallback: Na (cmol/kg) / CEC × 100.
+
+    Returns None when neither path is resolvable.
+    """
+    # Some labs report Na base-sat % directly
+    for key in ("Na_base_sat_pct", "Na base sat %", "ESP"):
+        val = soil_values.get(key)
+        if val is not None:
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                pass
+    na = _sv(soil_values, "Na")
+    cec = _sv(soil_values, "CEC", "T Value", "T-value")
+    if na is None or cec is None or cec <= 0:
+        return None
+    return round(na / cec * 100.0, 1)
+
+
+def _mg_per_l_to_meq_per_l(mg_per_l: float, ion: str) -> Optional[float]:
+    """Convert ion concentration mg/L → meq/L using equivalent weight."""
+    eq = _EQ_WEIGHT_MG_PER_MEQ.get(ion)
+    if not eq or not mg_per_l:
+        return None
+    return mg_per_l / eq
+
+
+def compute_water_sar(water_values: dict) -> Optional[float]:
+    """Irrigation water SAR = Na / sqrt((Ca + Mg) / 2), all in meq/L.
+    Accepts mg/L inputs and converts internally. Returns None if any
+    of Na/Ca/Mg missing."""
+    if not water_values:
+        return None
+    na_mg = water_values.get("Na")
+    ca_mg = water_values.get("Ca")
+    mg_mg = water_values.get("Mg")
+    if na_mg is None or ca_mg is None or mg_mg is None:
+        return None
+    try:
+        na_meq = _mg_per_l_to_meq_per_l(float(na_mg), "Na")
+        ca_meq = _mg_per_l_to_meq_per_l(float(ca_mg), "Ca")
+        mg_meq = _mg_per_l_to_meq_per_l(float(mg_mg), "Mg")
+    except (ValueError, TypeError):
+        return None
+    if na_meq is None or ca_meq is None or mg_meq is None:
+        return None
+    denom = ((ca_meq + mg_meq) / 2.0) ** 0.5
+    if denom <= 0:
+        return None
+    return round(na_meq / denom, 2)
+
+
+def compute_water_rsc_meq(water_values: dict) -> Optional[float]:
+    """Residual Sodium Carbonate (meq/L) = (CO3 + HCO3) - (Ca + Mg),
+    all in meq/L. Accepts mg/L input. High RSC means bicarbonate
+    exceeds Ca + Mg, driving Na onto the exchange after irrigation
+    precipitates Ca/Mg carbonates — a slow sodification mechanism
+    invisible to soil SAR alone."""
+    if not water_values:
+        return None
+    hco3_mg = water_values.get("HCO3", 0)
+    co3_mg = water_values.get("CO3", 0)
+    ca_mg = water_values.get("Ca")
+    mg_mg = water_values.get("Mg")
+    if ca_mg is None or mg_mg is None:
+        return None
+    try:
+        hco3_meq = _mg_per_l_to_meq_per_l(float(hco3_mg), "HCO3") or 0
+        co3_meq = _mg_per_l_to_meq_per_l(float(co3_mg), "CO3") or 0
+        ca_meq = _mg_per_l_to_meq_per_l(float(ca_mg), "Ca") or 0
+        mg_meq = _mg_per_l_to_meq_per_l(float(mg_mg), "Mg") or 0
+    except (ValueError, TypeError):
+        return None
+    return round((hco3_meq + co3_meq) - (ca_meq + mg_meq), 2)
+
+
 def compute_cn_ratio(soil_values: dict) -> Optional[float]:
     """Carbon:Nitrogen ratio from Organic C % and Total N %.
 
@@ -286,6 +398,7 @@ def reason_soil_factors(
     soil_values: dict,
     crop: str,
     crop_calc_flags: Optional[dict] = None,
+    water_values: Optional[dict] = None,
 ) -> SoilFactorReport:
     """Run all soil-factor reasoning rules.
 
@@ -293,6 +406,9 @@ def reason_soil_factors(
         soil_values: raw lab parameters as dict of {name: value}
         crop: canonical crop name (for crop-specific thresholds)
         crop_calc_flags: optional dict of flags for this crop
+        water_values: optional irrigation water analysis (EC dS/m, Na/Ca/Mg/HCO3
+            in mg/L). When provided, water × soil compounding rules fire —
+            especially the sodic-water-on-trending-ESP-soil escalation.
 
     Returns:
         SoilFactorReport with findings + computed metrics.
@@ -495,6 +611,172 @@ def reason_soil_factors(
                 source_id=EC_SOURCE[0],
                 source_section=EC_SOURCE[1],
                 tier=EC_SOURCE[2],
+            ))
+
+    # ----- Soil ESP + irrigation water compounding ----------------
+    # The sodium story has two limbs:
+    #   (a) Soil ESP on its own tells us the current state.
+    #   (b) Irrigation water SAR / RSC tells us whether every cycle
+    #       makes it worse or better.
+    # The combination matters far more than either alone — a soil ESP
+    # of 12 % is recoverable with gypsum if water is benign, but is
+    # heading for structural failure if water SAR is high.
+    esp = compute_soil_esp_pct(soil_values)
+    if esp is not None:
+        report.computed["soil_ESP_pct"] = esp
+        if esp >= ESP_SODIC_THRESHOLD:
+            report.findings.append(SoilFactorFinding(
+                kind="toxicity",
+                severity="critical",
+                parameter="soil_ESP_pct",
+                value=esp,
+                threshold=ESP_SODIC_THRESHOLD,
+                message=f"Soil ESP {esp:.1f} % — sodic (≥ 15 % threshold). "
+                        f"Structural breakdown + Na toxicity risk.",
+                recommended_action="Gypsum amelioration campaign; verify irrigation water is not re-adding Na",
+                trigger_kind="toxicity",
+                source_id="USSL_1954",
+                source_section="USDA Ag Handbook 60",
+                tier=3,
+            ))
+        elif esp >= ESP_TRENDING_THRESHOLD:
+            report.findings.append(SoilFactorFinding(
+                kind="balance",
+                severity="warn",
+                parameter="soil_ESP_pct",
+                value=esp,
+                threshold=ESP_TRENDING_THRESHOLD,
+                message=f"Soil ESP {esp:.1f} % — trending toward sodic (10–15 % band). "
+                        f"Early intervention prevents structural damage.",
+                recommended_action="Start gypsum programme; confirm irrigation water is not Na-loaded",
+                trigger_kind=None,
+                source_id="USSL_1954",
+                source_section="USDA Ag Handbook 60",
+                tier=3,
+            ))
+
+    # Irrigation water quality findings (when water_values supplied)
+    if water_values:
+        water_sar = compute_water_sar(water_values)
+        water_rsc = compute_water_rsc_meq(water_values)
+        water_ec = None
+        ec_raw = water_values.get("EC")
+        if ec_raw is not None:
+            try:
+                water_ec = float(ec_raw)
+            except (ValueError, TypeError):
+                pass
+        hco3_raw = water_values.get("HCO3")
+        water_hco3 = None
+        if hco3_raw is not None:
+            try:
+                water_hco3 = float(hco3_raw)
+            except (ValueError, TypeError):
+                pass
+
+        if water_sar is not None:
+            report.computed["water_SAR"] = water_sar
+        if water_rsc is not None:
+            report.computed["water_RSC_meq"] = water_rsc
+        if water_ec is not None:
+            report.computed["water_EC_dS_m"] = water_ec
+
+        # Water SAR on its own
+        if water_sar is not None:
+            if water_sar > WATER_SAR_SEVERE:
+                report.findings.append(SoilFactorFinding(
+                    kind="toxicity",
+                    severity="warn",
+                    parameter="water_SAR",
+                    value=water_sar,
+                    threshold=WATER_SAR_SEVERE,
+                    message=f"Irrigation water SAR {water_sar:.1f} — severe sodium hazard on water. "
+                            f"Every cycle is adding Na to the exchange.",
+                    recommended_action="Gypsum programme sized against water-delivered Na; investigate alternative water source",
+                    trigger_kind="toxicity",
+                    source_id=WATER_QUALITY_SOURCE[0],
+                    source_section=WATER_QUALITY_SOURCE[1],
+                    tier=WATER_QUALITY_SOURCE[2],
+                ))
+            elif water_sar > WATER_SAR_MODERATE:
+                report.findings.append(SoilFactorFinding(
+                    kind="balance",
+                    severity="watch",
+                    parameter="water_SAR",
+                    value=water_sar,
+                    threshold=WATER_SAR_MODERATE,
+                    message=f"Irrigation water SAR {water_sar:.1f} — moderate sodium hazard. "
+                            f"Monitor soil ESP annually.",
+                    recommended_action="Maintenance gypsum; track soil ESP trend each season",
+                    trigger_kind=None,
+                    source_id=WATER_QUALITY_SOURCE[0],
+                    source_section=WATER_QUALITY_SOURCE[1],
+                    tier=WATER_QUALITY_SOURCE[2],
+                ))
+
+        # RSC on its own
+        if water_rsc is not None and water_rsc > WATER_RSC_SEVERE_MEQ:
+            report.findings.append(SoilFactorFinding(
+                kind="toxicity",
+                severity="warn",
+                parameter="water_RSC_meq",
+                value=water_rsc,
+                threshold=WATER_RSC_SEVERE_MEQ,
+                message=f"Irrigation water RSC {water_rsc:.2f} meq/L — severe. "
+                        f"Bicarbonate precipitates Ca/Mg as carbonates, "
+                        f"concentrating Na on the exchange.",
+                recommended_action="Acidify water (sulphuric acid injection) or blend with cleaner source; "
+                                   "gypsum alone does not solve bicarbonate-driven sodification",
+                trigger_kind="toxicity",
+                source_id=WATER_QUALITY_SOURCE[0],
+                source_section=WATER_QUALITY_SOURCE[1],
+                tier=WATER_QUALITY_SOURCE[2],
+            ))
+
+        # Water EC on its own
+        if water_ec is not None and water_ec > WATER_EC_SEVERE_DS_M:
+            report.findings.append(SoilFactorFinding(
+                kind="toxicity",
+                severity="warn",
+                parameter="water_EC_dS_m",
+                value=water_ec,
+                threshold=WATER_EC_SEVERE_DS_M,
+                message=f"Irrigation water EC {water_ec:.2f} dS/m — severe salinity. "
+                        f"Crop yield penalty without leaching fraction.",
+                recommended_action="Apply 15-25 % leaching fraction; avoid salt-carrier fertilisers; "
+                                   "crop choice reconsidered for salt-sensitive species",
+                trigger_kind="toxicity",
+                source_id=WATER_QUALITY_SOURCE[0],
+                source_section=WATER_QUALITY_SOURCE[1],
+                tier=WATER_QUALITY_SOURCE[2],
+            ))
+
+        # Compounding: sodic water × trending-to-sodic soil. This is the
+        # Karoo-Prince-Albert pattern — gypsum alone treads water unless
+        # water is simultaneously addressed.
+        if (esp is not None and water_sar is not None
+                and esp >= ESP_TRENDING_THRESHOLD
+                and water_sar > WATER_SAR_MODERATE):
+            report.findings.append(SoilFactorFinding(
+                kind="toxicity",
+                severity="critical",
+                parameter="soil_ESP_x_water_SAR",
+                value=water_sar,
+                threshold=WATER_SAR_MODERATE,
+                message=(
+                    f"Compounding sodium hazard: soil ESP {esp:.1f} % "
+                    f"(already trending/sodic) + irrigation water SAR {water_sar:.1f}. "
+                    f"Gypsum at conventional rates will tread water — every "
+                    f"irrigation cycle re-adds Na as fast as gypsum displaces it."
+                ),
+                recommended_action=(
+                    "Escalate gypsum rate materially (2-3× standard), investigate alternative water source, "
+                    "and plan multi-season remediation. Get an irrigation water test if not already done."
+                ),
+                trigger_kind="toxicity",
+                source_id=WATER_QUALITY_SOURCE[0],
+                source_section=WATER_QUALITY_SOURCE[1],
+                tier=WATER_QUALITY_SOURCE[2],
             ))
 
     return report
