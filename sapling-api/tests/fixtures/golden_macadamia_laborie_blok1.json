@@ -97,54 +97,43 @@
           "stage_number": 1,
           "stage_name": "establishment",
           "week_start": 1,
-          "week_end": 7,
+          "week_end": 9,
           "date_start": "2026-07-01",
-          "date_end": "2026-08-23",
-          "events": 7,
+          "date_end": "2026-09-06",
+          "events": 9,
           "blend_ref": null,
           "foliar_at_week": null
         },
         {
           "stage_number": 2,
           "stage_name": "vegetative",
-          "week_start": 8,
-          "week_end": 15,
-          "date_start": "2026-08-24",
-          "date_end": "2026-10-16",
-          "events": 7,
+          "week_start": 10,
+          "week_end": 19,
+          "date_start": "2026-09-07",
+          "date_end": "2026-11-13",
+          "events": 9,
           "blend_ref": null,
           "foliar_at_week": null
         },
         {
           "stage_number": 3,
           "stage_name": "reproductive",
-          "week_start": 16,
-          "week_end": 23,
-          "date_start": "2026-10-17",
-          "date_end": "2026-12-09",
-          "events": 7,
+          "week_start": 20,
+          "week_end": 29,
+          "date_start": "2026-11-14",
+          "date_end": "2027-01-20",
+          "events": 9,
           "blend_ref": null,
           "foliar_at_week": null
         },
         {
           "stage_number": 4,
           "stage_name": "fill",
-          "week_start": 24,
-          "week_end": 30,
-          "date_start": "2026-12-10",
-          "date_end": "2027-02-01",
-          "events": 7,
-          "blend_ref": null,
-          "foliar_at_week": null
-        },
-        {
-          "stage_number": 5,
-          "stage_name": "maturation",
-          "week_start": 31,
+          "week_start": 30,
           "week_end": 38,
-          "date_start": "2027-02-02",
-          "date_end": "2027-03-27",
-          "events": 7,
+          "date_start": "2027-01-21",
+          "date_end": "2027-03-29",
+          "events": 9,
           "blend_ref": null,
           "foliar_at_week": null
         }
@@ -156,9 +145,9 @@
       "block_id": "laborie-blok-1",
       "stage_number": 1,
       "stage_name": "establishment",
-      "weeks": "Weeks 1-7",
-      "events": 7,
-      "dates_label": "1 Jul – 23 Aug 2026",
+      "weeks": "Weeks 1-9",
+      "events": 9,
+      "dates_label": "1 Jul – 6 Sep 2026",
       "method": {
         "kind": "dry_broadcast",
         "incorporate": false,
@@ -169,7 +158,7 @@
           "product": "Manure Compost",
           "analysis": "N 2.1%, P₂O₅ 1.0%, K₂O 1.6%, Ca 2.2%, Mg 1.0%, S 0.7%",
           "stream": null,
-          "rate_per_event_per_ha": "71 kg",
+          "rate_per_event_per_ha": "56 kg",
           "rate_per_stage_per_ha": "500 kg",
           "batch_total": "2500 kg",
           "source": null
@@ -178,7 +167,7 @@
           "product": "DAP",
           "analysis": "N 18.0%, P₂O₅ 46.0%, S 18.0%",
           "stream": null,
-          "rate_per_event_per_ha": "1.7 kg",
+          "rate_per_event_per_ha": "1.4 kg",
           "rate_per_stage_per_ha": "12 kg",
           "batch_total": "61 kg",
           "source": null
@@ -203,9 +192,9 @@
       "block_id": "laborie-blok-1",
       "stage_number": 1,
       "stage_name": "establishment",
-      "weeks": "Weeks 1-7",
-      "events": 7,
-      "dates_label": "1 Jul – 23 Aug 2026",
+      "weeks": "Weeks 1-9",
+      "events": 9,
+      "dates_label": "1 Jul – 6 Sep 2026",
       "method": {
         "kind": "liquid_drip",
         "concentrate_strength_g_per_l": 300.0,
@@ -225,7 +214,7 @@
           "product": "SupaFeed 3/1/6 (46)",
           "analysis": "N 13.8%, P₂O₅ 4.6%, K₂O 27.6%",
           "stream": "B",
-          "rate_per_event_per_ha": "9.0 kg",
+          "rate_per_event_per_ha": "7.0 kg",
           "rate_per_stage_per_ha": "63 kg",
           "batch_total": "314 kg",
           "source": null
@@ -234,7 +223,7 @@
           "product": "Liquispoor",
           "analysis": "composition not specified",
           "stream": "B",
-          "rate_per_event_per_ha": "83 kg",
+          "rate_per_event_per_ha": "65 kg",
           "rate_per_stage_per_ha": "581 kg",
           "batch_total": "2906 kg",
           "source": null
@@ -243,7 +232,7 @@
           "product": "K-Plus 13/0/38",
           "analysis": "N 14.3%, K₂O 42.5%, Ca 8.4%, S 17.0%",
           "stream": "B",
-          "rate_per_event_per_ha": "0.8 kg",
+          "rate_per_event_per_ha": "0.6 kg",
           "rate_per_stage_per_ha": "5.3 kg",
           "batch_total": "26 kg",
           "source": null
@@ -252,7 +241,7 @@
           "product": "Carbon Powder",
           "analysis": "N 1.0%, P₂O₅ 0.8%, K₂O 1.0%, Ca 1.2%, Mg 1.0%, S 0.7%",
           "stream": "B",
-          "rate_per_event_per_ha": "4.1 kg",
+          "rate_per_event_per_ha": "3.2 kg",
           "rate_per_stage_per_ha": "29 kg",
           "batch_total": "145 kg",
           "source": null
@@ -289,9 +278,9 @@
       "block_id": "laborie-blok-1",
       "stage_number": 2,
       "stage_name": "vegetative",
-      "weeks": "Weeks 8-15",
-      "events": 7,
-      "dates_label": "24 Aug – 16 Oct 2026",
+      "weeks": "Weeks 10-19",
+      "events": 9,
+      "dates_label": "7 Sep – 13 Nov 2026",
       "method": {
         "kind": "liquid_drip",
         "concentrate_strength_g_per_l": 300.0,
@@ -311,7 +300,7 @@
           "product": "Multifeed 5/2/4 (43)",
           "analysis": "N 19.5%, P₂O₅ 7.8%, K₂O 15.6%",
           "stream": "B",
-          "rate_per_event_per_ha": "16 kg",
+          "rate_per_event_per_ha": "13 kg",
           "rate_per_stage_per_ha": "113 kg",
           "batch_total": "564 kg",
           "source": null
@@ -320,7 +309,7 @@
           "product": "MKP (Monopotassium Phosphate)",
           "analysis": "P₂O₅ 22.6%, K₂O 28.2%",
           "stream": "B",
-          "rate_per_event_per_ha": "4.1 kg",
+          "rate_per_event_per_ha": "3.2 kg",
           "rate_per_stage_per_ha": "28 kg",
           "batch_total": "142 kg",
           "source": null
@@ -329,7 +318,7 @@
           "product": "HumCal",
           "analysis": "Ca 92.0%",
           "stream": "A",
-          "rate_per_event_per_ha": "0.6 kg",
+          "rate_per_event_per_ha": "0.4 kg",
           "rate_per_stage_per_ha": "3.9 kg",
           "batch_total": "20 kg",
           "source": null
@@ -338,7 +327,7 @@
           "product": "Fersul",
           "analysis": "S 18.0%",
           "stream": "B",
-          "rate_per_event_per_ha": "1.2 kg",
+          "rate_per_event_per_ha": "0.9 kg",
           "rate_per_stage_per_ha": "8.3 kg",
           "batch_total": "42 kg",
           "source": null
@@ -347,7 +336,7 @@
           "product": "Carbon Powder",
           "analysis": "N 1.0%, P₂O₅ 0.8%, K₂O 1.0%, Ca 1.2%, Mg 1.0%, S 0.7%",
           "stream": "B",
-          "rate_per_event_per_ha": "6.0 kg",
+          "rate_per_event_per_ha": "4.7 kg",
           "rate_per_stage_per_ha": "42 kg",
           "batch_total": "210 kg",
           "source": null
@@ -356,7 +345,7 @@
           "product": "Aquasol Hydrofood",
           "analysis": "N 6.5%, P₂O₅ 4.5%, K₂O 3.0%, Mg 6.0%, S 1.7%",
           "stream": "B",
-          "rate_per_event_per_ha": "0.2 kg",
+          "rate_per_event_per_ha": "0.1 kg",
           "rate_per_stage_per_ha": "1.2 kg",
           "batch_total": "5.8 kg",
           "source": null
@@ -404,9 +393,9 @@
       "block_id": "laborie-blok-1",
       "stage_number": 3,
       "stage_name": "reproductive",
-      "weeks": "Weeks 16-23",
-      "events": 7,
-      "dates_label": "17 Oct – 9 Dec 2026",
+      "weeks": "Weeks 20-29",
+      "events": 9,
+      "dates_label": "14 Nov – 20 Jan 2027",
       "method": {
         "kind": "liquid_drip",
         "concentrate_strength_g_per_l": 300.0,
@@ -426,7 +415,7 @@
           "product": "SupaFeed 3/1/6 (46)",
           "analysis": "N 13.8%, P₂O₅ 4.6%, K₂O 27.6%",
           "stream": "B",
-          "rate_per_event_per_ha": "34 kg",
+          "rate_per_event_per_ha": "27 kg",
           "rate_per_stage_per_ha": "239 kg",
           "batch_total": "1196 kg",
           "source": null
@@ -435,7 +424,7 @@
           "product": "MAP Solubale",
           "analysis": "N 12.0%, P₂O₅ 61.0%",
           "stream": "B",
-          "rate_per_event_per_ha": "1.7 kg",
+          "rate_per_event_per_ha": "1.3 kg",
           "rate_per_stage_per_ha": "12 kg",
           "batch_total": "60 kg",
           "source": null
@@ -444,7 +433,7 @@
           "product": "K-Plus 13/0/38",
           "analysis": "N 14.3%, K₂O 42.5%, Ca 8.4%, S 17.0%",
           "stream": "B",
-          "rate_per_event_per_ha": "1.1 kg",
+          "rate_per_event_per_ha": "0.9 kg",
           "rate_per_stage_per_ha": "8.0 kg",
           "batch_total": "40 kg",
           "source": null
@@ -453,7 +442,7 @@
           "product": "HumCal",
           "analysis": "Ca 92.0%",
           "stream": "A",
-          "rate_per_event_per_ha": "0.5 kg",
+          "rate_per_event_per_ha": "0.4 kg",
           "rate_per_stage_per_ha": "3.2 kg",
           "batch_total": "16 kg",
           "source": null
@@ -462,7 +451,7 @@
           "product": "Carbon Powder",
           "analysis": "N 1.0%, P₂O₅ 0.8%, K₂O 1.0%, Ca 1.2%, Mg 1.0%, S 0.7%",
           "stream": "B",
-          "rate_per_event_per_ha": "8.3 kg",
+          "rate_per_event_per_ha": "6.4 kg",
           "rate_per_stage_per_ha": "58 kg",
           "batch_total": "290 kg",
           "source": null
@@ -510,9 +499,9 @@
       "block_id": "laborie-blok-1",
       "stage_number": 4,
       "stage_name": "fill",
-      "weeks": "Weeks 24-30",
-      "events": 7,
-      "dates_label": "10 Dec – 1 Feb 2027",
+      "weeks": "Weeks 30-38",
+      "events": 9,
+      "dates_label": "21 Jan – 29 Mar 2027",
       "method": {
         "kind": "liquid_drip",
         "concentrate_strength_g_per_l": 300.0,
@@ -532,45 +521,54 @@
           "product": "SupaFeed 3/1/6 (46)",
           "analysis": "N 13.8%, P₂O₅ 4.6%, K₂O 27.6%",
           "stream": "B",
-          "rate_per_event_per_ha": "27 kg",
-          "rate_per_stage_per_ha": "189 kg",
-          "batch_total": "943 kg",
+          "rate_per_event_per_ha": "24 kg",
+          "rate_per_stage_per_ha": "220 kg",
+          "batch_total": "1100 kg",
+          "source": null
+        },
+        {
+          "product": "Multifeed 5/2/4 (43)",
+          "analysis": "N 19.5%, P₂O₅ 7.8%, K₂O 15.6%",
+          "stream": "B",
+          "rate_per_event_per_ha": "7.8 kg",
+          "rate_per_stage_per_ha": "70 kg",
+          "batch_total": "350 kg",
+          "source": null
+        },
+        {
+          "product": "HumCal",
+          "analysis": "Ca 92.0%",
+          "stream": "A",
+          "rate_per_event_per_ha": "0.4 kg",
+          "rate_per_stage_per_ha": "3.3 kg",
+          "batch_total": "16 kg",
           "source": null
         },
         {
           "product": "MAP Solubale",
           "analysis": "N 12.0%, P₂O₅ 61.0%",
           "stream": "B",
-          "rate_per_event_per_ha": "0.8 kg",
-          "rate_per_stage_per_ha": "5.8 kg",
-          "batch_total": "29 kg",
-          "source": null
-        },
-        {
-          "product": "HumCal",
-          "analysis": "Ca 92.0%",
-          "stream": "A",
-          "rate_per_event_per_ha": "0.4 kg",
-          "rate_per_stage_per_ha": "2.6 kg",
-          "batch_total": "13 kg",
+          "rate_per_event_per_ha": "0.5 kg",
+          "rate_per_stage_per_ha": "4.4 kg",
+          "batch_total": "22 kg",
           "source": null
         },
         {
           "product": "K-Plus 13/0/38",
           "analysis": "N 14.3%, K₂O 42.5%, Ca 8.4%, S 17.0%",
           "stream": "B",
-          "rate_per_event_per_ha": "0.8 kg",
-          "rate_per_stage_per_ha": "5.4 kg",
-          "batch_total": "27 kg",
+          "rate_per_event_per_ha": "1.2 kg",
+          "rate_per_stage_per_ha": "11 kg",
+          "batch_total": "53 kg",
           "source": null
         },
         {
           "product": "Carbon Powder",
           "analysis": "N 1.0%, P₂O₅ 0.8%, K₂O 1.0%, Ca 1.2%, Mg 1.0%, S 0.7%",
           "stream": "B",
-          "rate_per_event_per_ha": "5.6 kg",
-          "rate_per_stage_per_ha": "39 kg",
-          "batch_total": "195 kg",
+          "rate_per_event_per_ha": "6.6 kg",
+          "rate_per_stage_per_ha": "59 kg",
+          "batch_total": "295 kg",
           "source": null
         }
       ],
@@ -578,144 +576,29 @@
         {
           "name": "Part A (Calcium stream)",
           "contains": "HumCal",
-          "dry_weight_or_liquid": "13 kg dry salts",
+          "dry_weight_or_liquid": "16 kg dry salts",
           "strength_g_per_l": 300.0,
-          "volume_l": 43.0,
+          "volume_l": 53.0,
           "per_event_dose_l": null,
           "injection_notes": "Inject via dedicated stock-tank line (never mix with Part B)"
         },
         {
           "name": "Part B (Sulphate + phosphate stream)",
-          "contains": "SupaFeed 3/1/6 (46) + MAP Solubale + K-Plus 13/0/38 + Carbon Powder",
-          "dry_weight_or_liquid": "1194 kg dry salts",
+          "contains": "SupaFeed 3/1/6 (46) + Multifeed 5/2/4 (43) + MAP Solubale + K-Plus 13/0/38 + Carbon Powder",
+          "dry_weight_or_liquid": "1820 kg dry salts",
           "strength_g_per_l": 100.0,
-          "volume_l": 11940.0,
+          "volume_l": 18200.0,
           "per_event_dose_l": null,
           "injection_notes": "Inject via second stock-tank line, parallel or sequential"
         }
       ],
       "nutrients_delivered": {
-        "N": 27.9,
-        "P2O5": 12.5,
-        "K2O": 54.8,
-        "Ca": 3.3,
-        "Mg": 0.4,
-        "S": 1.2
-      },
-      "sources": [
-        {
-          "source_id": "IMPLEMENTER_CONVENTION",
-          "section": "Greedy material-cover algorithm v1 (Phase 2 module 8)",
-          "note": null,
-          "tier": 6
-        }
-      ],
-      "confidence": null
-    },
-    {
-      "block_id": "laborie-blok-1",
-      "stage_number": 5,
-      "stage_name": "maturation",
-      "weeks": "Weeks 31-38",
-      "events": 7,
-      "dates_label": "2 Feb – 27 Mar 2027",
-      "method": {
-        "kind": "liquid_drip",
-        "concentrate_strength_g_per_l": 300.0,
-        "ec_target_ms_per_cm": [
-          2.0,
-          2.5
-        ],
-        "ph_target": [
-          5.5,
-          6.5
-        ],
-        "part_a_required": true,
-        "part_b_required": true
-      },
-      "raw_products": [
-        {
-          "product": "Multifeed 5/2/4 (43)",
-          "analysis": "N 19.5%, P₂O₅ 7.8%, K₂O 15.6%",
-          "stream": "B",
-          "rate_per_event_per_ha": "7.9 kg",
-          "rate_per_stage_per_ha": "56 kg",
-          "batch_total": "278 kg",
-          "source": null
-        },
-        {
-          "product": "SupaFeed 3/1/6 (46)",
-          "analysis": "N 13.8%, P₂O₅ 4.6%, K₂O 27.6%",
-          "stream": "B",
-          "rate_per_event_per_ha": "5.4 kg",
-          "rate_per_stage_per_ha": "38 kg",
-          "batch_total": "190 kg",
-          "source": null
-        },
-        {
-          "product": "K-Plus 13/0/38",
-          "analysis": "N 14.3%, K₂O 42.5%, Ca 8.4%, S 17.0%",
-          "stream": "B",
-          "rate_per_event_per_ha": "0.4 kg",
-          "rate_per_stage_per_ha": "2.9 kg",
-          "batch_total": "15 kg",
-          "source": null
-        },
-        {
-          "product": "Carbon Powder",
-          "analysis": "N 1.0%, P₂O₅ 0.8%, K₂O 1.0%, Ca 1.2%, Mg 1.0%, S 0.7%",
-          "stream": "B",
-          "rate_per_event_per_ha": "2.1 kg",
-          "rate_per_stage_per_ha": "15 kg",
-          "batch_total": "75 kg",
-          "source": null
-        },
-        {
-          "product": "HumCal",
-          "analysis": "Ca 92.0%",
-          "stream": "A",
-          "rate_per_event_per_ha": "0.0 kg",
-          "rate_per_stage_per_ha": "0.2 kg",
-          "batch_total": "1.0 kg",
-          "source": null
-        },
-        {
-          "product": "Aquasol Hydrofood",
-          "analysis": "N 6.5%, P₂O₅ 4.5%, K₂O 3.0%, Mg 6.0%, S 1.7%",
-          "stream": "B",
-          "rate_per_event_per_ha": "0.1 kg",
-          "rate_per_stage_per_ha": "0.8 kg",
-          "batch_total": "4.2 kg",
-          "source": null
-        }
-      ],
-      "concentrates": [
-        {
-          "name": "Part A (Calcium stream)",
-          "contains": "HumCal",
-          "dry_weight_or_liquid": "1 kg dry salts",
-          "strength_g_per_l": 300.0,
-          "volume_l": 3.0,
-          "per_event_dose_l": null,
-          "injection_notes": "Inject via dedicated stock-tank line (never mix with Part B)"
-        },
-        {
-          "name": "Part B (Sulphate + phosphate stream)",
-          "contains": "Multifeed 5/2/4 (43) + SupaFeed 3/1/6 (46) + K-Plus 13/0/38 + Carbon Powder + Aquasol Hydrofood",
-          "dry_weight_or_liquid": "562 kg dry salts",
-          "strength_g_per_l": 100.0,
-          "volume_l": 5622.0,
-          "per_event_dose_l": null,
-          "injection_notes": "Inject via second stock-tank line, parallel or sequential"
-        }
-      ],
-      "nutrients_delivered": {
-        "N": 16.7,
-        "P2O5": 6.2,
-        "K2O": 20.6,
-        "Ca": 0.6,
-        "Mg": 0.2,
-        "S": 0.6
+        "N": 46.6,
+        "P2O5": 18.8,
+        "K2O": 76.7,
+        "Ca": 4.6,
+        "Mg": 0.6,
+        "S": 2.2
       },
       "sources": [
         {
@@ -820,9 +703,9 @@
       "product": "SupaFeed 3/1/6 (46)",
       "analysis": "N 13.8%, P₂O₅ 4.6%, K₂O 27.6%",
       "total_per_block": {
-        "laborie-blok-1": 2643.0
+        "laborie-blok-1": 2610.0
       },
-      "total_overall": 2643.0,
+      "total_overall": 2610.0,
       "unit": "kg"
     },
     {
@@ -840,9 +723,9 @@
       "product": "K-Plus 13/0/38",
       "analysis": "N 14.3%, K₂O 42.5%, Ca 8.4%, S 17.0%",
       "total_per_block": {
-        "laborie-blok-1": 108.0
+        "laborie-blok-1": 119.0
       },
-      "total_overall": 108.0,
+      "total_overall": 119.0,
       "unit": "kg"
     },
     {
@@ -850,9 +733,9 @@
       "product": "Carbon Powder",
       "analysis": "N 1.0%, P₂O₅ 0.8%, K₂O 1.0%, Ca 1.2%, Mg 1.0%, S 0.7%",
       "total_per_block": {
-        "laborie-blok-1": 915.0
+        "laborie-blok-1": 940.0
       },
-      "total_overall": 915.0,
+      "total_overall": 940.0,
       "unit": "kg"
     },
     {
@@ -860,9 +743,9 @@
       "product": "Multifeed 5/2/4 (43)",
       "analysis": "N 19.5%, P₂O₅ 7.8%, K₂O 15.6%",
       "total_per_block": {
-        "laborie-blok-1": 842.0
+        "laborie-blok-1": 914.0
       },
-      "total_overall": 842.0,
+      "total_overall": 914.0,
       "unit": "kg"
     },
     {
@@ -880,9 +763,9 @@
       "product": "HumCal",
       "analysis": "Ca 92.0%",
       "total_per_block": {
-        "laborie-blok-1": 50.0
+        "laborie-blok-1": 52.0
       },
-      "total_overall": 50.0,
+      "total_overall": 52.0,
       "unit": "kg"
     },
     {
@@ -900,9 +783,9 @@
       "product": "Aquasol Hydrofood",
       "analysis": "N 6.5%, P₂O₅ 4.5%, K₂O 3.0%, Mg 6.0%, S 1.7%",
       "total_per_block": {
-        "laborie-blok-1": 10.0
+        "laborie-blok-1": 5.8
       },
-      "total_overall": 10.0,
+      "total_overall": 5.8,
       "unit": "kg"
     },
     {
@@ -910,9 +793,9 @@
       "product": "MAP Solubale",
       "analysis": "N 12.0%, P₂O₅ 61.0%",
       "total_per_block": {
-        "laborie-blok-1": 89.0
+        "laborie-blok-1": 82.0
       },
-      "total_overall": 89.0,
+      "total_overall": 82.0,
       "unit": "kg"
     },
     {
@@ -948,14 +831,14 @@
   "decision_trace": [
     "Block laborie-blok-1: start reasoning",
     "Block laborie-blok-1: SoilFactorReasoner produced 0 findings",
-    "Block laborie-blok-1: StageSplitter — 5 stages using fruit_tree family shape (tier 1)",
-    "Block laborie-blok-1: MethodSelector — 30 routings",
+    "Block laborie-blok-1: StageSplitter — 4 stages using fruit_tree family shape (tier 1)",
+    "Block laborie-blok-1: MethodSelector — 24 routings",
     "Block laborie-blok-1: FoliarTriggerEngine — 2 events (1 quality_window, 1 stage_peak_demand)",
-    "Block laborie-blok-1: Consolidator — 6 blends (greedy material-cover Tier 6; final MILP optimization pending module 10)",
+    "Block laborie-blok-1: Consolidator — 5 blends (greedy material-cover Tier 6; final MILP optimization pending module 10)",
     "Orchestrator: produced artifact with 1 blocks, 0 recommendations, 2 foliar events, 0 risk flags",
-    "Orchestrator: BlendValidator — 6 blends validated, 0 warnings/errors surfaced"
+    "Orchestrator: BlendValidator — 5 blends validated, 0 warnings/errors surfaced"
   ],
-  "created_at": "2026-04-24T21:06:37.460098",
-  "updated_at": "2026-04-24T21:06:37.460107",
+  "created_at": "2026-04-24T21:17:23.351399",
+  "updated_at": "2026-04-24T21:17:23.351402",
   "render_hint": null
 }

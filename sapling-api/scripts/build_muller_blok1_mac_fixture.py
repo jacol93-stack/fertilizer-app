@@ -131,7 +131,13 @@ def build_inputs(catalog, materials) -> OrchestratorInput:
         season="2026/27",
         location="Tzaneen, Limpopo",
         ref_number="MFBT-BLOK1-2026",
-        stage_count=5,
+        # FERTASA 5.8.1 has 4 canonical mac windows (post-harvest / pre-
+        # flower / nut set / nut growth-oil). stage_count=4 matches that
+        # structure and collapses adjacent stages with similar nutrient
+        # profiles — supports the production blend-count bias without
+        # crossing any FERTASA timing walls. See
+        # project_application_timing_and_blend_count memory.
+        stage_count=4,
         method_availability=MethodAvailability(
             has_drip=False,
             has_pivot=False,
