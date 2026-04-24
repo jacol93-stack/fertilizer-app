@@ -111,6 +111,7 @@ def _block_request(
     n: float = 120,
     p: float = 40,
     k: float = 60,
+    soil_parameters: dict | None = None,
 ) -> BlockRequest:
     """Minimal block request with pre-computed season_targets so the
     endpoint skips the catalog-backed target computation path."""
@@ -118,7 +119,7 @@ def _block_request(
         block_id=block_id,
         block_name=name,
         block_area_ha=area,
-        soil_parameters={"pH": 6.2},
+        soil_parameters=soil_parameters or {"pH": 6.2},
         yield_target_per_ha=60.0,
         season_targets={"N": n, "P2O5": p, "K2O": k},
     )
@@ -127,6 +128,7 @@ def _block_request(
 def _build_request(
     blocks: list[BlockRequest],
     skipped: list[SkippedBlockRequest] | None = None,
+    water_values: dict | None = None,
 ) -> BuildProgrammeRequest:
     return BuildProgrammeRequest(
         client_name="Test Farmer",
@@ -139,6 +141,7 @@ def _build_request(
         blocks=blocks,
         method_availability=_method_availability_all(),
         skipped_blocks=skipped or [],
+        water_values=water_values,
     )
 
 
@@ -245,3 +248,106 @@ def test_build_endpoint_emits_heterogeneity_risk_flag_when_cluster_breaches_thre
     msg = cluster_flags[0]["message"]
     assert "Wilding" in msg
     assert "Land A" in msg and "Land B" in msg and "Land C" in msg
+
+
+# ============================================================
+# A4 — Water quality × soil ESP compounding
+# ============================================================
+
+# Soil mirroring Gamka Land 1-4: ESP ≈ 14.7 % (Na 2.0 cmol/kg, CEC 13.63)
+GAMKA_LIKE_SOIL = {
+    "pH": 8.3, "pH (KCl)": 8.3,
+    "Na": 2.0, "K": 0.33, "Ca": 9.7, "Mg": 1.6,
+    "T Value": 13.63,  # CEC
+    "Na_base_sat_pct": 14.67,
+    "P (Olsen)": 3.6,
+    "B": 1.2,
+    "C": 0.40,  # Walkley-Black %
+}
+
+# Typical Karoo borehole — elevated Na + HCO3
+KAROO_BOREHOLE_WATER = {
+    "EC": 1.8,
+    "Na": 220,
+    "Ca": 50,
+    "Mg": 25,
+    "HCO3": 380,
+    "pH": 7.8,
+}
+
+# Clean irrigation water — low Na, balanced Ca/Mg
+CLEAN_WATER = {
+    "EC": 0.5,
+    "Na": 20,
+    "Ca": 60,
+    "Mg": 30,
+    "HCO3": 100,
+    "pH": 7.2,
+}
+
+
+def test_build_endpoint_sodic_soil_plus_sodic_water_fires_compounding_risk(
+    fake_sb, fake_user,
+):
+    """Karoo-pattern: trending-sodic soil + Na-loaded water →
+    compounding RiskFlag surfaces in the artifact with 'critical'
+    severity and an escalate-gypsum recommendation."""
+    request = _build_request(
+        blocks=[_block_request("1", "Gamka Land", 5.0, soil_parameters=GAMKA_LIKE_SOIL)],
+        water_values=KAROO_BOREHOLE_WATER,
+    )
+    response = asyncio.run(build_programme_endpoint(request, fake_user))
+
+    # Look for the compounding-hazard finding in risk_flags
+    compounding = [
+        f for f in response.artifact["risk_flags"]
+        if ("compound" in f["message"].lower()
+            or "treading water" in f["message"].lower()
+            or "treading water" in f["message"].lower()
+            or "every irrigation cycle" in f["message"].lower())
+    ]
+    assert len(compounding) >= 1, (
+        f"Expected compounding water×soil RiskFlag, got: "
+        f"{[f['message'][:80] for f in response.artifact['risk_flags']]}"
+    )
+    # Critical severity
+    assert any(f["severity"] == "critical" for f in compounding)
+
+
+def test_build_endpoint_benign_water_does_not_fire_compounding(fake_sb, fake_user):
+    """Same sodic soil + clean irrigation water → no compounding flag.
+    The water rule only fires when BOTH soil ESP and water SAR exceed
+    threshold."""
+    request = _build_request(
+        blocks=[_block_request("1", "Gamka Land", 5.0, soil_parameters=GAMKA_LIKE_SOIL)],
+        water_values=CLEAN_WATER,
+    )
+    response = asyncio.run(build_programme_endpoint(request, fake_user))
+
+    compounding_messages = [
+        f["message"] for f in response.artifact["risk_flags"]
+        if "every irrigation cycle" in f["message"].lower()
+        or "compounding" in f["message"].lower()
+    ]
+    assert compounding_messages == [], (
+        f"Clean water should not trigger compounding risk; got: {compounding_messages}"
+    )
+
+
+def test_build_endpoint_no_water_values_skips_water_rules(fake_sb, fake_user):
+    """When water_values is omitted (default), no water-quality findings
+    fire — soil-only rules run as before. Important for the agronomist
+    who hasn't tested water yet."""
+    request = _build_request(
+        blocks=[_block_request("1", "Gamka Land", 5.0, soil_parameters=GAMKA_LIKE_SOIL)],
+        # water_values omitted
+    )
+    response = asyncio.run(build_programme_endpoint(request, fake_user))
+
+    # Soil ESP finding can still fire (trending sodic, warn severity),
+    # but NO findings from the FAO water-quality source should appear
+    water_sourced = [
+        f for f in response.artifact["risk_flags"]
+        if f.get("source", {}).get("source_id") == "FAO_IRRIGATION_29"
+    ]
+    assert water_sourced == []
