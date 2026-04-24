@@ -19,6 +19,8 @@ export interface WizardBlock {
   yield_target: number | null;
   yield_unit: string;
   soil_analysis_id: string | null;
+  /** Perennial-only density. Drives backend per-ha scaling. */
+  pop_per_ha?: number | null;
 }
 
 export interface SoilAnalysisMeta {
@@ -194,6 +196,7 @@ export function wizardStateToBuildRequest(
       lab_name: meta?.lab_name ?? null,
       sample_date: meta?.analysis_date ?? null,
       pre_season_inputs: [],
+      pop_per_ha: b.pop_per_ha ?? null,
     };
   });
 

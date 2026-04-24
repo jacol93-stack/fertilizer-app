@@ -92,6 +92,9 @@ class BlockInput:
     sample_id: Optional[str] = None
     pre_season_inputs: list[PreSeasonInput] = field(default_factory=list)
     leaf_deficiencies: Optional[dict[str, float]] = None  # Season Tracker re-entry
+    # For perennials, target_computation scales by density
+    # (block_pop_per_ha / crop_requirements.pop_per_ha).
+    pop_per_ha: Optional[float] = None
 
 
 @dataclass

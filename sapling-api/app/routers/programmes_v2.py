@@ -74,6 +74,8 @@ class BlockRequest(BaseModel):
     sample_id: Optional[str] = None
     pre_season_inputs: list[PreSeasonInput] = Field(default_factory=list)
     leaf_deficiencies: Optional[dict[str, float]] = None
+    # Perennial only — trees/vines per hectare for density scaling
+    pop_per_ha: Optional[float] = Field(None, gt=0)
 
 
 class SkippedBlockRequest(BaseModel):
@@ -139,7 +141,9 @@ async def build_programme_endpoint(
     for b in request.blocks:
         targets = b.season_targets
         if targets is None:
-            # Compute via target_computation module
+            # Compute via target_computation module. pop_per_ha drives
+            # the perennial-density scaling — annual crops ignore it
+            # server-side.
             result = compute_season_targets(
                 crop=request.crop,
                 yield_target=b.yield_target_per_ha,
@@ -147,6 +151,7 @@ async def build_programme_endpoint(
                 catalog=catalog,
                 subtract_harvested_removal=request.subtract_harvested_removal,
                 expected_yield_harvested=b.yield_target_per_ha,
+                block_pop_per_ha=b.pop_per_ha,
             )
             targets = result.targets
         block_inputs.append(BlockInput(
@@ -161,6 +166,7 @@ async def build_programme_endpoint(
             sample_id=b.sample_id,
             pre_season_inputs=b.pre_season_inputs,
             leaf_deficiencies=b.leaf_deficiencies,
+            pop_per_ha=b.pop_per_ha,
         ))
 
     # Phase 3 — block aggregation. Blocks with similar NPK ratios share

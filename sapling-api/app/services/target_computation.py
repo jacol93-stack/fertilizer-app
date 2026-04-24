@@ -76,6 +76,7 @@ def compute_season_targets(
     subtract_harvested_removal: bool = False,
     expected_yield_harvested: Optional[float] = None,
     include_micros: bool = False,
+    block_pop_per_ha: Optional[float] = None,
 ) -> TargetComputationResult:
     """Compute per-nutrient season targets with full provenance.
 
@@ -92,6 +93,11 @@ def compute_season_targets(
         include_micros: if False (default), returns only macros + secondaries
             (N/P2O5/K2O/Ca/Mg/S). Micros flow through foliar/micro schedule
             in most programmes, not season-total targets.
+        block_pop_per_ha: actual plant/tree density for this block. For
+            perennials only, targets are scaled by block_pop / crop_rows
+            reference pop — a 400 trees/ha mac orchard needs ~2× the kg/ha
+            of a 200 trees/ha orchard at the same age, per SAMAC (Schoeman
+            2021). Annuals ignore it (yield target covers stand density).
 
     Returns:
         TargetComputationResult with typed provenance for each nutrient.
@@ -152,6 +158,24 @@ def compute_season_targets(
             tier=Tier(tier_val) if tier_val is not None else Tier.IMPLEMENTER_CONVENTION,
             note=row.get("Source"),
         )
+
+    # Perennial density scaling — per-ha FERTASA/SAMAC tables implicitly
+    # assume a "normal" orchard density. A 400 trees/ha mac orchard
+    # needs ~2× the kg/ha of a 200 trees/ha orchard at the same age.
+    # Only applied for perennials; annuals' yield target already
+    # captures stand density. Uses crop_requirements.pop_per_ha as the
+    # reference baseline.
+    if block_pop_per_ha and block_pop_per_ha > 0:
+        density_scale, density_assumption = _compute_density_scale(
+            crop=crop,
+            block_pop_per_ha=block_pop_per_ha,
+            crop_rows=catalog.crop_rows,
+        )
+        if density_scale and density_scale != 1.0:
+            for nut in list(targets.keys()):
+                targets[nut] = round(targets[nut] * density_scale, 2)
+        if density_assumption:
+            assumptions.append(density_assumption)
 
     # Harvested-removal subtraction (per migration 072 wiring target)
     if subtract_harvested_removal and catalog.removal_rows and expected_yield_harvested:
@@ -222,6 +246,66 @@ def _parse_source_from_row(row: dict) -> tuple[str, Optional[str], Optional[int]
         adj.get("source_section"),
         row.get("Tier") or 6,
     )
+
+
+def _compute_density_scale(
+    crop: str,
+    block_pop_per_ha: float,
+    crop_rows: list[dict],
+) -> tuple[Optional[float], Optional[Assumption]]:
+    """For perennial crops, compute a scale factor = block_pop / reference_pop.
+
+    Returns (scale_factor, assumption) where scale_factor is None if the
+    crop isn't a perennial or we can't find a reference density. The
+    assumption row is always worth surfacing when we DID find a
+    reference (even if the scale is 1.0 — the agronomist should know
+    we're anchoring to a specific density baseline).
+
+    References: SAMAC (Schoeman 2021) mac orchard, Raath (2021) citrus
+    handbook, FERTASA handbook §5 per-tree tables. All express
+    per-tree rates × trees/ha; a per-ha table is the convenience
+    aggregate for a specific reference density.
+    """
+    crop_row = next(
+        (r for r in crop_rows if r.get("crop") == crop),
+        None,
+    )
+    if not crop_row:
+        return None, None
+    crop_type = (crop_row.get("crop_type") or "").lower()
+    if crop_type != "perennial":
+        return None, None
+
+    ref_pop = crop_row.get("pop_per_ha")
+    try:
+        ref_pop_f = float(ref_pop) if ref_pop is not None else 0.0
+    except (TypeError, ValueError):
+        ref_pop_f = 0.0
+    if ref_pop_f <= 0:
+        return None, None
+
+    scale = round(block_pop_per_ha / ref_pop_f, 3)
+    assumption = Assumption(
+        field="perennial_density_scale",
+        assumed_value=(
+            f"scale={scale} (block={int(block_pop_per_ha)} trees/ha ÷ "
+            f"reference={int(ref_pop_f)} trees/ha)"
+        ),
+        override_guidance=(
+            "Per-ha nutrient targets are scaled linearly by planting "
+            "density relative to the crop's reference density from "
+            "crop_requirements. Override by correcting pop_per_ha on "
+            "the field record, or disable by setting block_pop_per_ha "
+            "= reference density."
+        ),
+        source=SourceCitation(
+            source_id="SAMAC_SCHOEMAN_2021" if "macadamia" in crop.lower() else "FERTASA_HANDBOOK",
+            section="per-tree rate × trees/ha convention",
+            tier=Tier.SA_INDUSTRY_BODY,
+        ),
+        tier=Tier.SA_INDUSTRY_BODY,
+    )
+    return scale, assumption
 
 
 def _compute_removal_subtraction(

@@ -292,6 +292,117 @@ def test_removal_without_expected_yield_noop():
 
 
 # ============================================================
+# Perennial density scaling (pop/ha)
+# ============================================================
+
+MAC_CROP_ROW = {
+    "crop": "Macadamia", "type": "Perennial", "crop_type": "perennial",
+    "yield_unit": "t NIS/ha", "default_yield": 4.0,
+    "n": 20.0, "p": 2.5, "k": 15.0, "ca": 3.0, "mg": 1.5, "s": 1.0,
+    "fe": 0.1, "b": 0.05, "mn": 0.1, "zn": 0.05, "mo": 0.01, "cu": 0.03,
+    "pop_per_ha": 300,  # SAMAC reference
+}
+
+
+def _mac_catalog():
+    return SoilCatalog(
+        crop_rows=[MAC_CROP_ROW],
+        sufficiency_rows=SUFFICIENCY_ROWS,
+        adjustment_rows=ADJUSTMENT_ROWS,
+        param_map_rows=PARAM_MAP_ROWS,
+    )
+
+
+def test_perennial_higher_density_scales_targets_up():
+    """Mac orchard at 600 trees/ha (2× reference) → ~2× the per-ha target."""
+    soil = {"pH (H2O)": 6.0, "P (Bray-1)": 25, "K": 150,
+            "Ca": 1000, "Mg": 150, "S": 15, "N (total)": 30}
+    catalog = _mac_catalog()
+    base = compute_season_targets(
+        crop="Macadamia", yield_target=5.0, soil_values=soil, catalog=catalog,
+    )
+    scaled = compute_season_targets(
+        crop="Macadamia", yield_target=5.0, soil_values=soil, catalog=catalog,
+        block_pop_per_ha=600,
+    )
+    for nut in ("N", "P2O5", "K2O"):
+        if nut in base.targets and base.targets[nut] > 0:
+            ratio = scaled.targets[nut] / base.targets[nut]
+            assert 1.95 <= ratio <= 2.05, f"{nut} expected ~2x, got {ratio}"
+
+
+def test_perennial_lower_density_scales_targets_down():
+    """Mac orchard at 150 trees/ha (0.5× reference) → ~half the target."""
+    soil = {"pH (H2O)": 6.0, "P (Bray-1)": 25, "K": 150,
+            "Ca": 1000, "Mg": 150, "S": 15, "N (total)": 30}
+    catalog = _mac_catalog()
+    base = compute_season_targets(
+        crop="Macadamia", yield_target=5.0, soil_values=soil, catalog=catalog,
+    )
+    scaled = compute_season_targets(
+        crop="Macadamia", yield_target=5.0, soil_values=soil, catalog=catalog,
+        block_pop_per_ha=150,
+    )
+    for nut in ("N", "P2O5", "K2O"):
+        if nut in base.targets and base.targets[nut] > 0:
+            ratio = scaled.targets[nut] / base.targets[nut]
+            assert 0.48 <= ratio <= 0.52, f"{nut} expected ~0.5x, got {ratio}"
+
+
+def test_perennial_scaling_adds_assumption():
+    """The scale factor + reference density must be surfaced for audit."""
+    result = compute_season_targets(
+        crop="Macadamia", yield_target=5.0,
+        soil_values={"N (total)": 30}, catalog=_mac_catalog(),
+        block_pop_per_ha=450,
+    )
+    dens = next((a for a in result.assumptions if a.field == "perennial_density_scale"), None)
+    assert dens is not None
+    assert "1.5" in dens.assumed_value  # 450 / 300
+    assert "450" in dens.assumed_value
+    assert "300" in dens.assumed_value
+
+
+def test_annual_pop_per_ha_ignored():
+    """Annual crops already capture stand density in yield target;
+    pop_per_ha must NOT rescale their kg/ha."""
+    soil = {"pH (H2O)": 6.0, "P (Bray-1)": 25, "K": 150,
+            "Ca": 1000, "Mg": 150, "S": 15, "N (total)": 30}
+    catalog = SoilCatalog(
+        crop_rows=CROP_ROWS, sufficiency_rows=SUFFICIENCY_ROWS,
+        adjustment_rows=ADJUSTMENT_ROWS, param_map_rows=PARAM_MAP_ROWS,
+    )
+    base = compute_season_targets(
+        crop="Maize (dryland)", yield_target=8.0, soil_values=soil, catalog=catalog,
+    )
+    with_pop = compute_season_targets(
+        crop="Maize (dryland)", yield_target=8.0, soil_values=soil, catalog=catalog,
+        block_pop_per_ha=90000,  # 50% more than the 60000 reference
+    )
+    # Targets unchanged — annuals don't scale
+    for nut in base.targets:
+        assert base.targets[nut] == with_pop.targets[nut], f"{nut} scaled for annual"
+    assert not any(a.field == "perennial_density_scale" for a in with_pop.assumptions)
+
+
+def test_perennial_no_reference_density_no_scaling():
+    """If crop_requirements has no pop_per_ha reference, no scaling applied
+    (and no assumption surfaced — we don't guess)."""
+    row = dict(MAC_CROP_ROW)
+    row["pop_per_ha"] = None
+    catalog = SoilCatalog(
+        crop_rows=[row], sufficiency_rows=SUFFICIENCY_ROWS,
+        adjustment_rows=ADJUSTMENT_ROWS, param_map_rows=PARAM_MAP_ROWS,
+    )
+    result = compute_season_targets(
+        crop="Macadamia", yield_target=5.0,
+        soil_values={"N (total)": 30}, catalog=catalog,
+        block_pop_per_ha=600,
+    )
+    assert not any(a.field == "perennial_density_scale" for a in result.assumptions)
+
+
+# ============================================================
 # Unknown crop graceful handling
 # ============================================================
 

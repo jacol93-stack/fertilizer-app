@@ -407,6 +407,8 @@ export interface BlockRequest {
   sample_id?: string | null;
   pre_season_inputs?: PreSeasonInput[];
   leaf_deficiencies?: Record<string, number> | null;
+  /** Perennial-only density for target scaling (trees/vines per ha). */
+  pop_per_ha?: number | null;
 }
 
 export interface SkippedBlockRequest {
