@@ -72,18 +72,31 @@ def adjustment_rows():
 
 @pytest.fixture
 def adjustment_rows_grouped():
-    """Adjustment factors with nutrient-group specificity (recent feature)."""
-    groups = ["N", "P", "cations", "micro"]
-    rows = []
-    base = {
-        "Very Low": 1.5,
-        "Low": 1.25,
-        "Optimal": 1.0,
-        "High": 0.5,
-        "Very High": 0.0,
+    """Adjustment factors with nutrient-group specificity.
+
+    Mirrors the post-migration-077 DB shape:
+      - N, micro: flat 1.0
+      - P: 1.5 / 1.25 / 1.0 / 0.75 / 0.5 (moderate drawdown)
+      - K: 1.5 / 1.25 / 1.0 / 0.5 / 0.0 (aggressive — luxury OK)
+      - ca_mg: 1.25 / 1.1 / 1.0 / 0.75 / 0.5 (gentle — base saturation)
+      - S: flat 1.0 (sulfate mobility — drawdown doesn't apply)
+      - cations: retained as legacy fallback shape (1.5/1.25/1.0/0.5/0.0)
+    """
+    curves = {
+        "N":       {"Very Low": 1.0,  "Low": 1.0,  "Optimal": 1.0, "High": 1.0,  "Very High": 1.0},
+        "P":       {"Very Low": 1.5,  "Low": 1.25, "Optimal": 1.0, "High": 0.75, "Very High": 0.5},
+        "K":       {"Very Low": 1.5,  "Low": 1.25, "Optimal": 1.0, "High": 0.5,  "Very High": 0.0},
+        "ca_mg":   {"Very Low": 1.25, "Low": 1.1,  "Optimal": 1.0, "High": 0.75, "Very High": 0.5},
+        "S":       {"Very Low": 1.0,  "Low": 1.0,  "Optimal": 1.0, "High": 1.0,  "Very High": 1.0},
+        "micro":   {"Very Low": 1.0,  "Low": 1.0,  "Optimal": 1.0, "High": 1.0,  "Very High": 1.0},
+        # Legacy cation group retained for backwards-compat consumers;
+        # mirrors the original pre-077 shape so the fallback path is
+        # testable.
+        "cations": {"Very Low": 1.5,  "Low": 1.25, "Optimal": 1.0, "High": 0.5,  "Very High": 0.0},
     }
-    for g in groups:
-        for cls, factor in base.items():
+    rows = []
+    for g, curve in curves.items():
+        for cls, factor in curve.items():
             rows.append(_adj(cls, factor, g))
     return rows
 

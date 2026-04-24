@@ -109,8 +109,26 @@ class TestGetAdjustmentFactor:
 
     @pytest.mark.golden
     def test_group_specific_lookup(self, adjustment_rows_grouped):
-        # K is in the "cations" group
+        # K, Ca, Mg now resolve to distinct curves post migration 077.
         assert get_adjustment_factor("Low", adjustment_rows_grouped, nutrient="K") == 1.25
+
+    @pytest.mark.golden
+    def test_k_vs_ca_mg_split_at_high(self, adjustment_rows_grouped):
+        """Migration 077: K drawdown is aggressive (0.5), Ca/Mg gentler (0.75),
+        S flat (1.0). Previously all shared the cations curve."""
+        assert get_adjustment_factor("High", adjustment_rows_grouped, nutrient="K") == 0.5
+        assert get_adjustment_factor("High", adjustment_rows_grouped, nutrient="Ca") == 0.75
+        assert get_adjustment_factor("High", adjustment_rows_grouped, nutrient="Mg") == 0.75
+        assert get_adjustment_factor("High", adjustment_rows_grouped, nutrient="S") == 1.0
+
+    @pytest.mark.golden
+    def test_k_vs_ca_mg_split_at_very_high(self, adjustment_rows_grouped):
+        """At Very High: K zeros out, Ca/Mg reduce to half (protect base
+        saturation), S stays flat."""
+        assert get_adjustment_factor("Very High", adjustment_rows_grouped, nutrient="K") == 0.0
+        assert get_adjustment_factor("Very High", adjustment_rows_grouped, nutrient="Ca") == 0.5
+        assert get_adjustment_factor("Very High", adjustment_rows_grouped, nutrient="Mg") == 0.5
+        assert get_adjustment_factor("Very High", adjustment_rows_grouped, nutrient="S") == 1.0
 
     @pytest.mark.golden
     def test_group_fallback_to_universal(self, adjustment_rows):

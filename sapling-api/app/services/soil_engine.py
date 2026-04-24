@@ -7,10 +7,16 @@ SOIL_CLASSIFICATIONS = ["Very Low", "Low", "Optimal", "High", "Very High"]
 NUTRIENT_GROUP_MAP = {
     "N":  "N",
     "P":  "P",
-    "K":  "cations",
-    "Ca": "cations",
-    "Mg": "cations",
-    "S":  "cations",
+    # K / Ca / Mg split into distinct curves in migration 077. K retains
+    # the aggressive drawdown shape (luxury consumption is real); Ca and
+    # Mg share a gentler curve because they drive base saturation and
+    # over-reduction unbalances the soil. S is flat (sulfate leaches
+    # seasonally — classification drawdown does not apply). Legacy
+    # "cations" rows still exist in DB for external consumers.
+    "K":  "K",
+    "Ca": "ca_mg",
+    "Mg": "ca_mg",
+    "S":  "S",
     "Fe": "micro",
     "B":  "micro",
     "Mn": "micro",
