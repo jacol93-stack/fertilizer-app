@@ -209,12 +209,19 @@ def _is_fertigation(blend: Blend) -> bool:
 
 
 def _expected_stream(material: dict) -> str:
-    """Same classification as consolidator._classify_stream — Ca ≥ 5% AND
-    (no S ≥ 2%) AND (no P ≥ 2%) → Part A; else Part B."""
+    """Mirror of consolidator._classify_stream — a dominant cation
+    (Ca OR Mg ≥ 5 %) AND no SO4 dominance (S < 2 %) AND no PO4 dominance
+    (P < 2 %) → Part A. Otherwise Part B.
+
+    The Mg limb matters: Mg Nitrate (N 11 %, Mg 15 %, S 0 %) is a
+    Part-A product; missing the Mg clause would flag it as wrongly-
+    placed and fail the validator for programmes that correctly route
+    it to Part A per FERTASA §11."""
     ca = float(material.get("ca") or 0)
+    mg = float(material.get("mg") or 0)
     s = float(material.get("s") or 0)
     p = float(material.get("p") or 0)
-    if ca >= 5 and s < 2 and p < 2:
+    if (ca >= 5 or mg >= 5) and s < 2 and p < 2:
         return "A"
     return "B"
 

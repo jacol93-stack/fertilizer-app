@@ -127,7 +127,9 @@ def build_inputs(catalog, materials) -> OrchestratorInput:
         crop="Macadamia",
         planting_date=date(2026, 7, 1),  # programme season-start (post-harvest)
         build_date=date(2026, 4, 24),
-        expected_harvest_date=date(2027, 4, 1),
+        # Mac harvest in Tzaneen spans Apr-Jun; using June end-of-season
+        # so a May application window is still in-bounds.
+        expected_harvest_date=date(2027, 6, 30),
         season="2026/27",
         location="Tzaneen, Limpopo",
         ref_number="MFBT-BLOK1-2026",
@@ -149,6 +151,12 @@ def build_inputs(catalog, materials) -> OrchestratorInput:
         ),
         blocks=[block],
         available_materials=materials,
+        # Farmer's operational application months. Realistic commercial
+        # Tzaneen macadamia schedule on micro-sprinkler: ~5 slots spaced
+        # to hit each FERTASA 5.8.1 window. Engine enforces the Nov-Feb
+        # N-cutoff within these slots (December will have N zeroed if it
+        # sits in the cutoff range — K still flows through).
+        application_months=[8, 10, 12, 3, 5],
     )
 
 

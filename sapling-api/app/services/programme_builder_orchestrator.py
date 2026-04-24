@@ -58,6 +58,7 @@ from app.models import (
 )
 from app.services.blend_validator import validate_blends
 from app.services.consolidator import consolidate_blends
+from app.services.month_allocator import allocate_to_months
 from app.services.foliar_trigger_engine import trigger_foliar_events
 from app.services.method_selector import aggregate_by_method, select_methods
 from app.services.pre_season_module import (
@@ -68,6 +69,7 @@ from app.services.pre_season_module import (
 from app.services.risk_flag_generator import generate_outstanding_items, generate_risk_flags
 from app.services.soil_factor_reasoner import reason_soil_factors
 from app.services.stage_splitter import (
+    StageSplit,
     get_family,
     get_stage_shape_provenance,
     split_season_targets,
@@ -123,6 +125,12 @@ class OrchestratorInput:
     # Irrigation water analysis applied to every block unless per-block
     # override exists. Keys: EC (dS/m), Na/Ca/Mg/HCO3 (mg/L), pH, etc.
     water_values: Optional[dict] = None
+    # Farmer's operational availability — months (1-12) when fertilizer
+    # application is physically possible (labour, machinery, irrigation
+    # schedule, harvest activity). When supplied, the engine maps stage
+    # allocations onto these slots with timing walls enforced. When None,
+    # engine uses the default stage-count-aligned calendar.
+    application_months: Optional[list[int]] = None
 
 
 # ============================================================
@@ -262,6 +270,62 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
             f"using {get_family(inputs.crop)} family shape (tier {stage_tier})"
         )
 
+        # 4b. Month allocator — when the farmer has supplied their
+        # operational application months, reshape the stage-based
+        # allocation onto those specific slots. Timing walls are enforced
+        # here: any nutrient blocked in a given month is zeroed in that
+        # event (redistributed to unblocked events in the same stage if
+        # possible). When application_months is None, falls through with
+        # a 1-event-per-stage schedule — identical to legacy behaviour.
+        month_allocation = None
+        if inputs.application_months:
+            initial_schedule = _build_stage_schedule(
+                block_id=block.block_id,
+                planting_date=inputs.planting_date,
+                harvest_date=inputs.expected_harvest_date,
+                stage_count=inputs.stage_count,
+                stage_names=[s.stage_name for s in stage_splits],
+            )
+            allocation = allocate_to_months(
+                crop=inputs.crop,
+                stage_splits=stage_splits,
+                stage_schedule=initial_schedule.stages,
+                allowed_months=inputs.application_months,
+                planting_date=inputs.planting_date,
+                season_end=inputs.expected_harvest_date,
+            )
+            month_allocation = allocation
+            # Reshape stage_splits → virtual splits (one per application event)
+            stage_splits = [
+                StageSplit(
+                    stage_number=a.event_index,
+                    stage_name=a.stage_name,
+                    nutrients=a.nutrients,
+                    source_id=stage_src,
+                    source_section=stage_section,
+                    tier=stage_tier,
+                )
+                for a in allocation.applications
+            ]
+            decision_trace.append(
+                f"Block {block.block_id}: MonthAllocator — {len(allocation.applications)} "
+                f"application events mapped from {len(inputs.application_months)} allowed months"
+            )
+            # Surface allocator risk + outstanding messages into the artifact
+            for msg in allocation.risk_messages:
+                all_risk_flags.append(RiskFlag(
+                    message=msg, severity="warn",
+                    source=SourceCitation(
+                        source_id="FERTASA_TIMING_WALL", section="month_allocator",
+                        tier=Tier.SA_INDUSTRY_BODY,
+                    ),
+                ))
+            for msg in allocation.outstanding_messages:
+                all_outstanding.append(OutstandingItem(
+                    item="Application-month coverage gap",
+                    why_it_matters=msg,
+                ))
+
         # 5. Method selector
         method_assignments = select_methods(
             stage_splits=stage_splits,
@@ -317,15 +381,51 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
         )
         all_outstanding.extend(outstanding)
 
-        # 8. Stage schedule (basic timeline from planting)
-        stage_names = [s.stage_name for s in stage_splits]
-        schedule = _build_stage_schedule(
-            block_id=block.block_id,
-            planting_date=inputs.planting_date,
-            harvest_date=inputs.expected_harvest_date,
-            stage_count=inputs.stage_count,
-            stage_names=stage_names,
-        )
+        # 8. Stage schedule — reflects the reshaped stages when the
+        # month allocator ran, otherwise the default stage-count-aligned
+        # timeline from planting.
+        if month_allocation is not None:
+            # One StageWindow per application event, dated exactly where
+            # the farmer will apply. Events for the same stage get
+            # disambiguated via "(1 of 2)" suffix in the stage_name.
+            schedule_windows: list[StageWindow] = []
+            apps = month_allocation.applications
+            for app in apps:
+                display_name = app.stage_name
+                if app.total_events_in_stage > 1:
+                    display_name = (
+                        f"{app.stage_name} ({app.event_of_stage_index} of "
+                        f"{app.total_events_in_stage})"
+                    )
+                schedule_windows.append(StageWindow(
+                    stage_number=app.event_index,
+                    stage_name=display_name,
+                    week_start=app.week_from_planting,
+                    week_end=app.week_from_planting,
+                    date_start=app.event_date,
+                    date_end=app.event_date,
+                    events=1,
+                ))
+            # Rename stage_splits to match the display labels so the
+            # consolidator's blend output stays consistent.
+            for split, win in zip(stage_splits, schedule_windows):
+                split.stage_name = win.stage_name
+            schedule = StageSchedule(
+                block_id=block.block_id,
+                planting_date=inputs.planting_date,
+                harvest_date=inputs.expected_harvest_date,
+                cadence="per-application",
+                stages=schedule_windows,
+            )
+        else:
+            stage_names = [s.stage_name for s in stage_splits]
+            schedule = _build_stage_schedule(
+                block_id=block.block_id,
+                planting_date=inputs.planting_date,
+                harvest_date=inputs.expected_harvest_date,
+                stage_count=inputs.stage_count,
+                stage_names=stage_names,
+            )
         stage_schedules.append(schedule)
 
         # 9. Consolidator — group method_assignments into typed Blends

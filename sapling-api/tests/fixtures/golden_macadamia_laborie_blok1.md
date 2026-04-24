@@ -42,8 +42,8 @@ The programme serves the following objectives:
 
 ## Applications
 
-**Stage 1 — establishment · Dry broadcast** (Weeks 1-9, 9 events)
-*1 Jul – 6 Sep 2026*
+**Stage 1 — establishment · Dry broadcast** (Week 7, 1 event)
+*15 Aug – 15 Aug 2026*
 
 | Product | Rate / ha | Stream |
 |---|---:|:---:|
@@ -52,8 +52,8 @@ The programme serves the following objectives:
 
 Delivered per ha: **P2O5** 10.7 · **Ca** 11.0 kg
 
-**Stage 1 — establishment · Fertigation (drip)** (Weeks 1-9, 9 events)
-*1 Jul – 6 Sep 2026*
+**Stage 1 — establishment · Fertigation (drip)** (Week 7, 1 event)
+*15 Aug – 15 Aug 2026*
 
 | Product | Rate / ha | Stream |
 |---|---:|:---:|
@@ -64,22 +64,35 @@ Delivered per ha: **P2O5** 10.7 · **Ca** 11.0 kg
 
 Delivered per ha: **N** 12.0 · **K2O** 19.9 · **Mg** 0.3 · **S** 1.1 kg
 
-**Stage 2 — vegetative · Fertigation (drip)** (Weeks 10-19, 9 events)
-*7 Sep – 13 Nov 2026*
+**Stage 2 — vegetative · Fertigation (drip)** (Week 16, 1 event)
+*15 Oct – 15 Oct 2026*
 
 | Product | Rate / ha | Stream |
 |---|---:|:---:|
-| N 19.5%, P₂O₅ 7.8%, K₂O 15.6% source | 113 kg | Part B |
-| P₂O₅ 22.6%, K₂O 28.2% source | 28 kg | Part B |
-| Ca 92.0% source | 3.9 kg | Part A |
-| S 18.0% source | 8.3 kg | Part B |
-| N 1.0%, P₂O₅ 0.8%, K₂O 1.0%, Ca 1.2%, Mg 1.0%, S 0.7% source | 42 kg | Part B |
-| N 6.5%, P₂O₅ 4.5%, K₂O 3.0%, Mg 6.0%, S 1.7% source | 1.2 kg | Part B |
+| N 19.5%, P₂O₅ 7.8%, K₂O 15.6% source | 83 kg | Part B |
+| supplementary blend product | 1431 kg | Part B |
+| Ca 92.0% source | 2.0 kg | Part A |
+| N 12.0%, P₂O₅ 61.0% source | 1.8 kg | Part B |
+| S 18.0% source | 4.2 kg | Part B |
+| N 13.0%, Mg 9.5% source | 2.5 kg | Part A |
 
-Delivered per ha: **N** 22.5 · **P2O5** 15.6 · **K2O** 26.1 · **Ca** 4.1 · **Mg** 0.5 · **S** 1.8 kg
+Delivered per ha: **N** 22.5 · **P2O5** 7.6 · **K2O** 13.0 · **Ca** 1.8 · **Mg** 0.2 · **S** 0.8 kg
 
-**Stage 3 — reproductive · Fertigation (drip)** (Weeks 20-29, 9 events)
-*14 Nov – 20 Jan 2027*
+**Stage 3 — vegetative · Fertigation (drip)** (Week 24, 1 event)
+*15 Dec – 15 Dec 2026*
+
+| Product | Rate / ha | Stream |
+|---|---:|:---:|
+| N 19.5%, P₂O₅ 7.8%, K₂O 15.6% source | 83 kg | Part B |
+| Ca 92.0% source | 2.0 kg | Part A |
+| N 12.0%, P₂O₅ 61.0% source | 1.8 kg | Part B |
+| S 18.0% source | 4.2 kg | Part B |
+| N 13.0%, Mg 9.5% source | 2.5 kg | Part A |
+
+Delivered per ha: **P2O5** 7.6 · **K2O** 13.0 · **Ca** 1.8 · **Mg** 0.2 · **S** 0.8 kg
+
+**Stage 4 — reproductive · Fertigation (drip)** (Week 37, 1 event)
+*15 Mar – 15 Mar 2027*
 
 | Product | Rate / ha | Stream |
 |---|---:|:---:|
@@ -91,8 +104,8 @@ Delivered per ha: **N** 22.5 · **P2O5** 15.6 · **K2O** 26.1 · **Ca** 4.1 · *
 
 Delivered per ha: **N** 36.2 · **P2O5** 18.7 · **K2O** 70.0 · **Ca** 4.3 · **Mg** 0.6 · **S** 1.8 kg
 
-**Stage 4 — fill · Fertigation (drip)** (Weeks 30-38, 9 events)
-*21 Jan – 29 Mar 2027*
+**Stage 5 — fill · Fertigation (drip)** (Week 46, 1 event)
+*15 May – 15 May 2027*
 
 | Product | Rate / ha | Stream |
 |---|---:|:---:|

@@ -112,6 +112,9 @@ class BuildProgrammeRequest(BaseModel):
     subtract_harvested_removal: bool = False
     harvest_mode: Optional[str] = None  # 'grain' | 'hay' | 'silage' | 'fruit' | 'nuts' | ...
     water_values: Optional[dict] = None  # {'EC': dS/m, 'Na': mg/L, 'Ca': mg/L, 'Mg': mg/L, 'HCO3': mg/L, 'pH': ...}
+    # Farmer's operational application windows (month numbers 1-12).
+    # Engine maps agronomic stages onto these slots with timing walls enforced.
+    application_months: Optional[list[int]] = None
     client_id: Optional[UUID] = None
     skipped_blocks: list[SkippedBlockRequest] = Field(default_factory=list)
 
@@ -222,6 +225,7 @@ async def build_programme_endpoint(
         planned_n_fertilizers=request.planned_n_fertilizers,
         available_materials=materials,
         water_values=request.water_values,
+        application_months=request.application_months,
     )
 
     try:
