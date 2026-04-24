@@ -224,13 +224,6 @@ export function FieldDrawer({ open, onClose, field, farmId, crops, analyses, onS
     update({ acceptedMethods: next, fertigationMonths: fm });
   };
 
-  const toggleFertigationMonth = (month: number) => {
-    const next = form.fertigationMonths.includes(month)
-      ? form.fertigationMonths.filter((m) => m !== month)
-      : [...form.fertigationMonths, month];
-    update({ fertigationMonths: next });
-  };
-
   const handleSave = async () => {
     if (!form.name.trim()) { toast.error("Field name is required"); return; }
     setSaving(true);
@@ -266,8 +259,6 @@ export function FieldDrawer({ open, onClose, field, farmId, crops, analyses, onS
       toast.error(e instanceof Error ? e.message : "Failed to delete");
     }
   };
-
-  const showFertigation = form.acceptedMethods.includes("fertigation");
 
   if (!open) return null;
 
@@ -454,30 +445,10 @@ export function FieldDrawer({ open, onClose, field, farmId, crops, analyses, onS
               )}
             </div>
 
-            {showFertigation && (
-              <div className="space-y-1">
-                <Label className="text-xs">Fertigation Months</Label>
-                <div className="grid grid-cols-6 gap-1.5">
-                  {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => {
-                    const active = form.fertigationMonths.includes(m);
-                    return (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => toggleFertigationMonth(m)}
-                        className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
-                          active
-                            ? "border-cyan-400 bg-cyan-50 text-cyan-700"
-                            : "border-gray-200 text-gray-500 hover:border-gray-400"
-                        }`}
-                      >
-                        {MONTH_NAMES[m]}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            {/* Fertigation months moved to Programme Builder (Schedule
+                step) — captured per-programme, not per-field. Field
+                retains the accepted_methods + irrigation_type as the
+                capability record only. */}
           </section>
 
           {/* Linked analysis */}

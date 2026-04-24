@@ -213,8 +213,8 @@ export function wizardStateToBuildRequest(
 }
 
 /**
- * Default method availability — matches Pydantic defaults in the backend
- * model. Render as 7 checkboxes in the wizard; this is the initial state.
+ * Default method availability — used as a fallback when no field data
+ * is available (e.g. a manual-entry flow that skips the field picker).
  */
 export function defaultMethodAvailability(): MethodAvailability {
   return {
@@ -225,5 +225,40 @@ export function defaultMethodAvailability(): MethodAvailability {
     has_granular_spreader: true,
     has_fertigation_injectors: false,
     has_seed_treatment: false,
+  };
+}
+
+/**
+ * Aggregate the set of field-level accepted_methods strings into the
+ * farm-level MethodAvailability shape the engine expects.
+ *
+ * The field drawer captures per-field strings like "broadcast" /
+ * "fertigation" / "foliar" / "band_place" — the union across the
+ * programme's selected blocks tells the orchestrator which methods
+ * it may route nutrients through.
+ *
+ * We default all irrigation variants (drip / pivot / sprinkler) from
+ * a single "fertigation" marker because the field data doesn't
+ * currently split that out per-block; downstream the method_selector
+ * treats them uniformly. If a field explicitly names "drip" /
+ * "pivot" / "sprinkler", those take priority.
+ */
+export function deriveMethodAvailability(
+  acceptedMethods: string[],
+): MethodAvailability {
+  const set = new Set(acceptedMethods.map((m) => m.toLowerCase().trim()));
+  const hasAny = (...keys: string[]) => keys.some((k) => set.has(k));
+
+  const fertigation = hasAny("fertigation", "drip", "pivot", "sprinkler");
+  return {
+    has_drip: hasAny("drip") || (fertigation && !hasAny("pivot", "sprinkler")),
+    has_pivot: hasAny("pivot"),
+    has_sprinkler: hasAny("sprinkler", "micro"),
+    has_foliar_sprayer: hasAny("foliar", "foliar_spray"),
+    has_granular_spreader: hasAny(
+      "broadcast", "band_place", "banded", "side_dress", "topdress",
+    ),
+    has_fertigation_injectors: fertigation,
+    has_seed_treatment: hasAny("seed_treat", "seed_treatment"),
   };
 }

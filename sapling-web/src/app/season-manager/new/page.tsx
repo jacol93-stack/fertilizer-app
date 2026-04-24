@@ -22,10 +22,9 @@ import { ScheduleReview, type BlockInfo, type UserApplication } from "@/componen
 import { BlendGroups, type BlendGroupData } from "@/components/season-manager/blend-groups";
 import type { Programme, Block, CropNorm, SoilAnalysis } from "@/lib/season-constants";
 import { emptyBlock } from "@/lib/season-constants";
-import type { MethodAvailability } from "@/lib/types/programme-artifact";
 import {
   wizardStateToBuildRequest,
-  defaultMethodAvailability,
+  deriveMethodAvailability,
   WizardAdapterError,
   type SoilAnalysisMeta,
 } from "@/lib/adapters/wizard-to-v2";
@@ -80,11 +79,9 @@ function SeasonBuilderPage() {
   // Blend groups data (from generate)
   const [blendGroupsData, setBlendGroupsData] = useState<BlendGroupData[]>([]);
 
-  // Method availability — captured on step 0, consumed by "Build Artifact"
-  // on the Review step. Not used by the legacy generate flow.
-  const [methodAvailability, setMethodAvailability] = useState<MethodAvailability>(
-    defaultMethodAvailability(),
-  );
+  // Method availability is derived from field-level accepted_methods +
+  // irrigation_type during handleBuildArtifact — not a separate wizard
+  // step. Field drawer is the single source of truth.
   const [buildingArtifact, setBuildingArtifact] = useState(false);
 
   // Reference data
@@ -385,6 +382,14 @@ function SeasonBuilderPage() {
         };
       }
 
+      // Derive farm-level MethodAvailability from field-level
+      // accepted_methods (the field drawer is the single source of
+      // truth). preview-schedule already surfaces accepted_methods
+      // on each BlockInfo, so we aggregate across selected blocks.
+      const allAcceptedMethods = blockInfoData
+        .flatMap((bi) => bi.accepted_methods || []);
+      const methodAvailability = deriveMethodAvailability(allAcceptedMethods);
+
       // Pass ALL named blocks (not just those with soil data) so the
       // adapter can split them into planned vs skipped; the skipped set
       // flows to the artifact as OutstandingItems instead of being
@@ -559,38 +564,6 @@ function SeasonBuilderPage() {
                   </div>
                 </div>
 
-                <div className="mt-2 rounded-lg border border-dashed border-gray-300 p-4">
-                  <Label className="mb-2 block text-sm font-medium">
-                    Application methods available on this farm
-                  </Label>
-                  <p className="mb-3 text-xs text-muted-foreground">
-                    The programme will route nutrients through the methods you tick
-                    here — fertigation, foliar, granular broadcast, etc.
-                  </p>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {([
-                      ["has_drip", "Drip fertigation"],
-                      ["has_pivot", "Pivot fertigation"],
-                      ["has_sprinkler", "Sprinkler fertigation"],
-                      ["has_foliar_sprayer", "Foliar sprayer"],
-                      ["has_granular_spreader", "Granular spreader"],
-                      ["has_fertigation_injectors", "Fertigation injectors (A/B)"],
-                      ["has_seed_treatment", "Seed treatment"],
-                    ] as Array<[keyof MethodAvailability, string]>).map(([key, label]) => (
-                      <label key={key} className="flex cursor-pointer items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={methodAvailability[key]}
-                          onChange={(e) =>
-                            setMethodAvailability((m) => ({ ...m, [key]: e.target.checked }))
-                          }
-                          className="size-4 rounded border-gray-300 text-[var(--sapling-orange)] focus:ring-[var(--sapling-orange)]"
-                        />
-                        <span>{label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
               </div>
             )}
 
