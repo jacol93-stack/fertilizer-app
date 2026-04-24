@@ -1,0 +1,890 @@
+{
+  "header": {
+    "artifact_version": "1.0.0",
+    "programme_id": null,
+    "client_name": "Reference Block — Macadamia",
+    "farm_name": "Levubu Reference",
+    "location": "Levubu, Limpopo",
+    "prepared_for": "Demo / validation",
+    "prepared_by": "Sapling Fertilizer",
+    "prepared_date": "2026-04-25",
+    "ref_number": "REF-MAC-2026",
+    "state": "draft",
+    "replan_reason": "first_pass",
+    "crop": "Macadamia",
+    "variant_key": {
+      "canonical_crop": "Macadamia",
+      "parent_crop": null,
+      "cultivar": null,
+      "region": null,
+      "cycle": null
+    },
+    "season": "2026/27",
+    "planting_date": "2026-03-01",
+    "expected_harvest_date": "2027-02-28",
+    "data_completeness": {
+      "level": "standard",
+      "has_crop_area_yield": true,
+      "has_ph_and_texture": true,
+      "has_full_soil_analysis": true,
+      "soil_analysis_age_months": null,
+      "has_leaf_analysis": false,
+      "leaf_analysis_age_months": null,
+      "has_yield_history": false,
+      "yield_history_seasons": 0,
+      "has_method_availability": true
+    },
+    "method_availability": {
+      "has_drip": true,
+      "has_pivot": false,
+      "has_sprinkler": true,
+      "has_foliar_sprayer": true,
+      "has_granular_spreader": true,
+      "has_fertigation_injectors": true,
+      "has_seed_treatment": true
+    }
+  },
+  "soil_snapshots": [
+    {
+      "block_id": "mac-levubu-ref",
+      "block_name": "Reference Block A4 (Levubu)",
+      "block_area_ha": 5.0,
+      "lab_name": "Reference block (published norms)",
+      "lab_method": "Mehlich-3",
+      "sample_date": "2026-03-01",
+      "sample_id": "REF-MAC-LEVUBU-001",
+      "sample_depth_cm": 15.0,
+      "parameters": {
+        "pH (H2O)": 5.8,
+        "Organic C (%)": 2.5,
+        "P (Bray-1)": 22.0,
+        "K": 145.0,
+        "Ca": 980.0,
+        "Mg": 185.0,
+        "Na_base_sat_pct": 1.0,
+        "S": 12.0,
+        "Zn": 3.0,
+        "B": 0.35,
+        "Mn": 180.0,
+        "Fe": 95.0,
+        "Cu": 6.5,
+        "Al": 0.0,
+        "CEC": 10.2,
+        "Acid_sat_pct": 0.0
+      },
+      "computed_ratios": {
+        "P:Zn": 7.3,
+        "Ca:B": 2800.0,
+        "soil_ESP_pct": 1.0
+      },
+      "headline_signals": [
+        "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering."
+      ]
+    }
+  ],
+  "pre_season_inputs": [],
+  "pre_season_recommendations": [],
+  "stage_schedules": [
+    {
+      "block_id": "mac-levubu-ref",
+      "planting_date": "2026-03-01",
+      "harvest_date": "2027-02-28",
+      "cadence": "per-application",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_name": "establishment (1 of 2)",
+          "week_start": 3,
+          "week_end": 3,
+          "date_start": "2026-03-15",
+          "date_end": "2026-03-15",
+          "events": 1,
+          "blend_ref": null,
+          "foliar_at_week": null
+        },
+        {
+          "stage_number": 2,
+          "stage_name": "establishment (2 of 2)",
+          "week_start": 7,
+          "week_end": 7,
+          "date_start": "2026-04-15",
+          "date_end": "2026-04-15",
+          "events": 1,
+          "blend_ref": null,
+          "foliar_at_week": null
+        },
+        {
+          "stage_number": 3,
+          "stage_name": "vegetative (1 of 3)",
+          "week_start": 11,
+          "week_end": 11,
+          "date_start": "2026-05-15",
+          "date_end": "2026-05-15",
+          "events": 1,
+          "blend_ref": null,
+          "foliar_at_week": null
+        },
+        {
+          "stage_number": 4,
+          "stage_name": "vegetative (2 of 3)",
+          "week_start": 16,
+          "week_end": 16,
+          "date_start": "2026-06-15",
+          "date_end": "2026-06-15",
+          "events": 1,
+          "blend_ref": null,
+          "foliar_at_week": null
+        },
+        {
+          "stage_number": 5,
+          "stage_name": "vegetative (3 of 3)",
+          "week_start": 20,
+          "week_end": 20,
+          "date_start": "2026-07-15",
+          "date_end": "2026-07-15",
+          "events": 1,
+          "blend_ref": null,
+          "foliar_at_week": null
+        },
+        {
+          "stage_number": 6,
+          "stage_name": "reproductive (1 of 2)",
+          "week_start": 24,
+          "week_end": 24,
+          "date_start": "2026-08-15",
+          "date_end": "2026-08-15",
+          "events": 1,
+          "blend_ref": null,
+          "foliar_at_week": null
+        },
+        {
+          "stage_number": 7,
+          "stage_name": "reproductive (2 of 2)",
+          "week_start": 29,
+          "week_end": 29,
+          "date_start": "2026-09-15",
+          "date_end": "2026-09-15",
+          "events": 1,
+          "blend_ref": null,
+          "foliar_at_week": null
+        },
+        {
+          "stage_number": 8,
+          "stage_name": "fill",
+          "week_start": 33,
+          "week_end": 33,
+          "date_start": "2026-10-15",
+          "date_end": "2026-10-15",
+          "events": 1,
+          "blend_ref": null,
+          "foliar_at_week": null
+        }
+      ]
+    }
+  ],
+  "blends": [
+    {
+      "block_id": "mac-levubu-ref",
+      "stage_number": 1,
+      "stage_name": "establishment",
+      "applications": [
+        {
+          "event_index": 1,
+          "event_date": "2026-03-15",
+          "week_from_planting": 3,
+          "event_of_stage_index": 1,
+          "total_events_in_stage": 2
+        },
+        {
+          "event_index": 2,
+          "event_date": "2026-04-15",
+          "week_from_planting": 7,
+          "event_of_stage_index": 2,
+          "total_events_in_stage": 2
+        }
+      ],
+      "method": {
+        "kind": "dry_broadcast",
+        "incorporate": false,
+        "placement_depth_cm": null
+      },
+      "raw_products": [
+        {
+          "product": "Manure Compost",
+          "analysis": "N 2.1%, P₂O₅ 1.0%, K₂O 1.6%, Ca 2.2%, Mg 1.0%, S 0.7%",
+          "stream": null,
+          "rate_per_event_per_ha": "250 kg",
+          "rate_per_stage_per_ha": "500 kg",
+          "batch_total": "2500 kg",
+          "source": null
+        },
+        {
+          "product": "MAP",
+          "analysis": "N 11.0%, P₂O₅ 51.0%",
+          "stream": null,
+          "rate_per_event_per_ha": "5.4 kg",
+          "rate_per_stage_per_ha": "11 kg",
+          "batch_total": "54 kg",
+          "source": null
+        }
+      ],
+      "concentrates": [],
+      "nutrients_delivered": {
+        "P2O5": 10.5
+      },
+      "sources": [
+        {
+          "source_id": "IMPLEMENTER_CONVENTION",
+          "section": "Greedy material-cover algorithm v1 (Phase 2 module 8)",
+          "note": null,
+          "tier": 6
+        }
+      ],
+      "confidence": null,
+      "events": 2,
+      "weeks": "Weeks 3-7",
+      "dates_label": "15 Mar – 15 Apr 2026"
+    },
+    {
+      "block_id": "mac-levubu-ref",
+      "stage_number": 1,
+      "stage_name": "establishment",
+      "applications": [
+        {
+          "event_index": 1,
+          "event_date": "2026-03-15",
+          "week_from_planting": 3,
+          "event_of_stage_index": 1,
+          "total_events_in_stage": 2
+        },
+        {
+          "event_index": 2,
+          "event_date": "2026-04-15",
+          "week_from_planting": 7,
+          "event_of_stage_index": 2,
+          "total_events_in_stage": 2
+        }
+      ],
+      "method": {
+        "kind": "liquid_drip",
+        "concentrate_strength_g_per_l": 300.0,
+        "ec_target_ms_per_cm": [
+          2.0,
+          2.5
+        ],
+        "ph_target": [
+          5.5,
+          6.5
+        ],
+        "part_a_required": true,
+        "part_b_required": true
+      },
+      "raw_products": [
+        {
+          "product": "Potassium Nitrate",
+          "analysis": "N 13.0%, K₂O 46.0%",
+          "stream": "B",
+          "rate_per_event_per_ha": "28 kg",
+          "rate_per_stage_per_ha": "57 kg",
+          "batch_total": "283 kg",
+          "source": null
+        },
+        {
+          "product": "Calcium Nitrate",
+          "analysis": "N 15.5%, Ca 19.0%",
+          "stream": "A",
+          "rate_per_event_per_ha": "23 kg",
+          "rate_per_stage_per_ha": "46 kg",
+          "batch_total": "231 kg",
+          "source": null
+        },
+        {
+          "product": "SOP",
+          "analysis": "K₂O 50.0%, S 18.0%",
+          "stream": "B",
+          "rate_per_event_per_ha": "9.2 kg",
+          "rate_per_stage_per_ha": "18 kg",
+          "batch_total": "92 kg",
+          "source": null
+        }
+      ],
+      "concentrates": [
+        {
+          "name": "Part A (Calcium stream)",
+          "contains": "Calcium Nitrate",
+          "dry_weight_or_liquid": "231 kg dry salts",
+          "strength_g_per_l": 300.0,
+          "volume_l": 770.0,
+          "per_event_dose_l": null,
+          "injection_notes": "Inject via dedicated stock-tank line (never mix with Part B)"
+        },
+        {
+          "name": "Part B (Sulphate + phosphate stream)",
+          "contains": "Potassium Nitrate + SOP",
+          "dry_weight_or_liquid": "375 kg dry salts",
+          "strength_g_per_l": 100.0,
+          "volume_l": 3750.0,
+          "per_event_dose_l": null,
+          "injection_notes": "Inject via second stock-tank line, parallel or sequential"
+        }
+      ],
+      "nutrients_delivered": {
+        "N": 14.5,
+        "K2O": 35.2,
+        "S": 3.3
+      },
+      "sources": [
+        {
+          "source_id": "IMPLEMENTER_CONVENTION",
+          "section": "Greedy material-cover algorithm v1 (Phase 2 module 8)",
+          "note": null,
+          "tier": 6
+        }
+      ],
+      "confidence": null,
+      "events": 2,
+      "weeks": "Weeks 3-7",
+      "dates_label": "15 Mar – 15 Apr 2026"
+    },
+    {
+      "block_id": "mac-levubu-ref",
+      "stage_number": 2,
+      "stage_name": "vegetative",
+      "applications": [
+        {
+          "event_index": 3,
+          "event_date": "2026-05-15",
+          "week_from_planting": 11,
+          "event_of_stage_index": 1,
+          "total_events_in_stage": 3
+        },
+        {
+          "event_index": 4,
+          "event_date": "2026-06-15",
+          "week_from_planting": 16,
+          "event_of_stage_index": 2,
+          "total_events_in_stage": 3
+        },
+        {
+          "event_index": 5,
+          "event_date": "2026-07-15",
+          "week_from_planting": 20,
+          "event_of_stage_index": 3,
+          "total_events_in_stage": 3
+        }
+      ],
+      "method": {
+        "kind": "liquid_drip",
+        "concentrate_strength_g_per_l": 300.0,
+        "ec_target_ms_per_cm": [
+          2.0,
+          2.5
+        ],
+        "ph_target": [
+          5.5,
+          6.5
+        ],
+        "part_a_required": true,
+        "part_b_required": true
+      },
+      "raw_products": [
+        {
+          "product": "Potassium Nitrate",
+          "analysis": "N 13.0%, K₂O 46.0%",
+          "stream": "B",
+          "rate_per_event_per_ha": "28 kg",
+          "rate_per_stage_per_ha": "85 kg",
+          "batch_total": "424 kg",
+          "source": null
+        },
+        {
+          "product": "MAP",
+          "analysis": "N 11.0%, P₂O₅ 51.0%",
+          "stream": "B",
+          "rate_per_event_per_ha": "9.8 kg",
+          "rate_per_stage_per_ha": "29 kg",
+          "batch_total": "147 kg",
+          "source": null
+        },
+        {
+          "product": "Calcium Nitrate",
+          "analysis": "N 15.5%, Ca 19.0%",
+          "stream": "A",
+          "rate_per_event_per_ha": "32 kg",
+          "rate_per_stage_per_ha": "95 kg",
+          "batch_total": "476 kg",
+          "source": null
+        },
+        {
+          "product": "SOP",
+          "analysis": "K₂O 50.0%, S 18.0%",
+          "stream": "B",
+          "rate_per_event_per_ha": "10 kg",
+          "rate_per_stage_per_ha": "31 kg",
+          "batch_total": "153 kg",
+          "source": null
+        }
+      ],
+      "concentrates": [
+        {
+          "name": "Part A (Calcium stream)",
+          "contains": "Calcium Nitrate",
+          "dry_weight_or_liquid": "476 kg dry salts",
+          "strength_g_per_l": 300.0,
+          "volume_l": 1587.0,
+          "per_event_dose_l": null,
+          "injection_notes": "Inject via dedicated stock-tank line (never mix with Part B)"
+        },
+        {
+          "name": "Part B (Sulphate + phosphate stream)",
+          "contains": "Potassium Nitrate + MAP + SOP",
+          "dry_weight_or_liquid": "724 kg dry salts",
+          "strength_g_per_l": 100.0,
+          "volume_l": 7240.0,
+          "per_event_dose_l": null,
+          "injection_notes": "Inject via second stock-tank line, parallel or sequential"
+        }
+      ],
+      "nutrients_delivered": {
+        "N": 29.0,
+        "P2O5": 15.0,
+        "K2O": 54.3,
+        "S": 5.5
+      },
+      "sources": [
+        {
+          "source_id": "IMPLEMENTER_CONVENTION",
+          "section": "Greedy material-cover algorithm v1 (Phase 2 module 8)",
+          "note": null,
+          "tier": 6
+        }
+      ],
+      "confidence": null,
+      "events": 3,
+      "weeks": "Weeks 11-20",
+      "dates_label": "15 May – 15 Jul 2026"
+    },
+    {
+      "block_id": "mac-levubu-ref",
+      "stage_number": 3,
+      "stage_name": "reproductive",
+      "applications": [
+        {
+          "event_index": 6,
+          "event_date": "2026-08-15",
+          "week_from_planting": 24,
+          "event_of_stage_index": 1,
+          "total_events_in_stage": 2
+        },
+        {
+          "event_index": 7,
+          "event_date": "2026-09-15",
+          "week_from_planting": 29,
+          "event_of_stage_index": 2,
+          "total_events_in_stage": 2
+        }
+      ],
+      "method": {
+        "kind": "liquid_drip",
+        "concentrate_strength_g_per_l": 300.0,
+        "ec_target_ms_per_cm": [
+          2.0,
+          2.5
+        ],
+        "ph_target": [
+          5.5,
+          6.5
+        ],
+        "part_a_required": true,
+        "part_b_required": true
+      },
+      "raw_products": [
+        {
+          "product": "Potassium Nitrate",
+          "analysis": "N 13.0%, K₂O 46.0%",
+          "stream": "B",
+          "rate_per_event_per_ha": "113 kg",
+          "rate_per_stage_per_ha": "226 kg",
+          "batch_total": "1130 kg",
+          "source": null
+        },
+        {
+          "product": "MAP",
+          "analysis": "N 11.0%, P₂O₅ 51.0%",
+          "stream": "B",
+          "rate_per_event_per_ha": "18 kg",
+          "rate_per_stage_per_ha": "35 kg",
+          "batch_total": "176 kg",
+          "source": null
+        },
+        {
+          "product": "Calcium Nitrate",
+          "analysis": "N 15.5%, Ca 19.0%",
+          "stream": "A",
+          "rate_per_event_per_ha": "33 kg",
+          "rate_per_stage_per_ha": "66 kg",
+          "batch_total": "330 kg",
+          "source": null
+        },
+        {
+          "product": "SOP",
+          "analysis": "K₂O 50.0%, S 18.0%",
+          "stream": "B",
+          "rate_per_event_per_ha": "18 kg",
+          "rate_per_stage_per_ha": "37 kg",
+          "batch_total": "183 kg",
+          "source": null
+        }
+      ],
+      "concentrates": [
+        {
+          "name": "Part A (Calcium stream)",
+          "contains": "Calcium Nitrate",
+          "dry_weight_or_liquid": "330 kg dry salts",
+          "strength_g_per_l": 300.0,
+          "volume_l": 1100.0,
+          "per_event_dose_l": null,
+          "injection_notes": "Inject via dedicated stock-tank line (never mix with Part B)"
+        },
+        {
+          "name": "Part B (Sulphate + phosphate stream)",
+          "contains": "Potassium Nitrate + MAP + SOP",
+          "dry_weight_or_liquid": "1489 kg dry salts",
+          "strength_g_per_l": 100.0,
+          "volume_l": 14890.0,
+          "per_event_dose_l": null,
+          "injection_notes": "Inject via second stock-tank line, parallel or sequential"
+        }
+      ],
+      "nutrients_delivered": {
+        "N": 43.5,
+        "P2O5": 18.0,
+        "K2O": 122.3,
+        "S": 6.6
+      },
+      "sources": [
+        {
+          "source_id": "IMPLEMENTER_CONVENTION",
+          "section": "Greedy material-cover algorithm v1 (Phase 2 module 8)",
+          "note": null,
+          "tier": 6
+        }
+      ],
+      "confidence": null,
+      "events": 2,
+      "weeks": "Weeks 24-29",
+      "dates_label": "15 Aug – 15 Sep 2026"
+    },
+    {
+      "block_id": "mac-levubu-ref",
+      "stage_number": 4,
+      "stage_name": "fill",
+      "applications": [
+        {
+          "event_index": 8,
+          "event_date": "2026-10-15",
+          "week_from_planting": 33,
+          "event_of_stage_index": 1,
+          "total_events_in_stage": 1
+        }
+      ],
+      "method": {
+        "kind": "liquid_drip",
+        "concentrate_strength_g_per_l": 300.0,
+        "ec_target_ms_per_cm": [
+          2.0,
+          2.5
+        ],
+        "ph_target": [
+          5.5,
+          6.5
+        ],
+        "part_a_required": true,
+        "part_b_required": true
+      },
+      "raw_products": [
+        {
+          "product": "Potassium Nitrate",
+          "analysis": "N 13.0%, K₂O 46.0%",
+          "stream": "B",
+          "rate_per_event_per_ha": "170 kg",
+          "rate_per_stage_per_ha": "170 kg",
+          "batch_total": "848 kg",
+          "source": null
+        },
+        {
+          "product": "MAP",
+          "analysis": "N 11.0%, P₂O₅ 51.0%",
+          "stream": "B",
+          "rate_per_event_per_ha": "24 kg",
+          "rate_per_stage_per_ha": "24 kg",
+          "batch_total": "118 kg",
+          "source": null
+        },
+        {
+          "product": "Calcium Nitrate",
+          "analysis": "N 15.5%, Ca 19.0%",
+          "stream": "A",
+          "rate_per_event_per_ha": "75 kg",
+          "rate_per_stage_per_ha": "75 kg",
+          "batch_total": "375 kg",
+          "source": null
+        },
+        {
+          "product": "SOP",
+          "analysis": "K₂O 50.0%, S 18.0%",
+          "stream": "B",
+          "rate_per_event_per_ha": "24 kg",
+          "rate_per_stage_per_ha": "24 kg",
+          "batch_total": "122 kg",
+          "source": null
+        }
+      ],
+      "concentrates": [
+        {
+          "name": "Part A (Calcium stream)",
+          "contains": "Calcium Nitrate",
+          "dry_weight_or_liquid": "375 kg dry salts",
+          "strength_g_per_l": 300.0,
+          "volume_l": 1250.0,
+          "per_event_dose_l": null,
+          "injection_notes": "Inject via dedicated stock-tank line (never mix with Part B)"
+        },
+        {
+          "name": "Part B (Sulphate + phosphate stream)",
+          "contains": "Potassium Nitrate + MAP + SOP",
+          "dry_weight_or_liquid": "1088 kg dry salts",
+          "strength_g_per_l": 100.0,
+          "volume_l": 10880.0,
+          "per_event_dose_l": null,
+          "injection_notes": "Inject via second stock-tank line, parallel or sequential"
+        }
+      ],
+      "nutrients_delivered": {
+        "N": 36.2,
+        "P2O5": 12.0,
+        "K2O": 90.2,
+        "S": 4.4
+      },
+      "sources": [
+        {
+          "source_id": "IMPLEMENTER_CONVENTION",
+          "section": "Greedy material-cover algorithm v1 (Phase 2 module 8)",
+          "note": null,
+          "tier": 6
+        }
+      ],
+      "confidence": null,
+      "events": 1,
+      "weeks": "Week 33",
+      "dates_label": "15 Oct 2026"
+    }
+  ],
+  "foliar_events": [
+    {
+      "block_id": "mac-levubu-ref",
+      "event_number": 1,
+      "week": 6,
+      "spray_date": "2026-04-12",
+      "stage_name": "Vegetative I",
+      "product": "Solubor",
+      "analysis": "20.5% B",
+      "rate_per_ha": "1.5 kg",
+      "total_for_block": "7.5 kg",
+      "trigger_reason": "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.",
+      "trigger_kind": "soil_availability_gap",
+      "source": {
+        "source_id": "SHORROCKS_1997",
+        "section": "Plant & Soil 193:121-148",
+        "note": null,
+        "tier": 3
+      },
+      "confidence": null
+    },
+    {
+      "block_id": "mac-levubu-ref",
+      "event_number": 2,
+      "week": 28,
+      "spray_date": "2026-09-13",
+      "stage_name": "Pre-flowering",
+      "product": "Solubor",
+      "analysis": "20.5% B",
+      "rate_per_ha": "0.1% Solubor",
+      "total_for_block": "0.1% Solubor",
+      "trigger_reason": "Critical for flower set + nut formation; B mobile in xylem only",
+      "trigger_kind": "quality_window",
+      "source": {
+        "source_id": "SAMAC_SCHOEMAN_2021",
+        "section": "Schoeman 2021 §3.2",
+        "note": null,
+        "tier": 1
+      },
+      "confidence": null
+    },
+    {
+      "block_id": "mac-levubu-ref",
+      "event_number": 3,
+      "week": 32,
+      "spray_date": "2026-10-11",
+      "stage_name": "Vegetative flush",
+      "product": "Zinc Sulphate",
+      "analysis": "36% Zn",
+      "rate_per_ha": "0.5% ZnSO4",
+      "total_for_block": "0.5% ZnSO4",
+      "trigger_reason": "Leaf expansion + enzyme activation; soil Zn often unavailable",
+      "trigger_kind": "stage_peak_demand",
+      "source": {
+        "source_id": "SAMAC_SCHOEMAN_2021",
+        "section": "Schoeman 2021 §3.2",
+        "note": null,
+        "tier": 1
+      },
+      "confidence": null
+    }
+  ],
+  "block_totals": {
+    "mac-levubu-ref": {
+      "N": 145.0,
+      "P2O5": 60.0,
+      "K2O": 260.0,
+      "Ca": 0.0,
+      "Mg": 0.0,
+      "S": 22.0
+    }
+  },
+  "risk_flags": [
+    {
+      "message": "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering. — Action: Apply foliar B at critical stages (pre-bloom, fruit set)",
+      "severity": "warn",
+      "source": {
+        "source_id": "SHORROCKS_1997",
+        "section": "Plant & Soil 193:121-148",
+        "note": null,
+        "tier": 3
+      }
+    }
+  ],
+  "assumptions": [],
+  "outstanding_items": [
+    {
+      "item": "Application-month coverage gap",
+      "why_it_matters": "Stage 5 'maturation' (Dec–Feb) has no allowed application month inside its window. Nutrients for this stage were not delivered. Consider adding a month within this window.",
+      "impact_if_skipped": null
+    },
+    {
+      "item": "Irrigation water test (EC, pH, Ca, Mg, Na, HCO₃, Cl)",
+      "why_it_matters": "Required before first Part A (Calcium Nitrate) injection. Dolomite-country water can produce scale when Ca-Nitrate is injected. Borehole water EC + bicarb level affect drip-line pH.",
+      "impact_if_skipped": "Risk of emitter blockage from CaCO₃ precipitate"
+    },
+    {
+      "item": "Mid-season leaf tissue analysis at tillering and at bulb-init/flowering",
+      "why_it_matters": "Two natural decision points where the programme can still be steered. Catches deficiencies the soil test missed and validates actual uptake against plan.",
+      "impact_if_skipped": "Mid-season corrections become reactive, not anticipatory"
+    }
+  ],
+  "shopping_list": [
+    {
+      "category": "dry_blend",
+      "product": "Manure Compost",
+      "analysis": "N 2.1%, P₂O₅ 1.0%, K₂O 1.6%, Ca 2.2%, Mg 1.0%, S 0.7%",
+      "total_per_block": {
+        "mac-levubu-ref": 2500.0
+      },
+      "total_overall": 2500.0,
+      "unit": "kg"
+    },
+    {
+      "category": "dry_blend",
+      "product": "MAP",
+      "analysis": "N 11.0%, P₂O₅ 51.0%",
+      "total_per_block": {
+        "mac-levubu-ref": 54.0
+      },
+      "total_overall": 54.0,
+      "unit": "kg"
+    },
+    {
+      "category": "drip",
+      "product": "Potassium Nitrate",
+      "analysis": "N 13.0%, K₂O 46.0%",
+      "total_per_block": {
+        "mac-levubu-ref": 2685.0
+      },
+      "total_overall": 2685.0,
+      "unit": "kg"
+    },
+    {
+      "category": "drip",
+      "product": "Calcium Nitrate",
+      "analysis": "N 15.5%, Ca 19.0%",
+      "total_per_block": {
+        "mac-levubu-ref": 1412.0
+      },
+      "total_overall": 1412.0,
+      "unit": "kg"
+    },
+    {
+      "category": "drip",
+      "product": "SOP",
+      "analysis": "K₂O 50.0%, S 18.0%",
+      "total_per_block": {
+        "mac-levubu-ref": 550.0
+      },
+      "total_overall": 550.0,
+      "unit": "kg"
+    },
+    {
+      "category": "drip",
+      "product": "MAP",
+      "analysis": "N 11.0%, P₂O₅ 51.0%",
+      "total_per_block": {
+        "mac-levubu-ref": 441.0
+      },
+      "total_overall": 441.0,
+      "unit": "kg"
+    },
+    {
+      "category": "foliar",
+      "product": "Solubor",
+      "analysis": "20.5% B",
+      "total_per_block": {
+        "mac-levubu-ref": 7.6
+      },
+      "total_overall": 7.6,
+      "unit": "kg"
+    },
+    {
+      "category": "foliar",
+      "product": "Zinc Sulphate",
+      "analysis": "36% Zn",
+      "total_per_block": {
+        "mac-levubu-ref": 0.5
+      },
+      "total_overall": 0.5,
+      "unit": "% ZnSO4"
+    }
+  ],
+  "sources_audit": [
+    {
+      "source_id": "SAMAC_SCHOEMAN_2021",
+      "section": "Schoeman 2021 annual N/K/Zn/B schedule",
+      "note": null,
+      "tier": 1
+    }
+  ],
+  "overall_confidence": null,
+  "decision_trace": [
+    "Block mac-levubu-ref: start reasoning",
+    "Block mac-levubu-ref: SoilFactorReasoner produced 1 findings",
+    "Block mac-levubu-ref: StageSplitter — 5 stages using fruit_tree family shape (tier 1)",
+    "Block mac-levubu-ref: MonthAllocator — 8 application events mapped from 8 allowed months",
+    "Block mac-levubu-ref: MethodSelector — 16 routings",
+    "Block mac-levubu-ref: FoliarTriggerEngine — 3 events (1 soil_availability_gap, 1 quality_window, 1 stage_peak_demand)",
+    "Block mac-levubu-ref: Consolidator — 5 blends (SimilarityMerger scanned; no adjacent pairs met merge criteria)",
+    "Orchestrator: produced artifact with 1 blocks, 0 recommendations, 3 foliar events, 1 risk flags",
+    "Orchestrator: BlendValidator — 5 blends validated, 0 warnings/errors surfaced"
+  ],
+  "created_at": "2026-04-24T22:57:33.388489",
+  "updated_at": "2026-04-24T22:57:33.388490",
+  "render_hint": null
+}
