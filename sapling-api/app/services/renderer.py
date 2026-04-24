@@ -471,6 +471,18 @@ def _render_blend_card(blend: Blend) -> str:
             stream = f"Part {part.stream}" if part.stream else "—"
             lines.append(f"| {product_label} | {rate} | {stream} |")
         lines.append("")
+    if len(blend.applications) > 1:
+        lines.append("**Application schedule:**")
+        lines.append("")
+        lines.append("| # | Date | Week | Of stage |")
+        lines.append("|---:|---|---:|:---:|")
+        n = len(blend.applications)
+        for i, app in enumerate(blend.applications, start=1):
+            date_str = app.event_date.strftime("%-d %b %Y")
+            lines.append(
+                f"| {i} | {date_str} | {app.week_from_planting} | {i} of {n} |"
+            )
+        lines.append("")
     if blend.nutrients_delivered:
         nut_bits = []
         for nut in ("N", "P2O5", "K2O", "Ca", "Mg", "S"):

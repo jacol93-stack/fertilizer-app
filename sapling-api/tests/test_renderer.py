@@ -558,3 +558,80 @@ def test_year_two_outlook_dropped_for_simple_annual():
     artifact = _artifact()  # annual crop (Barley), no sodic / OM flags
     output = render_programme_document(artifact)
     assert "## Year 2 and Beyond" not in output
+
+
+# ============================================================
+# Multi-event schedule (F5)
+# ============================================================
+
+def _multi_event_blend() -> Blend:
+    """Merged Blend spanning multiple application dates."""
+    return Blend(
+        block_id="B1",
+        stage_number=1,
+        stage_name="Veg I + Veg II",
+        applications=[
+            ApplicationEvent(
+                event_index=i + 1,
+                event_date=date(2026, 5, 20 + 7 * i) if (20 + 7 * i) <= 31
+                else date(2026, 6, (20 + 7 * i) - 31),
+                week_from_planting=3 + i,
+                event_of_stage_index=i + 1,
+                total_events_in_stage=4,
+            )
+            for i in range(4)
+        ],
+        method=FertigationMethod(kind=MethodKind.LIQUID_DRIP),
+        raw_products=[
+            BlendPart(
+                product="Calcium Nitrate",
+                analysis="N 17.1%, Ca 24.4%",
+                stream="A",
+                rate_per_event_per_ha="42 kg",
+                rate_per_stage_per_ha="168 kg",
+            ),
+        ],
+        nutrients_delivered={"N": 28.7, "Ca": 40.9},
+    )
+
+
+def test_multi_event_blend_renders_schedule_table():
+    """Blend with multiple applications must expose every date in a
+    schedule table below the recipe."""
+    artifact = _artifact(blends=[_multi_event_blend()])
+    output = render_programme_document(artifact)
+    assert "Application schedule" in output
+    # All four dates present
+    assert "20 May 2026" in output
+    assert "27 May 2026" in output
+    assert "3 Jun 2026" in output
+    assert "10 Jun 2026" in output
+    # 1-of-N counter present
+    assert "1 of 4" in output
+    assert "4 of 4" in output
+
+
+def test_single_event_blend_renders_no_schedule_table():
+    """Single-event Blend should not add schedule-table noise — the
+    header already carries the date."""
+    artifact = _artifact(blends=[_dry_blend()])
+    output = render_programme_document(artifact)
+    assert "Application schedule" not in output
+
+
+def test_merged_stage_name_survives_to_output():
+    """The " + "-joined stage name from F4 must reach the Blend card
+    header."""
+    artifact = _artifact(blends=[_multi_event_blend()])
+    output = render_programme_document(artifact)
+    assert "Veg I + Veg II" in output
+
+
+def test_recipe_rows_not_duplicated_per_event():
+    """Collapse-identical-product-rows: the product table renders once,
+    not once per application event. Disclosure-boundary-compliant check
+    — the analysis string is the only product identifier in output."""
+    artifact = _artifact(blends=[_multi_event_blend()])
+    output = render_programme_document(artifact)
+    # Only one row carrying the analysis — not one per event
+    assert output.count("N 17.1%, Ca 24.4%") == 1

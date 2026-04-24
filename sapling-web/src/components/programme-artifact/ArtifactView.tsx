@@ -57,6 +57,17 @@ function buildBlockNameMap(snapshots: SoilSnapshot[]): Record<string, string> {
   return out;
 }
 
+function formatEventDate(iso: string): string {
+  // Parse as local date (avoid UTC shift); backend sends "YYYY-MM-DD".
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-ZA", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function prettyBlockLabel(
   blockId: string,
   nameById: Record<string, string>,
@@ -486,6 +497,40 @@ function BlendCard({ blend }: { blend: Blend }) {
           </tbody>
         </table>
       </div>
+      {blend.applications.length > 1 && (
+        <div className="pt-2 border-t border-border/50 space-y-2">
+          <h5 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Application schedule
+          </h5>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-xs text-muted-foreground uppercase tracking-wide text-left border-b border-border">
+                  <th className="py-1.5 pr-3">#</th>
+                  <th className="py-1.5 pr-3">Date</th>
+                  <th className="py-1.5 pr-3 text-right">Week</th>
+                  <th className="py-1.5 pr-3">Of stage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {blend.applications.map((app, i) => (
+                  <tr
+                    key={app.event_index}
+                    className="border-b border-border/30 last:border-0"
+                  >
+                    <td className="py-1.5 pr-3 font-mono">{i + 1}</td>
+                    <td className="py-1.5 pr-3">{formatEventDate(app.event_date)}</td>
+                    <td className="py-1.5 pr-3 font-mono text-right">{app.week_from_planting}</td>
+                    <td className="py-1.5 pr-3 font-mono text-muted-foreground">
+                      {i + 1} of {blend.applications.length}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
       {blend.concentrates.length > 0 && (
         <div className="pt-2 border-t border-border/50 space-y-2">
           <h5 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
