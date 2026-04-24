@@ -51,14 +51,26 @@ class CropOverrideIn(BaseModel):
 
 @router.get("/")
 def get_effective_crop_requirements(user: CurrentUser = Depends(get_current_user)):
-    """Get effective crop requirements (admin defaults merged with agent overrides)."""
+    """Get effective crop requirements (admin defaults merged with agent overrides).
+
+    Phase 7 gate: non-admin users get only rows with `customer_ready=true`.
+    Admins see everything so they can review + sign off on dev-only crops.
+    """
     sb = get_supabase_admin()
     try:
         result = run_sb(lambda: sb.rpc(
             "get_effective_crop_requirements",
             {"p_agent_id": user.id},
         ).execute())
-        return result.data
+        rows = result.data or []
+        if user.role != "admin":
+            rows = [
+                r for r in rows
+                # Fall back to True when the field is missing so older
+                # RPC output (pre-migration 075) doesn't vanish.
+                if r.get("customer_ready", True)
+            ]
+        return rows
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
