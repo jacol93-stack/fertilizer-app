@@ -442,3 +442,77 @@ def test_unknown_crop_returns_empty_targets(minimal_catalog):
         soil_values={}, catalog=minimal_catalog,
     )
     assert result.targets == {}
+
+
+# ============================================================
+# N-mineralisation assessment (FERTASA §5.5.2)
+# ============================================================
+
+def test_n_min_assumption_fires_on_high_oc(minimal_catalog):
+    """Org C ≥ 1.5% surfaces an N-mineralisation credit range as an
+    Assumption, with source cited to FERTASA §5.5.2. The range is the
+    only thing emitted — we don't auto-subtract from N."""
+    soil = {"pH (H2O)": 6.0, "P (Bray-1)": 25, "K": 150, "Ca": 1000,
+            "Mg": 150, "S": 15, "N (total)": 30, "Org C": 2.5}
+    result = compute_season_targets(
+        crop="Maize (dryland)", yield_target=8.0,
+        soil_values=soil, catalog=minimal_catalog,
+    )
+    n_min = next((a for a in result.assumptions if a.field == "n_mineralisation_credit"), None)
+    assert n_min is not None
+    # OC 2.5% → 1.5% above baseline → 30-45 kg N/ha (20-30 × 1.5, rounded to 5)
+    assert "30-45 kg N/ha" in n_min.assumed_value
+    assert n_min.source.source_id == "FERTASA_5_5_2"
+    assert n_min.tier == Tier.SA_INDUSTRY_BODY
+
+
+def test_n_min_assumption_silent_when_oc_below_baseline(minimal_catalog):
+    """Org C < 1.5% doesn't surface a credit — typical sandy SA soils
+    aren't meaningfully above the 1% baseline."""
+    soil = {"pH (H2O)": 6.0, "P (Bray-1)": 25, "K": 150, "Ca": 1000,
+            "Mg": 150, "S": 15, "N (total)": 30, "Org C": 1.0}
+    result = compute_season_targets(
+        crop="Maize (dryland)", yield_target=8.0,
+        soil_values=soil, catalog=minimal_catalog,
+    )
+    assert not any(a.field == "n_mineralisation_credit" for a in result.assumptions)
+
+
+def test_n_min_assumption_silent_when_oc_missing(minimal_catalog):
+    """No OC in soil_values → no credit Assumption. Avoids noise on
+    labs that don't report OM/OC."""
+    soil = {"pH (H2O)": 6.0, "P (Bray-1)": 25, "K": 150, "Ca": 1000,
+            "Mg": 150, "S": 15, "N (total)": 30}
+    result = compute_season_targets(
+        crop="Maize (dryland)", yield_target=8.0,
+        soil_values=soil, catalog=minimal_catalog,
+    )
+    assert not any(a.field == "n_mineralisation_credit" for a in result.assumptions)
+
+
+def test_n_min_falls_back_to_om_via_van_bemmelen(minimal_catalog):
+    """When only OM is reported, convert via OM/1.724 (Van Bemmelen).
+    OM 5.17% ≈ 3% OC → 2% above baseline → 40-60 kg N/ha credit."""
+    soil = {"pH (H2O)": 6.0, "P (Bray-1)": 25, "K": 150, "Ca": 1000,
+            "Mg": 150, "S": 15, "N (total)": 30, "Organic Matter": 5.17}
+    result = compute_season_targets(
+        crop="Maize (dryland)", yield_target=8.0,
+        soil_values=soil, catalog=minimal_catalog,
+    )
+    n_min = next((a for a in result.assumptions if a.field == "n_mineralisation_credit"), None)
+    assert n_min is not None
+    assert "40-60 kg N/ha" in n_min.assumed_value
+
+
+def test_n_min_caps_credit_at_4pct_oc(minimal_catalog):
+    """Above 4% OC the credit is harder to predict — we cap the band at
+    3% above baseline (60-90 kg N/ha) so it doesn't grow unboundedly."""
+    soil = {"pH (H2O)": 6.0, "P (Bray-1)": 25, "K": 150, "Ca": 1000,
+            "Mg": 150, "S": 15, "N (total)": 30, "Org C": 8.0}
+    result = compute_season_targets(
+        crop="Maize (dryland)", yield_target=8.0,
+        soil_values=soil, catalog=minimal_catalog,
+    )
+    n_min = next((a for a in result.assumptions if a.field == "n_mineralisation_credit"), None)
+    assert n_min is not None
+    assert "60-90 kg N/ha" in n_min.assumed_value

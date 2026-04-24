@@ -222,6 +222,17 @@ def compute_season_targets(
                 if nut in targets:
                     targets[nut] = max(0.0, round(targets[nut] - kg, 2))
 
+    # N-mineralisation assessment — surface when Org C is present so
+    # the agronomist sees the credit range and can adjust the N target.
+    # We don't auto-subtract because published SA mineralisation rates
+    # are ranges (FERTASA §5.5.2 cites 20-30 kg N/ha per 1% OC above a
+    # 1% baseline, but the actual value depends on temperature, moisture,
+    # C:N ratio, prior cropping) and our worst-case rule would either
+    # over- or under-credit. Visibility > silent adjustment.
+    n_min_assumption = _assess_n_mineralisation(soil_values)
+    if n_min_assumption:
+        assumptions.append(n_min_assumption)
+
     # Unadjusted-removal assumption — surfaced on the artifact so the
     # agronomist knows which nutrients got a soil-state-blind target.
     if unadjusted_nutrients:
@@ -383,3 +394,91 @@ def _compute_removal_subtraction(
         # (sometimes %) — assume kg/t for now; user can override via Assumption
         result[output_nut] = round(per_t_f * yield_harvested * converter, 2)
     return result
+
+
+# ============================================================
+# N-mineralisation assessment
+# ============================================================
+
+# Common lab-report keys for soil organic-carbon / organic-matter.
+# Labs aren't consistent; try all of these. Values are %.
+_ORG_C_KEYS = ("Org C", "OC", "Organic Carbon", "C_org", "organic_carbon_pct", "Org_C_%")
+_ORG_M_KEYS = ("OM", "Organic Matter", "Organic_Matter", "organic_matter_pct", "Humus")
+
+# Conversion factor OM → OC (Van Bemmelen): OC ≈ OM / 1.724. Used only
+# when OC isn't reported directly but OM is.
+_OM_TO_OC = 1.0 / 1.724
+
+
+def _extract_organic_carbon_pct(soil_values: dict) -> Optional[float]:
+    """Find OC % in soil_values, tolerating lab naming variance and
+    falling back to OM / 1.724 (Van Bemmelen) when only OM is reported.
+
+    Returns None if nothing usable is present.
+    """
+    if not soil_values:
+        return None
+    for key in _ORG_C_KEYS:
+        val = soil_values.get(key)
+        if val is not None:
+            try:
+                f = float(val)
+                if f >= 0:
+                    return f
+            except (ValueError, TypeError):
+                continue
+    for key in _ORG_M_KEYS:
+        val = soil_values.get(key)
+        if val is not None:
+            try:
+                f = float(val)
+                if f >= 0:
+                    return round(f * _OM_TO_OC, 3)
+            except (ValueError, TypeError):
+                continue
+    return None
+
+
+def _assess_n_mineralisation(soil_values: dict) -> Optional[Assumption]:
+    """Surface an N-mineralisation consideration when OC is meaningfully
+    above the 1% baseline.
+
+    FERTASA §5.5.2 describes mineralisation of soil OM as a significant
+    N contribution for SA summer-rainfall cropping — typical published
+    range is 20-30 kg N/ha per 1% OC above ~1% baseline, capped around
+    4% OC (above that the extra is harder to predict). The actual value
+    swings with temperature, moisture, C:N ratio, and prior cropping;
+    we surface the credit range as an Assumption rather than silently
+    subtracting from the N target so the agronomist owns the call.
+
+    Threshold: OC ≥ 1.5% is "meaningfully above baseline" worth flagging.
+    Returns None if OC is absent or below the threshold.
+    """
+    oc_pct = _extract_organic_carbon_pct(soil_values)
+    if oc_pct is None or oc_pct < 1.5:
+        return None
+
+    # Conservative credit band: 20 kg N/ha per 1% OC above 1%, capped
+    # above 4% OC. Rounded to the nearest 5 kg for readability.
+    oc_above_baseline = min(oc_pct, 4.0) - 1.0
+    low_credit = int(round(oc_above_baseline * 20 / 5)) * 5
+    high_credit = int(round(oc_above_baseline * 30 / 5)) * 5
+
+    return Assumption(
+        field="n_mineralisation_credit",
+        assumed_value=f"{low_credit}-{high_credit} kg N/ha (OC {oc_pct:.2f}%)",
+        override_guidance=(
+            f"Org C {oc_pct:.2f}% is meaningfully above SA arable baseline (~1%). "
+            f"FERTASA §5.5.2 convention: 20-30 kg N/ha per 1% OC above 1% for "
+            f"summer-rainfall cropping. Consider reducing the N target by "
+            f"{low_credit}-{high_credit} kg/ha if prior cropping, temperature, "
+            f"and moisture support mineralisation (warm, moist, legume residue "
+            f"→ upper end; cool, dry, cereal residue → lower end or none)."
+        ),
+        source=SourceCitation(
+            source_id="FERTASA_5_5_2",
+            section="5.5.2",
+            tier=Tier.SA_INDUSTRY_BODY,
+        ),
+        tier=Tier.SA_INDUSTRY_BODY,
+    )
