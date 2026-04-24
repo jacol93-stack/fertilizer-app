@@ -390,18 +390,12 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
         f"{len(all_risk_flags)} risk flags"
     )
 
-    # Note unimplemented sections transparently
+    # Note truly-empty section transparently
     if not all_blends:
         decision_trace.append(
             "Orchestrator: Blend section empty — either no materials "
             "catalog provided OR method assignments produced no groupable "
-            "events. ShoppingList pending Phase 2 module (shopping-list "
-            "aggregator not yet wired)."
-        )
-    else:
-        decision_trace.append(
-            "Orchestrator: ShoppingList empty — shopping-list aggregator "
-            "not yet wired as standalone module. Derive from blends[].raw_products."
+            "events. Shopping list will be empty too."
         )
 
     # Run blend validator over all blends (module 9) — catches stream purity,
