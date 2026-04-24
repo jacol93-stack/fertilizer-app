@@ -13,6 +13,8 @@ from app.services.target_computation import (
     P_TO_P2O5,
     SoilCatalog,
     TargetComputationResult,
+    _compute_removal_subtraction,
+    _infer_harvest_mode,
     compute_season_targets,
 )
 
@@ -442,6 +444,106 @@ def test_unknown_crop_returns_empty_targets(minimal_catalog):
         soil_values={}, catalog=minimal_catalog,
     )
     assert result.targets == {}
+
+
+# ============================================================
+# Harvest mode parametrisation (grain / hay / silage / fruit)
+# ============================================================
+
+# Barley-like removal fixture with grain, straw, total rows — mirrors
+# the post-migration-078 DB shape.
+BARLEY_REMOVAL_ROWS = [
+    {"crop": "Barley", "plant_part": "grain", "yield_unit": "kg/t grain",
+     "n": 22.0, "p": 3.5, "k": 5.0, "ca": 0.5, "mg": 1.2, "s": 2.0},
+    {"crop": "Barley", "plant_part": "straw", "yield_unit": "kg/t grain",
+     "n": 7.0, "p": 1.0, "k": 16.0, "ca": 3.5, "mg": 1.3, "s": 1.8},
+    {"crop": "Barley", "plant_part": "total", "yield_unit": "kg/t grain",
+     "n": 29.0, "p": 4.5, "k": 21.0, "ca": 4.0, "mg": 2.5, "s": 3.8},
+]
+
+# Crop row needed so harvest_mode inference from yield_unit works.
+BARLEY_CROP_ROW = {
+    "crop": "Barley", "type": "Annual", "crop_type": "annual",
+    "yield_unit": "t grain/ha", "default_yield": 4.0,
+    "n": 22.0, "p": 3.5, "k": 5.0, "ca": 2.5, "mg": 2.0, "s": 2.0,
+    "fe": 0.1, "b": 0.02, "mn": 0.04, "zn": 0.04, "mo": 0.004, "cu": 0.008,
+    "pop_per_ha": 2000000,
+}
+
+
+def test_harvest_mode_grain_picks_grain_row():
+    """Grain mode pulls the grain row directly — 5 kg K/t removal."""
+    removal = _compute_removal_subtraction(
+        crop="Barley", yield_harvested=4.0,
+        removal_rows=BARLEY_REMOVAL_ROWS, harvest_mode="grain",
+    )
+    # 4 t × 5.0 kg K/t × 1.205 (K→K2O) ≈ 24.1
+    assert abs(removal["K2O"] - 24.1) < 0.5
+    # 4 t × 22.0 kg N/t = 88
+    assert abs(removal["N"] - 88.0) < 0.5
+
+
+def test_harvest_mode_hay_falls_through_to_total():
+    """Hay mode has no 'hay' plant_part for Barley — falls through to
+    the 'total' row per preference order. Total K off-take is 21 kg/t,
+    ~4× the grain mode."""
+    removal = _compute_removal_subtraction(
+        crop="Barley", yield_harvested=4.0,
+        removal_rows=BARLEY_REMOVAL_ROWS, harvest_mode="hay",
+    )
+    # 4 t × 21.0 kg K/t × 1.205 ≈ 101.2
+    assert abs(removal["K2O"] - 101.2) < 0.5
+    # 4 t × 29.0 kg N/t = 116
+    assert abs(removal["N"] - 116.0) < 0.5
+
+
+def test_harvest_mode_grain_vs_hay_k_delta():
+    """Anchor check: hay-mode K removal is materially larger than grain-mode.
+    This is the whole point of splitting the harvest modes — cereal hay
+    cuts draw soil K down ~4× faster than grain harvests."""
+    grain = _compute_removal_subtraction(
+        crop="Barley", yield_harvested=4.0,
+        removal_rows=BARLEY_REMOVAL_ROWS, harvest_mode="grain",
+    )
+    hay = _compute_removal_subtraction(
+        crop="Barley", yield_harvested=4.0,
+        removal_rows=BARLEY_REMOVAL_ROWS, harvest_mode="hay",
+    )
+    assert hay["K2O"] > grain["K2O"] * 3.5
+
+
+def test_harvest_mode_inferred_from_yield_unit():
+    """_infer_harvest_mode maps yield_unit strings to plant_part names."""
+    assert _infer_harvest_mode("t grain/ha") == "grain"
+    assert _infer_harvest_mode("t hay/ha") == "hay"
+    assert _infer_harvest_mode("t fruit/ha") == "fruit"
+    assert _infer_harvest_mode("t NIS/ha") == "nuts"
+    assert _infer_harvest_mode("t bulb/ha") == "total"
+    assert _infer_harvest_mode("t tuber/ha") == "total"
+    assert _infer_harvest_mode("t seed/ha") == "grain"
+    assert _infer_harvest_mode("t cane/ha") == "total"
+    assert _infer_harvest_mode(None) is None
+    assert _infer_harvest_mode("unknown unit") is None
+
+
+def test_harvest_mode_note_in_assumption():
+    """The harvested_removal Assumption should note which harvest mode
+    was applied — agronomist needs to see whether grain or hay math ran."""
+    catalog = SoilCatalog(
+        crop_rows=[BARLEY_CROP_ROW], sufficiency_rows=SUFFICIENCY_ROWS,
+        adjustment_rows=ADJUSTMENT_ROWS, param_map_rows=PARAM_MAP_ROWS,
+        removal_rows=BARLEY_REMOVAL_ROWS,
+    )
+    result = compute_season_targets(
+        crop="Barley", yield_target=4.0,
+        soil_values={"P (Bray-1)": 25, "K": 150}, catalog=catalog,
+        subtract_harvested_removal=True,
+        expected_yield_harvested=4.0,
+        harvest_mode="hay",
+    )
+    assumption = next((a for a in result.assumptions if a.field == "harvested_removal"), None)
+    assert assumption is not None
+    assert "hay" in assumption.override_guidance.lower()
 
 
 # ============================================================

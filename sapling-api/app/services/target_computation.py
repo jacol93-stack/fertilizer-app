@@ -82,6 +82,7 @@ def compute_season_targets(
     expected_yield_harvested: Optional[float] = None,
     include_micros: bool = False,
     block_pop_per_ha: Optional[float] = None,
+    harvest_mode: Optional[str] = None,
 ) -> TargetComputationResult:
     """Compute per-nutrient season targets with full provenance.
 
@@ -103,6 +104,13 @@ def compute_season_targets(
             reference pop — a 400 trees/ha mac orchard needs ~2× the kg/ha
             of a 200 trees/ha orchard at the same age, per SAMAC (Schoeman
             2021). Annuals ignore it (yield target covers stand density).
+        harvest_mode: what leaves the field at harvest — 'grain', 'hay',
+            'silage', 'fruit', 'nuts', 'tuber', 'total', etc. Controls
+            which plant_part row is pulled from fertasa_nutrient_removal
+            for the removal-subtraction math. If None, inferred from the
+            crop's yield_unit (e.g. 't grain/ha' → 'grain'). Explicit
+            override matters when a grain cereal is cut as hay: grain
+            mode exports ~5 kg K/t; hay mode exports ~21 kg K/t.
 
     Returns:
         TargetComputationResult with typed provenance for each nutrient.
@@ -197,19 +205,33 @@ def compute_season_targets(
 
     # Harvested-removal subtraction (per migration 072 wiring target)
     if subtract_harvested_removal and catalog.removal_rows and expected_yield_harvested:
+        # Resolve harvest_mode: explicit override first, else infer from
+        # the crop's yield_unit ('t grain/ha' → 'grain', 't hay/ha' → 'hay').
+        effective_harvest_mode = harvest_mode
+        if effective_harvest_mode is None:
+            crop_row = next((r for r in catalog.crop_rows if r.get("crop") == crop), None)
+            if crop_row:
+                effective_harvest_mode = _infer_harvest_mode(crop_row.get("yield_unit"))
+
         removal_subtraction = _compute_removal_subtraction(
             crop=crop,
             yield_harvested=expected_yield_harvested,
             removal_rows=catalog.removal_rows,
+            harvest_mode=effective_harvest_mode,
         )
         if removal_subtraction:
+            mode_note = (
+                f" ({effective_harvest_mode} mode)" if effective_harvest_mode else ""
+            )
             assumptions.append(Assumption(
                 field="harvested_removal",
                 assumed_value=str(removal_subtraction),
                 override_guidance=(
-                    "Harvested removal subtracted from season targets per "
-                    "fertasa_nutrient_removal. For multi-year perennials, "
-                    "this represents off-farm export, not in-field recycling."
+                    f"Harvested removal subtracted from season targets per "
+                    f"fertasa_nutrient_removal{mode_note}. For multi-year "
+                    f"perennials, this represents off-farm export, not "
+                    f"in-field recycling. For cereals cut as hay, set "
+                    f"harvest_mode='hay' — grain mode materially under-estimates K removal."
                 ),
                 source=SourceCitation(
                     source_id="FERTASA_NUTRIENT_REMOVAL",
@@ -354,25 +376,106 @@ def _compute_density_scale(
     return scale, assumption
 
 
+# ── Harvest-mode → plant_part resolution ─────────────────────────────
+#
+# Which plant_part row to pull from fertasa_nutrient_removal depends on
+# what leaves the field at harvest:
+#   - Grain harvest: only the grain is exported; straw returns as residue
+#     → use the 'grain' row (smaller off-take, much less K)
+#   - Hay / silage cut: whole plant is removed → use the 'total' row
+#     (significantly more K; cereal hay draws soil K 3-4× faster than
+#     grain harvest)
+#   - Fruit / nut / tuber crops: those parts are the export
+#
+# When harvest_mode isn't explicitly provided, we infer it from the
+# crop's yield_unit ("t grain/ha" → grain, "t hay/ha" → hay, etc.).
+# Callers can override per programme.
+_YIELD_UNIT_TO_HARVEST_MODE = {
+    "grain": "grain",
+    "seed": "grain",           # canola/sunflower/lentil seed → same removal convention as grain
+    "hay": "hay",
+    "fruit": "fruit",
+    "pod": "pods",
+    "shoots": "shoots",
+    "leaf": "leaves",
+    "leaves": "leaves",
+    "made": "leaves",          # tea
+    "nis": "nuts",             # NIS = Nut-In-Shell (macadamia/pecan)
+    "cane": "total",           # sugarcane: whole stalk exported
+    "tuber": "total",          # potato/sweet potato: map to total — no tuber row yet
+    "root": "total",           # carrot/beetroot
+    "bulb": "total",           # garlic/onion
+    "head": "total",           # cabbage/lettuce
+    "dry": "total",            # rooibos/honeybush
+    "green": "fruit",          # coffee green bean
+    "fresh": "total",          # sweetcorn
+    "cobs": "total",
+    "cotton": "total",
+}
+
+_PLANT_PART_PREFERENCE = ("total", "fruit", "grain", "hay")
+
+
+def _infer_harvest_mode(yield_unit: Optional[str]) -> Optional[str]:
+    """Pick a sensible default plant_part from a crop's yield unit string.
+
+    e.g. 't grain/ha' → 'grain', 't hay/ha' → 'hay', 't NIS/ha' → 'nuts'.
+    Returns None when the unit doesn't map clearly — caller falls back
+    to the generic 'total > fruit > first' preference order.
+    """
+    if not yield_unit:
+        return None
+    unit_lc = yield_unit.lower()
+    for token, mode in _YIELD_UNIT_TO_HARVEST_MODE.items():
+        if token in unit_lc:
+            return mode
+    return None
+
+
 def _compute_removal_subtraction(
     crop: str,
     yield_harvested: float,
     removal_rows: list[dict],
+    harvest_mode: Optional[str] = None,
 ) -> dict[str, float]:
     """Subtract harvested nutrient removal from season targets.
 
     FERTASA publishes kg/t of harvested product per crop per plant_part.
-    We use the 'total' plant_part where available, else sum individual parts.
+    The right plant_part to pull depends on what leaves the field:
+    grain harvest exports only grain (straw stays), hay/silage exports
+    the whole plant, fruit crops export fruit. Pass `harvest_mode` to
+    pick the matching plant_part; on miss, fall back through a
+    preference order ('total' > 'fruit' > first available).
     """
-    # Prefer 'total' row; fall back to 'fruit' or first row
     matched = [r for r in removal_rows if r.get("crop") == crop]
     if not matched:
         return {}
 
-    total_row = next((r for r in matched if r.get("plant_part") == "total"), None)
-    if not total_row:
-        # Pick the first row available — not ideal but graceful
-        total_row = matched[0]
+    # First try: exact plant_part match for the requested harvest mode
+    chosen_row = None
+    if harvest_mode:
+        chosen_row = next(
+            (r for r in matched if r.get("plant_part") == harvest_mode),
+            None,
+        )
+
+    # Fallback preference order — 'total' is the safest default when no
+    # harvest-mode-specific row exists (conservative over-estimate for
+    # whole-plant removal; under-estimate for grain-harvest cereals).
+    if chosen_row is None:
+        for preferred in _PLANT_PART_PREFERENCE:
+            chosen_row = next(
+                (r for r in matched if r.get("plant_part") == preferred),
+                None,
+            )
+            if chosen_row is not None:
+                break
+
+    # Last resort — any row
+    if chosen_row is None:
+        chosen_row = matched[0]
+
+    total_row = chosen_row
 
     result: dict[str, float] = {}
     for fertasa_col, output_nut, converter in [

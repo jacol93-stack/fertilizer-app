@@ -110,6 +110,7 @@ class BuildProgrammeRequest(BaseModel):
     has_recent_leaf_analysis: bool = False
     planned_n_fertilizers: Optional[list[str]] = None
     subtract_harvested_removal: bool = False
+    harvest_mode: Optional[str] = None  # 'grain' | 'hay' | 'silage' | 'fruit' | 'nuts' | ...
     client_id: Optional[UUID] = None
     skipped_blocks: list[SkippedBlockRequest] = Field(default_factory=list)
 
@@ -167,6 +168,7 @@ async def build_programme_endpoint(
                 subtract_harvested_removal=request.subtract_harvested_removal,
                 expected_yield_harvested=b.yield_target_per_ha,
                 block_pop_per_ha=b.pop_per_ha,
+                harvest_mode=request.harvest_mode,
             )
             targets = result.targets
             for path in result.calc_path_by_nutrient.values():
