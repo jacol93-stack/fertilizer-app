@@ -25,6 +25,27 @@ export const APPLICATION_METHODS = [
   "other",
 ] as const;
 
+// Backend method enums → human-readable labels for UI selects.
+// Engine emits these raw strings (programme_engine.DRY_METHODS,
+// MethodAvailability flags, accepted_methods on fields). Anywhere the
+// agronomist sees a method choice, render the label not the enum.
+export const METHOD_LABELS: Record<string, string> = {
+  broadcast: "Broadcast",
+  band_place: "Band placement",
+  side_dress: "Side-dressing",
+  topdress: "Top-dressing",
+  foliar: "Foliar spray",
+  drip: "Drip / fertigation",
+  fertigation: "Drip / fertigation",
+  drench: "Drench",
+  dry_blend: "Dry blend / broadcast",
+  dry_side_dress: "Dry side-dressing",
+};
+
+export function methodLabel(method: string): string {
+  return METHOD_LABELS[method] ?? method;
+}
+
 export const MONTH_NAMES = [
   "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",

@@ -140,14 +140,18 @@ function SeasonBuilderPage() {
   // the season already lives in its own field, so duplicating it in the
   // name leaves the two out of sync when the agent edits either.
   useEffect(() => {
-    if (clientName && !programmeName) {
+    // Only auto-fill once a client (and ideally farm) is actually
+    // selected — clientName fires on every keystroke in the search
+    // box, so gating on clientId avoids capturing a partial query
+    // like "Vrystaa" as the programme name.
+    if (clientId && clientName && !programmeName) {
       setProgrammeName(farmName ? `${clientName} — ${farmName}` : clientName);
     }
     if (!season) {
       const year = new Date().getFullYear();
       setSeason(`${year}/${year + 1}`);
     }
-  }, [clientName, farmName]);
+  }, [clientId, clientName, farmName]);
 
   // Handle handoff from Quick Analysis
   useEffect(() => {

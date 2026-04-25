@@ -198,8 +198,14 @@ export function FieldPicker({
         </div>
       )}
 
-      {/* Other farms on this client */}
-      {otherFarms.length > 0 && (
+      {/* Other farms on this client. The parent passes the full
+          client-farm list including the active farm, so filter that
+          one out first; only render the section when at least one
+          *other* farm survives — otherwise the header is orphaned. */}
+      {(() => {
+        const visibleOtherFarms = otherFarms.filter((fm) => fm.id !== farmId);
+        if (visibleOtherFarms.length === 0) return null;
+        return (
         <div className={fields.length > 0 ? "border-t pt-4" : ""}>
           <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
             {fields.length > 0
@@ -207,8 +213,7 @@ export function FieldPicker({
               : "Farms on this client"}
           </p>
           <div className="space-y-2">
-            {otherFarms
-              .filter((fm) => fm.id !== farmId)
+            {visibleOtherFarms
               .map((fm) => {
                 const isOpen = !!otherFarmOpen[fm.id];
                 const list = otherFarmFields[fm.id] || [];
@@ -256,7 +261,8 @@ export function FieldPicker({
               })}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Custom block (no field backing — rare case) */}
       <div className="border-t pt-3">
@@ -359,8 +365,9 @@ function FieldRowCard({
               </div>
               {selected && (
                 <div className="mt-1 flex flex-wrap items-center gap-3 text-xs">
-                  <div className="flex items-center gap-1">
-                    <Leaf className="size-3 text-muted-foreground" />
+                  <label className="flex items-center gap-1.5 text-muted-foreground">
+                    <Leaf className="size-3" />
+                    <span>Crop</span>
                     <div className="w-36">
                       <ComboBox
                         label=""
@@ -374,19 +381,23 @@ function FieldRowCard({
                         }}
                       />
                     </div>
-                  </div>
-                  <select
-                    value={block?.soil_analysis_id || ""}
-                    onChange={(e) => onUpdate({ soil_analysis_id: e.target.value || null })}
-                    className="rounded border bg-white px-2 py-1 text-xs"
-                  >
-                    <option value="">No analysis linked</option>
-                    {analyses.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.crop || "?"} · {new Date(a.created_at).toLocaleDateString()}
-                      </option>
-                    ))}
-                  </select>
+                  </label>
+                  <label className="flex items-center gap-1.5 text-muted-foreground">
+                    <span>Soil analysis</span>
+                    <select
+                      value={block?.soil_analysis_id || ""}
+                      onChange={(e) => onUpdate({ soil_analysis_id: e.target.value || null })}
+                      className="rounded border bg-white px-2 py-1 text-xs text-[var(--sapling-dark)]"
+                    >
+                      <option value="">No analysis linked</option>
+                      {analyses.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.lab_name ? `${a.lab_name} · ` : ""}{new Date(a.created_at).toLocaleDateString()}
+                          {a.crop ? ` · ${a.crop}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
               )}
             </div>

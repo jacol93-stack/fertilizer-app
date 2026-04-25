@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { MONTH_NAMES } from "@/lib/season-constants";
+import { MONTH_NAMES, methodLabel } from "@/lib/season-constants";
 import { Plus, X } from "lucide-react";
 
 export interface GrowthStage {
@@ -331,26 +331,33 @@ export function ScheduleReview({
                 .sort((x, y) => x.a.month - y.a.month)
                 .map(({ a, i }) => (
                   <div key={i} className="flex items-center gap-2 rounded-lg border px-3 py-2">
-                    <select
-                      value={a.month}
-                      onChange={(e) => updateSharedApplication(i, "month", parseInt(e.target.value))}
-                      className="rounded border bg-white px-2 py-1 text-sm font-medium"
-                    >
-                      {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => (
-                        <option key={m} value={m}>{MONTH_NAMES[m]}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={a.method}
-                      onChange={(e) => updateSharedApplication(i, "method", e.target.value)}
-                      className="rounded border bg-white px-2 py-1 text-sm"
-                    >
-                      {sharedMethods.map((m) => (
-                        <option key={m} value={m}>{m}</option>
-                      ))}
-                    </select>
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      Month
+                      <select
+                        value={a.month}
+                        onChange={(e) => updateSharedApplication(i, "month", parseInt(e.target.value))}
+                        className="rounded border bg-white px-2 py-1 text-sm font-medium text-[var(--sapling-dark)]"
+                      >
+                        {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => (
+                          <option key={m} value={m}>{MONTH_NAMES[m]}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      Method
+                      <select
+                        value={a.method}
+                        onChange={(e) => updateSharedApplication(i, "method", e.target.value)}
+                        className="rounded border bg-white px-2 py-1 text-sm text-[var(--sapling-dark)]"
+                      >
+                        {sharedMethods.map((m) => (
+                          <option key={m} value={m}>{methodLabel(m)}</option>
+                        ))}
+                      </select>
+                    </label>
                     <button
                       onClick={() => removeSharedApplication(i)}
+                      aria-label="Remove application"
                       className="ml-auto rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
                     >
                       <X className="size-3.5" />
@@ -606,29 +613,36 @@ export function ScheduleReview({
                     const stage = getStageForMonth(app.month, shiftedStages);
                     return (
                       <div key={idx} className="flex items-center gap-2 rounded-lg border px-3 py-2">
-                        <select
-                          value={app.month}
-                          onChange={(e) => updateApplication(bi.block_id, idx, "month", parseInt(e.target.value))}
-                          className="rounded border bg-white px-2 py-1 text-sm font-medium"
-                        >
-                          {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => (
-                            <option key={m} value={m}>{MONTH_NAMES[m]}</option>
-                          ))}
-                        </select>
-                        <select
-                          value={app.method}
-                          onChange={(e) => updateApplication(bi.block_id, idx, "method", e.target.value)}
-                          className="rounded border bg-white px-2 py-1 text-sm"
-                        >
-                          {bi.accepted_methods.map((m) => (
-                            <option key={m} value={m}>{m}</option>
-                          ))}
-                        </select>
+                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          Month
+                          <select
+                            value={app.month}
+                            onChange={(e) => updateApplication(bi.block_id, idx, "month", parseInt(e.target.value))}
+                            className="rounded border bg-white px-2 py-1 text-sm font-medium text-[var(--sapling-dark)]"
+                          >
+                            {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => (
+                              <option key={m} value={m}>{MONTH_NAMES[m]}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          Method
+                          <select
+                            value={app.method}
+                            onChange={(e) => updateApplication(bi.block_id, idx, "method", e.target.value)}
+                            className="rounded border bg-white px-2 py-1 text-sm text-[var(--sapling-dark)]"
+                          >
+                            {bi.accepted_methods.map((m) => (
+                              <option key={m} value={m}>{methodLabel(m)}</option>
+                            ))}
+                          </select>
+                        </label>
                         {stage && (
                           <span className="text-xs text-muted-foreground">{stage.stage_name}</span>
                         )}
                         <button
                           onClick={() => removeApplication(bi.block_id, idx)}
+                          aria-label="Remove application"
                           className="ml-auto rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
                         >
                           <X className="size-3.5" />
