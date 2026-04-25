@@ -50,6 +50,7 @@ from app.models import (
 )
 from app.services.method_selector import MethodAssignment
 from app.services.month_allocator import AllocatedApplication
+from app.services.timing_walls import walls_for_crop
 
 
 # ============================================================
@@ -188,6 +189,7 @@ def consolidate_blends(
     stage_schedule: Optional[list] = None,  # list of StageWindow for per-event math
     allocations: Optional[list[AllocatedApplication]] = None,
     planting_date: Optional[date] = None,
+    crop: Optional[str] = None,
 ) -> list[Blend]:
     """Group method assignments into typed Blend objects.
 
@@ -206,6 +208,14 @@ def consolidate_blends(
                      stage derived from stage_schedule.
         planting_date: used to compute week_from_planting for synthesised
                        events when allocations is None.
+        crop: canonical crop name. When supplied, fertigation material
+              selection consults the crop's nutrient_antagonism walls
+              from timing_walls so two single-nutrient salts that the
+              wall flags as together-forbidden (e.g. Citrus N + K per
+              FERTASA 5.7.3) are not co-applied in one event. Compound
+              salts that carry both nutrients in a single molecule
+              (e.g. KNO3) are still allowed — the rule targets only
+              separate-salt pairs.
 
     Returns:
         list of Blend objects. One blend per (stage × method) that has
@@ -255,6 +265,7 @@ def consolidate_blends(
             nutrient_targets=nutrient_targets,
             available_materials=available_materials,
             method_kind=method_kind,
+            crop=crop,
         )
 
         # Build BlendParts from selected materials
@@ -376,6 +387,7 @@ def _select_materials_greedy(
     nutrient_targets: dict[str, float],
     available_materials: list[dict],
     method_kind: MethodKind,
+    crop: Optional[str] = None,
 ) -> list[tuple[dict, float]]:
     """Pick materials iteratively — best deficit-coverage first.
 
@@ -385,12 +397,29 @@ def _select_materials_greedy(
     the post-synthetic mass balance would drop organic below 50 %, the
     organic rate is bumped to restore it.
 
+    For fertigation, when `crop` is supplied and the crop has a
+    `nutrient_antagonism` timing wall (e.g. Citrus N+K per FERTASA
+    5.7.3), the greedy filter rejects candidates that would create a
+    separate single-nutrient-salt co-application of a forbidden pair.
+    Compound salts that carry both nutrients in one molecule (e.g. KNO3)
+    pass through unchanged — the rule targets only separate-salt pairs.
+
     Returns: list of (material_dict, kg_per_ha_to_apply) tuples.
     """
     # Filter materials by method compatibility
     candidates = _filter_materials_for_method(available_materials, method_kind)
     if not candidates:
         return []
+
+    # Resolve nutrient-antagonism pairs from the crop's timing walls.
+    # Only fertigation triggers the per-event antagonism check — dry
+    # blending is a separate physical regime (granule-mix incompat is
+    # already handled by blend_validator's known-bad-pair list).
+    forbidden_pairs: list[tuple[str, str]] = []
+    if crop and _is_fertigation(method_kind):
+        for wall in walls_for_crop(crop):
+            if wall.kind == "nutrient_antagonism":
+                forbidden_pairs.append(wall.together_forbidden)
 
     # Normalise nutrient keys to material columns
     deficit = _normalise_nutrients(nutrient_targets)
@@ -418,6 +447,13 @@ def _select_materials_greedy(
 
         for mat in candidates:
             if mat.get("material") in picked_names:
+                continue
+            # Antagonism filter — skip candidates that would create a
+            # separate-salt co-application of a forbidden nutrient pair
+            # against any already-selected material.
+            if forbidden_pairs and _antagonism_violates(
+                mat, [m for m, _ in selected], forbidden_pairs,
+            ):
                 continue
             rate, score = _evaluate_material(mat, deficit)
             if score > best_score:
@@ -457,6 +493,51 @@ def _select_materials_greedy(
             selected[organic_idx] = (organic_carrier, synthetic_mass)
 
     return selected
+
+
+def _is_single_source_for(material: dict, nutrient: str, antagonist: str) -> bool:
+    """True if `material` carries significant `nutrient` (≥ 5 % m/m) but
+    NOT `antagonist` (< 1 % m/m). Used to flag separate-salt pairs that
+    a `nutrient_antagonism` timing wall forbids from co-application.
+
+    A material that carries both nutrients in one molecule (e.g. KNO3
+    = N + K) is NOT single-source for either — it's a compound salt and
+    FERTASA-style co-application rules do not apply to it.
+    """
+    own_pct = _material_pct_for(material, nutrient)
+    other_pct = _material_pct_for(material, antagonist)
+    return own_pct >= 0.05 and other_pct < 0.01
+
+
+def _antagonism_violates(
+    candidate: dict,
+    already_selected: list[dict],
+    forbidden_pairs: list[tuple[str, str]],
+) -> bool:
+    """True if adding `candidate` to the blend would create a separate-
+    salt co-application of any (a, b) nutrient pair the crop's timing
+    walls forbid from co-application.
+
+    Logic per pair (a, b):
+      * candidate single-source-a + any selected single-source-b → violation
+      * candidate single-source-b + any selected single-source-a → violation
+    Compound salts on either side don't trigger the rule.
+    """
+    if not already_selected:
+        return False
+    for (a, b) in forbidden_pairs:
+        cand_is_a = _is_single_source_for(candidate, a, b)
+        cand_is_b = _is_single_source_for(candidate, b, a)
+        if not (cand_is_a or cand_is_b):
+            continue
+        for prior in already_selected:
+            prior_is_a = _is_single_source_for(prior, a, b)
+            prior_is_b = _is_single_source_for(prior, b, a)
+            if cand_is_a and prior_is_b:
+                return True
+            if cand_is_b and prior_is_a:
+                return True
+    return False
 
 
 def _subtract_organic_contribution(

@@ -52,26 +52,32 @@ pH(H₂O) 6.0 · OC 1.5 % · P Bray-1 25 mg/kg · K 95 · Ca 780 · Mg 115 · S 
 | 4 | Application-month window | FERTASA 5.7.3: N July-November; K Aug-Oct | Zero events outside months 7-11 | ✅ enforced |
 | 5 | Zn foliar trigger | FERTASA 5.7.3 spring foliar: Zn oxide 200 g/100 L; soil Zn 1.8 < critical ~3 | FoliarEvent with Zn fires | ✅ fired |
 | 6 | B pre-bloom foliar | FERTASA 5.7.3: "Borate – During spring"; engine stage_peak_demand rule | FoliarEvent with B fires pre-bloom | ✅ fired |
-| 7 | **N+K antagonism** (FERTASA 5.7.3) | "Never apply N and K salts simultaneously" — separate N-only + K-only salts must not co-apply | **Ca Nitrate + SOP co-apply in establishment fertigation blend** | ❌ **engine gap** |
+| 7 | **N+K antagonism** (FERTASA 5.7.3) | "Never apply N and K salts simultaneously" — separate N-only + K-only salts must not co-apply | Engine picks Potassium Nitrate (compound) + Ca Nitrate; no SOP co-applied | ✅ enforced (fixed F6.1) |
 
-### ⚠️ Engine gap #1 — Citrus N+K antagonism not enforced
+### ✅ Engine fix shipped (F6.1, 2026-04-25) — citrus N+K antagonism now enforced
 
 **What FERTASA 5.7.3 says:**
 > "Never apply nitrogen and potassium salts simultaneously as this causes temporary salinity. Applications should be interspersed with at least two irrigations."
 
-**What the engine does today:**
-The rule is **defined** in `timing_walls.py::nutrients_may_coapply` as a `nutrient_antagonism` wall for "Citrus" with `together_forbidden=("N", "K")`. However, **the consolidator does not invoke this check during blend construction.** The month allocator only consults `nutrient_blocked_in_month` (timing cutoffs), not `nutrients_may_coapply`.
+**What was wrong:**
+The rule was **defined** in `timing_walls.py::nutrients_may_coapply` as a `nutrient_antagonism` wall for "Citrus" with `together_forbidden=("N", "K")`, but **the consolidator wasn't invoking the check during blend construction.** The reference fixture's establishment fertigation carried Ca Nitrate (N-only) + SOP (K-only) in one event — a direct FERTASA 5.7.3 violation.
 
-Result: in the reference fixture, the establishment-stage fertigation blend carries Ca Nitrate (N-only, 15.5 % N / 19 % Ca, Part A stream) together with SOP (K-only, 50 % K₂O / 18 % S, Part B stream). Both are delivered in the same fertigation event — a direct FERTASA 5.7.3 violation.
+**The fix (F6.1):**
+- `consolidate_blends()` now accepts a `crop` argument (threaded from `OrchestratorInput.crop`).
+- `_select_materials_greedy()` for fertigation queries `walls_for_crop(crop)` and pulls out every `nutrient_antagonism` wall's `together_forbidden` pair.
+- During greedy material picking, candidates that would create a **separate-salt** co-application of any forbidden pair (against any already-selected material) are rejected. Compound salts that carry both nutrients in one molecule (e.g. KNO₃) are NOT rejected — the rule targets only separate-salt pairs, matching FERTASA's intent.
+- Helper functions `_is_single_source_for(material, nutrient, antagonist)` and `_antagonism_violates(candidate, already_selected, forbidden_pairs)` formalise the logic.
 
-Note: **Potassium Nitrate (KNO₃) is NOT the concern.** It's a single salt where N and K co-travel; FERTASA 5.7.3 elsewhere endorses KNO₃ for fertigation. The violation is only when two **separate** N-salt + K-salt products co-apply.
+**Result on the citrus reference fixture:**
+- **Before:** Ca Nitrate (N-only, Part A) + SOP (K-only, Part B) → FERTASA violation
+- **After:** Potassium Nitrate (compound N+K, Part B) + Ca Nitrate (Part A, N+Ca) + Magnesium Sulphate (Part B, Mg+S)
 
-**Fix options (pre-demo blocker):**
-- **A — Method-selector fix (preferred, cleanest):** When routing citrus nutrients, check `nutrients_may_coapply(crop, {stage_N, stage_K})`. If the wall fires, route N and K to different stages (stagger them across the season's application months so they never share an event).
-- **B — Consolidator post-pass:** After greedy material selection, detect N-only + K-only co-occurrence and split the blend into two time-separated recipes.
-- **C — Material selector filter:** When building fertigation blends for citrus, exclude separate K-only salts if an N-only salt is already selected; prefer KNO₃ instead.
+KNO₃ now carries both N and K in one molecule (chemically: K⁺ + NO₃⁻, no salinity-spike issue). Ca Nitrate adds the remaining N + Ca. MgSO₄ adds Mg + S.
 
-Option C is the least invasive. Option A produces the best output for the farmer. Will fix before Muller demo.
+5 new unit tests in `test_consolidator.py` cover the antagonism filter:
+- Citrus fertigation rejects N-only + K-only pairs and reaches for KNO₃
+- Mac fertigation (no antagonism wall) still allows separates
+- No-crop / unknown-crop / dry-blend method all skip the filter (backward-compatible)
 
 ---
 
@@ -96,6 +102,6 @@ See `memory/research_sa_mac_citrus_case_studies.md` for the full 2026-04-25 rese
 
 **Mac fixture: 8/8 cross-checks pass.** Triangulated against FERTASA + Schoeman + Manson & Sheard.
 
-**Citrus fixture: 6/7 cross-checks pass; 1 engine gap surfaced** (N+K antagonism enforcement — fix before demo).
+**Citrus fixture: 7/7 cross-checks pass.** All FERTASA 5.7.3 + Citrus Academy + Murovhi expectations met after F6.1 fix.
 
-The cross-check methodology worked as designed: executable assertions against public sources exposed a real production-v1 bug that would have caused a FERTASA violation in the Muller citrus programme. Bug is tracked as xfail in `test_reference_fixtures.py` + flagged in `state_of_play.md`.
+The cross-check methodology earned its keep: executable assertions against public sources exposed a real production-v1 bug (Citrus N+K antagonism not enforced) that would have caused a FERTASA violation in the Muller citrus programme. The bug was caught, fixed, and locked behind a permanent regression test in under one session.

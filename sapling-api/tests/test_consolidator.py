@@ -482,6 +482,101 @@ def test_dry_blend_with_no_organic_available_falls_back_to_synthetic():
 
 
 # ============================================================
+# Nutrient-antagonism filter (FERTASA timing-walls integration)
+# ============================================================
+
+def test_citrus_fertigation_no_separate_n_and_k_salts():
+    """FERTASA 5.7.3: Citrus N+K antagonism wall forbids separate N-only
+    and K-only salts in one fertigation event. The greedy selector
+    should reach for KNO3 (compound) before falling back to single-
+    source pairs."""
+    selected = _select_materials_greedy(
+        nutrient_targets={"N": 100, "K2O": 150},
+        available_materials=LIQUID_MATERIALS,
+        method_kind=MethodKind.LIQUID_DRIP,
+        crop="Citrus (Valencia)",
+    )
+    products = {m["material"] for m, _ in selected}
+    # Potassium Nitrate must be selected — it's the only compound N+K
+    assert "Potassium Nitrate" in products
+    # The forbidden pair: separate N-only Ca Nitrate AND separate K-only SOP
+    forbidden = {"SOP (Potassium Sulphate)", "Ammonium Sulphate"}
+    n_singles = {"Calcium Nitrate", "Ammonium Sulphate"}
+    k_singles = {"SOP (Potassium Sulphate)"}
+    co_applied = (products & n_singles) and (products & k_singles)
+    assert not co_applied, (
+        f"Citrus fertigation must not co-apply N-only + K-only single "
+        f"salts. Got {products}."
+    )
+
+
+def test_macadamia_fertigation_allows_separate_n_and_k_salts():
+    """Macadamia has no nutrient-antagonism wall (only the Nov-Feb N
+    timing cutoff). The greedy selector for mac should be free to pick
+    separate N-only + K-only salts together."""
+    selected = _select_materials_greedy(
+        nutrient_targets={"N": 100, "K2O": 150},
+        available_materials=LIQUID_MATERIALS,
+        method_kind=MethodKind.LIQUID_DRIP,
+        crop="Macadamia",
+    )
+    products = {m["material"] for m, _ in selected}
+    # If the greedy reaches for separates that's allowed for mac.
+    # Just sanity-check the blend covered N + K.
+    n_delivered = sum(
+        rate * (m.get("n", 0) / 100) for m, rate in selected
+    )
+    k_delivered = sum(
+        rate * (m.get("k", 0) / 100) * 1.205  # K → K2O
+        for m, rate in selected
+    )
+    assert n_delivered > 50, f"Mac fertigation N under-delivers: {n_delivered:.0f}"
+    assert k_delivered > 80, f"Mac fertigation K2O under-delivers: {k_delivered:.0f}"
+
+
+def test_no_crop_supplied_skips_antagonism_filter():
+    """Backward compatibility — when consolidator is called without a
+    crop arg, no antagonism check fires (legacy behaviour preserved)."""
+    selected = _select_materials_greedy(
+        nutrient_targets={"N": 100, "K2O": 150},
+        available_materials=LIQUID_MATERIALS,
+        method_kind=MethodKind.LIQUID_DRIP,
+        crop=None,
+    )
+    # No assertion about which products — just that we got a non-empty result
+    assert len(selected) > 0
+
+
+def test_unknown_crop_skips_antagonism_filter():
+    """Crop name with no timing walls registered → no rejection happens."""
+    selected = _select_materials_greedy(
+        nutrient_targets={"N": 100, "K2O": 150},
+        available_materials=LIQUID_MATERIALS,
+        method_kind=MethodKind.LIQUID_DRIP,
+        crop="Unknown Crop",
+    )
+    assert len(selected) > 0
+
+
+def test_dry_blend_method_skips_antagonism_filter_even_for_citrus():
+    """The N+K antagonism rule is fertigation-specific (FERTASA 5.7.3
+    talks about 'salts in solution causing temporary salinity'). Dry-
+    blend granule incompatibility is a separate physical-chemistry
+    concern handled by blend_validator's known-bad-pair list. The
+    fertigation-only filter should not interfere with dry blending."""
+    selected = _select_materials_greedy(
+        nutrient_targets={"N": 100, "K2O": 150},
+        available_materials=DRY_MATERIALS,  # has Urea + KCl as separates
+        method_kind=MethodKind.DRY_BROADCAST,
+        crop="Citrus (Valencia)",
+    )
+    # Urea + KCl can land together in a dry blend; the dry-side rule is
+    # different (e.g. Urea + AmS slurry hazard) and lives elsewhere.
+    products = {m["material"] for m, _ in selected}
+    assert len(products) > 0
+
+
+# ============================================================
 # Helpers
 # ============================================================
 

@@ -216,19 +216,6 @@ def test_citrus_applications_within_fertasa_window(citrus_artifact):
             )
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "ENGINE GAP surfaced by cross-check 2026-04-25: the Citrus N+K "
-        "antagonism wall is DEFINED in timing_walls.py::nutrients_may_coapply "
-        "for FERTASA 5.7.3 but is NOT ENFORCED during blend construction. "
-        "The consolidator currently places Calcium Nitrate (N-only, Part A) "
-        "and SOP (K-only, Part B) in the same fertigation blend. Fix before "
-        "Muller demo: route one of the co-antagonistic nutrients to a "
-        "different stage event (method_selector) OR split the blend into "
-        "two time-separated recipes (consolidator post-pass)."
-    ),
-)
 def test_citrus_no_separate_n_and_k_salts_in_same_fertigation_event(citrus_artifact):
     """FERTASA 5.7.3: 'Never apply nitrogen and potassium salts
     simultaneously as this causes temporary salinity. Applications should

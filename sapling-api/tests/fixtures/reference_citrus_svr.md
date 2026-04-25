@@ -67,7 +67,7 @@ Delivered per ha: **P2O5** 7.1 kg
 |---|---:|:---:|
 | N 13.0%, K₂O 46.0% source | 60 kg | Part B |
 | N 15.5%, Ca 19.0% source | 66 kg | Part A |
-| K₂O 50.0%, S 18.0% source | 17 kg | Part B |
+| Mg 10.0%, S 13.0% source | 23 kg | Part B |
 
 **Application schedule:**
 
@@ -76,7 +76,7 @@ Delivered per ha: **P2O5** 7.1 kg
 | 1 | 15 Jul 2026 | 3 | 1 of 2 |
 | 2 | 15 Aug 2026 | 7 | 2 of 2 |
 
-Delivered per ha: **N** 18.0 · **K2O** 36.1 · **S** 3.0 kg
+Delivered per ha: **N** 18.0 · **K2O** 27.8 · **S** 3.0 kg
 
 **Stage 2 — vegetative · Fertigation (drip)** (Weeks 11-16, 2 events)
 *15 Sep – 15 Oct 2026*
@@ -86,7 +86,7 @@ Delivered per ha: **N** 18.0 · **K2O** 36.1 · **S** 3.0 kg
 | N 13.0%, K₂O 46.0% source | 80 kg | Part B |
 | N 15.5%, Ca 19.0% source | 126 kg | Part A |
 | N 11.0%, P₂O₅ 51.0% source | 14 kg | Part B |
-| K₂O 50.0%, S 18.0% source | 21 kg | Part B |
+| Mg 10.0%, S 13.0% source | 29 kg | Part B |
 
 **Application schedule:**
 
@@ -95,7 +95,7 @@ Delivered per ha: **N** 18.0 · **K2O** 36.1 · **S** 3.0 kg
 | 1 | 15 Sep 2026 | 11 | 1 of 2 |
 | 2 | 15 Oct 2026 | 16 | 2 of 2 |
 
-Delivered per ha: **N** 31.5 · **P2O5** 7.0 · **K2O** 47.4 · **S** 3.8 kg
+Delivered per ha: **N** 31.5 · **P2O5** 7.0 · **K2O** 37.0 · **S** 3.8 kg
 
 **Stage 3 — reproductive · Fertigation (drip)** (Week 20, 1 event)
 *15 Nov 2026*
@@ -105,9 +105,9 @@ Delivered per ha: **N** 31.5 · **P2O5** 7.0 · **K2O** 47.4 · **S** 3.8 kg
 | N 13.0%, K₂O 46.0% source | 161 kg | Part B |
 | N 15.5%, Ca 19.0% source | 136 kg | Part A |
 | N 11.0%, P₂O₅ 51.0% source | 16 kg | Part B |
-| K₂O 50.0%, S 18.0% source | 25 kg | Part B |
+| Mg 10.0%, S 13.0% source | 35 kg | Part B |
 
-Delivered per ha: **N** 43.8 · **P2O5** 8.4 · **K2O** 86.5 · **S** 4.5 kg
+Delivered per ha: **N** 43.8 · **P2O5** 8.4 · **K2O** 74.0 · **S** 4.5 kg
 
 **Foliar sprays**
 

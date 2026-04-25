@@ -467,6 +467,7 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
                     month_allocation.applications if month_allocation else None
                 ),
                 planting_date=inputs.planting_date,
+                crop=inputs.crop,
             )
             pre_merge_count = len(block_blends)
             block_blends = merge_similar_blends(
