@@ -296,14 +296,23 @@ class BackgroundContext:
     prepared_by: str
 
 
+def _source_blocks(artifact: ProgrammeArtifact) -> list[SoilSnapshot]:
+    """Snapshots representing real source blocks (the ones the
+    agronomist ticked in the wizard). Cluster-aggregate snapshots use
+    synthetic block ids `cluster_A`/etc. and would double-count area /
+    inflate the block count if included here."""
+    return [s for s in artifact.soil_snapshots if not s.block_id.startswith("cluster_")]
+
+
 def _pack_background(artifact: ProgrammeArtifact) -> BackgroundContext:
     h = artifact.header
-    total_area = sum(s.block_area_ha for s in artifact.soil_snapshots)
+    sources = _source_blocks(artifact)
+    total_area = sum(s.block_area_ha for s in sources)
     method_summary = _summarise_methods(artifact)
     return BackgroundContext(
         crop=h.crop,
         season=h.season or "this season",
-        block_count=len(artifact.soil_snapshots),
+        block_count=len(sources),
         total_area_ha=total_area,
         method_summary=method_summary,
         prepared_by=h.prepared_by,

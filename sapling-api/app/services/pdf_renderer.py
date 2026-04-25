@@ -231,8 +231,11 @@ def _build_header_context(artifact: ProgrammeArtifact) -> dict[str, Any]:
 def _build_cover_subhead(artifact: ProgrammeArtifact) -> str:
     """Subhead under the cover headline. One sentence describing scope."""
     h = artifact.header
-    n_blocks = len(artifact.soil_snapshots) if artifact.soil_snapshots else 0
-    total_ha = sum(s.block_area_ha for s in artifact.soil_snapshots) if n_blocks else 0
+    # Source blocks only — exclude cluster aggregates which carry the
+    # cluster total area and would double the headline area number.
+    sources = [s for s in artifact.soil_snapshots if not s.block_id.startswith("cluster_")]
+    n_blocks = len(sources)
+    total_ha = sum(s.block_area_ha for s in sources) if n_blocks else 0
     if n_blocks == 1:
         return (
             f"Season {h.season} programme for a {total_ha:.2f} ha block of "
@@ -249,8 +252,9 @@ def _build_cover_subhead(artifact: ProgrammeArtifact) -> str:
 def _build_intro_prose(artifact: ProgrammeArtifact) -> tuple[str, list[str], str]:
     """Background intro paragraph, programme-at-a-glance bullets, soil intro."""
     h = artifact.header
-    n_blocks = len(artifact.soil_snapshots)
-    total_ha = sum(s.block_area_ha for s in artifact.soil_snapshots) if n_blocks else 0
+    sources = [s for s in artifact.soil_snapshots if not s.block_id.startswith("cluster_")]
+    n_blocks = len(sources)
+    total_ha = sum(s.block_area_ha for s in sources) if n_blocks else 0
 
     background = (
         f"This programme covers the {h.season} season for {h.crop.lower()} "

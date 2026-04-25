@@ -291,7 +291,14 @@ async def build_programme_endpoint(
         "replan_reason": artifact.header.replan_reason.value,
         "worst_tier": artifact.overall_confidence.tier.value if artifact.overall_confidence else None,
         "confidence_level": artifact.header.data_completeness.level,
-        "blocks_count": len(artifact.soil_snapshots),
+        # Source blocks the agronomist ticked. Cluster-aggregate
+        # snapshots (block_id="cluster_A", etc.) are engine-internal —
+        # excluding them keeps the listing count consistent with what
+        # the wizard input.
+        "blocks_count": sum(
+            1 for s in artifact.soil_snapshots
+            if not s.block_id.startswith("cluster_")
+        ),
         "foliar_events_count": len(artifact.foliar_events),
         "risk_flags_count": len(artifact.risk_flags),
         "artifact": artifact_json,
