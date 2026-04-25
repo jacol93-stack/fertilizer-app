@@ -21,7 +21,7 @@ import { FieldPicker } from "@/components/season-manager/field-picker";
 import { ScheduleReview, type BlockInfo, type UserApplication } from "@/components/season-manager/schedule-review";
 import { BlendGroups, type BlendGroupData } from "@/components/season-manager/blend-groups";
 import type { Programme, Block, CropNorm, SoilAnalysis } from "@/lib/season-constants";
-import { emptyBlock } from "@/lib/season-constants";
+import { emptyBlock, MONTH_NAMES, methodLabel } from "@/lib/season-constants";
 import {
   wizardStateToBuildRequest,
   deriveMethodAvailability,
@@ -666,6 +666,13 @@ function SeasonBuilderPage() {
                   </div>
                 </div>
 
+                {/* Per-block summary with season nutrient targets.
+                    Programme builder is agronomy-scoped (see
+                    project_programme_builder_scope memory) — surface
+                    nutrient kg/ha, never cost. The legacy preview
+                    endpoint emits element-form keys (N / P / K) so we
+                    match that here; oxide-form (P₂O₅ / K₂O) belongs
+                    to the rendered ProgrammeArtifact / PDF. */}
                 <div className="overflow-x-auto rounded-lg border">
                   <table className="w-full text-sm">
                     <thead>
@@ -674,20 +681,95 @@ function SeasonBuilderPage() {
                         <th className="px-3 py-2 text-left font-medium">Crop</th>
                         <th className="px-3 py-2 text-left font-medium">Area</th>
                         <th className="px-3 py-2 text-left font-medium">Yield</th>
+                        <th className="px-3 py-2 text-right font-medium">N kg/ha</th>
+                        <th className="px-3 py-2 text-right font-medium">P kg/ha</th>
+                        <th className="px-3 py-2 text-right font-medium">K kg/ha</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {blocks.filter((b) => b.crop && b.name).map((b, i) => (
-                        <tr key={i} className="border-b last:border-0">
-                          <td className="px-3 py-2 font-medium">{b.name}</td>
-                          <td className="px-3 py-2">{b.crop} {b.cultivar && `(${b.cultivar})`}</td>
-                          <td className="px-3 py-2">{b.area_ha ? `${b.area_ha} ha` : "—"}</td>
-                          <td className="px-3 py-2">{b.yield_target ? `${b.yield_target} ${b.yield_unit}` : "—"}</td>
-                        </tr>
-                      ))}
+                      {blocks.filter((b) => b.crop && b.name).map((b, i) => {
+                        const bi = blockInfoData.find((x) => x.block_name === b.name);
+                        const target = (nutrient: string) => {
+                          const t = bi?.nutrient_targets?.find((nt) => {
+                            const n = (nt.Nutrient || nt.nutrient || "").toLowerCase();
+                            return n === nutrient.toLowerCase();
+                          });
+                          const v = t?.Target_kg_ha ?? t?.target_kg_ha;
+                          return typeof v === "number" ? v.toFixed(0) : "—";
+                        };
+                        return (
+                          <tr key={i} className="border-b last:border-0">
+                            <td className="px-3 py-2 font-medium">{b.name}</td>
+                            <td className="px-3 py-2">{b.crop} {b.cultivar && `(${b.cultivar})`}</td>
+                            <td className="px-3 py-2">{b.area_ha ? `${b.area_ha} ha` : "—"}</td>
+                            <td className="px-3 py-2">{b.yield_target ? `${b.yield_target} ${b.yield_unit}` : "—"}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{target("N")}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{target("P")}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{target("K")}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
+
+                {/* Application schedule preview — agronomist owns timing
+                    (see project_application_timing_and_blend_count memory),
+                    so surface the chosen month + method per block right
+                    on the Review screen so they can spot misses before
+                    sign-off. */}
+                {userApplications.length > 0 && (
+                  <div className="rounded-lg border">
+                    <p className="border-b px-3 py-2 text-xs font-medium uppercase text-muted-foreground">
+                      Application Schedule
+                    </p>
+                    <div className="divide-y">
+                      {(() => {
+                        // Group by month, then by method, listing the
+                        // blocks affected. Keeps the preview compact
+                        // even on shared-schedule programmes.
+                        type Entry = { month: number; method: string; blockIds: Set<string> };
+                        const byKey: Record<string, Entry> = {};
+                        for (const a of userApplications) {
+                          const key = `${a.month}|${a.method}`;
+                          if (!byKey[key]) {
+                            byKey[key] = { month: a.month, method: a.method, blockIds: new Set() };
+                          }
+                          byKey[key].blockIds.add(a.block_id);
+                        }
+                        const blockNameById = new Map(
+                          blockInfoData.map((bi) => [bi.block_id, bi.block_name]),
+                        );
+                        const totalBlocks = blockInfoData.length;
+                        const rows = Object.values(byKey).sort(
+                          (x, y) => x.month - y.month || x.method.localeCompare(y.method),
+                        );
+                        return rows.map((r, i) => {
+                          const all = r.blockIds.size === totalBlocks && totalBlocks > 0;
+                          const names = all
+                            ? "all blocks"
+                            : Array.from(r.blockIds)
+                                .map((id) => blockNameById.get(id) || id)
+                                .sort()
+                                .join(", ");
+                          return (
+                            <div key={i} className="flex items-center justify-between px-3 py-2 text-sm">
+                              <div className="flex items-center gap-3">
+                                <span className="inline-flex w-9 justify-center rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+                                  {MONTH_NAMES[r.month]}
+                                </span>
+                                <span className="font-medium text-[var(--sapling-dark)]">
+                                  {methodLabel(r.method)}
+                                </span>
+                              </div>
+                              <span className="text-xs text-muted-foreground">{names}</span>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                )}
 
                 <div className="rounded-lg bg-green-50 p-4 text-center">
                   <Check className="mx-auto size-8 text-green-600" />
@@ -724,29 +806,34 @@ function SeasonBuilderPage() {
               {wizardStep === 1 ? "Preview Schedule" : wizardStep === 2 ? "Generate Blends" : "Next"}
             </Button>
           ) : (
-            <div className="flex flex-wrap gap-3">
-              <Button variant="outline" onClick={() => handleFinish(false)}>
+            // CTA hierarchy: the v2 "Build Full Programme" path is the
+            // primary action (orange filled). The legacy "Activate"
+            // path is secondary (outlined) and explicitly tagged so
+            // the agronomist knows which engine they're committing to.
+            // "Save as Draft" is the tertiary escape hatch.
+            <div className="flex flex-wrap items-center gap-3">
+              <Button variant="ghost" onClick={() => handleFinish(false)}>
                 Save as Draft
               </Button>
               <Button
+                variant="outline"
                 onClick={() => handleFinish(true)}
-                className="bg-[var(--sapling-orange)] text-white hover:bg-[var(--sapling-orange)]/90"
+                title="Save the programme to the legacy season-manager engine. Use this if you don't need the v2 ProgrammeArtifact pipeline."
               >
                 <Check className="size-4" />
-                Activate Programme
+                Activate (legacy)
               </Button>
               <Button
-                variant="outline"
                 onClick={handleBuildArtifact}
                 disabled={buildingArtifact}
-                className="border-[var(--sapling-orange)] text-[var(--sapling-orange)] hover:bg-orange-50"
+                className="bg-[var(--sapling-orange)] text-white hover:bg-[var(--sapling-orange)]/90"
               >
                 {buildingArtifact ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
                   <Leaf className="size-4" />
                 )}
-                Generate Full Programme
+                Build Full Programme
               </Button>
             </div>
           )}

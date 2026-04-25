@@ -25,6 +25,7 @@ from app.routers.programmes_v2 import (
     SkippedBlockRequest,
     _suggest_pdf_filename,
     build_programme_endpoint,
+    get_programme_artifact,
     render_programme_artifact_pdf,
 )
 from app.models import ProgrammeArtifact, ProgrammeHeader, ProgrammeState
@@ -430,6 +431,40 @@ def test_render_pdf_endpoint_admin_sees_any_artifact(fake_sb):
         render_programme_artifact_pdf(build_response.id, admin),
     )
     assert response.media_type == "application/pdf"
+
+
+def test_get_artifact_endpoint_scopes_to_user(fake_sb):
+    """Non-admin user B cannot GET user A's artifact (returns 404, not
+    403, to avoid leaking artifact existence). Locks the user_id scope
+    on the v2 GET endpoint that the artifact-detail page hits on
+    every load."""
+    from fastapi import HTTPException
+
+    user_a = SimpleNamespace(id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", role="user")
+    user_b = SimpleNamespace(id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", role="user")
+    build_request = _build_request([_block_request("1", "Land A", 10.0)])
+    build_response = asyncio.run(build_programme_endpoint(build_request, user_a))
+
+    # User A reading their own artifact → succeeds
+    own_response = asyncio.run(get_programme_artifact(build_response.id, user_a))
+    assert str(own_response.id) == str(build_response.id)
+
+    # User B reading user A's artifact → 404
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(get_programme_artifact(build_response.id, user_b))
+    assert exc.value.status_code == 404
+
+
+def test_get_artifact_endpoint_admin_bypasses_scope(fake_sb):
+    """Admin role can pull any user's artifact (mirrors the PDF-scope
+    admin bypass for the same endpoint group)."""
+    user_a = SimpleNamespace(id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", role="user")
+    admin = SimpleNamespace(id="11111111-1111-1111-1111-111111111111", role="admin")
+    build_request = _build_request([_block_request("1", "Land A", 10.0)])
+    build_response = asyncio.run(build_programme_endpoint(build_request, user_a))
+
+    response = asyncio.run(get_programme_artifact(build_response.id, admin))
+    assert str(response.id) == str(build_response.id)
 
 
 # ============================================================
