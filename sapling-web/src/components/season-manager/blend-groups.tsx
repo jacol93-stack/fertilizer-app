@@ -18,6 +18,10 @@ export interface ApplicationBlendData {
   // blend any more.
   sa_notation: string;
   rate_kg_ha: number;
+  // cost_per_ton + recipe[].cost are emitted by the legacy preview
+  // endpoint for downstream quoting. Programme-builder scope is
+  // agronomy only (see project_programme_builder_scope memory) — we
+  // accept the fields on the type but never render them here.
   cost_per_ton?: number;
   exact?: boolean;
   recipe?: Array<{ material: string; type: string; kg: number; pct: number; cost: number }>;
@@ -62,12 +66,6 @@ export function BlendGroups({ blendGroups, isAdmin }: BlendGroupsProps) {
       {blendGroups.map((group, idx) => {
         const groupTotalKg = group.applications.reduce(
           (s, a) => s + (a.is_foliar ? 0 : a.rate_kg_ha * group.total_area_ha),
-          0,
-        );
-        const groupCost = group.applications.reduce(
-          (s, a) => s + (a.is_foliar || a.cost_per_ton == null
-            ? 0
-            : (a.cost_per_ton / 1000) * a.rate_kg_ha * group.total_area_ha),
           0,
         );
         return (
@@ -118,11 +116,6 @@ export function BlendGroups({ blendGroups, isAdmin }: BlendGroupsProps) {
                             <p className="text-sm font-bold text-[var(--sapling-dark)]">
                               {app.rate_kg_ha ? `${app.rate_kg_ha} kg/ha` : "—"}
                             </p>
-                            {isAdmin && app.cost_per_ton != null && (
-                              <p className="text-[10px] text-muted-foreground">
-                                R{app.cost_per_ton.toLocaleString(undefined, { minimumFractionDigits: 2 })}/ton
-                              </p>
-                            )}
                             {app.exact === false && (
                               <p className="text-[10px] text-amber-600">Approximate match</p>
                             )}
@@ -140,7 +133,6 @@ export function BlendGroups({ blendGroups, isAdmin }: BlendGroupsProps) {
                               <th className="px-2 py-1.5 font-medium">Type</th>
                               <th className="px-2 py-1.5 text-right font-medium">kg</th>
                               <th className="px-2 py-1.5 text-right font-medium">%</th>
-                              <th className="px-2 py-1.5 text-right font-medium">Cost</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -150,7 +142,6 @@ export function BlendGroups({ blendGroups, isAdmin }: BlendGroupsProps) {
                                 <td className="px-2 py-1 text-muted-foreground">{r.type}</td>
                                 <td className="px-2 py-1 text-right tabular-nums">{r.kg.toFixed(1)}</td>
                                 <td className="px-2 py-1 text-right tabular-nums">{r.pct.toFixed(1)}</td>
-                                <td className="px-2 py-1 text-right tabular-nums">R{r.cost.toFixed(0)}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -160,17 +151,12 @@ export function BlendGroups({ blendGroups, isAdmin }: BlendGroupsProps) {
                   </div>
                 ))}
 
-              {/* Total for this group (excludes foliar rows since they're
-                  not yet costed) */}
+              {/* Mass roll-up only — programme builder is agronomy-scoped,
+                  so cost goes downstream into the quoting phase. */}
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2 text-xs">
                 <span className="text-muted-foreground">
                   Non-foliar total: {groupTotalKg.toLocaleString(undefined, { maximumFractionDigits: 0 })} kg across {group.applications.filter((a) => !a.is_foliar).length} application{group.applications.filter((a) => !a.is_foliar).length !== 1 ? "s" : ""}
                 </span>
-                {isAdmin && groupCost > 0 && (
-                  <span className="font-medium text-[var(--sapling-dark)]">
-                    R{groupCost.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} total
-                  </span>
-                )}
               </div>
             </CardContent>
           </Card>
