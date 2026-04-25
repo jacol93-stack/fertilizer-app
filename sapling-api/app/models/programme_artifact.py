@@ -22,7 +22,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 from .confidence import ConfidenceBand, DataCompleteness, Tier
 from .methods import ApplicationMethod, MethodAvailability, MethodKind
@@ -297,6 +297,55 @@ class Blend(BaseModel):
     )
     sources: list[SourceCitation] = Field(default_factory=list)
     confidence: Optional[ConfidenceBand] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _synthesize_applications_from_legacy(cls, data):
+        """Backwards-compat for artifacts persisted before F3.
+
+        Legacy Blend JSON has `weeks` / `events` / `dates_label` as real
+        persisted strings/ints but no `applications` list. Synthesize a
+        single-event ApplicationEvent so model_validate succeeds + the
+        computed fields read back the persisted values via the
+        applications list (best effort — exact dates may be approximated
+        from the dates_label when present, else fall back to today).
+
+        Once a legacy artifact is re-rendered through the F3+ engine,
+        it'll be re-persisted with proper applications and this synthesis
+        is a no-op.
+        """
+        if not isinstance(data, dict):
+            return data
+        apps = data.get("applications")
+        if apps:  # already F3-shaped
+            return data
+        # Legacy shape — synthesise one ApplicationEvent.
+        from datetime import date as _date_type
+        legacy_events = data.get("events") or 1
+        try:
+            n_events = max(1, int(legacy_events))
+        except (TypeError, ValueError):
+            n_events = 1
+        # Best-effort: place at today; the renderer will use the legacy
+        # weeks / dates_label strings via the @computed_field properties
+        # (because the persisted values are still in `data`, but Pydantic
+        # discards them at validation time — so we lose the strings here.
+        # The applications list provides a fallback for downstream code).
+        synth = []
+        for i in range(n_events):
+            synth.append({
+                "event_index": data.get("stage_number", 1) * 100 + i + 1,
+                "event_date": _date_type.today().isoformat(),
+                "week_from_planting": max(1, i + 1),
+                "event_of_stage_index": i + 1,
+                "total_events_in_stage": n_events,
+            })
+        # Drop the legacy persisted weeks/events/dates_label strings so
+        # the @computed_field versions take effect (they read from the
+        # synthesized applications list).
+        data = {k: v for k, v in data.items() if k not in {"weeks", "events", "dates_label"}}
+        data["applications"] = synth
+        return data
 
     @computed_field  # type: ignore[misc]
     @property

@@ -445,6 +445,10 @@ function BlendsSection({
 
 function BlendCard({ blend }: { blend: Blend }) {
   const isLiquid = blend.method.kind.startsWith("liquid_");
+  // Defensive: legacy artifacts (built before F3) have no `applications`
+  // field on blends. Treat missing/empty as a single-event blend.
+  const applications = blend.applications ?? [];
+  const eventCount = blend.events ?? applications.length ?? 1;
   return (
     <div className="border border-border rounded-md p-4 space-y-3">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -453,8 +457,8 @@ function BlendCard({ blend }: { blend: Blend }) {
             Blend {blend.stage_number}: {blend.stage_name}
           </h4>
           <p className="text-xs text-muted-foreground">
-            {blend.weeks} · {blend.dates_label} · {blend.events} event
-            {blend.events > 1 ? "s" : ""} · {blend.method.kind}
+            {blend.weeks} · {blend.dates_label} · {eventCount} event
+            {eventCount > 1 ? "s" : ""} · {blend.method.kind}
           </p>
         </div>
       </div>
@@ -497,7 +501,7 @@ function BlendCard({ blend }: { blend: Blend }) {
           </tbody>
         </table>
       </div>
-      {blend.applications.length > 1 && (
+      {applications.length > 1 && (
         <div className="pt-2 border-t border-border/50 space-y-2">
           <h5 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Application schedule
@@ -513,7 +517,7 @@ function BlendCard({ blend }: { blend: Blend }) {
                 </tr>
               </thead>
               <tbody>
-                {blend.applications.map((app, i) => (
+                {applications.map((app, i) => (
                   <tr
                     key={app.event_index}
                     className="border-b border-border/30 last:border-0"
@@ -522,7 +526,7 @@ function BlendCard({ blend }: { blend: Blend }) {
                     <td className="py-1.5 pr-3">{formatEventDate(app.event_date)}</td>
                     <td className="py-1.5 pr-3 font-mono text-right">{app.week_from_planting}</td>
                     <td className="py-1.5 pr-3 font-mono text-muted-foreground">
-                      {i + 1} of {blend.applications.length}
+                      {i + 1} of {applications.length}
                     </td>
                   </tr>
                 ))}

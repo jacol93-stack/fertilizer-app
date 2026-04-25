@@ -127,6 +127,11 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # `Content-Disposition` is NOT a CORS-safelisted response header, so
+    # without exposing it explicitly the browser hides it from JS — and
+    # our PDF download helper falls back to a generic filename. Expose
+    # the headers the frontend needs to see.
+    expose_headers=["Content-Disposition", "Content-Length"],
 )
 
 

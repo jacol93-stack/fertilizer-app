@@ -292,12 +292,17 @@ export interface Blend {
   block_id: string;
   stage_number: number;
   stage_name: string;
-  applications: ApplicationEvent[];
-  /** Computed by backend from applications (Pydantic @computed_field). */
+  /** Optional for backwards-compat: legacy artifacts persisted before F3
+   *  do not carry this field. UI must defensive-guard via `?? []`. */
+  applications?: ApplicationEvent[];
+  /** Computed by backend from applications (Pydantic @computed_field).
+   *  May be a real persisted string on legacy artifacts. */
   weeks: string;
-  /** Computed by backend from applications (= applications.length). */
+  /** Computed by backend from applications (= applications.length).
+   *  May be a real persisted number on legacy artifacts. */
   events: number;
-  /** Computed by backend from applications (first..last event_date). */
+  /** Computed by backend from applications (first..last event_date).
+   *  May be a real persisted string on legacy artifacts. */
   dates_label: string;
   method: ApplicationMethod;
   raw_products: BlendPart[];

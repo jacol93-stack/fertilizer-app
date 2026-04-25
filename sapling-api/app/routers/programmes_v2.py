@@ -398,8 +398,10 @@ def _suggest_pdf_filename(artifact: ProgrammeArtifact) -> str:
     if not parts:
         parts.append("Sapling Programme")
     base = " - ".join(parts)
-    # Drop filesystem-unsafe + non-ASCII characters (em-dashes, etc.)
-    safe = re.sub(r'[\\/:*?"<>|]+', "", base)
+    # Date-style separators: convert "2026/2027" → "2026-2027" rather
+    # than collapse to "20262027". Then drop other filesystem-unsafe chars.
+    safe = base.replace("/", "-")
+    safe = re.sub(r'[\\:*?"<>|]+', "", safe)
     safe = safe.encode("ascii", errors="ignore").decode("ascii")
     safe = re.sub(r"\s+", " ", safe).strip()
     if not safe:
