@@ -610,8 +610,17 @@ export default function RecordsPage() {
                       {filteredBlends.map((blend) => (
                         <tr
                           key={blend.id}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Open blend ${blend.blend_name || "unnamed"}`}
                           onClick={() => preview.openPreview("blend", blend.id)}
-                          className="cursor-pointer border-b last:border-0 hover:bg-gray-50"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              preview.openPreview("blend", blend.id);
+                            }
+                          }}
+                          className="cursor-pointer border-b last:border-0 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sapling-orange)] focus-visible:ring-inset"
                         >
                           <td className="py-2.5 pr-4 font-medium">
                             <span className="flex items-center gap-1.5">
@@ -896,8 +905,17 @@ export default function RecordsPage() {
                       {filteredSoil.map((record) => (
                         <tr
                           key={record.id}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Open soil analysis for ${record.crop || "unspecified crop"}`}
                           onClick={() => preview.openPreview("soil", record.id)}
-                          className="cursor-pointer border-b last:border-0 hover:bg-gray-50"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              preview.openPreview("soil", record.id);
+                            }
+                          }}
+                          className="cursor-pointer border-b last:border-0 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sapling-orange)] focus-visible:ring-inset"
                         >
                           <td className="py-2.5 pr-4 font-medium">
                             {record.crop || "-"}

@@ -390,8 +390,17 @@ export default function QuotesPage() {
                   return (
                     <tr
                       key={q.id}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Open quote ${q.quote_number}`}
                       onClick={() => openQuote(q)}
-                      className="cursor-pointer hover:bg-gray-50"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openQuote(q);
+                        }
+                      }}
+                      className="cursor-pointer hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sapling-orange)] focus-visible:ring-inset"
                     >
                       <td className="px-4 py-3 font-mono text-xs font-medium text-[var(--sapling-dark)]">
                         {q.quote_number}

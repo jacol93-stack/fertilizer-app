@@ -292,8 +292,17 @@ export default function BulkUploadPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             {/* Upload option */}
             <Card
-              className="cursor-pointer transition-shadow hover:shadow-md"
+              role="button"
+              tabIndex={0}
+              aria-label="Upload lab report PDF or photo"
+              className="cursor-pointer transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sapling-orange)] focus-visible:ring-offset-2"
               onClick={() => document.getElementById("file-input")?.click()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  document.getElementById("file-input")?.click();
+                }
+              }}
             >
               <CardContent className="flex flex-col items-center gap-4 py-10">
                 {extracting ? (
@@ -326,7 +335,10 @@ export default function BulkUploadPage() {
 
             {/* Manual option */}
             <Card
-              className="cursor-pointer transition-shadow hover:shadow-md"
+              role="button"
+              tabIndex={0}
+              aria-label="Enter analysis values manually"
+              className="cursor-pointer transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sapling-orange)] focus-visible:ring-offset-2"
               onClick={() => {
                 setRows(blocks.map((b) => ({
                   id: tempId(),
@@ -341,6 +353,12 @@ export default function BulkUploadPage() {
                   outlier_keys: [],
                 })));
                 setMode("manual");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  (e.currentTarget as HTMLElement).click();
+                }
               }}
             >
               <CardContent className="flex flex-col items-center gap-4 py-10">

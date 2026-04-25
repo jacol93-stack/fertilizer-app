@@ -168,8 +168,17 @@ function SeasonManagerPage() {
               {visibleArtifacts.map((a) => (
                 <Card
                   key={a.id}
-                  className="cursor-pointer border-l-4 border-l-[var(--sapling-orange)] transition-shadow hover:shadow-md"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open ${a.farm_name || "artifact"} ${a.crop} programme — state ${a.state}`}
+                  className="cursor-pointer border-l-4 border-l-[var(--sapling-orange)] transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sapling-orange)] focus-visible:ring-offset-2"
                   onClick={() => router.push(`/season-manager/artifact/${a.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      router.push(`/season-manager/artifact/${a.id}`);
+                    }
+                  }}
                 >
                   <CardContent className="flex items-center justify-between py-3">
                     <div className="flex items-center gap-3">
@@ -229,8 +238,17 @@ function SeasonManagerPage() {
                     return (
                       <Card
                         key={prog.id}
-                        className="cursor-pointer border-l-4 border-l-green-500 transition-shadow hover:shadow-md"
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Open programme ${prog.name}`}
+                        className="cursor-pointer border-l-4 border-l-green-500 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sapling-orange)] focus-visible:ring-offset-2"
                         onClick={() => router.push(`/season-manager/${prog.id}`)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            router.push(`/season-manager/${prog.id}`);
+                          }
+                        }}
                       >
                         <CardContent className="flex items-center justify-between py-4">
                           <div className="flex items-center gap-4">
@@ -286,8 +304,17 @@ function SeasonManagerPage() {
                   return (
                     <Card
                       key={prog.id}
-                      className="cursor-pointer transition-shadow hover:shadow-md"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Open programme ${prog.name}`}
+                      className="cursor-pointer transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sapling-orange)] focus-visible:ring-offset-2"
                       onClick={() => router.push(`/season-manager/${prog.id}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          router.push(`/season-manager/${prog.id}`);
+                        }
+                      }}
                     >
                       <CardContent className="flex items-center justify-between py-3">
                         <div className="flex items-center gap-3">

@@ -836,8 +836,17 @@ export default function ClientHubPage() {
                         {soilAnalyses.map((a) => (
                           <tr
                             key={a.id}
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`Open soil analysis for ${a.crop || "unspecified crop"} on ${a.field || "unspecified field"}`}
                             onClick={() => openDetail("soil", a.id)}
-                            className="cursor-pointer border-b last:border-0 hover:bg-gray-50"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                openDetail("soil", a.id);
+                              }
+                            }}
+                            className="cursor-pointer border-b last:border-0 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sapling-orange)] focus-visible:ring-inset"
                           >
                             <td className="py-2.5 pr-4">
                               <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">Soil</span>
@@ -916,8 +925,17 @@ export default function ClientHubPage() {
                         {blends.map((b) => (
                           <tr
                             key={b.id}
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`Open blend ${b.blend_name || "unnamed"}`}
                             onClick={() => openDetail("blend", b.id)}
-                            className="cursor-pointer border-b last:border-0 hover:bg-gray-50"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                openDetail("blend", b.id);
+                              }
+                            }}
+                            className="cursor-pointer border-b last:border-0 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sapling-orange)] focus-visible:ring-inset"
                           >
                             <td className="py-2.5 pr-4 font-medium text-[var(--sapling-dark)]">
                               <span className="flex items-center gap-1.5">
