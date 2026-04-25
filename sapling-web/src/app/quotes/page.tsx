@@ -350,10 +350,25 @@ export default function QuotesPage() {
           </Card>
         )}
 
-        {/* Quote list */}
+        {/* Quote list — skeleton rows while the request is in flight
+            so the page doesn't reflow when results arrive. */}
         {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="size-6 animate-spin text-[var(--sapling-orange)]" />
+          <div
+            className="rounded-lg border bg-white"
+            aria-busy="true"
+            aria-label="Loading quotes"
+          >
+            {[0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="flex animate-pulse items-center gap-4 border-b px-4 py-3 last:border-0"
+              >
+                <div className="h-3 w-20 rounded bg-muted" />
+                <div className="h-3 w-24 rounded bg-muted/70" />
+                <div className="h-3 w-32 rounded bg-muted/70" />
+                <div className="ml-auto h-5 w-16 rounded-full bg-muted/70" />
+              </div>
+            ))}
           </div>
         ) : quotes.length === 0 ? (
           <Card>

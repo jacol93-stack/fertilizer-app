@@ -524,45 +524,63 @@ export function ScheduleReview({
               </div>
             )}
 
-            {/* Growth stage timeline */}
+            {/* Growth stage timeline. Rotate the month sequence so the
+                bar starts at the planting month — for SH crops planted
+                in Oct, a Jan-Dec layout reads as discontinuous (mid-
+                cycle on the left, planting on the right). Starting at
+                planting month gives a clean left→right growth cycle. */}
             <div className="px-4 py-3">
-              <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Growth Stages</p>
-              <div className="flex gap-0.5 rounded-lg overflow-hidden">
-                {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => {
-                  const stage = getStageForMonth(m, shiftedStages);
-                  const stageIdx = stage ? shiftedStages.indexOf(stage) : -1;
-                  const colorClass = stageIdx >= 0 ? STAGE_COLORS[stageIdx % STAGE_COLORS.length] : "bg-gray-100 text-gray-400";
-                  const hasApp = blockApps.some((a) => a.month === m);
-                  const isPlanting = m === plantMonth;
+              <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                Growth Stages
+                <span className="ml-2 normal-case text-muted-foreground/70">
+                  · cycle starts at planting month
+                </span>
+              </p>
+              {(() => {
+                const monthSequence: number[] = [];
+                for (let i = 0; i < 12; i++) {
+                  monthSequence.push(((plantMonth - 1 + i) % 12) + 1);
+                }
+                return (
+                  <>
+                    <div className="flex gap-0.5 rounded-lg overflow-hidden">
+                      {monthSequence.map((m) => {
+                        const stage = getStageForMonth(m, shiftedStages);
+                        const stageIdx = stage ? shiftedStages.indexOf(stage) : -1;
+                        const colorClass = stageIdx >= 0 ? STAGE_COLORS[stageIdx % STAGE_COLORS.length] : "bg-gray-100 text-gray-400";
+                        const hasApp = blockApps.some((a) => a.month === m);
+                        const isPlanting = m === plantMonth;
 
-                  return (
-                    <div
-                      key={m}
-                      className={`flex-1 py-1.5 text-center text-[10px] font-medium ${colorClass} ${hasApp ? "ring-2 ring-[var(--sapling-orange)] ring-inset" : ""} ${isPlanting ? "border-b-2 border-black" : ""}`}
-                      title={stage?.stage_name || "No stage"}
-                    >
-                      {MONTH_NAMES[m]?.slice(0, 3)}
+                        return (
+                          <div
+                            key={m}
+                            className={`flex-1 py-1.5 text-center text-[10px] font-medium ${colorClass} ${hasApp ? "ring-2 ring-[var(--sapling-orange)] ring-inset" : ""} ${isPlanting ? "border-b-2 border-black" : ""}`}
+                            title={stage?.stage_name || "No stage"}
+                          >
+                            {MONTH_NAMES[m]?.slice(0, 3)}
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
               {/* Stage names aligned under their months */}
               <div className="relative mt-0.5 flex gap-0.5">
                 {(() => {
-                  // Build spans: for each stage, find its start/end column positions
+                  // Build spans: walk the rotated monthSequence and
+                  // group adjacent months that share the same stage.
                   const cells: Array<{ stage: GrowthStage; stageIdx: number; startCol: number; span: number }> = [];
                   let prevStageIdx = -1;
                   let currentStart = 0;
                   let currentSpan = 0;
 
-                  for (let m = 1; m <= 12; m++) {
+                  for (let i = 0; i < 12; i++) {
+                    const m = monthSequence[i];
                     const stage = getStageForMonth(m, shiftedStages);
                     const idx = stage ? shiftedStages.indexOf(stage) : -1;
                     if (idx !== prevStageIdx) {
                       if (prevStageIdx >= 0 && currentSpan > 0) {
                         cells.push({ stage: shiftedStages[prevStageIdx], stageIdx: prevStageIdx, startCol: currentStart, span: currentSpan });
                       }
-                      currentStart = m - 1;
+                      currentStart = i;
                       currentSpan = idx >= 0 ? 1 : 0;
                       prevStageIdx = idx;
                     } else if (idx >= 0) {
@@ -591,6 +609,9 @@ export function ScheduleReview({
                 {/* Spacer for height */}
                 <div className="h-4 w-full" />
               </div>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Applications — hidden when the shared-schedule panel

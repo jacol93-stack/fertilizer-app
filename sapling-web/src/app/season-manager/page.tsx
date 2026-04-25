@@ -212,8 +212,23 @@ function SeasonManagerPage() {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="size-8 animate-spin text-[var(--sapling-orange)]" />
+          // Skeleton row — mimics a programme card so the layout
+          // doesn't jump when results land.
+          <div className="space-y-3" aria-busy="true" aria-label="Loading programmes">
+            {[0, 1, 2].map((i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="flex items-center justify-between py-4">
+                  <div className="flex items-center gap-4">
+                    <div className="size-10 rounded-lg bg-muted" />
+                    <div className="space-y-2">
+                      <div className="h-4 w-40 rounded bg-muted" />
+                      <div className="h-3 w-56 rounded bg-muted/70" />
+                    </div>
+                  </div>
+                  <div className="size-5 rounded-full bg-muted" />
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : programmes.length === 0 ? (
           <Card className="flex min-h-[200px] flex-col items-center justify-center text-center">

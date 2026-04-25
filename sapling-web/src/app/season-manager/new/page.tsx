@@ -89,6 +89,91 @@ function SeasonBuilderPage() {
   const [availableAnalyses, setAvailableAnalyses] = useState<SoilAnalysis[]>([]);
   const [clientFarms, setClientFarms] = useState<Array<{ id: string; name: string }>>([]);
 
+  // ── Wizard draft persistence ────────────────────────────────────
+  // Survive accidental refreshes mid-wizard. Persist to localStorage
+  // on any state change; rehydrate on mount unless the URL is
+  // carrying a fresh handoff (analysis_id / client_id), in which
+  // case the handoff intent wins. Cleared on Build Full Programme,
+  // legacy Activate, Save as Draft, and explicit Cancel.
+  const DRAFT_KEY = "sapling.wizard.draft.v1";
+  const hasHydrated = useRef(false);
+
+  useEffect(() => {
+    // Run once. Skip hydration when the URL is handing off a fresh
+    // intent — a stale draft would silently override the link the
+    // user just clicked.
+    if (hasHydrated.current) return;
+    hasHydrated.current = true;
+    if (analysisId || urlClientId) return;
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw) as {
+        wizardStep?: number;
+        clientId?: string;
+        farmId?: string;
+        clientName?: string;
+        farmName?: string;
+        programmeName?: string;
+        season?: string;
+        blocks?: Omit<Block, "id">[];
+        programmeId?: string | null;
+        blockInfoData?: BlockInfo[];
+        userApplications?: UserApplication[];
+        plantingMonths?: Record<string, number>;
+        blendGroupsData?: BlendGroupData[];
+      };
+      if (typeof draft.wizardStep === "number") setWizardStep(draft.wizardStep);
+      if (draft.clientId) setClientId(draft.clientId);
+      if (draft.farmId) setFarmId(draft.farmId);
+      if (draft.clientName) setClientName(draft.clientName);
+      if (draft.farmName) setFarmName(draft.farmName);
+      if (draft.programmeName) setProgrammeName(draft.programmeName);
+      if (draft.season) setSeason(draft.season);
+      if (draft.blocks) setBlocks(draft.blocks);
+      if (draft.programmeId !== undefined) setProgrammeId(draft.programmeId);
+      if (draft.blockInfoData) setBlockInfoData(draft.blockInfoData);
+      if (draft.userApplications) setUserApplications(draft.userApplications);
+      if (draft.plantingMonths) setPlantingMonths(draft.plantingMonths);
+      if (draft.blendGroupsData) setBlendGroupsData(draft.blendGroupsData);
+      toast.message("Resumed where you left off");
+    } catch {
+      // Bad JSON or shape mismatch — clear the slot rather than
+      // crash the page on every load.
+      try { window.localStorage.removeItem(DRAFT_KEY); } catch {}
+    }
+  }, [analysisId, urlClientId]);
+
+  useEffect(() => {
+    if (!hasHydrated.current) return;
+    if (typeof window === "undefined") return;
+    // Only persist once the user has named a programme — empty
+    // drafts add noise without value.
+    if (!programmeName && wizardStep === 0) return;
+    try {
+      const draft = {
+        wizardStep, clientId, farmId, clientName, farmName,
+        programmeName, season, blocks, programmeId,
+        blockInfoData, userApplications, plantingMonths, blendGroupsData,
+      };
+      window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      // Quota or storage-disabled — fail silently; user keeps
+      // their in-memory wizard state.
+    }
+  }, [wizardStep, clientId, farmId, clientName, farmName, programmeName,
+      season, blocks, programmeId, blockInfoData, userApplications,
+      plantingMonths, blendGroupsData]);
+
+  const clearDraft = () => {
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(DRAFT_KEY);
+      }
+    } catch {}
+  };
+
   // ── Resolve URL params (client/farm IDs → names + blocks) ───────
   useEffect(() => {
     if (!urlClientId || analysisId) return;
@@ -429,6 +514,9 @@ function SeasonBuilderPage() {
       } else {
         toast.success("Programme generated");
       }
+      // Wizard work is now persisted as an artifact — drop the
+      // draft so the next "New programme" starts clean.
+      clearDraft();
       router.push(`/season-manager/artifact/${response.id}`);
     } catch (e) {
       // Always log — toast messages are short; console gets the raw
@@ -448,13 +536,16 @@ function SeasonBuilderPage() {
     }
   };
 
-  // Final: navigate to programme detail
+  // Final: navigate to programme detail. Both paths persist the
+  // wizard's work into the legacy `programmes` table, so the draft
+  // can be cleared.
   const handleFinish = (activate: boolean) => {
     if (!programmeId) return;
     if (activate) {
       api.patch(`/api/programmes/${programmeId}`, { status: "active" })
         .then(() => {
           toast.success("Programme activated");
+          clearDraft();
           router.push(`/season-manager/${programmeId}`);
         })
         .catch(() => {
@@ -463,6 +554,7 @@ function SeasonBuilderPage() {
         });
     } else {
       toast.success("Programme saved as draft");
+      clearDraft();
       router.push(`/season-manager/${programmeId}`);
     }
   };
@@ -493,6 +585,9 @@ function SeasonBuilderPage() {
 
   const handleBack = () => {
     if (wizardStep === 0) {
+      // Cancel from step 0 = abandon the draft. Clear the saved
+      // copy so the next visit starts clean.
+      clearDraft();
       router.push("/season-manager");
     } else {
       setWizardStep((s) => s - 1);

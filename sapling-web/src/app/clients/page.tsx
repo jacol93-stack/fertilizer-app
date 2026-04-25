@@ -211,10 +211,24 @@ function ClientsPage() {
           />
         </div>
 
-        {/* Loading */}
+        {/* Loading skeleton — three placeholder cards in the same
+            grid layout so the page doesn't jump on first paint. */}
         {loading && clients.length === 0 ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="size-6 animate-spin text-[var(--sapling-orange)]" />
+          <div
+            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            aria-busy="true"
+            aria-label="Loading clients"
+          >
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="animate-pulse rounded-lg border bg-white p-4">
+                <div className="h-4 w-3/4 rounded bg-muted" />
+                <div className="mt-2 h-3 w-1/2 rounded bg-muted/70" />
+                <div className="mt-4 flex gap-2">
+                  <div className="h-3 w-12 rounded bg-muted/70" />
+                  <div className="h-3 w-12 rounded bg-muted/70" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : clients.length === 0 ? (
           <div className="py-12 text-center">
