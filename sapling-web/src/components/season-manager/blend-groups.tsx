@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MONTH_NAMES } from "@/lib/season-constants";
+import { MONTH_NAMES, methodLabel } from "@/lib/season-constants";
 
 const GROUP_COLORS = [
   "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-amber-500",
@@ -103,7 +103,7 @@ export function BlendGroups({ blendGroups, isAdmin }: BlendGroupsProps) {
                             {app.is_foliar ? (
                               <>Foliar &mdash; product selection happens via the catalog; not in this LP.</>
                             ) : (
-                              <>{app.sa_notation || "(no recipe)"} via <span className="font-medium">{app.method}</span></>
+                              <>{app.sa_notation || "(no recipe)"} via <span className="font-medium">{methodLabel(app.method)}</span></>
                             )}
                           </p>
                         </div>

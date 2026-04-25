@@ -9,7 +9,7 @@ import { ComboBox } from "@/components/client-selector";
 import { toast } from "sonner";
 import { Loader2, Plus, Copy, Trash2, X, Save } from "lucide-react";
 import type { Field, CropNorm, SoilAnalysis } from "@/lib/season-constants";
-import { MONTH_NAMES, IRRIGATION_TYPES } from "@/lib/season-constants";
+import { MONTH_NAMES, IRRIGATION_TYPES, methodLabel } from "@/lib/season-constants";
 
 interface FieldEditorProps {
   open: boolean;
@@ -459,7 +459,7 @@ export function FieldEditor({ open, onClose, field, farmId, crops, analyses, exi
                                     : "border-gray-200 text-gray-600 hover:border-gray-400"
                               }`}
                             >
-                              {cm.method}{cm.is_default && " *"}
+                              {methodLabel(cm.method)}{cm.is_default && " *"}
                             </button>
                           );
                         })}

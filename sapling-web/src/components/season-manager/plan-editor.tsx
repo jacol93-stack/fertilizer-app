@@ -19,7 +19,7 @@ import {
   TrendingUp,
   TrendingDown,
 } from "lucide-react";
-import { MONTH_NAMES } from "@/lib/season-constants";
+import { MONTH_NAMES, methodLabel } from "@/lib/season-constants";
 
 interface PlanEditorProps {
   programmeId: string;
@@ -407,7 +407,7 @@ function BlendEditorRow({
           disabled={blend._deleted}
         >
           {METHOD_OPTIONS.map((m) => (
-            <option key={m} value={m}>{m}</option>
+            <option key={m} value={m}>{methodLabel(m)}</option>
           ))}
         </select>
       </td>

@@ -9,7 +9,7 @@ import { ComboBox } from "@/components/client-selector";
 import { toast } from "sonner";
 import { Loader2, X, Save, Trash2, Copy, Layers, ChevronRight, ChevronDown } from "lucide-react";
 import type { Field, CropNorm, SoilAnalysis } from "@/lib/season-constants";
-import { MONTH_NAMES, IRRIGATION_TYPES } from "@/lib/season-constants";
+import { MONTH_NAMES, IRRIGATION_TYPES, methodLabel } from "@/lib/season-constants";
 
 interface LinkedRecord {
   id: string;
@@ -433,7 +433,7 @@ export function FieldDrawer({ open, onClose, field, farmId, crops, analyses, onS
                               : "border-gray-200 text-gray-600 hover:border-gray-400"
                         }`}
                       >
-                        {cm.method}{cm.is_default ? " *" : ""}
+                        {methodLabel(cm.method)}{cm.is_default ? " *" : ""}
                       </button>
                     );
                   })}

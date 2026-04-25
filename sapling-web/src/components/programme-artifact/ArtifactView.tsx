@@ -17,6 +17,7 @@ import type {
   StageSchedule,
 } from "@/lib/types/programme-artifact";
 import { TIER_LABEL, Tier } from "@/lib/types/programme-artifact";
+import { methodLabel } from "@/lib/season-constants";
 import {
   AlertTriangle,
   BookOpen,
@@ -458,7 +459,7 @@ function BlendCard({ blend }: { blend: Blend }) {
           </h4>
           <p className="text-xs text-muted-foreground">
             {blend.weeks} · {blend.dates_label} · {eventCount} event
-            {eventCount > 1 ? "s" : ""} · {blend.method.kind}
+            {eventCount > 1 ? "s" : ""} · {methodLabel(blend.method.kind)}
           </p>
         </div>
       </div>

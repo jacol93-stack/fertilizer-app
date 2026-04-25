@@ -27,9 +27,11 @@ export const APPLICATION_METHODS = [
 
 // Backend method enums → human-readable labels for UI selects.
 // Engine emits these raw strings (programme_engine.DRY_METHODS,
-// MethodAvailability flags, accepted_methods on fields). Anywhere the
-// agronomist sees a method choice, render the label not the enum.
+// MethodAvailability flags, accepted_methods on fields, the v2
+// orchestrator's MethodKind enum). Anywhere the agronomist sees a
+// method choice, render the label not the enum.
 export const METHOD_LABELS: Record<string, string> = {
+  // Legacy / accepted_methods enum
   broadcast: "Broadcast",
   band_place: "Band placement",
   side_dress: "Side-dressing",
@@ -40,6 +42,14 @@ export const METHOD_LABELS: Record<string, string> = {
   drench: "Drench",
   dry_blend: "Dry blend / broadcast",
   dry_side_dress: "Dry side-dressing",
+  // v2 MethodKind enum (programme_artifact.ts)
+  liquid_drip: "Liquid · drip",
+  liquid_pivot: "Liquid · pivot",
+  liquid_sprinkler: "Liquid · sprinkler",
+  dry_broadcast: "Dry · broadcast",
+  dry_band: "Dry · band placement",
+  dry_fertigation: "Dry · fertigation",
+  seed_treat: "Seed treatment",
 };
 
 export function methodLabel(method: string): string {
