@@ -465,7 +465,10 @@ function SeasonBuilderPage() {
 
   // ── Validation ──────────────────────────────────────────────────
   const canNext = () => {
-    if (wizardStep === 0) return !!programmeName && !!clientId;
+    // Step 0: client + farm + programme name all required. Helper text
+    // says "A programme covers a whole farm" — enforce that here so
+    // step 1's FieldPicker doesn't render its empty/confusing state.
+    if (wizardStep === 0) return !!programmeName && !!clientId && !!farmId;
     if (wizardStep === 1) return blocks.some((b) => b.crop && b.name && b.soil_analysis_id);
     if (wizardStep === 2) return userApplications.length > 0;
     if (wizardStep === 3) return blendGroupsData.length > 0;

@@ -200,9 +200,11 @@ export function FieldPicker({
 
       {/* Other farms on this client */}
       {otherFarms.length > 0 && (
-        <div className="border-t pt-4">
+        <div className={fields.length > 0 ? "border-t pt-4" : ""}>
           <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-            Other farms on this client
+            {fields.length > 0
+              ? "Other farms on this client"
+              : "Farms on this client"}
           </p>
           <div className="space-y-2">
             {otherFarms

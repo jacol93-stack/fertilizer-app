@@ -94,8 +94,17 @@ function SeasonManagerPage() {
         {/* CTA Cards */}
         <div className="mb-8 grid gap-4 sm:grid-cols-2">
           <Card
-            className="cursor-pointer border-2 border-transparent transition-all hover:border-[var(--sapling-orange)] hover:shadow-md"
+            role="button"
+            tabIndex={0}
+            aria-label="Auto-Generate programme — recommended"
+            className="cursor-pointer border-2 border-transparent transition-all hover:border-[var(--sapling-orange)] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sapling-orange)] focus-visible:ring-offset-2"
             onClick={() => router.push("/season-manager/new")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                router.push("/season-manager/new");
+              }
+            }}
           >
             <CardContent className="flex items-start gap-4 py-6">
               <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-[var(--sapling-orange)]">
@@ -116,8 +125,17 @@ function SeasonManagerPage() {
           </Card>
 
           <Card
-            className="cursor-pointer border-2 border-transparent transition-all hover:border-slate-500 hover:shadow-md"
+            role="button"
+            tabIndex={0}
+            aria-label="Build programme manually — full control"
+            className="cursor-pointer border-2 border-transparent transition-all hover:border-slate-500 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2"
             onClick={() => router.push("/season-manager/blank")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                router.push("/season-manager/blank");
+              }
+            }}
           >
             <CardContent className="flex items-start gap-4 py-6">
               <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
