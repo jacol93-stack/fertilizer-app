@@ -18,9 +18,9 @@ The sections that follow set out what the soil is telling us, how the programme 
 
 ## Reading of the Soil
 
-Soil analysis for **Reference Block Valencia (SRV)** (10.00 ha) was reviewed against the crop's nutrient requirements and published SA sufficiency thresholds.
+Soil analysis for **Reference Block Valencia (SRV)** (10.00 ha) was reviewed against the crop's nutrient requirements for the season.
 
-*Source: Reference block (published norms) · Mehlich-3 · Mar 2026*
+*Sample: Reference block (published norms) · Mar 2026*
 
 **What the soil is flagging:**
 - Soil Ca:B = 2600 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.
@@ -114,8 +114,8 @@ Delivered per ha: **N** 43.8 · **P2O5** 8.4 · **K2O** 74.0 · **S** 4.5 kg
 | # | Week | Stage | Analysis | Rate | Reason |
 |---:|---:|---|---|---:|---|
 | #1 | 6 | Vegetative I | 20.5% B | 1.5 kg | Soil Ca:B = 2600 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering. |
-| #2 | 3 | Pre-bloom / bud break | 20.5% B | 0.1% Solubor | FERTASA 5.7.3: annual B foliar at bud break for flower quality + fruit set. B xylem-mobile only — timing matters. |
-| #3 | 3 | Pre-bloom / bud break | 36% Zn | 0.5% ZnSO4 | FERTASA 5.7.3: Zn foliar at bud break — new leaf tissue expansion + enzyme activation. Soil Zn typically unavailable on alkaline SA citrus soils. |
+| #2 | 3 | Pre-bloom / bud break | 20.5% B | 0.1% Solubor | Annual B foliar at bud break for flower quality + fruit set. B xylem-mobile only — timing matters. |
+| #3 | 3 | Pre-bloom / bud break | 36% Zn | 0.5% ZnSO4 | Zn foliar at bud break — new leaf tissue expansion + enzyme activation. Soil Zn typically unavailable on alkaline SA citrus soils. |
 
 ---
 

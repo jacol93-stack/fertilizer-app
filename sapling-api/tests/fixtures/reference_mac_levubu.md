@@ -18,9 +18,9 @@ The sections that follow set out what the soil is telling us, how the programme 
 
 ## Reading of the Soil
 
-Soil analysis for **Reference Block A4 (Levubu)** (5.00 ha) was reviewed against the crop's nutrient requirements and published SA sufficiency thresholds.
+Soil analysis for **Reference Block A4 (Levubu)** (5.00 ha) was reviewed against the crop's nutrient requirements for the season.
 
-*Source: Reference block (published norms) · Mehlich-3 · Mar 2026*
+*Sample: Reference block (published norms) · Mar 2026*
 
 **What the soil is flagging:**
 - Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.

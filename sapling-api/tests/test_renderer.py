@@ -561,6 +561,109 @@ def test_year_two_outlook_dropped_for_simple_annual():
 
 
 # ============================================================
+# Disclosure boundary — source citations are admin-only
+# (memory: feedback_client_disclosure_boundary)
+# ============================================================
+
+def _foliar_with_fertasa_reason() -> FoliarEvent:
+    """Engine modules embed FERTASA refs in trigger reasons. Renderer
+    must strip them in client mode."""
+    return FoliarEvent(
+        block_id="B1",
+        event_number=1,
+        week=6,
+        spray_date=date(2026, 6, 1),
+        stage_name="Pre-bloom",
+        product="Solubor",
+        analysis="20.5% B",
+        rate_per_ha="1.5 kg/ha",
+        total_for_block="15 kg",
+        trigger_reason=(
+            "FERTASA 5.7.3: annual B foliar at bud break for flower "
+            "quality + fruit set. B xylem-mobile only — timing matters."
+        ),
+        trigger_kind="stage_peak_demand",
+        source=SourceCitation(
+            source_id="FERTASA_5_7_3", section="5.7.3", tier=Tier.SA_INDUSTRY_BODY,
+        ),
+    )
+
+
+def test_client_output_strips_fertasa_section_refs():
+    """No 'FERTASA X.Y.Z' patterns in client mode."""
+    artifact = _artifact(foliar_events=[_foliar_with_fertasa_reason()])
+    output = render_programme_document(artifact)
+    assert "FERTASA 5.7.3" not in output
+    assert "FERTASA" not in output  # no FERTASA mentions at all
+    # But the agronomic claim survives
+    assert "B foliar at bud break" in output.lower() or "boron foliar" in output.lower() or "annual b foliar" in output.lower()
+
+
+def test_client_output_strips_samac_schoeman_refs():
+    """No SAMAC / Schoeman / CRI / Manson & Sheard / Cedara / SASRI refs."""
+    artifact = _artifact(
+        risk_flags=[RiskFlag(
+            message="Per Schoeman 2017 SAMAC norms, soil K at this level requires upward adjustment",
+            severity="warn",
+        )],
+        assumptions=[Assumption(
+            field="cultivar",
+            assumed_value="A4 (per SAMAC Schoeman 2021)",
+            tier=Tier.SA_INDUSTRY_BODY,
+        )],
+        outstanding_items=[OutstandingItem(
+            item="Leaf analysis",
+            why_it_matters="CRI Toolkit 3.5 recommends annual leaf sampling Mar-May",
+        )],
+    )
+    output = render_programme_document(artifact)
+    forbidden = ["SAMAC", "Schoeman", "CRI", "Manson", "Sheard",
+                 "Cedara", "SASRI", "GrainSA", "ARC-ITSC"]
+    for term in forbidden:
+        assert term not in output, f"Client output leaked '{term}' source ref"
+
+
+def test_client_output_strips_tier_annotations():
+    """No 'Tier 1/2/3/4/5/6' annotations in client mode (case-insensitive)."""
+    artifact = _artifact(
+        assumptions=[Assumption(
+            field="yield_history",
+            assumed_value="3.5 t/ha — published SA Levubu band, Tier 2",
+            tier=Tier.SA_INDUSTRY_BODY,
+        )],
+    )
+    output = render_programme_document(artifact)
+    lower = output.lower()
+    for n in (1, 2, 3, 4, 5, 6):
+        assert f"tier {n}" not in lower, f"client output leaked 'Tier {n}'"
+
+
+def test_client_output_strips_handbook_section_patterns():
+    """Bare '5.7.3' / '5.8.1.2' handbook section patterns must not appear."""
+    artifact = _artifact(foliar_events=[_foliar_with_fertasa_reason()])
+    output = render_programme_document(artifact)
+    # Section pattern is multi-dot like 5.7.3 — must be stripped
+    assert "5.7.3:" not in output
+    assert "5.8.1:" not in output
+
+
+def test_client_output_drops_source_label_keeps_lab_sample():
+    """Soil-snapshot meta line should say 'Sample:' (lab the farmer
+    commissioned), not 'Source:' (which reads like a citation). Lab
+    method (Mehlich-3) is dropped — too jargon-y for client."""
+    snap = _minimal_soil(lab_name="NViroTek", lab_method="Mehlich-3",
+                          sample_date=date(2026, 3, 11))
+    artifact = _artifact(soil_snapshots=[snap])
+    output = render_programme_document(artifact)
+    # Old pattern gone
+    assert "*Source: NViroTek" not in output
+    # Lab-method jargon gone
+    assert "Mehlich-3" not in output
+    # New pattern present
+    assert "*Sample: NViroTek" in output
+
+
+# ============================================================
 # Multi-event schedule (F5)
 # ============================================================
 

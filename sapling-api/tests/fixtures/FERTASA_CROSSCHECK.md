@@ -1,5 +1,8 @@
 # FERTASA cross-check — reference blocks
 
+> ⚠️ **ADMIN / AUDIT DOCUMENT — NOT CLIENT-FACING.**
+> This document references FERTASA, SAMAC, CRI and other agronomic sources that are **never** disclosed to farmers. The client-facing PDF strips every source citation per the disclosure-boundary rule (see `memory/feedback_client_disclosure_boundary`). This file lives in the codebase for internal validation only.
+
 **Date:** 2026-04-25
 **Purpose:** Manual validation of the Sapling engine's output against published SA sources for the Muller demo. Every assertion in `tests/test_reference_fixtures.py` corresponds to a row in this report. Failures (xfail) flag bugs to fix pre-demo.
 

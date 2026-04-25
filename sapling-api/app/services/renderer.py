@@ -23,6 +23,7 @@ Design rules (honoured by every section):
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Literal, Optional
 
@@ -91,6 +92,95 @@ def render_programme_document(
 # ============================================================
 # Product-display helper — the disclosure-boundary gatekeeper
 # ============================================================
+
+# ============================================================
+# Source-citation sanitiser (client-mode disclosure boundary)
+# ============================================================
+# Engine modules (foliar_trigger_engine, risk_flag_generator,
+# soil_factor_reasoner) embed source attributions like "FERTASA 5.7.3: ..."
+# directly inside `reason` / `message` strings. Those references must
+# never reach the client-facing PDF — they're admin-audit content only
+# (see memory: feedback_client_disclosure_boundary). The patterns below
+# are stripped before any prose flows into client-mode output.
+
+_SOURCE_NAMES = (
+    "FERTASA", "SAMAC", "Schoeman", "Manson\\s*&\\s*Sheard",
+    "CRI", "Cedara", "ARC[-\\s]?ITSC", "SASRI", "GrainSA",
+    "IFA", "NZAGA", "SAJEV",
+)
+_SOURCE_NAMES_RE = "|".join(_SOURCE_NAMES)
+
+_SOURCE_REF_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
+    # Parenthetical citations: "(FERTASA 5.7.3)", "(per Schoeman 2017)", "(per SAMAC Schoeman 2021)"
+    (re.compile(rf"\s*\(\s*(?:per\s+)?(?:{_SOURCE_NAMES_RE})\b[^)]*\)"), ""),
+    # Clause prefix "Per/According to X ...,": strip the leading clause
+    (re.compile(rf"^(?:Per|According\s+to)\s+(?:{_SOURCE_NAMES_RE})\b[^,.;]*[,;]\s*", re.IGNORECASE), ""),
+    # Mid-sentence ", per X ...,": strip
+    (re.compile(rf",?\s*per\s+(?:{_SOURCE_NAMES_RE})\b[^,.;]*[,;]?", re.IGNORECASE), ""),
+    # FERTASA section refs at start: "FERTASA 5.7.3: annual B..." → strip "FERTASA 5.7.3:"
+    (re.compile(r"\bFERTASA\s+\d+(?:\.\d+){0,3}\b\s*:?\s*"), ""),
+    # "Tier 1-6" annotations (preceded by separator)
+    (re.compile(r"[,;\-—\s]+Tier\s*[1-6](?:\s*[-–]\s*[1-6])?\b", re.IGNORECASE), ""),
+    # Source + descriptor token + optional section number + verb prefix:
+    # "CRI Toolkit 3.5 recommends X" → strip up to the verb, keep X
+    (re.compile(
+        rf"\b(?:{_SOURCE_NAMES_RE})\b"
+        r"(?:\s+(?:Toolkit|Handbook|Production|Guidelines?|Bulletin|Norms?|Literature|Sources?|Symposium|Society|Manual|Journal|Research|prose))*"
+        r"(?:\s+\d+(?:\.\d+)*)*"
+        r"(?:\s+(?:\d{4}))?"
+        r"\s+(?:recommends?|says?|cites?|advises?|suggests?|notes?|publishes?|states?|prescribes?|specifies?|warns?|flags?|standards?)\s+",
+        re.IGNORECASE,
+    ), ""),
+    # Bare source-name + descriptor / year / section (catch-all). Stripped
+    # whether at start, mid, or end of clause. Keeps the agronomic claim
+    # by not consuming punctuation/clause boundaries.
+    (re.compile(
+        rf"\b(?:{_SOURCE_NAMES_RE})\b"
+        r"(?:\s+(?:Toolkit|Handbook|Production|Guidelines?|Bulletin|Norms?|Literature|Sources?|Symposium|Society|Manual|Journal|Research|prose))*"
+        r"(?:\s+\d+(?:\.\d+)*)*"
+        r"(?:\s+\d{4})?\s*",
+        re.IGNORECASE,
+    ), ""),
+)
+
+
+def _strip_source_refs(text: Optional[str]) -> str:
+    """Remove agronomic source citations from prose flowing to client mode.
+
+    Strips FERTASA section refs, SAMAC / Schoeman / Manson & Sheard / CRI /
+    Cedara / ARC-ITSC / SASRI / GrainSA / IFA / NZAGA / SAJEV mentions,
+    "per X" attributions, "according to" framings, and "Tier N" annotations.
+    Returns "" if text is None/empty. The agronomic CLAIM stays — only the
+    provenance attribution leaves.
+
+    The caller decides when to recapitalise — most engine prose already
+    starts with a normal sentence-case word that survives stripping
+    intact, so we don't auto-recapitalise (would corrupt scientific
+    abbreviations like "pH" / "P (Olsen)").
+    """
+    if not text:
+        return ""
+    out = text
+    for pat, _ in _SOURCE_REF_PATTERNS:
+        out = pat.sub("", out)
+    # Normalise whitespace
+    out = re.sub(r"\s+", " ", out).strip()
+    # Trim orphan punctuation/separators left at the start
+    out = re.sub(r"^[:;,.\s—\-]+", "", out)
+    # Recapitalise ONLY if we actually stripped something at the start
+    # AND the first character is a single lowercase letter starting an
+    # alphabetic word (not "pH" / "kg" / "mg" / "ml" / "ha" — common
+    # scientific abbreviations the engine emits).
+    if out and out != text.strip() and out[0].islower():
+        first_word = re.match(r"^[a-zA-Z]+", out)
+        if first_word:
+            word = first_word.group(0)
+            scientific_lowercase = {"pH", "ml", "mg", "kg", "ha", "cmol", "meq",
+                                     "mm", "cm", "ppm"}
+            if word not in scientific_lowercase and len(word) > 1:
+                out = out[0].upper() + out[1:]
+    return out
+
 
 def _display_product(part: BlendPart) -> str:
     """Client-mode product label. Uses the nutrient analysis string
@@ -287,14 +377,13 @@ def _render_soil_reading(ctx: SoilReadingContext) -> str:
         s = ctx.blocks[0]
         lines.append(
             f"Soil analysis for **{s.block_name}** ({s.block_area_ha:.2f} ha) "
-            f"was reviewed against the crop's nutrient requirements and "
-            f"published SA sufficiency thresholds."
+            f"was reviewed against the crop's nutrient requirements for the "
+            f"season."
         )
     else:
         lines.append(
             f"Soil analyses across {len(ctx.blocks)} blocks were reviewed "
-            f"against the crop's nutrient requirements and published SA "
-            f"sufficiency thresholds."
+            f"against the crop's nutrient requirements for the season."
         )
     lines.append("")
 
@@ -302,18 +391,28 @@ def _render_soil_reading(ctx: SoilReadingContext) -> str:
     for s in ctx.blocks:
         if ctx.multi_block:
             lines.append(f"### {s.block_name} ({s.block_area_ha:.2f} ha)")
-        if s.lab_name or s.lab_method or s.sample_date:
-            meta_bits = [b for b in (s.lab_name, s.lab_method,
-                                     s.sample_date.strftime("%b %Y") if s.sample_date else None)
-                         if b]
+        # Lab-sample provenance is the FARMER'S sample (their lab, their
+        # date) — keeping it for context. Lab-method (Mehlich-3 / Bray-1
+        # etc.) is technical jargon the farmer rarely needs and reads
+        # like a source citation, so it's dropped from client mode.
+        if s.lab_name or s.sample_date:
+            meta_bits = [
+                b for b in (
+                    s.lab_name,
+                    s.sample_date.strftime("%b %Y") if s.sample_date else None,
+                )
+                if b
+            ]
             if meta_bits:
-                lines.append(f"*Source: {' · '.join(meta_bits)}*")
+                lines.append(f"*Sample: {' · '.join(meta_bits)}*")
                 lines.append("")
 
         if s.headline_signals:
             lines.append("**What the soil is flagging:**")
             for signal in s.headline_signals:
-                lines.append(f"- {signal}")
+                cleaned = _strip_source_refs(signal)
+                if cleaned:
+                    lines.append(f"- {cleaned}")
             lines.append("")
         else:
             lines.append("*No headline signals flagged — soil chemistry in the expected band for this crop.*")
@@ -499,9 +598,10 @@ def _render_foliar_table(events: list[FoliarEvent]) -> str:
         "|---:|---:|---|---|---:|---|",
     ]
     for f in events:
+        reason = _strip_source_refs(f.trigger_reason)
         lines.append(
             f"| #{f.event_number} | {f.week} | {f.stage_name} | "
-            f"{f.analysis} | {f.rate_per_ha} | {f.trigger_reason} |"
+            f"{f.analysis} | {f.rate_per_ha} | {reason} |"
         )
     return "\n".join(lines)
 
@@ -682,9 +782,12 @@ def _render_assumptions(ctx: AssumptionsContext) -> str:
     )
     lines.append("")
     for a in ctx.assumptions:
-        lines.append(f"- **{a.field}:** {a.assumed_value}")
+        value = _strip_source_refs(a.assumed_value)
+        lines.append(f"- **{a.field}:** {value}")
         if a.override_guidance:
-            lines.append(f"  *{a.override_guidance}*")
+            guidance = _strip_source_refs(a.override_guidance)
+            if guidance:
+                lines.append(f"  *{guidance}*")
     return "\n".join(lines)
 
 
@@ -718,16 +821,20 @@ def _render_outstanding_items(ctx: OutstandingContext) -> str:
         lines.append("")
         for f in flags:
             label = f"**[{f.severity.upper()}]** " if f.severity in ("critical", "warn") else ""
-            lines.append(f"- {label}{f.message}")
+            message = _strip_source_refs(f.message)
+            lines.append(f"- {label}{message}")
         lines.append("")
 
     if ctx.outstanding:
         lines.append("### Outstanding items")
         lines.append("")
         for o in ctx.outstanding:
-            bits = [f"**{o.item}**", o.why_it_matters]
+            why = _strip_source_refs(o.why_it_matters)
+            bits = [f"**{o.item}**", why]
             if o.impact_if_skipped:
-                bits.append(f"*Impact if skipped: {o.impact_if_skipped}*")
+                impact = _strip_source_refs(o.impact_if_skipped)
+                if impact:
+                    bits.append(f"*Impact if skipped: {impact}*")
             lines.append("- " + " — ".join(bits))
         lines.append("")
     return "\n".join(lines).rstrip()
