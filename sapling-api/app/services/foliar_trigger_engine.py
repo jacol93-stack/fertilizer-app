@@ -75,7 +75,7 @@ STAGE_PEAK_RULES: list[StagePeakRule] = [
     StagePeakRule(
         crop="Macadamia", nutrient="B",
         week_offset_from_planting=28, stage_label="Pre-flowering",
-        rate_per_ha="0.1% Solubor",
+        rate_per_ha="0.1% spray",
         product="Solubor", analysis="20.5% B",
         reason="Critical for flower set + nut formation; B mobile in xylem only",
         source_id="SAMAC_SCHOEMAN_2021",
@@ -85,7 +85,7 @@ STAGE_PEAK_RULES: list[StagePeakRule] = [
     StagePeakRule(
         crop="Macadamia", nutrient="Zn",
         week_offset_from_planting=32, stage_label="Vegetative flush",
-        rate_per_ha="0.5% ZnSO4",
+        rate_per_ha="0.5% spray",
         product="Zinc Sulphate", analysis="36% Zn",
         reason="Leaf expansion + enzyme activation; soil Zn often unavailable",
         source_id="SAMAC_SCHOEMAN_2021",
@@ -96,7 +96,7 @@ STAGE_PEAK_RULES: list[StagePeakRule] = [
     StagePeakRule(
         crop="Avocado", nutrient="B",
         week_offset_from_planting=24, stage_label="Pre-bloom",
-        rate_per_ha="0.1% Solubor",
+        rate_per_ha="0.1% spray",
         product="Solubor", analysis="20.5% B",
         reason="Pollen tube viability + flower quality; xylem-mobile only",
         source_id="NZAGA_AVOCADO_BOOK",
@@ -123,7 +123,7 @@ STAGE_PEAK_RULES: list[StagePeakRule] = [
     StagePeakRule(
         crop="Citrus", nutrient="B",
         week_offset_from_planting=3, stage_label="Pre-bloom / bud break",
-        rate_per_ha="0.1% Solubor",
+        rate_per_ha="0.1% spray",
         product="Solubor", analysis="20.5% B",
         reason="FERTASA 5.7.3: annual B foliar at bud break for flower quality + fruit set. B xylem-mobile only — timing matters.",
         source_id="FERTASA_5_7_3",
@@ -133,7 +133,7 @@ STAGE_PEAK_RULES: list[StagePeakRule] = [
     StagePeakRule(
         crop="Citrus", nutrient="Zn",
         week_offset_from_planting=3, stage_label="Pre-bloom / bud break",
-        rate_per_ha="0.5% ZnSO4",
+        rate_per_ha="0.5% spray",
         product="Zinc Sulphate", analysis="36% Zn",
         reason="FERTASA 5.7.3: Zn foliar at bud break — new leaf tissue expansion + enzyme activation. Soil Zn typically unavailable on alkaline SA citrus soils.",
         source_id="FERTASA_5_7_3",

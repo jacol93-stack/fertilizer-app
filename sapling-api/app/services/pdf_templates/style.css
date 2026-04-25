@@ -1,0 +1,560 @@
+/* ============================================================
+   Sapling Programme PDF — design system stylesheet
+   Implements assets/design_references/SAPLING_DESIGN_SYSTEM.md
+   ============================================================ */
+
+/* -- Fonts ------------------------------------------------------------- */
+@font-face {
+  font-family: 'Inter';
+  font-weight: 400;
+  font-style: normal;
+  src: url('file://__FONT_DIR__/Inter-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 500;
+  font-style: normal;
+  src: url('file://__FONT_DIR__/Inter-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 600;
+  font-style: normal;
+  src: url('file://__FONT_DIR__/Inter-SemiBold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 700;
+  font-style: normal;
+  src: url('file://__FONT_DIR__/Inter-Bold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 900;
+  font-style: normal;
+  src: url('file://__FONT_DIR__/Inter-Black.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 400;
+  font-style: italic;
+  src: url('file://__FONT_DIR__/Inter-Italic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-weight: 400;
+  font-style: normal;
+  src: url('file://__FONT_DIR__/JetBrainsMono-Regular.woff2') format('woff2');
+}
+
+/* -- Design tokens ----------------------------------------------------- */
+:root {
+  --ink: #1A1A1A;
+  --paper: #FFFFFF;
+  --accent: #E55A30;
+  --accent-soft: #E89A6B;
+  --muted: #6B6B6B;
+  --rule: #D8D8D8;
+  --ok: #2E7D5C;
+
+  --font-display: 'Inter', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+/* -- Page templates ---------------------------------------------------- */
+@page {
+  size: A4 portrait;
+  margin: 28mm 22mm 22mm 22mm;
+  @top-left {
+    content: element(running-header);
+    width: 100%;
+    vertical-align: bottom;
+    padding-bottom: 4mm;
+  }
+  @bottom-left {
+    content: 'INFO@SAPLINGFERTILIZER.COM';
+    font: 400 8pt var(--font-body);
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    padding-bottom: 4mm;
+  }
+  @bottom-right {
+    content: counter(page, decimal-leading-zero);
+    font: 400 8pt var(--font-mono);
+    color: var(--muted);
+    padding-bottom: 4mm;
+  }
+}
+
+@page :first {
+  margin: 0;
+  background: var(--ink);
+  @top-left { content: none; }
+  @bottom-left { content: none; }
+  @bottom-right { content: none; }
+}
+
+/* Running page header — flows into @top-left margin box on every interior page */
+.running-header {
+  position: running(running-header);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  border-bottom: 0.5pt solid var(--rule);
+  padding-bottom: 4mm;
+}
+.running-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+}
+.running-header__logo { width: 7mm; height: 7mm; }
+.running-header__wordmark {
+  font: 600 13pt var(--font-display);
+  color: var(--ink);
+}
+
+/* -- Reset + base ------------------------------------------------------ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font: 400 11pt/1.55 var(--font-body);
+  color: var(--ink);
+  background: var(--paper);
+}
+p { margin: 0 0 3mm; }
+strong, b { font-weight: 700; }
+em, i { font-style: italic; }
+
+/* -- Cover page -------------------------------------------------------- */
+.cover {
+  page: cover;
+  width: 210mm;
+  height: 297mm;
+  margin: 0;
+  padding: 22mm;
+  background: var(--ink);
+  color: var(--paper);
+  position: relative;
+  page-break-after: always;
+  page-break-inside: avoid;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.cover__watermark {
+  position: absolute;
+  top: -10mm;
+  right: -30mm;
+  width: 180mm;
+  height: 180mm;
+  opacity: 0.18;
+  pointer-events: none;
+  z-index: 0;
+}
+.cover__inner {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.cover__rule {
+  width: 30mm;
+  height: 4pt;
+  background: var(--accent);
+  margin-top: 65mm;
+  margin-bottom: 6mm;
+}
+.cover__title {
+  font: 900 48pt/1.05 var(--font-display);
+  letter-spacing: -0.02em;
+  margin-bottom: 5mm;
+  max-width: 140mm;
+}
+.cover__title-accent {
+  color: var(--accent);
+}
+.cover__tagline {
+  font: 400 italic 14pt var(--font-display);
+  color: var(--paper);
+  margin-bottom: 8mm;
+  max-width: 140mm;
+}
+.cover__sub {
+  font: 400 12pt/1.55 var(--font-body);
+  color: var(--paper);
+  max-width: 140mm;
+  margin-bottom: 12mm;
+}
+.cover__meta {
+  border-top: 0.5pt solid var(--paper);
+  border-bottom: 0.5pt solid var(--paper);
+  padding: 4mm 0;
+  display: grid;
+  grid-template-columns: 35mm 1fr;
+  gap: 2mm 6mm;
+  max-width: 95mm;
+}
+.cover__meta-label {
+  font: 500 9pt var(--font-body);
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--accent);
+  align-self: center;
+}
+.cover__meta-value {
+  font: 400 11pt var(--font-body);
+  color: var(--paper);
+  align-self: center;
+}
+.cover__footer {
+  margin-top: auto;
+  padding-top: 6mm;
+  border-top: 0.5pt solid var(--paper);
+  display: flex;
+  justify-content: space-between;
+  font: 500 9pt var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--paper);
+  gap: 8mm;
+}
+
+/* -- Per-section locator (right-side of running header is rendered as
+      a separate string-set; we keep the in-flow header elsewhere out of
+      the way since the running element handles layout) ----------------- */
+.page-header { display: none; }
+.page-header__locator { display: none; }
+
+/* -- Section layout ---------------------------------------------------- */
+.section {
+  break-before: page;
+  page-break-before: always;
+}
+.section:first-of-type { break-before: auto; page-break-before: auto; }
+.section__label {
+  display: block;
+  font: 500 9pt var(--font-body);
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 6mm 0 3mm;
+}
+.section__title {
+  font: 700 28pt/1.1 var(--font-display);
+  letter-spacing: -0.01em;
+  margin-bottom: 5mm;
+  color: var(--ink);
+}
+.section__intro {
+  font: 400 11pt/1.55 var(--font-body);
+  margin-bottom: 6mm;
+  max-width: 165mm;
+}
+
+.subsection {
+  font: 600 14pt var(--font-display);
+  margin: 6mm 0 3mm;
+}
+
+/* -- Contents page ----------------------------------------------------- */
+.contents {
+  page: contents;
+}
+.contents__list { list-style: none; padding: 0; margin: 4mm 0 0; }
+.contents__row {
+  display: grid;
+  grid-template-columns: 14mm 1fr 18mm;
+  align-items: baseline;
+  padding: 3mm 0;
+  border-bottom: 0.25pt dotted var(--rule);
+}
+.contents__num {
+  font: 400 11pt var(--font-mono);
+  color: var(--accent);
+}
+.contents__title {
+  font: 400 11pt var(--font-body);
+  color: var(--ink);
+}
+.contents__page {
+  font: 400 11pt var(--font-mono);
+  color: var(--ink);
+  text-align: right;
+}
+
+/* -- Application block (strip + table + schedule, kept together) ------ */
+.app-block {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin: 4mm 0 6mm;
+}
+.app-block:first-child { margin-top: 0; }
+
+/* -- Application strip (dark bar) ------------------------------------- */
+.app-strip {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8mm;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 3mm 5mm;
+  margin: 0 0 3mm;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+.app-strip__title {
+  font: 600 11pt var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.app-strip__day,
+.app-strip__date {
+  font: 400 10pt var(--font-mono);
+  white-space: nowrap;
+}
+.app-strip__date { color: var(--accent); }
+
+/* -- Status badges ----------------------------------------------------- */
+.status {
+  display: inline-block;
+  padding: 1mm 2.5mm;
+  font: 700 8pt var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--paper);
+  white-space: nowrap;
+}
+.status--alert { background: var(--accent); }
+.status--soft { background: var(--accent-soft); }
+.status--ok {
+  background: transparent;
+  color: var(--ok);
+  border: 0.5pt solid var(--ok);
+}
+
+/* -- Callout box (orange border) -------------------------------------- */
+.callout {
+  border: 0.75pt solid var(--accent);
+  padding: 4mm 5mm;
+  margin: 4mm 0;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.callout__label {
+  display: block;
+  font: 500 9pt var(--font-body);
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 2mm;
+}
+.callout ul { list-style: none; padding: 0; margin: 0; }
+.callout li {
+  position: relative;
+  padding-left: 5mm;
+  margin: 1.5mm 0;
+}
+.callout li::before {
+  content: '\25A0';
+  color: var(--accent);
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 9pt;
+}
+
+/* -- Three-signals block (left-bar callout) ---------------------------- */
+.signal {
+  border-left: 2pt solid var(--accent);
+  padding: 1mm 0 2mm 5mm;
+  margin: 3mm 0;
+  break-inside: avoid;
+}
+.signal__head {
+  font: 700 11pt/1.4 var(--font-display);
+  margin-bottom: 1mm;
+}
+.signal__body {
+  font: 400 11pt/1.55 var(--font-body);
+}
+
+/* -- Data tables ------------------------------------------------------- */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2mm 0 4mm;
+  font-size: 10pt;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.data-table thead { background: var(--ink); color: var(--paper); }
+.data-table th {
+  font: 600 9pt var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 3mm 4mm;
+}
+.data-table td {
+  padding: 3mm 4mm;
+  border-bottom: 0.5pt solid var(--rule);
+  vertical-align: top;
+  font: 400 10pt/1.4 var(--font-body);
+  color: var(--ink);
+}
+.data-table td.mono,
+.data-table th.mono {
+  font-family: var(--font-mono);
+  font-size: 9.5pt;
+}
+.data-table tr:last-child td { border-bottom: 0; }
+
+/* -- Year card --------------------------------------------------------- */
+.year-card {
+  border: 1pt solid var(--ink);
+  padding: 4mm 5mm;
+  margin: 3mm 0;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.year-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 3mm;
+}
+.year-card__label {
+  font: 500 9pt var(--font-body);
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.year-card__title {
+  font: 600 12pt var(--font-display);
+  color: var(--ink);
+}
+.year-card ul { list-style: none; padding: 0; margin: 0; }
+.year-card li {
+  position: relative;
+  padding-left: 5mm;
+  margin: 1.5mm 0;
+}
+.year-card li::before {
+  content: '\25A0';
+  color: var(--accent);
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 9pt;
+}
+
+/* -- Numbered items list (Items We're Carrying) ----------------------- */
+.numbered-list {
+  list-style: none;
+  padding: 0;
+  margin: 4mm 0;
+  counter-reset: item;
+}
+.numbered-list li {
+  counter-increment: item;
+  position: relative;
+  padding-left: 9mm;
+  margin: 3mm 0;
+}
+.numbered-list li::before {
+  content: counter(item);
+  position: absolute;
+  left: 0;
+  top: 0.5mm;
+  width: 5mm;
+  height: 5mm;
+  background: var(--ink);
+  color: var(--paper);
+  font: 400 8pt var(--font-mono);
+  text-align: center;
+  line-height: 5mm;
+}
+
+/* -- Foliar table — same shape as data-table but mono-numerics --------- */
+.foliar-table .col-num,
+.foliar-table .col-week,
+.foliar-table .col-rate {
+  font-family: var(--font-mono);
+  font-size: 9.5pt;
+  white-space: nowrap;
+}
+
+/* -- Application schedule (per-event listing under recipe) ------------ */
+.schedule {
+  margin: 2mm 0 4mm;
+}
+.schedule__label {
+  font: 500 9pt var(--font-body);
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 2mm;
+}
+.schedule__table { width: 100%; border-collapse: collapse; }
+.schedule__table th,
+.schedule__table td {
+  font: 400 9pt var(--font-mono);
+  padding: 1.5mm 3mm;
+  border-bottom: 0.25pt solid var(--rule);
+  text-align: left;
+}
+.schedule__table th {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 8.5pt;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* -- Nutrient summary line --------------------------------------------- */
+.nut-summary {
+  font: 400 10pt var(--font-body);
+  margin: 2mm 0 4mm;
+}
+.nut-summary__nut {
+  font-family: var(--font-mono);
+  font-size: 9.5pt;
+  color: var(--ink);
+}
+
+/* -- Sample meta line (Reading of the Soil) --------------------------- */
+.sample-meta {
+  font: 400 italic 10pt var(--font-body);
+  color: var(--muted);
+  margin-bottom: 4mm;
+}
+
+/* -- Spacing utilities ------------------------------------------------- */
+.mt-2 { margin-top: 4mm; }
+.mt-3 { margin-top: 6mm; }
+.divider {
+  height: 0;
+  border-top: 0.5pt solid var(--rule);
+  margin: 6mm 0 4mm;
+}
+
+/* -- End-of-programme marker ------------------------------------------ */
+.end-marker {
+  text-align: center;
+  margin-top: 12mm;
+  padding-top: 8mm;
+  font: 500 9pt var(--font-body);
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.end-marker__ref {
+  font: 400 italic 9pt var(--font-body);
+  color: var(--muted);
+  text-align: center;
+  margin-top: 2mm;
+}

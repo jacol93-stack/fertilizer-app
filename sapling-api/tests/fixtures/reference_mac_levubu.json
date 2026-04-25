@@ -709,8 +709,8 @@
       "stage_name": "Pre-flowering",
       "product": "Solubor",
       "analysis": "20.5% B",
-      "rate_per_ha": "0.1% Solubor",
-      "total_for_block": "0.1% Solubor",
+      "rate_per_ha": "0.1% spray",
+      "total_for_block": "0.1% spray",
       "trigger_reason": "Critical for flower set + nut formation; B mobile in xylem only",
       "trigger_kind": "quality_window",
       "source": {
@@ -729,8 +729,8 @@
       "stage_name": "Vegetative flush",
       "product": "Zinc Sulphate",
       "analysis": "36% Zn",
-      "rate_per_ha": "0.5% ZnSO4",
-      "total_for_block": "0.5% ZnSO4",
+      "rate_per_ha": "0.5% spray",
+      "total_for_block": "0.5% spray",
       "trigger_reason": "Leaf expansion + enzyme activation; soil Zn often unavailable",
       "trigger_kind": "stage_peak_demand",
       "source": {
@@ -773,7 +773,7 @@
     },
     {
       "item": "Irrigation water test (EC, pH, Ca, Mg, Na, HCO₃, Cl)",
-      "why_it_matters": "Required before first Part A (Calcium Nitrate) injection. Dolomite-country water can produce scale when Ca-Nitrate is injected. Borehole water EC + bicarb level affect drip-line pH.",
+      "why_it_matters": "Required before first Part A injection. Dolomite-country water can produce scale when calcium-stream stock is injected. Borehole water EC + bicarb level affect drip-line pH.",
       "impact_if_skipped": "Risk of emitter blockage from CaCO₃ precipitate"
     },
     {
@@ -861,7 +861,7 @@
         "mac-levubu-ref": 0.5
       },
       "total_overall": 0.5,
-      "unit": "% ZnSO4"
+      "unit": "% spray"
     }
   ],
   "sources_audit": [
@@ -884,7 +884,7 @@
     "Orchestrator: produced artifact with 1 blocks, 0 recommendations, 3 foliar events, 1 risk flags",
     "Orchestrator: BlendValidator — 5 blends validated, 0 warnings/errors surfaced"
   ],
-  "created_at": "2026-04-25T07:04:29.700104",
-  "updated_at": "2026-04-25T07:04:29.700106",
+  "created_at": "2026-04-25T08:04:10.007604",
+  "updated_at": "2026-04-25T08:04:10.007606",
   "render_hint": null
 }

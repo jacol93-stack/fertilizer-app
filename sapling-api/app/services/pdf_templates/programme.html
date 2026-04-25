@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>{{ header.crop }} Fertilizer Programme {{ header.season }}</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+{# ============================================================
+   Running page header — appears in @top-left of every interior page
+   (auto-repeated by WeasyPrint via position: running()).
+   ============================================================ #}
+<div class="running-header">
+  <div class="running-header__brand">
+    <img class="running-header__logo" src="file://__ASSET_DIR__/logo_icon_only.png" alt="" />
+    <span class="running-header__wordmark">Sapling</span>
+  </div>
+</div>
+
+{# ============================================================
+   COVER PAGE
+   Pattern: "{Crop} Fertilizer Programme {Season}." with "Programme"
+   in accent. Auto-derived — no user editing.
+   ============================================================ #}
+<section class="cover">
+  <img class="cover__watermark" src="file://__ASSET_DIR__/logo_icon_only.png" alt="" />
+  <div class="cover__inner">
+    <div class="cover__rule"></div>
+    <h1 class="cover__title">
+      {{ header.crop }} Fertilizer<br />
+      <span class="cover__title-accent">Programme</span> {{ header.season }}.
+    </h1>
+    <p class="cover__tagline">Fertilise Smarter, Grow Stronger.</p>
+    {% if cover_subhead %}
+    <p class="cover__sub">{{ cover_subhead }}</p>
+    {% endif %}
+
+    <div class="cover__meta">
+      <span class="cover__meta-label">Prepared for</span>
+      <span class="cover__meta-value">{{ header.prepared_for }}</span>
+      <span class="cover__meta-label">Prepared by</span>
+      <span class="cover__meta-value">{{ header.prepared_by }}</span>
+      <span class="cover__meta-label">Date</span>
+      <span class="cover__meta-value">{{ header.prepared_date_formatted }}</span>
+      {% if header.ref_number %}
+      <span class="cover__meta-label">Ref</span>
+      <span class="cover__meta-value">{{ header.ref_number }}</span>
+      {% endif %}
+    </div>
+
+    <div class="cover__footer">
+      <span>{{ header.client_name }}{% if header.farm_name %} · {{ header.farm_name }}{% endif %}{% if header.location %} · {{ header.location|upper }}{% endif %}</span>
+      <span>Sapling · Agricultural Advisory</span>
+    </div>
+  </div>
+</section>
+
+{# ============================================================
+   CONTENTS
+   ============================================================ #}
+<section class="contents">
+  <header class="page-header">
+    <div class="page-header__brand">
+      <img class="page-header__logo" src="file://__ASSET_DIR__/logo_icon_only.png" alt="" />
+      <span class="page-header__wordmark">Sapling</span>
+    </div>
+    <span class="page-header__locator">Contents</span>
+  </header>
+  <span class="section__label">Contents</span>
+  <h2 class="section__title">In this programme.</h2>
+  <ol class="contents__list">
+    {% for entry in contents_entries %}
+    <li class="contents__row">
+      <span class="contents__num">{{ "%02d"|format(loop.index) }}</span>
+      <span class="contents__title">{{ entry.title }}</span>
+      <span class="contents__page">p. {{ "%02d"|format(entry.page) }}</span>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+
+{# ============================================================
+   SECTION 01 — BACKGROUND
+   ============================================================ #}
+<section class="section">
+  {% include "_page_header.html" %}
+  <span class="section__label">Section 01</span>
+  <h2 class="section__title">Background.</h2>
+  <p class="section__intro">{{ background_intro }}</p>
+
+  <aside class="callout">
+    <span class="callout__label">Programme at a glance</span>
+    <ul>
+      {% for fact in glance_facts %}
+      <li>{{ fact }}</li>
+      {% endfor %}
+    </ul>
+  </aside>
+</section>
+
+{# ============================================================
+   SECTION 02 — READING OF THE SOIL
+   ============================================================ #}
+{% if soil_snapshots %}
+<section class="section">
+  {% include "_page_header.html" %}
+  <span class="section__label">Section 02</span>
+  <h2 class="section__title">Reading of the Soil.</h2>
+  <p class="section__intro">{{ soil_intro }}</p>
+
+  {% for snap in soil_snapshots %}
+  {% if soil_snapshots|length > 1 %}
+  <h3 class="subsection">{{ snap.block_name }} ({{ "%.2f"|format(snap.block_area_ha) }} ha)</h3>
+  {% endif %}
+  {% if snap.sample_label %}
+  <p class="sample-meta">Sample: {{ snap.sample_label }}</p>
+  {% endif %}
+
+  {% if snap.headline_signals %}
+  <h3 class="subsection">The loudest signals</h3>
+  {% for sig in snap.headline_signals %}
+  <div class="signal">
+    <p class="signal__body">{{ sig }}</p>
+  </div>
+  {% endfor %}
+  {% endif %}
+  {% endfor %}
+</section>
+{% endif %}
+
+{# ============================================================
+   SECTION 03 — APPLICATIONS
+   ============================================================ #}
+{% if blends_by_block %}
+<section class="section">
+  {% include "_page_header.html" %}
+  <span class="section__label">Section 03</span>
+  <h2 class="section__title">Applications.</h2>
+
+  {% for block_id, block_blends in blends_by_block.items() %}
+  {% if blends_by_block|length > 1 %}
+  <h3 class="subsection">{{ block_names_by_id[block_id] }}</h3>
+  {% endif %}
+  {% for blend in block_blends %}
+    <div class="app-block">
+      <div class="app-strip">
+        <span class="app-strip__title">{{ blend.method_label|upper }} · {{ blend.stage_name }}</span>
+        <span class="app-strip__day">Stage {{ blend.stage_number }}</span>
+        <span class="app-strip__date">{{ blend.dates_label }}</span>
+      </div>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Rate / ha</th>
+            {% if blend.is_liquid %}<th>Stream</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for part in blend.raw_products %}
+          <tr>
+            <td>{{ part.display_label }}</td>
+            <td class="mono">{{ part.rate_per_stage_per_ha or part.rate_per_event_per_ha or "—" }}</td>
+            {% if blend.is_liquid %}
+            <td class="mono">{% if part.stream %}Part {{ part.stream }}{% else %}—{% endif %}</td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% if blend.applications|length > 1 %}
+      <div class="schedule">
+        <span class="schedule__label">Application schedule</span>
+        <table class="schedule__table">
+          <thead>
+            <tr><th>#</th><th>Date</th><th>Week</th><th>Of stage</th></tr>
+          </thead>
+          <tbody>
+            {% for app in blend.applications %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ app.date_formatted }}</td>
+              <td>{{ app.week_from_planting }}</td>
+              <td>{{ loop.index }} of {{ blend.applications|length }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      {% if blend.nutrients_delivered %}
+      <p class="nut-summary">
+        Delivered per ha:
+        {% for nut, val in blend.nutrients_delivered %}
+        <span class="nut-summary__nut">{{ nut|nutrient_pretty|safe }} {{ "%.1f"|format(val) }}</span>{% if not loop.last %} · {% endif %}
+        {% endfor %}
+        kg
+      </p>
+      {% endif %}
+    </div>
+  {% endfor %}
+  {% endfor %}
+</section>
+{% endif %}
+
+{# ============================================================
+   SECTION 04 — FOLIAR SPRAYS
+   ============================================================ #}
+{% if foliar_events %}
+<section class="section">
+  {% include "_page_header.html" %}
+  <span class="section__label">Section 04</span>
+  <h2 class="section__title">Foliar Sprays.</h2>
+  <p class="section__intro">Targeted foliar applications addressing soil-availability gaps and stage-peak demand windows.</p>
+
+  <table class="data-table foliar-table">
+    <thead>
+      <tr><th>#</th><th>Week</th><th>Stage</th><th>Analysis</th><th>Rate</th><th>Reason</th></tr>
+    </thead>
+    <tbody>
+      {% for f in foliar_events %}
+      <tr>
+        <td class="mono">#{{ f.event_number }}</td>
+        <td class="mono">{{ f.week }}</td>
+        <td>{{ f.stage_name }}</td>
+        <td>{{ f.analysis }}</td>
+        <td class="mono">{{ f.rate_per_ha }}</td>
+        <td>{{ f.trigger_reason }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{# ============================================================
+   SECTION 05 — NUTRIENT BALANCE
+   ============================================================ #}
+{% if nutrient_balance %}
+<section class="section">
+  {% include "_page_header.html" %}
+  <span class="section__label">Section 05</span>
+  <h2 class="section__title">Nutrient Balance.</h2>
+  <p class="section__intro">Per hectare, applied this season against the expected harvest removal.</p>
+  <table class="data-table">
+    <thead>
+      <tr><th>Nutrient</th><th>Applied</th><th>Removed</th><th>Net</th></tr>
+    </thead>
+    <tbody>
+      {% for row in nutrient_balance %}
+      <tr>
+        <td>{{ row.label }}</td>
+        <td class="mono">{{ row.applied }}</td>
+        <td class="mono">{{ row.removed }}</td>
+        <td>{{ row.net }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{# ============================================================
+   SECTION 06 — RATIOS
+   ============================================================ #}
+{% if ratios_rows %}
+<section class="section">
+  {% include "_page_header.html" %}
+  <span class="section__label">Section 06</span>
+  <h2 class="section__title">Ratios &mdash; Where You Are and Where We're Heading.</h2>
+  <table class="data-table">
+    <thead>
+      <tr><th>Ratio / Saturation</th><th>Current</th><th>Target</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for row in ratios_rows %}
+      <tr>
+        <td>{{ row.label }}</td>
+        <td class="mono">{{ row.current }}</td>
+        <td class="mono">{{ row.target }}</td>
+        <td>{% if row.status %}<span class="status status--{{ row.status_class }}">{{ row.status }}</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{# ============================================================
+   SECTION 07 — YEAR 2 AND BEYOND (if perennial)
+   ============================================================ #}
+{% if year_outlook_cards %}
+<section class="section">
+  {% include "_page_header.html" %}
+  <span class="section__label">Section 07</span>
+  <h2 class="section__title">Year 2 and Beyond.</h2>
+  <p class="section__intro">Multi-year trajectory for this perennial programme.</p>
+  {% for card in year_outlook_cards %}
+  <div class="year-card">
+    <div class="year-card__head">
+      <span class="year-card__label">{{ card.label }}</span>
+      <span class="year-card__title">{{ card.title }}</span>
+    </div>
+    {% if card.bullets %}
+    <ul>
+      {% for b in card.bullets %}
+      <li>{{ b }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{# ============================================================
+   SECTION 08 — ITEMS WE'RE CARRYING
+   ============================================================ #}
+{% if outstanding_items or risk_flags or assumptions %}
+<section class="section">
+  {% include "_page_header.html" %}
+  <span class="section__label">Section 08</span>
+  <h2 class="section__title">Items We're Carrying Into The Season.</h2>
+  <p class="section__intro">For transparency — open questions and watchpoints across the programme.</p>
+
+  {% if risk_flags %}
+  <h3 class="subsection">Risk flags</h3>
+  <ol class="numbered-list">
+    {% for f in risk_flags %}
+    <li><strong>{{ f.severity_label }}.</strong> {{ f.message }}</li>
+    {% endfor %}
+  </ol>
+  {% endif %}
+
+  {% if outstanding_items %}
+  <h3 class="subsection">Open items</h3>
+  <ol class="numbered-list">
+    {% for o in outstanding_items %}
+    <li><strong>{{ o.item }}.</strong> {{ o.why_it_matters }}{% if o.impact_if_skipped %} <em>Impact if skipped: {{ o.impact_if_skipped }}</em>{% endif %}</li>
+    {% endfor %}
+  </ol>
+  {% endif %}
+
+  {% if assumptions %}
+  <h3 class="subsection">Assumptions</h3>
+  <ol class="numbered-list">
+    {% for a in assumptions %}
+    <li><strong>{{ a.field }}.</strong> {{ a.assumed_value }}{% if a.override_guidance %} <em>{{ a.override_guidance }}</em>{% endif %}</li>
+    {% endfor %}
+  </ol>
+  {% endif %}
+
+  <div class="end-marker">End of Programme</div>
+  {% if header.ref_number %}
+  <p class="end-marker__ref">Ref · {{ header.ref_number }}</p>
+  {% endif %}
+</section>
+{% endif %}
+
+</body>
+</html>

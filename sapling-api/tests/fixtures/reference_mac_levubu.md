@@ -134,8 +134,8 @@ Delivered per ha: **N** 36.2 · **P2O5** 12.0 · **K2O** 90.2 · **S** 4.4 kg
 | # | Week | Stage | Analysis | Rate | Reason |
 |---:|---:|---|---|---:|---|
 | #1 | 6 | Vegetative I | 20.5% B | 1.5 kg | Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering. |
-| #2 | 28 | Pre-flowering | 20.5% B | 0.1% Solubor | Critical for flower set + nut formation; B mobile in xylem only |
-| #3 | 32 | Vegetative flush | 36% Zn | 0.5% ZnSO4 | Leaf expansion + enzyme activation; soil Zn often unavailable |
+| #2 | 28 | Pre-flowering | 20.5% B | 0.1% spray | Critical for flower set + nut formation; B mobile in xylem only |
+| #3 | 32 | Vegetative flush | 36% Zn | 0.5% spray | Leaf expansion + enzyme activation; soil Zn often unavailable |
 
 ---
 
@@ -203,5 +203,5 @@ This is a perennial macadamia programme, so Year 1 is the establishment or maint
 ### Outstanding items
 
 - **Application-month coverage gap** — Stage 5 'maturation' (Dec–Feb) has no allowed application month inside its window. Nutrients for this stage were not delivered. Consider adding a month within this window.
-- **Irrigation water test (EC, pH, Ca, Mg, Na, HCO₃, Cl)** — Required before first Part A (Calcium Nitrate) injection. Dolomite-country water can produce scale when Ca-Nitrate is injected. Borehole water EC + bicarb level affect drip-line pH. — *Impact if skipped: Risk of emitter blockage from CaCO₃ precipitate*
+- **Irrigation water test (EC, pH, Ca, Mg, Na, HCO₃, Cl)** — Required before first Part A injection. Dolomite-country water can produce scale when calcium-stream stock is injected. Borehole water EC + bicarb level affect drip-line pH. — *Impact if skipped: Risk of emitter blockage from CaCO₃ precipitate*
 - **Mid-season leaf tissue analysis at tillering and at bulb-init/flowering** — Two natural decision points where the programme can still be steered. Catches deficiencies the soil test missed and validates actual uptake against plan. — *Impact if skipped: Mid-season corrections become reactive, not anticipatory*

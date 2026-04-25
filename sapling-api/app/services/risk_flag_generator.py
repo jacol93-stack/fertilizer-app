@@ -113,15 +113,18 @@ def generate_risk_flags(
 
     # ----- Programme-level rule: Ca-Nitrate as Al antagonist -----
     if al_findings and uses_fertigation:
-        # If Al is critical and we're fertigating, advise against substituting Ca-Nit
+        # If Al is critical and we're fertigating, advise against substituting
+        # the Ca-Nitrate-class N source (referenced by analysis, not raw name,
+        # per client-disclosure boundary).
         critical_al = any(f.severity == "critical" for f in al_findings)
         if critical_al:
             flags.append(RiskFlag(
                 message=(
-                    "Calcium Nitrate is the Al-antagonism workhorse for this soil. "
-                    "Do not substitute with urea or UAN without recalculating — "
-                    "you lose both the Ca contribution to base saturation AND "
-                    "the avoidance of further acidification."
+                    "The 15.5 % N + 19 % Ca source is the Al-antagonism "
+                    "workhorse for this soil. Do not substitute with a urea-class "
+                    "N carrier without recalculating — you lose both the Ca "
+                    "contribution to base saturation AND the avoidance of "
+                    "further acidification."
                 ),
                 severity="watch",
                 source=SourceCitation(
@@ -153,8 +156,8 @@ def generate_outstanding_items(
         items.append(OutstandingItem(
             item="Irrigation water test (EC, pH, Ca, Mg, Na, HCO₃, Cl)",
             why_it_matters=(
-                "Required before first Part A (Calcium Nitrate) injection. "
-                "Dolomite-country water can produce scale when Ca-Nitrate is "
+                "Required before first Part A injection. Dolomite-country "
+                "water can produce scale when calcium-stream stock is "
                 "injected. Borehole water EC + bicarb level affect drip-line pH."
             ),
             impact_if_skipped="Risk of emitter blockage from CaCO₃ precipitate",

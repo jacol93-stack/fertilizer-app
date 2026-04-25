@@ -248,14 +248,22 @@ def test_ams_on_acid_soil_fires_warn(clivia_land_a_soil):
 
 
 def test_ca_nitrate_advisory_fires_with_critical_al(clivia_land_a_soil):
-    """Critical Al + fertigation → 'don't substitute Ca-Nitrate' advisory."""
+    """Critical Al + fertigation → don't-substitute-the-Ca-stream advisory.
+    Reference is by analysis ('15.5 % N + 19 % Ca source') not raw name,
+    per client-disclosure boundary."""
     report = reason_soil_factors(clivia_land_a_soil, crop="Garlic")
     flags = generate_risk_flags(
         soil_factor_report=report, crop="Garlic",
         uses_fertigation=True,
     )
-    ca_nit = [f for f in flags if "Calcium Nitrate" in f.message and "substitute" in f.message]
-    assert len(ca_nit) >= 1
+    advisories = [
+        f for f in flags
+        if "substitute" in f.message and "Al-antagonism" in f.message
+    ]
+    assert len(advisories) >= 1
+    # Disclosure boundary — message must NOT name raw materials
+    assert "Calcium Nitrate" not in advisories[0].message
+    assert "Ca-Nit" not in advisories[0].message
 
 
 def test_outstanding_items_water_test_when_fertigation():

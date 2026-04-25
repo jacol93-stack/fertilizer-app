@@ -198,7 +198,7 @@ def _route_nutrient(
                 stage_number=stage_number, stage_name=stage_name,
                 nutrient=nutrient, method=MethodKind.LIQUID_DRIP,
                 kg_per_ha=round(amount, 2),
-                reason="In-season Ca via drip (Calcium Nitrate) — also provides Al antagonism",
+                reason="In-season Ca via drip (calcium stream) — also provides Al antagonism",
                 tier=2,
             )]
         if has_dry:
