@@ -433,6 +433,150 @@ def test_perennial_no_reference_density_no_scaling():
 
 
 # ============================================================
+# Perennial age-factor scaling (tree_age × perennial_age_factors)
+# ============================================================
+
+# SAMAC mac age curve (from migration 062 / live DB).
+MAC_AGE_FACTOR_ROWS = [
+    {"crop": "Macadamia", "age_label": "Year 1-2", "age_min": 0, "age_max": 2,
+     "n_factor": 0.2, "p_factor": 0.25, "k_factor": 0.15, "general_factor": 0.2,
+     "notes": "Establishment; small canopy"},
+    {"crop": "Macadamia", "age_label": "Year 3-4", "age_min": 3, "age_max": 4,
+     "n_factor": 0.4, "p_factor": 0.45, "k_factor": 0.35, "general_factor": 0.4,
+     "notes": "Pre-bearing; canopy expansion"},
+    {"crop": "Macadamia", "age_label": "Year 5-6", "age_min": 5, "age_max": 6,
+     "n_factor": 0.6, "p_factor": 0.6, "k_factor": 0.55, "general_factor": 0.6,
+     "notes": "First commercial harvest"},
+    {"crop": "Macadamia", "age_label": "Year 9+", "age_min": 9, "age_max": 99,
+     "n_factor": 1.0, "p_factor": 1.0, "k_factor": 1.0, "general_factor": 1.0,
+     "notes": "Full bearing"},
+]
+
+
+def _mac_catalog_with_ages():
+    return SoilCatalog(
+        crop_rows=[MAC_CROP_ROW],
+        sufficiency_rows=SUFFICIENCY_ROWS,
+        adjustment_rows=ADJUSTMENT_ROWS,
+        param_map_rows=PARAM_MAP_ROWS,
+        age_factor_rows=MAC_AGE_FACTOR_ROWS,
+    )
+
+
+def test_young_perennial_scales_targets_down():
+    """A 2-year-old mac block (Year 1-2 bracket: N×0.2, P×0.25, K×0.15)
+    must NOT receive the full-bearing per-ha target."""
+    soil = {"pH (H2O)": 6.0, "P (Bray-1)": 25, "K": 150,
+            "Ca": 1000, "Mg": 150, "S": 15, "N (total)": 30}
+    cat = _mac_catalog_with_ages()
+    full = compute_season_targets(crop="Macadamia", yield_target=5.0,
+                                  soil_values=soil, catalog=cat, tree_age=10)
+    young = compute_season_targets(crop="Macadamia", yield_target=5.0,
+                                   soil_values=soil, catalog=cat, tree_age=2)
+    if full.targets.get("N", 0) > 0:
+        assert abs(young.targets["N"] / full.targets["N"] - 0.2) < 0.01
+    if full.targets.get("P2O5", 0) > 0:
+        assert abs(young.targets["P2O5"] / full.targets["P2O5"] - 0.25) < 0.01
+    if full.targets.get("K2O", 0) > 0:
+        assert abs(young.targets["K2O"] / full.targets["K2O"] - 0.15) < 0.01
+
+
+def test_full_bearing_age_unchanged():
+    """Year 9+ bracket has all-1.0 factors → no change vs no-tree_age."""
+    soil = {"N (total)": 30, "P (Bray-1)": 25, "K": 150}
+    cat = _mac_catalog_with_ages()
+    no_age = compute_season_targets(crop="Macadamia", yield_target=5.0,
+                                    soil_values=soil, catalog=cat)
+    full = compute_season_targets(crop="Macadamia", yield_target=5.0,
+                                  soil_values=soil, catalog=cat, tree_age=10)
+    for nut in no_age.targets:
+        assert no_age.targets[nut] == full.targets[nut]
+
+
+def test_age_factor_emits_assumption():
+    """The applied age bracket + factors must surface as an Assumption
+    so the renderer can show what was scaled and why."""
+    soil = {"N (total)": 30}
+    result = compute_season_targets(crop="Macadamia", yield_target=5.0,
+                                    soil_values=soil,
+                                    catalog=_mac_catalog_with_ages(), tree_age=4)
+    age = next((a for a in result.assumptions
+                if a.field == "perennial_age_scale"), None)
+    assert age is not None
+    assert "Year 3-4" in age.assumed_value
+    assert "0.4" in age.assumed_value  # n_factor for Year 3-4
+    assert age.tier == Tier.SA_INDUSTRY_BODY
+
+
+def test_age_factors_compose_with_density_scaling():
+    """Age × density must compose multiplicatively: a 2-y-o block at 2×
+    reference density should land at 0.2 × 2 = 0.4× the full-bearing,
+    reference-density target on N."""
+    soil = {"pH (H2O)": 6.0, "P (Bray-1)": 25, "K": 150,
+            "Ca": 1000, "Mg": 150, "S": 15, "N (total)": 30}
+    cat = _mac_catalog_with_ages()
+    base = compute_season_targets(crop="Macadamia", yield_target=5.0,
+                                  soil_values=soil, catalog=cat, tree_age=10)
+    young_dense = compute_season_targets(crop="Macadamia", yield_target=5.0,
+                                         soil_values=soil, catalog=cat,
+                                         tree_age=2, block_pop_per_ha=600)
+    if base.targets.get("N", 0) > 0:
+        ratio = young_dense.targets["N"] / base.targets["N"]
+        assert abs(ratio - 0.4) < 0.02, f"Expected ~0.4 (0.2 age × 2 density), got {ratio}"
+
+
+def test_no_tree_age_no_age_scaling():
+    """Caller didn't supply tree_age → no scaling, no assumption."""
+    result = compute_season_targets(crop="Macadamia", yield_target=5.0,
+                                    soil_values={"N (total)": 30},
+                                    catalog=_mac_catalog_with_ages())
+    assert not any(a.field == "perennial_age_scale" for a in result.assumptions)
+
+
+def test_unknown_age_bracket_no_scaling():
+    """tree_age outside any bracket → defensive default 1.0× (no scaling),
+    no assumption emitted (we don't guess)."""
+    soil = {"N (total)": 30}
+    cat_partial = SoilCatalog(
+        crop_rows=[MAC_CROP_ROW], sufficiency_rows=SUFFICIENCY_ROWS,
+        adjustment_rows=ADJUSTMENT_ROWS, param_map_rows=PARAM_MAP_ROWS,
+        age_factor_rows=[r for r in MAC_AGE_FACTOR_ROWS if r["age_min"] >= 5],
+    )
+    result = compute_season_targets(crop="Macadamia", yield_target=5.0,
+                                    soil_values=soil, catalog=cat_partial,
+                                    tree_age=2)
+    assert not any(a.field == "perennial_age_scale" for a in result.assumptions)
+
+
+def test_variant_falls_back_to_parent_age_curve():
+    """If a Citrus (Valencia) block has tree_age but only the parent
+    'Citrus' has age_factor rows, the variant should pick up the parent
+    curve via the ' (Variant)' name strip."""
+    citrus_parent_rows = [
+        {"crop": "Citrus", "age_label": "Year 1", "age_min": 0, "age_max": 1,
+         "n_factor": 0.15, "p_factor": 0.2, "k_factor": 0.1, "general_factor": 0.15,
+         "notes": "Newly planted"},
+        {"crop": "Citrus", "age_label": "Year 7+", "age_min": 7, "age_max": 99,
+         "n_factor": 1.0, "p_factor": 1.0, "k_factor": 1.0, "general_factor": 1.0,
+         "notes": "Full bearing"},
+    ]
+    valencia_row = dict(MAC_CROP_ROW)
+    valencia_row["crop"] = "Citrus (Valencia)"
+    cat = SoilCatalog(
+        crop_rows=[valencia_row], sufficiency_rows=SUFFICIENCY_ROWS,
+        adjustment_rows=ADJUSTMENT_ROWS, param_map_rows=PARAM_MAP_ROWS,
+        age_factor_rows=citrus_parent_rows,
+    )
+    result = compute_season_targets(crop="Citrus (Valencia)", yield_target=40.0,
+                                    soil_values={"N (total)": 30}, catalog=cat,
+                                    tree_age=1)
+    age = next((a for a in result.assumptions
+                if a.field == "perennial_age_scale"), None)
+    assert age is not None
+    assert "Year 1" in age.assumed_value
+
+
+# ============================================================
 # Unknown crop graceful handling
 # ============================================================
 

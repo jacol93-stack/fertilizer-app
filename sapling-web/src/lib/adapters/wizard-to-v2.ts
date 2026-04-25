@@ -21,6 +21,8 @@ export interface WizardBlock {
   soil_analysis_id: string | null;
   /** Perennial-only density. Drives backend per-ha scaling. */
   pop_per_ha?: number | null;
+  /** Perennial-only years since planting. Drives age-factor scaling. */
+  tree_age?: number | null;
 }
 
 export interface SoilAnalysisMeta {
@@ -197,6 +199,7 @@ export function wizardStateToBuildRequest(
       sample_date: meta?.analysis_date ?? null,
       pre_season_inputs: [],
       pop_per_ha: b.pop_per_ha ?? null,
+      tree_age: b.tree_age ?? null,
     };
   });
 

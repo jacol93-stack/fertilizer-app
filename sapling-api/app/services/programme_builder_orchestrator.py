@@ -98,6 +98,9 @@ class BlockInput:
     # For perennials, target_computation scales by density
     # (block_pop_per_ha / crop_requirements.pop_per_ha).
     pop_per_ha: Optional[float] = None
+    # For perennials, target_computation scales N/P/K by the bracket
+    # in perennial_age_factors. None / annuals → factor 1.0.
+    tree_age: Optional[int] = None
 
 
 @dataclass

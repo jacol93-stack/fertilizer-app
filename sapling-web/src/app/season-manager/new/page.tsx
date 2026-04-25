@@ -499,6 +499,7 @@ function SeasonBuilderPage() {
           yield_unit: b.yield_unit,
           soil_analysis_id: b.soil_analysis_id,
           pop_per_ha: b.pop_per_ha,
+          tree_age: b.tree_age,
         })),
         plantingMonthByBlockName,
         soilValuesByAnalysisId,

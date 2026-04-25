@@ -51,6 +51,7 @@ class SoilCatalog:
     ratio_rows: Optional[list[dict]] = None
     crop_calc_flags_rows: Optional[list[dict]] = None
     removal_rows: Optional[list[dict]] = None  # fertasa_nutrient_removal
+    age_factor_rows: Optional[list[dict]] = None  # perennial_age_factors
 
 
 @dataclass
@@ -83,6 +84,7 @@ def compute_season_targets(
     include_micros: bool = False,
     block_pop_per_ha: Optional[float] = None,
     harvest_mode: Optional[str] = None,
+    tree_age: Optional[int] = None,
 ) -> TargetComputationResult:
     """Compute per-nutrient season targets with full provenance.
 
@@ -111,6 +113,13 @@ def compute_season_targets(
             crop's yield_unit (e.g. 't grain/ha' → 'grain'). Explicit
             override matters when a grain cereal is cut as hay: grain
             mode exports ~5 kg K/t; hay mode exports ~21 kg K/t.
+        tree_age: years since planting for perennials. When supplied
+            with a matching `perennial_age_factors` bracket, scales
+            N / P / K / general by the bracket's factor (year-1
+            establishment 0.15× → year-7+ full bearing 1.0× for citrus,
+            etc.). Without this, a 3-year-old non-bearing block gets
+            the same per-ha target as a 15-year-old full-bearing block.
+            Annuals ignore this argument.
 
     Returns:
         TargetComputationResult with typed provenance for each nutrient.
@@ -184,6 +193,26 @@ def compute_season_targets(
             tier=Tier(tier_val) if tier_val is not None else Tier.IMPLEMENTER_CONVENTION,
             note=row.get("Source"),
         )
+
+    # Perennial age scaling — per-ha tables assume a fully-bearing
+    # tree. A 3-year-old non-bearing block needs ~15-30% of full-
+    # bearing demand. Apply BEFORE density scaling so the two
+    # multipliers compose cleanly (age × density × base). Annuals
+    # ignore this — their yield target already encodes stand state.
+    age_scale_n, age_scale_p, age_scale_k, age_scale_other, age_assumption = \
+        _compute_age_scales(crop=crop, tree_age=tree_age, age_factor_rows=catalog.age_factor_rows)
+    if any(s != 1.0 for s in (age_scale_n, age_scale_p, age_scale_k, age_scale_other)):
+        for nut in list(targets.keys()):
+            if nut == "N":
+                targets[nut] = round(targets[nut] * age_scale_n, 2)
+            elif nut == "P2O5":
+                targets[nut] = round(targets[nut] * age_scale_p, 2)
+            elif nut == "K2O":
+                targets[nut] = round(targets[nut] * age_scale_k, 2)
+            else:
+                targets[nut] = round(targets[nut] * age_scale_other, 2)
+    if age_assumption:
+        assumptions.append(age_assumption)
 
     # Perennial density scaling — per-ha FERTASA/SAMAC tables implicitly
     # assume a "normal" orchard density. A 400 trees/ha mac orchard
@@ -314,6 +343,99 @@ def _parse_source_from_row(row: dict) -> tuple[str, Optional[str], Optional[int]
         adj.get("source_section"),
         row.get("Tier") or 6,
     )
+
+
+def _compute_age_scales(
+    crop: str,
+    tree_age: Optional[int],
+    age_factor_rows: Optional[list[dict]],
+) -> tuple[float, float, float, float, Optional[Assumption]]:
+    """For perennial crops, look up per-bracket age factors and return
+    (n_factor, p_factor, k_factor, general_factor, assumption).
+
+    Per-ha agronomic tables (FERTASA, SAMAC, NZAGA) implicitly assume a
+    fully-bearing tree. A 3-year-old non-bearing block actually wants
+    ~15-30% of full-bearing demand — applying the full target over-
+    fertilises the canopy 3-5× and risks salinity / nitrate leaching
+    on young root systems. The `perennial_age_factors` table holds
+    the published establishment → full-bearing curve per crop.
+
+    Returns (1.0, 1.0, 1.0, 1.0, None) when:
+    - tree_age is None (caller didn't provide it)
+    - age_factor_rows is None / empty
+    - no row matches the crop
+    - no bracket covers tree_age (defensive default; doesn't raise)
+
+    Otherwise returns the four factors + an Assumption row with the
+    bracket label + factor values for traceability on the artifact.
+    """
+    if tree_age is None or not age_factor_rows:
+        return 1.0, 1.0, 1.0, 1.0, None
+
+    # Match by crop name first; fall back to parent-crop lookup so a
+    # variant like "Citrus (Valencia)" picks up the parent-crop curve
+    # if the variant itself has no rows seeded.
+    crop_rows = [r for r in age_factor_rows if (r.get("crop") or "") == crop]
+    if not crop_rows:
+        # Strip variant suffix " (Variant)" and try parent.
+        if "(" in crop:
+            parent = crop.split("(")[0].strip()
+            crop_rows = [r for r in age_factor_rows if (r.get("crop") or "") == parent]
+    if not crop_rows:
+        return 1.0, 1.0, 1.0, 1.0, None
+
+    bracket = None
+    for r in crop_rows:
+        try:
+            lo = int(r.get("age_min") or 0)
+            hi = int(r.get("age_max") or 99)
+        except (TypeError, ValueError):
+            continue
+        if lo <= tree_age <= hi:
+            bracket = r
+            break
+    if not bracket:
+        return 1.0, 1.0, 1.0, 1.0, None
+
+    def _f(key: str) -> float:
+        try:
+            return float(bracket.get(key) or 1.0)
+        except (TypeError, ValueError):
+            return 1.0
+
+    n_f = _f("n_factor")
+    p_f = _f("p_factor")
+    k_f = _f("k_factor")
+    g_f = _f("general_factor")
+    label = bracket.get("age_label") or f"age {tree_age}"
+    notes = bracket.get("notes") or ""
+
+    assumption = Assumption(
+        field="perennial_age_scale",
+        assumed_value=(
+            f"{label} (age {tree_age} y) — N×{n_f}, P×{p_f}, K×{k_f}, "
+            f"others×{g_f}"
+        ),
+        override_guidance=(
+            f"Per-ha targets scaled by published establishment-curve "
+            f"factors so a young block isn't over-fertilised. "
+            f"{notes + '. ' if notes else ''}"
+            f"Override by correcting tree_age on the block, or by "
+            f"editing the `perennial_age_factors` row for this crop."
+        ),
+        source=SourceCitation(
+            source_id=(
+                "SAMAC_SCHOEMAN_2021" if "macadamia" in crop.lower()
+                else "NZAGA_AVOCADO_BOOK" if "avocado" in crop.lower()
+                else "CRI_CITRUS_GUIDE" if "citrus" in crop.lower()
+                else "FERTASA_HANDBOOK"
+            ),
+            section="perennial_age_factors table",
+            tier=Tier.SA_INDUSTRY_BODY,
+        ),
+        tier=Tier.SA_INDUSTRY_BODY,
+    )
+    return n_f, p_f, k_f, g_f, assumption
 
 
 def _compute_density_scale(

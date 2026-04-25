@@ -428,6 +428,9 @@ export interface BlockRequest {
   leaf_deficiencies?: Record<string, number> | null;
   /** Perennial-only density for target scaling (trees/vines per ha). */
   pop_per_ha?: number | null;
+  /** Perennial-only years since planting; drives age-factor scaling
+   *  against perennial_age_factors. None / annuals → factor 1.0. */
+  tree_age?: number | null;
 }
 
 export interface SkippedBlockRequest {

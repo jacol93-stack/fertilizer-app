@@ -82,6 +82,10 @@ class BlockRequest(BaseModel):
     leaf_deficiencies: Optional[dict[str, float]] = None
     # Perennial only — trees/vines per hectare for density scaling
     pop_per_ha: Optional[float] = Field(None, gt=0)
+    # Perennial only — years since planting. Drives age-factor scaling
+    # against perennial_age_factors so young non-bearing blocks aren't
+    # over-fertilised. None / annuals → factor 1.0.
+    tree_age: Optional[int] = Field(None, ge=0, le=200)
 
 
 class SkippedBlockRequest(BaseModel):
@@ -179,6 +183,7 @@ async def build_programme_endpoint(
                 expected_yield_harvested=b.yield_target_per_ha,
                 block_pop_per_ha=b.pop_per_ha,
                 harvest_mode=request.harvest_mode,
+                tree_age=b.tree_age,
             )
             targets = result.targets
             for path in result.calc_path_by_nutrient.values():
@@ -198,6 +203,7 @@ async def build_programme_endpoint(
             pre_season_inputs=b.pre_season_inputs,
             leaf_deficiencies=b.leaf_deficiencies,
             pop_per_ha=b.pop_per_ha,
+            tree_age=b.tree_age,
         ))
 
     # Phase 3 — block aggregation. Blocks with similar NPK ratios share
@@ -862,6 +868,7 @@ def _load_soil_catalog(supabase) -> SoilCatalog:
     ratio_rows = supabase.table("ideal_ratios").select("*").execute().data or []
     flags_rows = supabase.table("crop_calc_flags").select("*").execute().data or []
     removal_rows = supabase.table("fertasa_nutrient_removal").select("*").execute().data or []
+    age_factor_rows = supabase.table("perennial_age_factors").select("*").execute().data or []
     return SoilCatalog(
         crop_rows=crop_rows,
         sufficiency_rows=sufficiency_rows,
@@ -872,6 +879,7 @@ def _load_soil_catalog(supabase) -> SoilCatalog:
         ratio_rows=ratio_rows,
         crop_calc_flags_rows=flags_rows,
         removal_rows=removal_rows,
+        age_factor_rows=age_factor_rows,
     )
 
 
