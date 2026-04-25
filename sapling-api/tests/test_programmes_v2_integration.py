@@ -23,8 +23,14 @@ from app.routers.programmes_v2 import (
     BuildProgrammeRequest,
     MethodAvailability,
     SkippedBlockRequest,
+    _suggest_pdf_filename,
     build_programme_endpoint,
+    render_programme_artifact_pdf,
 )
+from app.models import ProgrammeArtifact, ProgrammeHeader, ProgrammeState
+from app.models.confidence import DataCompleteness, Tier
+from app.models.variants import VariantKey
+from datetime import date as _date
 
 
 # ============================================================
@@ -37,14 +43,16 @@ class _FakeResult:
 
 
 class _FakeQuery:
-    """Chainable stub — supports select/insert/execute chains the
-    router uses. Everything else raises AttributeError intentionally
+    """Chainable stub — supports select/insert/eq/limit/execute chains
+    the router uses. Everything else raises AttributeError intentionally
     (fail loud if the test hits an unexpected path)."""
 
     def __init__(self, store: dict, table: str):
         self._store = store
         self._table = table
         self._payload = None
+        self._filters: list[tuple[str, object]] = []
+        self._limit: int | None = None
 
     def select(self, *_args, **_kwargs):
         return self
@@ -53,14 +61,24 @@ class _FakeQuery:
         self._payload = payload
         return self
 
+    def eq(self, column: str, value):
+        self._filters.append((column, value))
+        return self
+
+    def limit(self, n: int):
+        self._limit = n
+        return self
+
     def execute(self):
         if self._payload is not None:
-            # Assign a fake id + echo back the inserted row (Supabase
-            # behavior with returning='representation').
             row = {**self._payload, "id": str(uuid.uuid4())}
             self._store.setdefault(self._table, []).append(row)
             return _FakeResult([row])
         rows = self._store.get(self._table, [])
+        for col, val in self._filters:
+            rows = [r for r in rows if r.get(col) == val]
+        if self._limit is not None:
+            rows = rows[: self._limit]
         return _FakeResult(list(rows))
 
 
@@ -351,3 +369,113 @@ def test_build_endpoint_no_water_values_skips_water_rules(fake_sb, fake_user):
         if f.get("source", {}).get("source_id") == "FAO_IRRIGATION_29"
     ]
     assert water_sourced == []
+
+
+# ============================================================
+# PDF render endpoint
+# ============================================================
+
+def test_render_pdf_endpoint_returns_pdf_for_owned_artifact(fake_sb, fake_user):
+    """Build → render-pdf round trip. Caller owns the artifact, gets a
+    sapling-branded PDF byte stream back with PDF magic header + a
+    Content-Disposition filename."""
+    build_request = _build_request([_block_request("1", "Land A", 10.0)])
+    build_response = asyncio.run(build_programme_endpoint(build_request, fake_user))
+    artifact_id = build_response.id
+
+    response = asyncio.run(render_programme_artifact_pdf(artifact_id, fake_user))
+    assert response.media_type == "application/pdf"
+    assert response.body[:4] == b"%PDF"
+    assert len(response.body) > 100_000
+    cd = response.headers.get("content-disposition", "")
+    assert "attachment;" in cd
+    assert ".pdf" in cd
+
+
+def test_render_pdf_endpoint_404_when_artifact_missing(fake_sb, fake_user):
+    import uuid as _uuid
+    from fastapi import HTTPException
+
+    bogus_id = _uuid.UUID("00000000-0000-0000-0000-000000000abc")
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(render_programme_artifact_pdf(bogus_id, fake_user))
+    assert exc.value.status_code == 404
+
+
+def test_render_pdf_endpoint_scopes_to_user(fake_sb):
+    """Non-admin user A cannot pull user B's artifact PDF."""
+    from fastapi import HTTPException
+
+    user_a = SimpleNamespace(id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", role="user")
+    user_b = SimpleNamespace(id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", role="user")
+    build_request = _build_request([_block_request("1", "Land A", 10.0)])
+    build_response = asyncio.run(build_programme_endpoint(build_request, user_a))
+    artifact_id = build_response.id
+
+    # User B reading user A's artifact → 404 (scoped, not 403, to avoid
+    # leaking existence)
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(render_programme_artifact_pdf(artifact_id, user_b))
+    assert exc.value.status_code == 404
+
+
+def test_render_pdf_endpoint_admin_sees_any_artifact(fake_sb):
+    """Admin role bypasses user_id scope."""
+    user_a = SimpleNamespace(id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", role="user")
+    admin = SimpleNamespace(id="11111111-1111-1111-1111-111111111111", role="admin")
+    build_request = _build_request([_block_request("1", "Land A", 10.0)])
+    build_response = asyncio.run(build_programme_endpoint(build_request, user_a))
+
+    response = asyncio.run(
+        render_programme_artifact_pdf(build_response.id, admin),
+    )
+    assert response.media_type == "application/pdf"
+
+
+# ============================================================
+# Filename helper
+# ============================================================
+
+def _bare_artifact(crop="Macadamia", season="2026/27", client="Test Farmer",
+                   ref="REF-001") -> ProgrammeArtifact:
+    return ProgrammeArtifact(
+        header=ProgrammeHeader(
+            client_name=client,
+            farm_name="Test Farm",
+            prepared_for="Test",
+            prepared_date=_date(2026, 4, 25),
+            crop=crop,
+            variant_key=VariantKey(canonical_crop=crop),
+            season=season,
+            planting_date=_date(2026, 5, 1),
+            data_completeness=DataCompleteness(level="standard"),
+            method_availability=MethodAvailability(has_drip=True),
+            state=ProgrammeState.DRAFT,
+            ref_number=ref,
+        ),
+        soil_snapshots=[],
+        stage_schedules=[],
+    )
+
+
+def test_pdf_filename_combines_client_crop_season():
+    art = _bare_artifact(client="Acme", crop="Macadamia", season="2026/27")
+    name = _suggest_pdf_filename(art)
+    assert name.endswith(".pdf")
+    assert "Acme" in name
+    assert "Macadamia" in name
+    assert "2026/27" not in name  # forward slash stripped from filename
+    assert "2026" in name and "27" in name
+
+
+def test_pdf_filename_strips_filesystem_unsafe_chars():
+    art = _bare_artifact(client="A:B/C\\D", season="2026/27")
+    name = _suggest_pdf_filename(art)
+    for bad in (":", "/", "\\", "*", "?", '"', "<", ">", "|"):
+        assert bad not in name
+
+
+def test_pdf_filename_falls_back_to_ref_number_only():
+    art = _bare_artifact(client="", crop="", season="", ref="WJ60421")
+    name = _suggest_pdf_filename(art)
+    assert "WJ60421" in name

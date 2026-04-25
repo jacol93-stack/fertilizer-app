@@ -3,7 +3,15 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, CheckCircle2, Archive, Printer, ShieldCheck } from "lucide-react";
+import {
+  Loader2,
+  ArrowLeft,
+  CheckCircle2,
+  Archive,
+  Printer,
+  ShieldCheck,
+  Download,
+} from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -12,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { ArtifactView } from "@/components/programme-artifact/ArtifactView";
 import {
   archiveProgramme,
+  downloadProgrammePdf,
   getProgramme,
   transitionProgrammeState,
 } from "@/lib/programmes-v2";
@@ -28,6 +37,20 @@ export default function ProgrammeArtifactPage() {
   const [data, setData] = useState<BuildProgrammeResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [transitioning, setTransitioning] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+
+  async function handleDownloadPdf() {
+    if (!data) return;
+    setDownloadingPdf(true);
+    try {
+      await downloadProgrammePdf(params.id);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`PDF download failed: ${msg}`);
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
 
   useEffect(() => {
     let ignore = false;
@@ -120,12 +143,27 @@ export default function ProgrammeArtifactPage() {
           </Button>
           <div className="flex flex-wrap items-center gap-2">
             <Button
+              variant="default"
+              size="sm"
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+              title="Download the Sapling-branded styled PDF"
+            >
+              {downloadingPdf ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Download PDF
+            </Button>
+            <Button
               variant="outline"
               size="sm"
               onClick={() => window.print()}
+              title="Print this view via the browser"
             >
               <Printer className="h-4 w-4" />
-              Print / Save as PDF
+              Print this view
             </Button>
             <StateActions
               state={data.state as ProgrammeState}

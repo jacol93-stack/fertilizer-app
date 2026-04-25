@@ -4,7 +4,7 @@
  * Thin wrappers around the shared api helper; keep business logic in
  * Server Components or route handlers, not here.
  */
-import { api } from "./api";
+import { api, API_URL, ApiError, buildAuthHeaders } from "./api";
 import type {
   BuildProgrammeRequest,
   BuildProgrammeResponse,
@@ -63,4 +63,59 @@ export async function transitionProgrammeState(
 /** Archive (soft delete) a programme. */
 export async function archiveProgramme(id: string): Promise<void> {
   await api.delete(`${BASE}/${id}`);
+}
+
+/**
+ * Download the Sapling-branded styled PDF for a programme. Triggers a
+ * browser download via a transient anchor click; the filename suggested
+ * by the server's Content-Disposition header is used by default, with
+ * an optional `fallbackFilename` if the header parse fails.
+ */
+export async function downloadProgrammePdf(
+  id: string,
+  fallbackFilename = "programme.pdf",
+): Promise<void> {
+  const headers = await buildAuthHeaders();
+  // The server returns application/pdf; remove the Content-Type header
+  // that buildAuthHeaders sets (it's for JSON requests).
+  delete (headers as Record<string, string>)["Content-Type"];
+
+  const res = await fetch(`${API_URL}${BASE}/${id}/render-pdf`, {
+    method: "GET",
+    headers,
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new ApiError(
+      `PDF download failed (${res.status})`,
+      res.status,
+      body,
+    );
+  }
+
+  const filename = parseFilenameFromHeader(
+    res.headers.get("content-disposition"),
+  ) ?? fallbackFilename;
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function parseFilenameFromHeader(header: string | null): string | null {
+  if (!header) return null;
+  // Content-Disposition: attachment; filename="Sapling Programme.pdf"
+  const m = /filename\*?=(?:UTF-8'')?["']?([^";\n]+)["']?/i.exec(header);
+  if (!m) return null;
+  try {
+    return decodeURIComponent(m[1].trim());
+  } catch {
+    return m[1].trim();
+  }
 }

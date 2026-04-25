@@ -34,6 +34,7 @@ import sys
 from datetime import date as date_type
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote as _url_quote
 
 # WeasyPrint on macOS needs Homebrew's libgobject/pango/cairo/glib on the
 # dyld lookup path. Setting this BEFORE importing weasyprint avoids the
@@ -48,8 +49,18 @@ if platform.system() == "Darwin":
             parts.append(_BREW_LIB)
             os.environ["DYLD_FALLBACK_LIBRARY_PATH"] = ":".join(parts)
 
+import logging as _logging
+
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from weasyprint import CSS, HTML
+from weasyprint.text.fonts import FontConfiguration
+
+# WeasyPrint logs spurious "Font-face 'X' cannot be loaded" warnings even
+# when the fonts ARE successfully fetched + embedded (verified via
+# pdffonts on the rendered output). Drop those noisy warnings; real
+# missing-font issues still surface as PDF text rendering with system
+# fallbacks (which we'd notice in visual regression).
+_logging.getLogger("weasyprint").setLevel(_logging.ERROR)
 
 from app.models import (
     ApplicationMethod,
@@ -117,18 +128,34 @@ def render_programme_pdf(
     context = _build_context(artifact)
     template = _jinja.get_template("programme.html")
     html_str = template.render(**context)
-    # Substitute the asset-dir placeholder so <img src="file://..."> resolves
-    html_str = html_str.replace("__ASSET_DIR__", str(_ASSET_DIR.resolve()))
+    # Substitute the asset-dir placeholder so <img src="file://..."> resolves.
+    # Spaces + special chars in the path are percent-encoded so WeasyPrint's
+    # URL fetcher doesn't choke (file URLs MUST be RFC-3986-encoded).
+    html_str = html_str.replace(
+        "__ASSET_DIR__",
+        _url_quote(str(_ASSET_DIR.resolve()), safe="/"),
+    )
 
-    # Inline the CSS with the font directory substituted to absolute paths
-    # so WeasyPrint resolves the @font-face URLs correctly.
+    # Inline the CSS with the font directory substituted to absolute paths.
+    # Same percent-encoding rule applies to the @font-face URLs.
     css_path = _TEMPLATE_DIR / "style.css"
     css_text = css_path.read_text(encoding="utf-8")
-    css_text = css_text.replace("__FONT_DIR__", str(_FONT_DIR.resolve()))
-    css_obj = CSS(string=css_text)
+    css_text = css_text.replace(
+        "__FONT_DIR__",
+        _url_quote(str(_FONT_DIR.resolve()), safe="/"),
+    )
+
+    # WeasyPrint requires an explicit FontConfiguration object passed to
+    # BOTH the CSS constructor and write_pdf for @font-face rules to
+    # register and resolve cleanly. Without this, @font-face URLs are
+    # silently dropped and the renderer falls back to system fonts —
+    # which on Linux containers means non-Inter, breaking brand fidelity.
+    font_config = FontConfiguration()
+    css_obj = CSS(string=css_text, font_config=font_config)
 
     pdf_bytes = HTML(string=html_str, base_url=str(_TEMPLATE_DIR)).write_pdf(
         stylesheets=[css_obj],
+        font_config=font_config,
     )
     return pdf_bytes
 

@@ -9,6 +9,7 @@ these v2 endpoints exclusively.
 Endpoints:
     POST   /programmes/v2/build           — run orchestrator + persist
     GET    /programmes/v2/{id}            — fetch one artifact
+    GET    /programmes/v2/{id}/render-pdf — Sapling-branded styled PDF
     GET    /programmes/v2                 — list user's artifacts
     PATCH  /programmes/v2/{id}/state      — transition lifecycle state
     DELETE /programmes/v2/{id}            — archive (soft delete)
@@ -26,7 +27,10 @@ from datetime import date, datetime
 from typing import Optional
 from uuid import UUID
 
+import re
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from app.auth import CurrentUser, get_current_user
@@ -34,9 +38,11 @@ from app.models import (
     MethodAvailability,
     OutstandingItem,
     PreSeasonInput,
+    ProgrammeArtifact,
     RiskFlag,
     SoilSnapshot,
 )
+from app.services.pdf_renderer import render_programme_pdf
 from app.services.block_clustering import (
     ClusterAggregate,
     cluster_and_aggregate,
@@ -332,6 +338,73 @@ async def get_programme_artifact(
         artifact=row["artifact"],
         review=_build_review_info(supabase, row),
     )
+
+
+@router.get("/{artifact_id}/render-pdf")
+async def render_programme_artifact_pdf(
+    artifact_id: UUID,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Render the artifact as a Sapling-branded styled PDF.
+
+    Same access scope as the get-artifact endpoint: admin sees any,
+    non-admin sees only their own. Strips all source citations + raw
+    material names per the client-disclosure boundary.
+    """
+    supabase = get_supabase_admin()
+    query = (
+        supabase.table("programme_artifacts")
+        .select("artifact, state")
+        .eq("id", str(artifact_id))
+    )
+    if user.role != "admin":
+        query = query.eq("user_id", user.id)
+    result = run_sb(lambda: query.limit(1).execute())
+    if not result.data:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Programme not found")
+
+    artifact_dict = result.data[0]["artifact"]
+    artifact = ProgrammeArtifact.model_validate(artifact_dict)
+    pdf_bytes = render_programme_pdf(artifact, mode="client")
+
+    filename = _suggest_pdf_filename(artifact)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(pdf_bytes)),
+        },
+    )
+
+
+def _suggest_pdf_filename(artifact: ProgrammeArtifact) -> str:
+    """Build a sensible ASCII-safe filename from the artifact header.
+
+    HTTP Content-Disposition headers are latin-1 encoded by default, so
+    em-dashes / non-ASCII characters break the response. We use plain
+    hyphens between parts and strip any non-ASCII characters.
+    """
+    h = artifact.header
+    parts: list[str] = []
+    if h.client_name:
+        parts.append(h.client_name)
+    if h.crop:
+        parts.append(h.crop)
+    if h.season:
+        parts.append(h.season)
+    if not parts and h.ref_number:
+        parts.append(h.ref_number)
+    if not parts:
+        parts.append("Sapling Programme")
+    base = " - ".join(parts)
+    # Drop filesystem-unsafe + non-ASCII characters (em-dashes, etc.)
+    safe = re.sub(r'[\\/:*?"<>|]+', "", base)
+    safe = safe.encode("ascii", errors="ignore").decode("ascii")
+    safe = re.sub(r"\s+", " ", safe).strip()
+    if not safe:
+        safe = "Sapling Programme"
+    return f"{safe}.pdf"
 
 
 @router.get("", response_model=list[dict])

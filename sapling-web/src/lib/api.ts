@@ -69,6 +69,12 @@ export function getImpersonateUser(): string | null {
   return _impersonateUserId;
 }
 
+/** Public re-export so binary-download endpoints (PDFs etc.) can build
+ * their own fetch with auth + the right Accept header. */
+export async function buildAuthHeaders(): Promise<Record<string, string>> {
+  return getAuthHeaders();
+}
+
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const supabase = createClient();
   let session = (await supabase.auth.getSession()).data.session;
