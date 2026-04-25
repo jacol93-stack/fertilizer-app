@@ -152,7 +152,15 @@ function HeaderCard({ artifact }: { artifact: ProgrammeArtifact }) {
           />
           <Stat
             label="Blocks"
-            value={String(artifact.soil_snapshots.length)}
+            value={String(
+              // Source blocks the agronomist ticked. Cluster-aggregate
+              // snapshots use synthetic block ids `cluster_A`, etc.
+              // (see programmes_v2._cluster_block_inputs); skip those
+              // so the count matches the wizard input.
+              artifact.soil_snapshots.filter(
+                (s) => !s.block_id.startsWith("cluster_"),
+              ).length,
+            )}
           />
         </div>
       </CardContent>

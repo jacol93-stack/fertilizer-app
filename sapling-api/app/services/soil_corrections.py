@@ -226,11 +226,19 @@ def get_nutrient_explanations(nutrient_targets: list[dict]) -> list[dict]:
         elif factor == 0 and base > 0:
             notes.append(f"Not applied — soil {nut} is {classification}")
 
-        # Ratio adjustments (can be positive or negative)
+        # Ratio adjustments. Phrase as "from BASE to FINAL" so the
+        # before/after numbers are explicit (an earlier "Reduced by X
+        # → Y" template read as circular when X happened to equal Y,
+        # e.g. "Reduced by 25 → 25 kg/ha"). The reasons follow on the
+        # same line.
         if adjustment > 0 and reasons:
-            notes.append(f"Increased by {adjustment:.1f} kg/ha — {'; '.join(reasons)} → {final} kg/ha")
+            notes.append(
+                f"Increased from {round(base, 1)} to {final} kg/ha — {'; '.join(reasons)}"
+            )
         elif adjustment < 0 and reasons:
-            notes.append(f"Reduced by {abs(adjustment):.1f} kg/ha — {'; '.join(reasons)} → {final} kg/ha")
+            notes.append(
+                f"Reduced from {round(base, 1)} to {final} kg/ha — {'; '.join(reasons)}"
+            )
 
         # Ratio warnings (no action taken, flagged for agronomist)
         for warn in ratio_warnings:

@@ -199,7 +199,10 @@ class TestGetNutrientExplanations:
         }]
         result = get_nutrient_explanations(targets)
         assert len(result) == 1
-        assert any("Increased by 1.5" in n for n in result[0]["notes"])
+        # New phrasing — "from BASE to FINAL" not "by ADJUSTMENT → FINAL"
+        # so before/after numbers are explicit even when adjustment
+        # equals final amount (e.g. K: 50 → 25 with -25 reduction).
+        assert any("Increased from 1.0 to 2.5" in n for n in result[0]["notes"])
 
     @pytest.mark.golden
     def test_no_adjustment_no_explanation(self):

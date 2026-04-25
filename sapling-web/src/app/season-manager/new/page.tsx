@@ -707,7 +707,7 @@ function SeasonBuilderPage() {
         <div className="mt-6 flex justify-between">
           <Button variant="outline" onClick={handleBack}>
             <ChevronLeft className="size-4" />
-            {wizardStep === 0 ? "Cancel" : "Back"}
+            {wizardStep === 0 ? "Cancel & return to Season Manager" : "Back"}
           </Button>
 
           {wizardStep < 4 ? (

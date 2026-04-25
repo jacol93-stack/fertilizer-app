@@ -708,8 +708,12 @@ def adjust_targets_for_ratios(targets, ratio_results, soil_values, ratio_rows):
                     # Cap: never reduce by more than 50% of current target
                     reduction = min(reduction, current * 0.5)
                     if reduction > 0:
+                        # Don't suffix "— reducing X": the explanation
+                        # template already prefixes "Reduced by ...",
+                        # which makes "reducing K → reduced by K"
+                        # circular when surfaced to the agronomist.
                         adjustments.setdefault(reduce_nut, []).append(
-                            (f"{reason} — reducing {reduce_nut}", -reduction)
+                            (reason, -reduction)
                         )
                         return
 

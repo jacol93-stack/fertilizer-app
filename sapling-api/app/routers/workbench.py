@@ -104,14 +104,26 @@ def _get_stats(sb, agent_id: str) -> dict[str, int]:
         .execute()
     ).count or 0
 
-    active_programmes = (
+    # Open programmes = anything not archived/completed (legacy
+    # `programmes` table) + active v2 artifacts. The user's mental
+    # model is "programmes still in flight", which spans drafts,
+    # approved, and activated — just `status == 'active'` undercounts.
+    open_legacy = (
         sb.table("programmes")
         .select("id", count="exact")
         .eq("agent_id", agent_id)
-        .eq("status", "active")
+        .in_("status", ["draft", "active"])
         .is_("deleted_at", "null")
         .execute()
     ).count or 0
+    open_v2 = (
+        sb.table("programme_artifacts")
+        .select("id", count="exact")
+        .eq("user_id", agent_id)
+        .in_("state", ["draft", "approved", "activated", "in_progress"])
+        .execute()
+    ).count or 0
+    active_programmes = open_legacy + open_v2
 
     pending_quotes = (
         sb.table("quotes")

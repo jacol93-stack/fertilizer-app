@@ -541,7 +541,7 @@ export default function HomePage() {
           <Button
             variant="outline"
             className="h-auto flex-col gap-1.5 py-4"
-            onClick={() => router.push("/season-manager")}
+            onClick={() => router.push("/season-manager/new")}
           >
             <Calendar className="size-5 text-[var(--sapling-orange)]" />
             <span className="text-sm font-medium">New programme</span>
@@ -580,7 +580,7 @@ export default function HomePage() {
             <strong className="font-semibold text-[var(--sapling-dark)]">
               {stats.active_programmes}
             </strong>{" "}
-            active programmes
+            open programmes
           </span>
           <span>
             <strong className="font-semibold text-[var(--sapling-dark)]">

@@ -265,11 +265,19 @@ export function FieldPicker({
       })()}
 
       {/* Custom block (no field backing — rare case) */}
-      <div className="border-t pt-3">
-        <Button variant="outline" size="sm" onClick={addCustomBlock}>
+      <div className="border-t pt-3 space-y-1">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={addCustomBlock}
+          title="Plan for a block that isn't yet in your client database — handy for quick quotes or new fields you haven't entered yet. The block won't be linked to a saved field record."
+        >
           <Plus className="size-3.5" />
           Add custom block (no field)
         </Button>
+        <p className="text-[10px] text-muted-foreground">
+          For one-off blocks not yet in your client&apos;s field list.
+        </p>
       </div>
     </div>
   );
