@@ -83,6 +83,7 @@ function eventDateToMonth(iso: string | undefined): number {
 function artifactToBlendGroups(
   artifact: ProgrammeArtifact,
   wizardBlocks: Omit<Block, "id">[],
+  clusterAssignments?: Record<string, string>,
 ): BlendGroupData[] {
   const blends = (artifact.blends || []) as ArtifactBlend[];
   const snapshots = artifact.soil_snapshots || [];
@@ -96,17 +97,32 @@ function artifactToBlendGroups(
       areaByBlockId.set(s.block_id, s.block_area_ha);
     }
   }
+  // Cluster id (e.g. "cluster_A") → list of pinned block names. Lets us
+  // surface real block names + summed area in the recipe subtitle
+  // instead of the bare cluster id.
+  const blocksByCluster = new Map<string, string[]>();
+  for (const [blockName, clusterId] of Object.entries(clusterAssignments ?? {})) {
+    const id = clusterId.startsWith("cluster_") ? clusterId : `cluster_${clusterId}`;
+    if (!blocksByCluster.has(id)) blocksByCluster.set(id, []);
+    blocksByCluster.get(id)!.push(blockName);
+  }
 
   const groupMap = new Map<string, BlendGroupData>();
   for (const blend of blends) {
     const blockId = blend.block_id;
     if (!groupMap.has(blockId)) {
-      const crop = cropByBlockId.get(blockId) || "";
+      const isCluster = blockId.startsWith("cluster_");
+      const memberNames = isCluster ? blocksByCluster.get(blockId) ?? [] : [blockId];
+      const fallbackName = isCluster ? memberNames[0] ?? blockId : blockId;
+      const crop = cropByBlockId.get(fallbackName) || "";
+      const area = isCluster
+        ? memberNames.reduce((s, n) => s + (areaByBlockId.get(n) ?? 0), 0)
+        : areaByBlockId.get(blockId) ?? 0;
       groupMap.set(blockId, {
         group: blockId,
         crops: crop ? [crop] : [],
-        block_names: [blockId],
-        total_area_ha: areaByBlockId.get(blockId) ?? 0,
+        block_names: isCluster && memberNames.length > 0 ? memberNames : [blockId],
+        total_area_ha: area,
         applications: [],
       });
     }
@@ -588,9 +604,26 @@ function SeasonBuilderPage() {
       const fertigationCapableBlocks = blockInfoData.filter(
         (bi) => bi.fertigation_capable === true,
       ).length;
-      const methodAvailability = deriveMethodAvailability(
+      const fieldMethodAvailability = deriveMethodAvailability(
         allAcceptedMethods, fertigationCapableBlocks,
       );
+      // The agronomist's schedule picks override field-level capability:
+      // if they only chose Broadcast windows on the Schedule step, the
+      // engine should not route nutrients through Fertigation just
+      // because injectors exist on the farm. Filter the field-derived
+      // availability down to the union of methods the user picked.
+      const userMethodKinds = new Set(userApplications.map((a) => a.method));
+      const methodAvailability = userMethodKinds.size > 0
+        ? {
+          ...fieldMethodAvailability,
+          has_drip: fieldMethodAvailability.has_drip && userMethodKinds.has("fertigation"),
+          has_pivot: fieldMethodAvailability.has_pivot && userMethodKinds.has("fertigation"),
+          has_sprinkler: fieldMethodAvailability.has_sprinkler && userMethodKinds.has("fertigation"),
+          has_fertigation_injectors: fieldMethodAvailability.has_fertigation_injectors && userMethodKinds.has("fertigation"),
+          has_foliar_sprayer: fieldMethodAvailability.has_foliar_sprayer && userMethodKinds.has("foliar"),
+          has_granular_spreader: fieldMethodAvailability.has_granular_spreader && userMethodKinds.has("broadcast"),
+        }
+        : fieldMethodAvailability;
 
       const namedBlocks = blocks.filter((b) => b.crop && b.name);
       const { request, skippedBlocks } = wizardStateToBuildRequest({
@@ -616,11 +649,12 @@ function SeasonBuilderPage() {
         methodAvailability,
         clusterMargin,
         clusterAssignments,
+        applicationMonths: userApplications.map((a) => a.month),
       });
 
       const response = await buildProgramme(request);
       setArtifactId(response.id);
-      setBlendGroupsData(artifactToBlendGroups(response.artifact as ProgrammeArtifact, blocks));
+      setBlendGroupsData(artifactToBlendGroups(response.artifact as ProgrammeArtifact, blocks, clusterAssignments));
 
       if (skippedBlocks.length > 0) {
         toast.warning(

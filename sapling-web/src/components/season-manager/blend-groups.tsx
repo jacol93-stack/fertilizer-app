@@ -11,6 +11,15 @@ function recipeLetter(groupId: string): string {
   return groupId.replace(/^cluster_/i, "");
 }
 
+/** Singleton recipes (one block, no cluster letter) get a positional
+ * letter computed from index — "Recipe B / C / …" reads cleaner than
+ * "Recipe Blok N5 — Young Beaumont/A4" which duplicates the block name
+ * already shown in the subtitle. */
+function recipeLetterAt(group: BlendGroupData, idx: number): string {
+  if (group.group.startsWith("cluster_")) return recipeLetter(group.group);
+  return String.fromCharCode("A".charCodeAt(0) + idx);
+}
+
 export interface ApplicationBlendData {
   stage_name: string;
   /** First month the recipe is applied in this stage. */
@@ -78,8 +87,8 @@ export function BlendGroups({ blendGroups, isAdmin }: BlendGroupsProps) {
         </p>
       </div>
 
-      {blendGroups.map((group) => {
-        const letter = recipeLetter(group.group);
+      {blendGroups.map((group, idx) => {
+        const letter = recipeLetterAt(group, idx);
         const groupEvents = group.applications.reduce((m, a) => m + (a.events_count || 1), 0);
         const groupTotalKg = group.applications.reduce(
           (s, a) => s + (a.is_foliar ? 0 : a.rate_kg_ha * (a.events_count || 1) * group.total_area_ha),

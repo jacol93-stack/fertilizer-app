@@ -52,6 +52,12 @@ export interface WizardToV2Input {
   /** block_id → cluster_id assignment overrides from the drag-drop
    * ClusterBoard. Empty → pure auto-clustering. */
   clusterAssignments?: Record<string, string>;
+  /** Operational application windows the agronomist picked in the
+   * Schedule step (1-12, dedup + sort handled here). When omitted the
+   * engine chooses its own cadence per stage; passing them locks the
+   * engine to those months and surfaces an OutstandingItem if a stage
+   * can't be served. */
+  applicationMonths?: number[];
 }
 
 export class WizardAdapterError extends Error {
@@ -223,6 +229,10 @@ export function wizardStateToBuildRequest(
     };
   });
 
+  const applicationMonths = (input.applicationMonths ?? [])
+    .filter((m) => Number.isInteger(m) && m >= 1 && m <= 12);
+  const dedupedMonths = Array.from(new Set(applicationMonths)).sort((a, b) => a - b);
+
   const request: BuildProgrammeRequest = {
     client_name: clientName || "Unknown client",
     farm_name: farmName || "Unknown farm",
@@ -236,6 +246,7 @@ export function wizardStateToBuildRequest(
     skipped_blocks: skippedBlocks,
     ...(input.clusterMargin !== undefined && { cluster_margin: input.clusterMargin }),
     ...(Object.keys(assignments).length > 0 && { cluster_assignments: assignments }),
+    ...(dedupedMonths.length > 0 && { application_months: dedupedMonths }),
   };
   return { request, skippedBlocks };
 }

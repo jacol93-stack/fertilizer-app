@@ -476,6 +476,11 @@ export interface BuildProgrammeRequest {
    * ClusterBoard. Pinned blocks honor this exactly; unpinned fall through
    * to auto-clustering. */
   cluster_assignments?: Record<string, string>;
+  /** Operational application windows the agronomist picked in the
+   * Schedule step (1-12). Engine maps growth stages onto these slots
+   * with timing walls enforced. Omit to let the engine pick its own
+   * cadence per stage. */
+  application_months?: number[];
 }
 
 export interface ReviewInfo {

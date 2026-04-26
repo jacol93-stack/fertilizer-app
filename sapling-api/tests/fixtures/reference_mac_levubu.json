@@ -880,11 +880,11 @@
     "Block mac-levubu-ref: MonthAllocator — 8 application events mapped from 8 allowed months",
     "Block mac-levubu-ref: MethodSelector — 16 routings",
     "Block mac-levubu-ref: FoliarTriggerEngine — 3 events (1 soil_availability_gap, 1 quality_window, 1 stage_peak_demand)",
-    "Block mac-levubu-ref: Consolidator — 5 blends (SimilarityMerger scanned; no adjacent pairs met merge criteria)",
+    "Block mac-levubu-ref: Consolidator — 5 blends (no merges applied)",
     "Orchestrator: produced artifact with 1 blocks, 0 recommendations, 3 foliar events, 1 risk flags",
     "Orchestrator: BlendValidator — 5 blends validated, 0 warnings/errors surfaced"
   ],
-  "created_at": "2026-04-25T08:28:24.425032",
-  "updated_at": "2026-04-25T08:28:24.425033",
+  "created_at": "2026-04-26T22:56:50.429026",
+  "updated_at": "2026-04-26T22:56:50.429027",
   "render_hint": null
 }

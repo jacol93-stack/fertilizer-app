@@ -734,11 +734,11 @@
     "Block citrus-svr-ref: MonthAllocator — 5 application events mapped from 5 allowed months",
     "Block citrus-svr-ref: MethodSelector — 12 routings",
     "Block citrus-svr-ref: FoliarTriggerEngine — 3 events (1 soil_availability_gap, 1 quality_window, 1 stage_peak_demand)",
-    "Block citrus-svr-ref: Consolidator — 4 blends (SimilarityMerger scanned; no adjacent pairs met merge criteria)",
+    "Block citrus-svr-ref: Consolidator — 4 blends (no merges applied)",
     "Orchestrator: produced artifact with 1 blocks, 0 recommendations, 3 foliar events, 1 risk flags",
     "Orchestrator: BlendValidator — 4 blends validated, 0 warnings/errors surfaced"
   ],
-  "created_at": "2026-04-25T08:28:24.427707",
-  "updated_at": "2026-04-25T08:28:24.427707",
+  "created_at": "2026-04-26T22:56:50.431662",
+  "updated_at": "2026-04-26T22:56:50.431662",
   "render_hint": null
 }

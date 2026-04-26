@@ -612,7 +612,7 @@ function AnalysesImport({ farmId, clientId }: { farmId: string; clientId: string
               >
                 {committing
                   ? "Importing…"
-                  : `Import ${validRows.length} analysis${validRows.length !== 1 ? "es" : ""}`}
+                  : `Import ${validRows.length} ${validRows.length === 1 ? "analysis" : "analyses"}`}
               </Button>
             </div>
           </CardContent>
