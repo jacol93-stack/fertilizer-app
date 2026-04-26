@@ -445,13 +445,13 @@ async def preview_schedule(
         for row in ar.data or []:
             analyses_by_id[row["id"]] = row
 
-    # Pre-fetch field accepted_methods + irrigation_type
+    # Pre-fetch field accepted_methods + irrigation_type + fertigation_capable
     field_ids = [b.field_id for b in request.blocks if b.field_id]
     fields_by_id: dict[str, dict] = {}
     if field_ids:
         fr = (
             sb.table("fields")
-            .select("id, accepted_methods, irrigation_type")
+            .select("id, accepted_methods, irrigation_type, fertigation_capable")
             .in_("id", field_ids)
             .execute()
         )
@@ -579,6 +579,8 @@ async def preview_schedule(
             "growth_stages": stages,
             "nutrient_targets": nutrient_targets,
             "accepted_methods": accepted_methods,
+            "irrigation_type": (field_row or {}).get("irrigation_type"),
+            "fertigation_capable": (field_row or {}).get("fertigation_capable"),
             "corrections": corrections_payload["corrections"],
             "nutrient_explanations": corrections_payload["nutrient_explanations"],
             "corrective_targets": corrective_payload["corrective_items"],

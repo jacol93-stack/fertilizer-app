@@ -51,6 +51,11 @@ export interface BlockInfo {
   growth_stages: GrowthStage[];
   nutrient_targets: Array<{ Nutrient?: string; nutrient?: string; Target_kg_ha?: number; target_kg_ha?: number }>;
   accepted_methods: string[];
+  irrigation_type?: string | null;
+  /** TRUE = injection unit installed, FALSE = irrigation but no
+   * injection, NULL = unspecified (legacy fields). Drives whether the
+   * engine offers fertigation. */
+  fertigation_capable?: boolean | null;
   corrections?: Correction[];
   nutrient_explanations?: NutrientExplanation[];
   corrective_targets?: CorrectiveTarget[];

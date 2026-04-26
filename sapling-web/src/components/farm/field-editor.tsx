@@ -43,6 +43,7 @@ interface FieldForm {
   yieldTarget: string;
   yieldUnit: string;
   irrigationType: string;
+  fertigationCapable: "" | "yes" | "no";
   acceptedMethods: string[];
   fertigationMonths: number[];
   latestAnalysisId: string;
@@ -52,7 +53,7 @@ interface FieldForm {
 const EMPTY_FORM: FieldForm = {
   name: "", sizeHa: "", gpsLat: "", gpsLng: "", soilType: "", crop: "", cultivar: "",
   cropType: null, plantingDate: "", treeAge: "", popPerHa: "",
-  yieldTarget: "", yieldUnit: "", irrigationType: "",
+  yieldTarget: "", yieldUnit: "", irrigationType: "", fertigationCapable: "",
   acceptedMethods: [], fertigationMonths: [], latestAnalysisId: "",
   cropMethods: [],
 };
@@ -73,6 +74,7 @@ function formFromField(f: Field): FieldForm {
     yieldTarget: f.yield_target?.toString() || "",
     yieldUnit: f.yield_unit || "",
     irrigationType: f.irrigation_type || "",
+    fertigationCapable: f.fertigation_capable === true ? "yes" : f.fertigation_capable === false ? "no" : "",
     acceptedMethods: f.accepted_methods || [],
     fertigationMonths: f.fertigation_months || [],
     latestAnalysisId: f.latest_analysis_id || "",
@@ -227,6 +229,7 @@ export function FieldEditor({ open, onClose, field, farmId, crops, analyses, exi
           yield_target: f.yieldTarget ? parseFloat(f.yieldTarget) : null,
           yield_unit: f.yieldUnit || null,
           irrigation_type: f.irrigationType || null,
+          fertigation_capable: f.fertigationCapable === "yes" ? true : f.fertigationCapable === "no" ? false : null,
           accepted_methods: f.acceptedMethods,
           fertigation_months: f.fertigationMonths,
           latest_analysis_id: f.latestAnalysisId || null,

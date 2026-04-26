@@ -61,6 +61,7 @@ class FieldCreate(BaseModel):
     yield_target: Optional[float] = Field(None, gt=0, le=1_000_000)
     yield_unit: Optional[str] = Field(None, max_length=50)
     irrigation_type: Optional[str] = Field(None, pattern=r"^(drip|pivot|micro|flood|none)$")
+    fertigation_capable: Optional[bool] = None
     accepted_methods: Optional[list[str]] = None
     fertigation_months: Optional[list[int]] = None
     latest_analysis_id: Optional[str] = None
@@ -81,6 +82,7 @@ class FieldUpdate(BaseModel):
     yield_target: Optional[float] = Field(None, gt=0, le=1_000_000)
     yield_unit: Optional[str] = Field(None, max_length=50)
     irrigation_type: Optional[str] = Field(None, pattern=r"^(drip|pivot|micro|flood|none)$")
+    fertigation_capable: Optional[bool] = None
     accepted_methods: Optional[list[str]] = None
     fertigation_months: Optional[list[int]] = None
     latest_analysis_id: Optional[str] = None

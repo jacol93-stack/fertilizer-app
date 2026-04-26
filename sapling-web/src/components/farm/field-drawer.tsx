@@ -69,6 +69,9 @@ interface FieldForm {
   yieldTarget: string;
   yieldUnit: string;
   irrigationType: string;
+  /** "" = unknown / not yet set, "yes" / "no" otherwise. Tri-state because
+   * the demo dataset has 60-odd legacy fields where it's never been answered. */
+  fertigationCapable: "" | "yes" | "no";
   acceptedMethods: string[];
   fertigationMonths: number[];
   latestAnalysisId: string;
@@ -90,6 +93,7 @@ function fieldToForm(f: Field): FieldForm {
     yieldTarget: f.yield_target?.toString() || "",
     yieldUnit: f.yield_unit || "",
     irrigationType: f.irrigation_type || "",
+    fertigationCapable: f.fertigation_capable === true ? "yes" : f.fertigation_capable === false ? "no" : "",
     acceptedMethods: f.accepted_methods || [],
     fertigationMonths: f.fertigation_months || [],
     latestAnalysisId: f.latest_analysis_id || "",
@@ -112,6 +116,7 @@ function formToPayload(f: FieldForm): Record<string, unknown> {
     yield_target: f.yieldTarget ? parseFloat(f.yieldTarget) : null,
     yield_unit: f.yieldUnit || null,
     irrigation_type: f.irrigationType || null,
+    fertigation_capable: f.fertigationCapable === "yes" ? true : f.fertigationCapable === "no" ? false : null,
     accepted_methods: f.acceptedMethods,
     fertigation_months: f.fertigationMonths,
     latest_analysis_id: f.latestAnalysisId || null,
@@ -123,7 +128,7 @@ export function FieldDrawer({ open, onClose, field, farmId, crops, analyses, onS
   const [form, setForm] = useState<FieldForm>(field ? fieldToForm(field) : {
     name: "", sizeHa: "", gpsLat: "", gpsLng: "", soilType: "", crop: "", cultivar: "",
     cropType: null, plantingDate: "", treeAge: "", popPerHa: "",
-    yieldTarget: "", yieldUnit: "", irrigationType: "",
+    yieldTarget: "", yieldUnit: "", irrigationType: "", fertigationCapable: "",
     acceptedMethods: [], fertigationMonths: [], latestAnalysisId: "",
   });
   const [cropMethods, setCropMethods] = useState<CropMethod[]>([]);
@@ -139,7 +144,7 @@ export function FieldDrawer({ open, onClose, field, farmId, crops, analyses, onS
     const empty: FieldForm = {
       name: "", sizeHa: "", gpsLat: "", gpsLng: "", soilType: "", crop: "", cultivar: "",
       cropType: null, plantingDate: "", treeAge: "", popPerHa: "",
-      yieldTarget: "", yieldUnit: "", irrigationType: "",
+      yieldTarget: "", yieldUnit: "", irrigationType: "", fertigationCapable: "",
       acceptedMethods: [], fertigationMonths: [], latestAnalysisId: "",
     };
     let f: FieldForm;
@@ -392,8 +397,10 @@ export function FieldDrawer({ open, onClose, field, farmId, crops, analyses, onS
                 onChange={(e) => {
                   const val = e.target.value;
                   if (val === "none" || !val) {
+                    // Without irrigation, fertigation is impossible.
                     update({
                       irrigationType: val,
+                      fertigationCapable: "no",
                       acceptedMethods: form.acceptedMethods.filter((m) => m !== "fertigation"),
                       fertigationMonths: [],
                     });
@@ -409,6 +416,49 @@ export function FieldDrawer({ open, onClose, field, farmId, crops, analyses, onS
                 ))}
               </select>
             </div>
+
+            {/* Fertigation capability — separate from irrigation type
+                because a drip block may or may not have an injection
+                unit. Only meaningful when there's irrigation. */}
+            {form.irrigationType && form.irrigationType !== "none" && (
+              <div className="space-y-1">
+                <Label className="text-xs">Fertigation infrastructure?</Label>
+                <div className="flex gap-2">
+                  {(["yes", "no"] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => {
+                        const next = form.fertigationCapable === opt ? "" : opt;
+                        if (next === "no") {
+                          update({
+                            fertigationCapable: next,
+                            acceptedMethods: form.acceptedMethods.filter((m) => m !== "fertigation"),
+                            fertigationMonths: [],
+                          });
+                        } else {
+                          update({ fertigationCapable: next });
+                        }
+                      }}
+                      className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+                        form.fertigationCapable === opt
+                          ? opt === "yes"
+                            ? "border-[var(--sapling-orange)] bg-orange-50 text-[var(--sapling-orange)]"
+                            : "border-gray-400 bg-gray-100 text-gray-700"
+                          : "border-gray-200 text-gray-600 hover:border-gray-400"
+                      }`}
+                    >
+                      {opt === "yes" ? "Yes — injection unit fitted" : "No — irrigation only"}
+                    </button>
+                  ))}
+                </div>
+                {form.fertigationCapable === "" && (
+                  <p className="text-[11px] text-amber-700">
+                    Tell us once — drives whether the programme builder offers fertigation.
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="space-y-1">
               <Label className="text-xs">Accepted Methods</Label>

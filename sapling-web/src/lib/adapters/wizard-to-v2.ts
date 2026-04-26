@@ -265,19 +265,23 @@ export function defaultMethodAvailability(): MethodAvailability {
  * programme's selected blocks tells the orchestrator which methods
  * it may route nutrients through.
  *
- * We default all irrigation variants (drip / pivot / sprinkler) from
- * a single "fertigation" marker because the field data doesn't
- * currently split that out per-block; downstream the method_selector
- * treats them uniformly. If a field explicitly names "drip" /
- * "pivot" / "sprinkler", those take priority.
+ * `fertigationCapableBlocks` is the count of selected blocks whose
+ * `fertigation_capable` flag is explicitly TRUE. When > 0, fertigation
+ * is offered regardless of accepted_methods. When 0 AND no block has
+ * accepted_methods containing "fertigation", fertigation is excluded —
+ * even if irrigation is present. That handles the "irrigated but no
+ * injection unit" case the agronomist now controls per-block.
  */
 export function deriveMethodAvailability(
   acceptedMethods: string[],
+  fertigationCapableBlocks: number = 0,
 ): MethodAvailability {
   const set = new Set(acceptedMethods.map((m) => m.toLowerCase().trim()));
   const hasAny = (...keys: string[]) => keys.some((k) => set.has(k));
 
-  const fertigation = hasAny("fertigation", "drip", "pivot", "sprinkler");
+  // Explicit per-block flag wins. Legacy fallback honors a "fertigation"
+  // string in accepted_methods (pre-fertigation_capable data).
+  const fertigation = fertigationCapableBlocks > 0 || hasAny("fertigation");
   return {
     has_drip: hasAny("drip") || (fertigation && !hasAny("pivot", "sprinkler")),
     has_pivot: hasAny("pivot"),

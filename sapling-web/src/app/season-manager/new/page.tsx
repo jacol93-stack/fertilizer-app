@@ -517,7 +517,12 @@ function SeasonBuilderPage() {
       }
 
       const allAcceptedMethods = blockInfoData.flatMap((bi) => bi.accepted_methods || []);
-      const methodAvailability = deriveMethodAvailability(allAcceptedMethods);
+      const fertigationCapableBlocks = blockInfoData.filter(
+        (bi) => bi.fertigation_capable === true,
+      ).length;
+      const methodAvailability = deriveMethodAvailability(
+        allAcceptedMethods, fertigationCapableBlocks,
+      );
 
       const namedBlocks = blocks.filter((b) => b.crop && b.name);
       const { request, skippedBlocks } = wizardStateToBuildRequest({

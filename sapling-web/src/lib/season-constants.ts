@@ -93,6 +93,9 @@ export interface Field {
   yield_target: number | null;
   yield_unit: string | null;
   irrigation_type: string | null;
+  /** Distinct from irrigation_type — a drip block may or may not have
+   * fertilizer-injection infrastructure. NULL = unknown. */
+  fertigation_capable: boolean | null;
   accepted_methods: string[];
   fertigation_months: number[];
   latest_analysis_id: string | null;
