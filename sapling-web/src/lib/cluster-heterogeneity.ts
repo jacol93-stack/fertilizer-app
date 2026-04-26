@@ -188,3 +188,99 @@ export function assignmentsFromClusters(clusters: ClusterPreview[]): Record<stri
   }
   return out;
 }
+
+// ============================================================
+// Per-block fit %
+// ============================================================
+//
+// "Fit %" measures how well the cluster's averaged recipe matches a
+// specific block's own targets. 100% = the cluster's averaged target
+// equals this block's target on every nutrient (the block is a
+// singleton, or every block in the cluster has identical demand).
+// 0% would mean the recipe is twice or zero of what the block needs
+// on every nutrient.
+//
+// Per-nutrient fit = max(0, 100 - 100 * |block - cluster_avg| / cluster_avg).
+// Overall fit = mean of per-nutrient fits across the "core" set
+// (same nutrients the heterogeneity warnings cover, plus N).
+
+/** Nutrients we score for fit. Mirrors HETEROGENEITY_THRESHOLDS keys. */
+const CORE_FIT_NUTRIENTS: readonly string[] = ["N", "P2O5", "K2O", "Ca", "Mg", "S"];
+
+export interface BlockFit {
+  block_id: string;
+  /** Mean fit % across the core nutrients we score. 0–100. */
+  overall_pct: number;
+  /** Per-nutrient fit % keyed by nutrient symbol. Only nutrients with
+   * a defined cluster average AND defined block target are present. */
+  per_nutrient: Record<string, number>;
+  /** Symbol of the worst-fitting nutrient (lowest fit %), or null if
+   * no nutrients are scoreable. */
+  worst_nutrient: string | null;
+  worst_pct: number | null;
+}
+
+/** Compute fit % for every block in every cluster, keyed by block_id.
+ * Singletons score 100% on every nutrient by definition. */
+export function computeBlockFits(
+  blocks: BlockTargets[],
+  clusters: ClusterPreview[],
+): Record<string, BlockFit> {
+  const blocksById = new Map(blocks.map((b) => [b.block_id, b]));
+  const out: Record<string, BlockFit> = {};
+
+  for (const cluster of clusters) {
+    const avg = cluster.aggregated_targets;
+    for (const blockId of cluster.block_ids) {
+      const block = blocksById.get(blockId);
+      if (!block) {
+        // Block not in the local targets list (e.g. dataless attached
+        // block — its "fit" is by definition 100% to the cluster it
+        // inherits, since it has no targets of its own to compare).
+        out[blockId] = {
+          block_id: blockId,
+          overall_pct: 100,
+          per_nutrient: {},
+          worst_nutrient: null,
+          worst_pct: null,
+        };
+        continue;
+      }
+      out[blockId] = computeFit(block, avg);
+    }
+  }
+  return out;
+}
+
+function computeFit(block: BlockTargets, clusterAvg: Record<string, number>): BlockFit {
+  const perNutrient: Record<string, number> = {};
+  let worstNutrient: string | null = null;
+  let worstPct: number | null = null;
+
+  for (const nut of CORE_FIT_NUTRIENTS) {
+    const avg = clusterAvg[nut];
+    const blockVal = block.targets[nut];
+    if (typeof avg !== "number" || typeof blockVal !== "number") continue;
+    if (Math.abs(avg) < 0.01) continue;
+    const deviationPct = (Math.abs(blockVal - avg) / Math.abs(avg)) * 100;
+    const fitPct = Math.max(0, Math.min(100, 100 - deviationPct));
+    perNutrient[nut] = round1(fitPct);
+    if (worstPct == null || fitPct < worstPct) {
+      worstPct = fitPct;
+      worstNutrient = nut;
+    }
+  }
+
+  const fits = Object.values(perNutrient);
+  const overallPct = fits.length === 0
+    ? 100
+    : round1(fits.reduce((s, v) => s + v, 0) / fits.length);
+
+  return {
+    block_id: block.block_id,
+    overall_pct: overallPct,
+    per_nutrient: perNutrient,
+    worst_nutrient: worstNutrient,
+    worst_pct: worstPct == null ? null : round1(worstPct),
+  };
+}

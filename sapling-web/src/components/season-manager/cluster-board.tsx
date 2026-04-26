@@ -25,7 +25,9 @@ import { Label } from "@/components/ui/label";
 import { Plus } from "lucide-react";
 import {
   recomputeClusters,
+  computeBlockFits,
   type BlockTargets,
+  type BlockFit,
 } from "@/lib/cluster-heterogeneity";
 import type { ClusterPreview, HeterogeneityWarning } from "@/lib/programmes-v2";
 
@@ -107,6 +109,13 @@ export function ClusterBoard(props: ClusterBoardProps) {
     [blocks, assignments],
   );
 
+  // Per-block fit % vs the cluster the block currently belongs to.
+  // Singletons score 100% by definition.
+  const blockFits = useMemo(
+    () => computeBlockFits(blocks, clusters),
+    [blocks, clusters],
+  );
+
   // Preview clusters: what would the heterogeneity look like if the
   // currently-dragged block landed in hoverClusterId?
   const previewClusters = useMemo(() => {
@@ -123,6 +132,11 @@ export function ClusterBoard(props: ClusterBoardProps) {
     }
     return m;
   }, [previewClusters]);
+
+  const previewBlockFits = useMemo(() => {
+    if (!previewClusters) return null;
+    return computeBlockFits(blocks, previewClusters);
+  }, [blocks, previewClusters]);
 
   const allUsedIds = useMemo(() => {
     const s = new Set<string>(knownClusterIds);
@@ -284,6 +298,8 @@ export function ClusterBoard(props: ClusterBoardProps) {
                   const blockName = display.block_names[idx];
                   const blockMeta = blocks.find((b) => b.block_id === bid);
                   const isPreview = previewC && !c.block_ids.includes(bid);
+                  const fitMap = previewing ? previewBlockFits : blockFits;
+                  const fit = fitMap?.[bid] ?? null;
                   return (
                     <BlockChip
                       key={bid}
@@ -292,6 +308,7 @@ export function ClusterBoard(props: ClusterBoardProps) {
                       onDragStart={handleDragStart(bid)}
                       onDragEnd={handleDragEnd}
                       ghostPreview={isPreview}
+                      fit={fit}
                     />
                   );
                 })}
@@ -351,38 +368,90 @@ interface BlockChipProps {
   area: number | null;
   dataless?: boolean;
   ghostPreview?: boolean;
+  fit?: BlockFit | null;
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: () => void;
 }
 
-function BlockChip({ blockName, area, dataless, ghostPreview, onDragStart, onDragEnd }: BlockChipProps) {
+function fitColor(pct: number): string {
+  if (pct >= 85) return "bg-emerald-500";
+  if (pct >= 70) return "bg-amber-500";
+  return "bg-red-500";
+}
+
+function fitTextColor(pct: number): string {
+  if (pct >= 85) return "text-emerald-700";
+  if (pct >= 70) return "text-amber-700";
+  return "text-red-700";
+}
+
+function BlockChip({ blockName, area, dataless, ghostPreview, fit, onDragStart, onDragEnd }: BlockChipProps) {
+  const showFit = fit && !dataless;
+  const tooltip = buildChipTooltip({ dataless, fit });
   return (
     <div
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      className={`inline-flex cursor-grab items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs select-none active:cursor-grabbing ${
+      title={tooltip}
+      className={`inline-flex cursor-grab select-none flex-col gap-0.5 rounded-md border px-2.5 py-1.5 text-xs active:cursor-grabbing ${
         ghostPreview
           ? "border-dashed border-[var(--sapling-orange)] bg-orange-50/50 text-[var(--sapling-orange)]"
           : dataless
             ? "border-amber-300 bg-amber-100/60 text-amber-900"
             : "border-gray-200 bg-white text-[var(--sapling-dark)]"
       }`}
-      title={
-        dataless
-          ? "No soil analysis — drag onto a recipe to apply a rough plan."
-          : "Drag to reassign"
-      }
     >
-      <span className="font-medium">{blockName}</span>
-      {area != null && (
-        <span className="text-[10px] text-muted-foreground">{area} ha</span>
-      )}
-      {dataless && (
-        <span className="text-[10px] uppercase tracking-wide text-amber-700">no soil</span>
+      <div className="flex items-center gap-1.5">
+        <span className="font-medium">{blockName}</span>
+        {area != null && (
+          <span className="text-[10px] text-muted-foreground">{area} ha</span>
+        )}
+        {dataless && (
+          <span className="text-[10px] uppercase tracking-wide text-amber-700">no soil</span>
+        )}
+      </div>
+      {showFit && (
+        <FitBar fit={fit} />
       )}
     </div>
   );
+}
+
+function FitBar({ fit }: { fit: BlockFit }) {
+  const pct = Math.round(fit.overall_pct);
+  const worst = fit.worst_nutrient && fit.worst_pct != null
+    ? `worst: ${fit.worst_nutrient} ${Math.round(fit.worst_pct)}%`
+    : null;
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="flex h-1 w-14 overflow-hidden rounded-full bg-gray-200">
+        <div
+          className={`${fitColor(fit.overall_pct)} transition-all`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className={`text-[10px] font-medium ${fitTextColor(fit.overall_pct)}`}>
+        {pct}% fit
+      </span>
+      {worst && (
+        <span className="text-[10px] text-muted-foreground">· {worst}</span>
+      )}
+    </div>
+  );
+}
+
+function buildChipTooltip(args: { dataless?: boolean; fit?: BlockFit | null }): string {
+  if (args.dataless) {
+    return "No soil analysis — drag onto a recipe to apply a rough plan.";
+  }
+  if (!args.fit) return "Drag to reassign";
+  const lines = ["Drag to reassign", "", "Fit vs current recipe:"];
+  for (const [nut, pct] of Object.entries(args.fit.per_nutrient)) {
+    const marker = nut === args.fit.worst_nutrient ? " ← worst" : "";
+    lines.push(`  ${nut}: ${Math.round(pct)}%${marker}`);
+  }
+  return lines.join("\n");
 }
 
 function WarningLine({ warning }: { warning: HeterogeneityWarning }) {
