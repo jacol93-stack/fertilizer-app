@@ -70,11 +70,15 @@ export interface PreviewScheduleResponse {
 
 export async function previewSchedule(
   blocks: PreviewBlockInput[],
-  options?: { clusterMargin?: number },
+  options?: {
+    clusterMargin?: number;
+    clusterAssignments?: Record<string, string>;
+  },
 ): Promise<PreviewScheduleResponse> {
   return api.post<PreviewScheduleResponse>(`${BASE}/preview-schedule`, {
     blocks,
     cluster_margin: options?.clusterMargin ?? 0.25,
+    cluster_assignments: options?.clusterAssignments ?? {},
   });
 }
 

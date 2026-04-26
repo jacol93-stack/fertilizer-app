@@ -93,9 +93,18 @@ class SkippedBlockRequest(BaseModel):
 
     Appended to artifact.outstanding_items so the agronomist sees what
     remains to complete, instead of the UI silently dropping them.
+
+    If `attach_to_cluster` is set, the block is added to that cluster's
+    plan using the cluster's averaged targets — a "rough plan" for the
+    block while soil sampling is pending. Requires `block_id` +
+    `block_area_ha` to be set so the engine can scale per-block rates.
+    The OutstandingItem still flags the missing soil analysis.
     """
     block_name: str
     reason: str
+    block_id: Optional[str] = None
+    block_area_ha: Optional[float] = Field(None, gt=0)
+    attach_to_cluster: Optional[str] = None
 
 
 class BuildProgrammeRequest(BaseModel):
@@ -132,6 +141,12 @@ class BuildProgrammeRequest(BaseModel):
     # Lower = more singleton blocks, more recipes; higher = fewer recipes
     # for the farmer to mix and stock. Default 0.25.
     cluster_margin: float = Field(default=0.25, ge=0.05, le=0.5)
+    # Manual cluster assignments (block_id → cluster_id) override the
+    # auto-clustering for specific blocks. Lets the agronomist drag
+    # blocks between recipes when the auto-NPK fit isn't quite right.
+    # Dataless blocks (no soil_analysis_id) MUST be listed here to be
+    # included; they inherit the cluster's averaged recipe + targets.
+    cluster_assignments: dict[str, str] = Field(default_factory=dict)
 
 
 class ReviewInfo(BaseModel):
@@ -217,7 +232,16 @@ async def build_programme_endpoint(
     # Blocks carrying pre_season_inputs are kept as singletons — those
     # inputs are per-block history, not safely aggregatable here.
     effective_blocks, cluster_aggs, cluster_sources = _cluster_block_inputs(
-        block_inputs, cluster_margin=request.cluster_margin,
+        block_inputs,
+        cluster_margin=request.cluster_margin,
+        cluster_assignments=request.cluster_assignments,
+    )
+
+    # Dataless-block attachment: skipped blocks with attach_to_cluster set
+    # become extra effective blocks using the cluster's averaged targets.
+    # Their OutstandingItem still flags the missing soil analysis.
+    _attach_dataless_blocks_to_clusters(
+        effective_blocks, cluster_aggs, request.skipped_blocks,
     )
 
     build_date = request.build_date or date.today()
@@ -363,6 +387,9 @@ class PreviewScheduleRequest(BaseModel):
     # Mirror of BuildProgrammeRequest.cluster_margin so the preview shows
     # the same grouping the build will produce.
     cluster_margin: float = Field(default=0.25, ge=0.05, le=0.5)
+    # Manual cluster assignments mirror of BuildProgrammeRequest.
+    # Empty dict → pure auto-cluster (default UX).
+    cluster_assignments: dict[str, str] = Field(default_factory=dict)
     # Hooks for future build-input parity. Defaults match BuildProgrammeRequest.
     subtract_harvested_removal: bool = False
     harvest_mode: Optional[str] = None
@@ -569,11 +596,20 @@ async def preview_schedule(
                 season_targets=v2_targets,
                 soil_parameters=soil_values_for_targets,
             ))
+            # Surface per-block v2 targets so the wizard can recompute
+            # heterogeneity locally on drag-drop.
+            block_info[-1]["v2_season_targets"] = v2_targets
+            block_info[-1]["block_area_ha"] = float(b.area_ha) if b.area_ha else None
 
-    # Cluster the planable blocks with the user-chosen margin.
+    # Cluster the planable blocks with the user-chosen margin and any
+    # manual assignments (drag-drop overrides from the wizard).
     clusters_payload: list[dict] = []
     if cluster_stubs:
-        cluster_aggs = cluster_and_aggregate(cluster_stubs, margin=request.cluster_margin)
+        cluster_aggs = cluster_and_aggregate(
+            cluster_stubs,
+            margin=request.cluster_margin,
+            assignments=request.cluster_assignments,
+        )
         for agg in cluster_aggs:
             clusters_payload.append({
                 "cluster_id": agg.cluster_id,
@@ -854,6 +890,7 @@ async def archive_programme(
 def _cluster_block_inputs(
     block_inputs: list[BlockInput],
     cluster_margin: float = 0.25,
+    cluster_assignments: Optional[dict[str, str]] = None,
 ) -> tuple[list[BlockInput], list[ClusterAggregate], dict[str, list[BlockInput]]]:
     """Group similar blocks into clusters + build the effective block
     list the orchestrator sees.
@@ -878,7 +915,9 @@ def _cluster_block_inputs(
     clusterable = [b for b in block_inputs if not b.pre_season_inputs]
     non_clusterable = [b for b in block_inputs if b.pre_season_inputs]
 
-    cluster_aggs = cluster_and_aggregate(clusterable, margin=cluster_margin)
+    cluster_aggs = cluster_and_aggregate(
+        clusterable, margin=cluster_margin, assignments=cluster_assignments,
+    )
 
     effective: list[BlockInput] = []
     by_id = {b.block_id: b for b in clusterable}
@@ -915,6 +954,94 @@ def _cluster_block_inputs(
     # as singletons through the orchestrator.
     effective.extend(non_clusterable)
     return effective, cluster_aggs, cluster_sources
+
+
+def _attach_dataless_blocks_to_clusters(
+    effective_blocks: list[BlockInput],
+    cluster_aggs: list[ClusterAggregate],
+    skipped_blocks: list[SkippedBlockRequest],
+) -> None:
+    """Mutate `effective_blocks` + `cluster_aggs` in place: each skipped
+    block with `attach_to_cluster` set joins that cluster's existing
+    effective block. Bumps area + adds to block_ids/block_names, so the
+    cluster's recipe stays unchanged and the shopping list rolls forward.
+
+    Singleton clusters get converted into synthetic clusters on first
+    attachment so the orchestrator's per-block lab metadata doesn't
+    misleadingly attach to multiple blocks.
+
+    Skips silently when the named cluster doesn't exist or block_id /
+    block_area_ha is missing — the block falls through to its
+    OutstandingItem (already appended in build_programme_endpoint).
+    """
+    if not skipped_blocks:
+        return
+    aggs_by_id = {a.cluster_id: a for a in cluster_aggs}
+
+    for sb in skipped_blocks:
+        if not sb.attach_to_cluster:
+            continue
+        agg = aggs_by_id.get(sb.attach_to_cluster)
+        if agg is None or not sb.block_id or not sb.block_area_ha:
+            continue
+
+        # Find the cluster's effective block. Synthetic clusters use
+        # block_id = f"cluster_{cluster_id}"; singletons use the original
+        # block's id.
+        synthetic_id = f"cluster_{agg.cluster_id}"
+        target_idx = next(
+            (i for i, eb in enumerate(effective_blocks) if eb.block_id == synthetic_id),
+            None,
+        )
+        if target_idx is None and len(agg.block_ids) == 1:
+            # Singleton cluster — find the original block by id, convert to
+            # a synthetic so multiple blocks can share it without misleading
+            # lab metadata.
+            singleton_id = agg.block_ids[0]
+            target_idx = next(
+                (i for i, eb in enumerate(effective_blocks) if eb.block_id == singleton_id),
+                None,
+            )
+            if target_idx is None:
+                continue
+            original = effective_blocks[target_idx]
+            effective_blocks[target_idx] = BlockInput(
+                block_id=synthetic_id,
+                block_name=f"Cluster {agg.cluster_id}: {', '.join(agg.block_names)}",
+                block_area_ha=float(original.block_area_ha),
+                soil_parameters=dict(agg.aggregated_soil_parameters),
+                season_targets=dict(agg.aggregated_targets),
+                lab_name=None,
+                lab_method=None,
+                sample_date=None,
+                sample_id=None,
+                pre_season_inputs=[],
+                leaf_deficiencies=None,
+            )
+
+        if target_idx is None:
+            continue
+
+        # Append the dataless block to the cluster aggregate metadata.
+        agg.block_ids.append(sb.block_id)
+        agg.block_names.append(sb.block_name)
+        agg.total_area_ha = round(agg.total_area_ha + float(sb.block_area_ha), 3)
+
+        # Bump the effective block's area + refresh its display name.
+        eb = effective_blocks[target_idx]
+        effective_blocks[target_idx] = BlockInput(
+            block_id=eb.block_id,
+            block_name=f"Cluster {agg.cluster_id}: {', '.join(agg.block_names)}",
+            block_area_ha=eb.block_area_ha + float(sb.block_area_ha),
+            soil_parameters=eb.soil_parameters,
+            season_targets=eb.season_targets,
+            lab_name=eb.lab_name,
+            lab_method=eb.lab_method,
+            sample_date=eb.sample_date,
+            sample_id=eb.sample_id,
+            pre_season_inputs=eb.pre_season_inputs,
+            leaf_deficiencies=eb.leaf_deficiencies,
+        )
 
 
 def _append_per_block_soil_snapshots(
@@ -1117,22 +1244,45 @@ def _append_calc_path_narrative(
 def _append_skipped_block_items(artifact, skipped_blocks: list[SkippedBlockRequest]) -> None:
     """Append one OutstandingItem per skipped block to the artifact.
 
+    Two flavors:
+      * Block with `attach_to_cluster` set → rough plan emitted under that
+        cluster's recipe; OutstandingItem flags "soil analysis still
+        recommended for tighter targeting".
+      * Block without attachment → not planned at all; OutstandingItem
+        says rebuild after linking a soil analysis.
+
     Kept separate from the endpoint so it's unit-testable without
     spinning up FastAPI + Supabase.
     """
     for sb in skipped_blocks:
-        artifact.outstanding_items.append(OutstandingItem(
-            item=f"Block '{sb.block_name}' not planned ({sb.reason})",
-            why_it_matters=(
-                "This block is on the farm but wasn't included in the "
-                "programme build — no per-block plan, no shopping list "
-                "contribution, no foliar schedule."
-            ),
-            impact_if_skipped=(
-                "Link a soil analysis and rebuild, or record applications "
-                "manually; otherwise the block has no programme guidance."
-            ),
-        ))
+        if sb.attach_to_cluster:
+            artifact.outstanding_items.append(OutstandingItem(
+                item=f"Block '{sb.block_name}' on rough plan (Recipe {sb.attach_to_cluster})",
+                why_it_matters=(
+                    "This block has no soil analysis on file, so its targets "
+                    f"are inherited from Recipe {sb.attach_to_cluster}'s averaged "
+                    "values rather than computed from its own soil. The recipe "
+                    "is a reasonable starting point; per-block tuning isn't possible."
+                ),
+                impact_if_skipped=(
+                    "Sample the block and rebuild the programme to compute "
+                    "block-specific targets — the rough plan may over- or "
+                    "under-fertilize relative to actual demand."
+                ),
+            ))
+        else:
+            artifact.outstanding_items.append(OutstandingItem(
+                item=f"Block '{sb.block_name}' not planned ({sb.reason})",
+                why_it_matters=(
+                    "This block is on the farm but wasn't included in the "
+                    "programme build — no per-block plan, no shopping list "
+                    "contribution, no foliar schedule."
+                ),
+                impact_if_skipped=(
+                    "Link a soil analysis and rebuild, or record applications "
+                    "manually; otherwise the block has no programme guidance."
+                ),
+            ))
 
 
 # ============================================================

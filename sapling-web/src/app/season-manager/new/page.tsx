@@ -29,6 +29,8 @@ import {
   type SoilAnalysisMeta,
 } from "@/lib/adapters/wizard-to-v2";
 import { buildProgramme, previewSchedule, type ClusterPreview } from "@/lib/programmes-v2";
+import { ClusterBoard, type DatalessBlock } from "@/components/season-manager/cluster-board";
+import { assignmentsFromClusters, type BlockTargets } from "@/lib/cluster-heterogeneity";
 import type { Blend as ArtifactBlend, ProgrammeArtifact } from "@/lib/types/programme-artifact";
 
 export default function SeasonBuilderPageWrapper() {
@@ -133,107 +135,6 @@ function artifactToBlendGroups(
   return Array.from(groupMap.values());
 }
 
-interface ClusterSummaryProps {
-  clusters: ClusterPreview[];
-  margin: number;
-  onMarginChange: (m: number) => void | Promise<void>;
-  busy: boolean;
-}
-
-function ClusterSummary({ clusters, margin, onMarginChange, busy }: ClusterSummaryProps) {
-  const recipeWord = clusters.length === 1 ? "recipe" : "recipes";
-  const blockCount = clusters.reduce((s, c) => s + c.block_ids.length, 0);
-  const anySplit = clusters.some((c) => c.heterogeneity.any_split);
-  const anyWarn = clusters.some((c) => c.heterogeneity.any_warn);
-  return (
-    <div className="mb-4 rounded-lg border bg-white p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-[var(--sapling-dark)]">
-            {clusters.length} {recipeWord} across {blockCount} block{blockCount !== 1 ? "s" : ""}
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Blocks with similar nutrient demand share a recipe — per-block rates differ.
-            Lower the threshold to split into more recipes; raise it to bunch more blocks together.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Label htmlFor="cluster-margin" className="text-xs text-muted-foreground">
-            Threshold
-          </Label>
-          <select
-            id="cluster-margin"
-            value={margin}
-            disabled={busy}
-            onChange={(e) => onMarginChange(parseFloat(e.target.value))}
-            className="rounded-md border bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sapling-orange)]"
-          >
-            <option value={0.10}>0.10 (tight)</option>
-            <option value={0.15}>0.15</option>
-            <option value={0.20}>0.20</option>
-            <option value={0.25}>0.25 (default)</option>
-            <option value={0.30}>0.30</option>
-            <option value={0.40}>0.40 (loose)</option>
-          </select>
-        </div>
-      </div>
-      <div className="space-y-2">
-        {clusters.map((c) => (
-          <div key={c.cluster_id} className="rounded-md border bg-muted/20 p-3">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <div>
-                <span className="text-sm font-medium text-[var(--sapling-dark)]">
-                  Recipe {c.cluster_id}
-                </span>
-                <span className="ml-2 text-xs text-muted-foreground">
-                  {c.total_area_ha} ha · {c.block_names.length} block{c.block_names.length !== 1 ? "s" : ""}
-                </span>
-              </div>
-              {c.heterogeneity.any_split ? (
-                <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                  high variability — consider splitting
-                </span>
-              ) : c.heterogeneity.any_warn ? (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                  moderate variability
-                </span>
-              ) : (
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                  consistent
-                </span>
-              )}
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {c.block_names.join(", ")}
-            </p>
-            {c.heterogeneity.warnings.length > 0 && (
-              <ul className="mt-2 space-y-0.5 text-xs">
-                {c.heterogeneity.warnings.map((w) => (
-                  <li key={w.nutrient} className="text-muted-foreground">
-                    <span className="font-medium text-[var(--sapling-dark)]">{w.nutrient}</span>{" "}
-                    CV {w.cv_pct ?? "—"}%
-                    {" "}
-                    <span className={w.level === "split" ? "text-red-600" : "text-amber-600"}>
-                      ({w.level})
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        ))}
-      </div>
-      {(anySplit || anyWarn) && (
-        <p className="mt-3 text-xs text-muted-foreground">
-          Heterogeneity per Wilding (1985) via Mulla & Schepers (1997).
-          Recipes still average per-block targets — agronomist's call whether to accept the compromise
-          or split the recipe by tightening the threshold.
-        </p>
-      )}
-    </div>
-  );
-}
-
 function SeasonBuilderPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -279,6 +180,12 @@ function SeasonBuilderPage() {
   // recipes the farmer mixes; higher margin → simpler stock list.
   const [clusters, setClusters] = useState<ClusterPreview[]>([]);
   const [clusterMargin, setClusterMargin] = useState<number>(0.25);
+  // Per-block v2 targets surfaced by preview-schedule. Used by the
+  // ClusterBoard to recompute heterogeneity client-side on drag-drop.
+  const [blockTargets, setBlockTargets] = useState<BlockTargets[]>([]);
+  // block_id → cluster_id. Persisted in the wizard draft + sent to the
+  // preview-schedule + build endpoints so user reassignments survive.
+  const [clusterAssignments, setClusterAssignments] = useState<Record<string, string>>({});
 
   // Method availability is derived from field-level accepted_methods +
   // irrigation_type during the build — not a separate wizard step.
@@ -325,6 +232,8 @@ function SeasonBuilderPage() {
         userApplications?: UserApplication[];
         plantingMonths?: Record<string, number>;
         blendGroupsData?: BlendGroupData[];
+        clusterMargin?: number;
+        clusterAssignments?: Record<string, string>;
       };
       if (typeof draft.wizardStep === "number") setWizardStep(draft.wizardStep);
       if (draft.clientId) setClientId(draft.clientId);
@@ -339,6 +248,8 @@ function SeasonBuilderPage() {
       if (draft.userApplications) setUserApplications(draft.userApplications);
       if (draft.plantingMonths) setPlantingMonths(draft.plantingMonths);
       if (draft.blendGroupsData) setBlendGroupsData(draft.blendGroupsData);
+      if (typeof draft.clusterMargin === "number") setClusterMargin(draft.clusterMargin);
+      if (draft.clusterAssignments) setClusterAssignments(draft.clusterAssignments);
       toast.message("Resumed where you left off");
     } catch {
       // Bad JSON or shape mismatch — clear the slot rather than
@@ -358,6 +269,7 @@ function SeasonBuilderPage() {
         wizardStep, clientId, farmId, clientName, farmName,
         programmeName, season, blocks, artifactId,
         blockInfoData, userApplications, plantingMonths, blendGroupsData,
+        clusterMargin, clusterAssignments,
       };
       window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch {
@@ -366,7 +278,7 @@ function SeasonBuilderPage() {
     }
   }, [wizardStep, clientId, farmId, clientName, farmName, programmeName,
       season, blocks, artifactId, blockInfoData, userApplications,
-      plantingMonths, blendGroupsData]);
+      plantingMonths, blendGroupsData, clusterMargin, clusterAssignments]);
 
   const clearDraft = () => {
     try {
@@ -502,10 +414,39 @@ function SeasonBuilderPage() {
         tree_age: b.tree_age ?? null,
         pop_per_ha: b.pop_per_ha ?? null,
       }));
-      const preview = await previewSchedule(previewBlocks, { clusterMargin });
+      const preview = await previewSchedule(previewBlocks, {
+        clusterMargin,
+        clusterAssignments,
+      });
       setBlockInfoData(preview.block_info as unknown as BlockInfo[]);
       setUnplanableBlocks(preview.unplanable_blocks || []);
       setClusters(preview.clusters || []);
+
+      // Pull per-block targets out of the block_info payload for the
+      // ClusterBoard's local-recompute helper.
+      const targets: BlockTargets[] = [];
+      for (const bi of preview.block_info as unknown as Array<Record<string, unknown>>) {
+        const t = bi.v2_season_targets as Record<string, number> | undefined;
+        if (!t) continue;
+        targets.push({
+          block_id: String(bi.block_id),
+          block_name: String(bi.block_name),
+          block_area_ha: Number(bi.block_area_ha) || 1,
+          targets: t,
+        });
+      }
+      setBlockTargets(targets);
+
+      // Seed the assignment map from the server's auto-clustering on the
+      // first preview, but preserve user overrides on re-fetch.
+      setClusterAssignments((prev) => {
+        const seed = assignmentsFromClusters(preview.clusters || []);
+        // Preserve any user assignments whose block_id is still in seed.
+        for (const [bid, cid] of Object.entries(prev)) {
+          if (seed[bid] !== undefined) seed[bid] = cid;
+        }
+        return seed;
+      });
       setUserApplications([]);
       if (preview.unplanable_blocks && preview.unplanable_blocks.length > 0) {
         toast.info(`${preview.unplanable_blocks.length} block${preview.unplanable_blocks.length !== 1 ? "s" : ""} skipped — see warning`);
@@ -601,6 +542,7 @@ function SeasonBuilderPage() {
         soilMetaByAnalysisId,
         methodAvailability,
         clusterMargin,
+        clusterAssignments,
       });
 
       const response = await buildProgramme(request);
@@ -798,15 +740,28 @@ function SeasonBuilderPage() {
                     </div>
                   </div>
                 )}
-                {clusters.length > 0 && (
-                  <ClusterSummary
-                    clusters={clusters}
+                {(blockTargets.length > 0 || unplanableBlocks.length > 0) && (
+                  <ClusterBoard
+                    blocks={blockTargets}
+                    datalessBlocks={unplanableBlocks
+                      .filter((u) => u.reason === "missing_targets")
+                      .map((u): DatalessBlock => {
+                        const wb = blocks.find((b) => b.name === u.block_id);
+                        return {
+                          block_id: u.block_id,
+                          block_name: u.block_name,
+                          block_area_ha: wb?.area_ha ?? null,
+                        };
+                      })}
+                    assignments={clusterAssignments}
+                    onAssignmentsChange={setClusterAssignments}
                     margin={clusterMargin}
                     onMarginChange={async (m) => {
                       setClusterMargin(m);
                       await handleAdvanceToSchedule();
                     }}
                     busy={saving}
+                    knownClusterIds={clusters.map((c) => c.cluster_id)}
                   />
                 )}
 

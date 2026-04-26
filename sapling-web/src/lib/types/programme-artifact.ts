@@ -436,6 +436,12 @@ export interface BlockRequest {
 export interface SkippedBlockRequest {
   block_name: string;
   reason: string;
+  /** Optional: lets the engine attach this block to an existing cluster
+   * using the cluster's averaged recipe + targets. Requires block_id +
+   * block_area_ha to be set so the engine can scale per-block rates. */
+  block_id?: string | null;
+  block_area_ha?: number | null;
+  attach_to_cluster?: string | null;
 }
 
 export interface BuildProgrammeRequest {
@@ -466,6 +472,10 @@ export interface BuildProgrammeRequest {
   /** NPK-ratio L1 distance threshold for clustering blocks into shared
    * recipes. Default 0.25; range 0.05–0.5. Lower = more separate blends. */
   cluster_margin?: number;
+  /** block_id → cluster_id overrides from the wizard's drag-drop
+   * ClusterBoard. Pinned blocks honor this exactly; unpinned fall through
+   * to auto-clustering. */
+  cluster_assignments?: Record<string, string>;
 }
 
 export interface ReviewInfo {

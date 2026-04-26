@@ -241,3 +241,81 @@ def test_identical_blocks_aggregate_to_the_input_values():
         assert clusters[0].aggregated_targets[nut] == pytest.approx(val)
     # Identical inputs → zero CV → no warnings
     assert clusters[0].heterogeneity.any_warn is False
+
+
+# ============================================================
+# manual cluster_assignments overrides
+# ============================================================
+
+def test_assignments_pin_blocks_to_named_cluster():
+    """Two blocks with very different NPK ratios — would auto-split into
+    2 clusters. With assignments pinning both to "A", they share."""
+    blocks = [
+        _StubBlock("1", "A", 10.0, {"N": 200, "P2O5": 40, "K2O": 20}),
+        _StubBlock("2", "B", 10.0, {"N": 20, "P2O5": 40, "K2O": 200}),
+    ]
+    auto_groups = cluster_blocks_by_npk(blocks)
+    assert len(auto_groups) == 2  # baseline: auto-splits
+
+    pinned = cluster_blocks_by_npk(blocks, assignments={"1": "A", "2": "A"})
+    assert len(pinned) == 1
+    assert {b.block_id for b in pinned[0]} == {"1", "2"}
+
+
+def test_assignments_separate_otherwise_similar_blocks():
+    """Two blocks would auto-cluster, but the agronomist forces split."""
+    blocks = [
+        _StubBlock("1", "A", 10.0, {"N": 100, "P2O5": 40, "K2O": 60}),
+        _StubBlock("2", "B", 10.0, {"N": 100, "P2O5": 40, "K2O": 60}),
+    ]
+    auto_groups = cluster_blocks_by_npk(blocks)
+    assert len(auto_groups) == 1  # baseline: auto-shares
+
+    pinned = cluster_blocks_by_npk(blocks, assignments={"1": "A", "2": "B"})
+    assert len(pinned) == 2
+    assert pinned[0][0].block_id == "1"
+    assert pinned[1][0].block_id == "2"
+
+
+def test_assignments_unpinned_block_falls_through_to_auto():
+    """Pin block 1 → cluster A, leave block 2 unpinned. Block 2 either
+    joins A (if ratios match) or becomes its own cluster."""
+    blocks = [
+        _StubBlock("1", "A", 10.0, {"N": 100, "P2O5": 40, "K2O": 60}),
+        _StubBlock("2", "B", 10.0, {"N": 100, "P2O5": 40, "K2O": 60}),
+    ]
+    pinned = cluster_blocks_by_npk(blocks, assignments={"1": "A"})
+    # Same ratio → block 2 falls through into A via first-fit
+    assert len(pinned) == 1
+    assert {b.block_id for b in pinned[0]} == {"1", "2"}
+
+
+def test_assignments_unrecognised_block_id_is_ignored():
+    """Stale assignment for a block that's not in the input shouldn't crash."""
+    blocks = [_StubBlock("1", "A", 10.0, {"N": 100, "P2O5": 40, "K2O": 60})]
+    groups = cluster_blocks_by_npk(blocks, assignments={"99": "Z"})
+    assert len(groups) == 1
+    assert groups[0][0].block_id == "1"
+
+
+def test_cluster_and_aggregate_honors_pinned_cluster_ids():
+    """The cluster_id in the result matches the user-specified id."""
+    blocks = [
+        _StubBlock("1", "A", 10.0, {"N": 200, "P2O5": 40, "K2O": 20}),
+        _StubBlock("2", "B", 10.0, {"N": 20, "P2O5": 40, "K2O": 200}),
+    ]
+    clusters = cluster_and_aggregate(blocks, assignments={"1": "X", "2": "Y"})
+    assert {c.cluster_id for c in clusters} == {"X", "Y"}
+
+
+def test_cluster_and_aggregate_auto_clusters_skip_pinned_ids():
+    """If 'A' is pinned, the auto-cluster falls through to 'B'."""
+    blocks = [
+        _StubBlock("1", "A", 10.0, {"N": 200, "P2O5": 40, "K2O": 20}),
+        _StubBlock("2", "B", 10.0, {"N": 20, "P2O5": 40, "K2O": 200}),
+    ]
+    clusters = cluster_and_aggregate(blocks, assignments={"1": "A"})
+    # Block 1 → cluster A (pinned). Block 2 → auto cluster, next free id = B.
+    assert len(clusters) == 2
+    assert clusters[0].cluster_id == "A"
+    assert clusters[1].cluster_id == "B"

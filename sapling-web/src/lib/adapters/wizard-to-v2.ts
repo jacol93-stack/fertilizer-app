@@ -49,6 +49,9 @@ export interface WizardToV2Input {
    * more separate recipes; higher = simpler stock list for the farmer.
    * Default 0.25 — wizard surfaces it on the Schedule step. */
   clusterMargin?: number;
+  /** block_id → cluster_id assignment overrides from the drag-drop
+   * ClusterBoard. Empty → pure auto-clustering. */
+  clusterAssignments?: Record<string, string>;
 }
 
 export class WizardAdapterError extends Error {
@@ -81,6 +84,9 @@ function monthToDate(year: number, month: number): string {
 export interface SkippedBlock {
   block_name: string;
   reason: string;
+  block_id?: string | null;
+  block_area_ha?: number | null;
+  attach_to_cluster?: string | null;
 }
 
 export interface WizardToV2Result {
@@ -125,11 +131,18 @@ export function wizardStateToBuildRequest(
   const namedBlocks = blocks.filter((b) => b.name && b.crop);
   const skippedBlocks: SkippedBlock[] = [];
   const usableBlocks: WizardBlock[] = [];
+  const assignments = input.clusterAssignments ?? {};
   for (const b of namedBlocks) {
+    // block_id convention in the wizard is the block name (matches what
+    // the preview-schedule + cluster_assignments map keys on).
+    const attach = assignments[b.name] ?? null;
     if (!b.soil_analysis_id) {
       skippedBlocks.push({
         block_name: b.name,
         reason: "no soil analysis linked",
+        block_id: b.name,
+        block_area_ha: b.area_ha,
+        attach_to_cluster: attach,
       });
       continue;
     }
@@ -142,6 +155,9 @@ export function wizardStateToBuildRequest(
       skippedBlocks.push({
         block_name: b.name,
         reason: "linked soil analysis has no soil_values",
+        block_id: b.name,
+        block_area_ha: b.area_ha,
+        attach_to_cluster: attach,
       });
       continue;
     }
@@ -219,6 +235,7 @@ export function wizardStateToBuildRequest(
     method_availability: methodAvailability,
     skipped_blocks: skippedBlocks,
     ...(input.clusterMargin !== undefined && { cluster_margin: input.clusterMargin }),
+    ...(Object.keys(assignments).length > 0 && { cluster_assignments: assignments }),
   };
   return { request, skippedBlocks };
 }

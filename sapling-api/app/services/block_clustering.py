@@ -108,6 +108,7 @@ def _npk_ratio(targets: dict[str, float]) -> tuple[float, float, float, float]:
 def cluster_blocks_by_npk(
     blocks: list[Any],
     margin: float = 0.25,
+    assignments: Optional[dict[str, str]] = None,
 ) -> list[list[Any]]:
     """First-fit grouping: blocks with total L1 NPK-ratio distance below
     `margin` share a cluster.
@@ -122,25 +123,56 @@ def cluster_blocks_by_npk(
     track. Caller can override (BuildProgrammeRequest.cluster_margin) when
     a particular farm needs tighter or looser grouping.
 
+    `assignments` lets the caller pin specific blocks to a named cluster
+    (block_id → cluster_id, e.g. {"Blok A4": "A", "Blok 788": "A"}).
+    Pinned blocks are placed in their assigned cluster verbatim — the
+    NPK-distance check is skipped for them. Unpinned blocks then run the
+    normal first-fit against the existing groups (pinned + earlier
+    unpinned). Cluster IDs in `assignments` are honored for downstream
+    naming via `cluster_and_aggregate`.
+
     Blocks with degenerate totals (<0.01 kg/ha combined NPK) become
-    their own singleton cluster — nothing useful to cluster on.
+    their own singleton cluster — nothing useful to cluster on — unless
+    they carry an explicit assignment.
     """
     if not blocks:
         return []
 
-    groups: list[list[Any]] = []
+    assignments = assignments or {}
+
+    # Pre-seed pinned groups in the order their first block appears.
+    # Preserves the cluster-id ordering caller wanted.
+    pinned_groups: dict[str, list[Any]] = {}
+    pinned_order: list[str] = []
+    auto_groups: list[list[Any]] = []
 
     for block in blocks:
+        block_id = str(getattr(block, "block_id", ""))
+        if block_id in assignments:
+            cid = assignments[block_id]
+            if cid not in pinned_groups:
+                pinned_groups[cid] = []
+                pinned_order.append(cid)
+            pinned_groups[cid].append(block)
+            continue
+
+        # Unpinned — run normal first-fit across pinned + auto groups.
         targets = getattr(block, "season_targets", None) or {}
         n_prop, p_prop, k_prop, total = _npk_ratio(targets)
         if total < 0.01:
-            groups.append([block])
+            auto_groups.append([block])
             continue
 
         placed = False
-        for g in groups:
-            ref = g[0]
-            ref_targets = getattr(ref, "season_targets", None) or {}
+        # Try pinned first (caller's intent wins on ties), then auto.
+        for g in list(pinned_groups.values()) + auto_groups:
+            ref = next(
+                (b for b in g if getattr(b, "season_targets", None)),
+                None,
+            )
+            if ref is None:
+                continue
+            ref_targets = ref.season_targets or {}
             rn, rp, rk, rtotal = _npk_ratio(ref_targets)
             if rtotal < 0.01:
                 continue
@@ -150,9 +182,9 @@ def cluster_blocks_by_npk(
                 placed = True
                 break
         if not placed:
-            groups.append([block])
+            auto_groups.append([block])
 
-    return groups
+    return [pinned_groups[cid] for cid in pinned_order] + auto_groups
 
 
 def _build_samples_and_weights(
@@ -274,13 +306,42 @@ def aggregate_cluster(
 def cluster_and_aggregate(
     blocks: list[Any],
     margin: float = 0.25,
+    assignments: Optional[dict[str, str]] = None,
 ) -> list[ClusterAggregate]:
     """End-to-end: cluster by NPK ratio, then aggregate each cluster.
 
-    Returned list is in cluster order; `cluster_id` is assigned A, B, C…
+    `assignments` (block_id → cluster_id) pins specific blocks to named
+    clusters; unassigned blocks fall through to first-fit. Pinned cluster
+    IDs are preserved as-is in the output (e.g. "A", "B"); auto-clusters
+    are numbered after them with the next available letter.
     """
-    groups = cluster_blocks_by_npk(blocks, margin=margin)
-    return [
-        aggregate_cluster(g, cluster_id=chr(65 + i))
-        for i, g in enumerate(groups)
-    ]
+    assignments = assignments or {}
+    groups = cluster_blocks_by_npk(blocks, margin=margin, assignments=assignments)
+
+    # Pinned cluster IDs come from assignments; auto-clusters get the
+    # next letter that isn't already used.
+    pinned_ids: list[str] = []
+    seen: set[str] = set()
+    for cid in assignments.values():
+        if cid not in seen:
+            pinned_ids.append(cid)
+            seen.add(cid)
+
+    used: set[str] = set(pinned_ids)
+    out: list[ClusterAggregate] = []
+    pinned_count = len(pinned_ids)
+    next_auto_idx = 0
+    for i, g in enumerate(groups):
+        if i < pinned_count:
+            cid = pinned_ids[i]
+        else:
+            # Skip letters already pinned
+            while True:
+                candidate = chr(65 + next_auto_idx)
+                next_auto_idx += 1
+                if candidate not in used:
+                    cid = candidate
+                    used.add(cid)
+                    break
+        out.append(aggregate_cluster(g, cluster_id=cid))
+    return out
