@@ -127,9 +127,9 @@ export function ComboBox({
               No items yet
             </div>
           )}
-          {filtered.map((item) => (
+          {filtered.map((item, idx) => (
             <button
-              key={String(item.id)}
+              key={String(item.id ?? item[displayKey] ?? idx)}
               type="button"
               className="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm flex items-center justify-between"
               onMouseDown={(e) => e.preventDefault()}

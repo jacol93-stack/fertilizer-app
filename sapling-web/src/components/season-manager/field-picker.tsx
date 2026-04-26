@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -311,10 +311,77 @@ interface FieldRowCardProps {
   analyses: SoilAnalysis[];
 }
 
+// Wizard fields that mirror the field record (single source of truth for
+// physical / cultivar attributes). Edits to these fan out to a debounced
+// PATCH on the field row, so corrections made during the build are visible
+// next time. yield_target stays programme-scoped — it varies per season.
+const FIELD_WRITEBACK_KEYS = new Set([
+  "cultivar", "tree_age", "pop_per_ha", "area_ha", "crop", "soil_analysis_id",
+]);
+
+// Wizard block keys → field record column names (most match, area_ha differs).
+const FIELD_COLUMN_FOR_BLOCK_KEY: Record<string, string> = {
+  area_ha: "size_ha",
+  soil_analysis_id: "latest_analysis_id",
+};
+
+function pickWritebackPayload(patch: Partial<Block>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(patch)) {
+    if (!FIELD_WRITEBACK_KEYS.has(k)) continue;
+    const col = FIELD_COLUMN_FOR_BLOCK_KEY[k] ?? k;
+    out[col] = v;
+  }
+  return out;
+}
+
+type WritebackStatus = "idle" | "saving" | "saved" | "error";
+
 function FieldRowCard({
   field, selected, block, onToggle, onUpdate, expanded, onExpand, crops, analyses,
 }: FieldRowCardProps) {
   const crop = block?.crop || "";
+
+  // Debounced writeback — last-write-wins. Multiple keystrokes within the
+  // window collapse into one PATCH carrying the latest values.
+  const pendingRef = useRef<Record<string, unknown>>({});
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [writebackStatus, setWritebackStatus] = useState<WritebackStatus>("idle");
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Intercept block updates: always update local state via onUpdate;
+  // additionally PATCH the field record for writeback keys (debounced).
+  const handleUpdate = (patch: Partial<Block>) => {
+    onUpdate(patch);
+    const writeback = pickWritebackPayload(patch);
+    if (Object.keys(writeback).length === 0 || !field.id) return;
+    pendingRef.current = { ...pendingRef.current, ...writeback };
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(async () => {
+      const payload = pendingRef.current;
+      pendingRef.current = {};
+      timerRef.current = null;
+      setWritebackStatus("saving");
+      try {
+        await api.patch(`/api/clients/fields/${field.id}`, payload);
+        setWritebackStatus("saved");
+        if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+        savedTimerRef.current = setTimeout(() => setWritebackStatus("idle"), 1500);
+      } catch (err) {
+        console.error("Field writeback failed", err);
+        setWritebackStatus("error");
+        toast.error("Saved to programme but couldn't update field record");
+      }
+    }, 600);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    };
+  }, []);
+
   // Build a CheckableBlock off the selected wizard block. If crop is
   // set, pass its crop_type through so perennial-only checks fire
   // (tree_age, pop_per_ha).
@@ -373,28 +440,40 @@ function FieldRowCard({
               </div>
               {selected && (
                 <div className="mt-1 flex flex-wrap items-center gap-3 text-xs">
-                  <label className="flex items-center gap-1.5 text-muted-foreground">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
                     <Leaf className="size-3" />
                     <span>Crop</span>
-                    <div className="w-36">
-                      <ComboBox
-                        label=""
-                        placeholder="Select crop..."
-                        items={crops.map((c) => ({ name: c.crop, value: c.crop }))}
-                        value={crop}
-                        onChange={(val) => onUpdate({ crop: val })}
-                        onSelect={(item) => {
-                          const c = crops.find((cr) => cr.crop === (item.value as string));
-                          onUpdate({ crop: item.value as string, yield_unit: c?.yield_unit || "" });
-                        }}
-                      />
-                    </div>
-                  </label>
+                    {field.crop ? (
+                      // Crop already set on the field record — show as
+                      // static text. Edit happens upstream via the field
+                      // drawer (single source of truth for field data).
+                      <span className="font-medium text-[var(--sapling-dark)]">
+                        {field.crop}
+                        {field.cultivar ? ` · ${field.cultivar}` : ""}
+                      </span>
+                    ) : (
+                      // Field has no crop — let the user pick one inline
+                      // (rare, but happens for incomplete field records).
+                      <div className="w-36">
+                        <ComboBox
+                          label=""
+                          placeholder="Select crop..."
+                          items={crops.map((c) => ({ name: c.crop, value: c.crop }))}
+                          value={crop}
+                          onChange={(val) => handleUpdate({ crop: val })}
+                          onSelect={(item) => {
+                            const c = crops.find((cr) => cr.crop === (item.value as string));
+                            handleUpdate({ crop: item.value as string, yield_unit: c?.yield_unit || "" });
+                          }}
+                        />
+                      </div>
+                    )}
+                  </span>
                   <label className="flex items-center gap-1.5 text-muted-foreground">
                     <span>Soil analysis</span>
                     <select
                       value={block?.soil_analysis_id || ""}
-                      onChange={(e) => onUpdate({ soil_analysis_id: e.target.value || null })}
+                      onChange={(e) => handleUpdate({ soil_analysis_id: e.target.value || null })}
                       className="rounded border bg-white px-2 py-1 text-xs text-[var(--sapling-dark)]"
                     >
                       <option value="">No analysis linked</option>
@@ -409,6 +488,22 @@ function FieldRowCard({
                 </div>
               )}
             </div>
+            {selected && writebackStatus !== "idle" && (
+              <span
+                className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                  writebackStatus === "saved"
+                    ? "bg-green-50 text-green-700"
+                    : writebackStatus === "error"
+                      ? "bg-red-50 text-red-700"
+                      : "bg-gray-100 text-gray-600"
+                }`}
+                title="Edits to cultivar / tree age / crop / soil analysis sync to the field record. Yield target is programme-scoped only."
+              >
+                {writebackStatus === "saving" && "saving…"}
+                {writebackStatus === "saved" && "saved to field"}
+                {writebackStatus === "error" && "field save failed"}
+              </span>
+            )}
             {selected && (
               <Button variant="ghost" size="sm" onClick={onExpand} className="h-6 px-2 text-xs">
                 {expanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
@@ -425,7 +520,7 @@ function FieldRowCard({
               <Input
                 className="h-8 text-sm"
                 value={block?.cultivar || ""}
-                onChange={(e) => onUpdate({ cultivar: e.target.value })}
+                onChange={(e) => handleUpdate({ cultivar: e.target.value })}
               />
             </div>
             <div className="space-y-1">
@@ -443,7 +538,7 @@ function FieldRowCard({
                 className="h-8 text-sm"
                 type="number"
                 value={block?.tree_age ?? ""}
-                onChange={(e) => onUpdate({ tree_age: e.target.value ? parseInt(e.target.value) : null })}
+                onChange={(e) => handleUpdate({ tree_age: e.target.value ? parseInt(e.target.value) : null })}
               />
             </div>
           </div>
