@@ -436,6 +436,218 @@ def update_field(field_id: str, body: FieldUpdate, user: CurrentUser = Depends(g
     return result.data[0]
 
 
+# ── Bulk import: fields + yields ─────────────────────────────────────────────
+
+
+class BulkFieldRow(BaseModel):
+    """One row in a fields-bulk-import payload. Same shape as FieldCreate
+    plus a stable `key` the importer uses to match rows on retry."""
+    key: str = Field(..., max_length=200)  # block name or external id
+    name: str = Field(..., min_length=1, max_length=200)
+    size_ha: Optional[float] = Field(None, gt=0, le=100_000)
+    crop: Optional[str] = Field(None, max_length=200)
+    cultivar: Optional[str] = Field(None, max_length=200)
+    crop_type: Optional[str] = Field(None, pattern=r"^(?i)(annual|perennial)$")
+    planting_date: Optional[str] = Field(None, max_length=20)
+    tree_age: Optional[int] = Field(None, ge=0, le=200)
+    pop_per_ha: Optional[int] = Field(None, gt=0, le=1_000_000)
+    yield_target: Optional[float] = Field(None, gt=0, le=1_000_000)
+    yield_unit: Optional[str] = Field(None, max_length=50)
+    irrigation_type: Optional[str] = Field(None, pattern=r"^(drip|pivot|micro|flood|none)$")
+    fertigation_capable: Optional[bool] = None
+    soil_type: Optional[str] = Field(None, max_length=100)
+    notes: Optional[str] = None
+
+
+class BulkFieldsRequest(BaseModel):
+    farm_id: str
+    rows: list[BulkFieldRow] = Field(..., min_length=1, max_length=500)
+    # 'skip' = leave existing fields with the same name on the farm
+    # 'update' = patch existing matches in-place
+    on_conflict: str = Field("skip", pattern=r"^(skip|update)$")
+
+
+class BulkFieldsResult(BaseModel):
+    created: int
+    updated: int
+    skipped: int
+    fields: list[dict]
+
+
+@router.post("/farms/{farm_id}/fields/bulk", response_model=BulkFieldsResult, status_code=201)
+def bulk_create_fields(
+    farm_id: str,
+    body: BulkFieldsRequest,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Bulk-create fields under a farm from a parsed CSV/spreadsheet.
+
+    Matches existing fields by (farm_id, name). on_conflict controls
+    duplicate handling: 'skip' (default) leaves them alone, 'update'
+    patches them with the new row's non-null values.
+    """
+    if body.farm_id != farm_id:
+        raise HTTPException(400, "farm_id mismatch between path and body")
+
+    sb = get_supabase_admin()
+    _check_farm_access(sb, farm_id, user)
+
+    # Pre-fetch existing fields on this farm so we can match by name
+    existing = (
+        sb.table("fields").select("*").eq("farm_id", farm_id).execute().data or []
+    )
+    existing_by_name = {f["name"].strip().lower(): f for f in existing}
+
+    created: list[dict] = []
+    updated: list[dict] = []
+    skipped: list[dict] = []
+
+    for row in body.rows:
+        norm_name = row.name.strip().lower()
+        match = existing_by_name.get(norm_name)
+        # Build payload from non-null values only
+        payload = row.model_dump(exclude_none=True, exclude={"key"})
+        if "crop_type" in payload and payload["crop_type"]:
+            payload["crop_type"] = payload["crop_type"].lower()
+
+        if match:
+            if body.on_conflict == "update":
+                update_payload = {k: v for k, v in payload.items() if k != "name"}
+                if update_payload:
+                    res = sb.table("fields").update(update_payload).eq("id", match["id"]).execute()
+                    if res.data:
+                        updated.append(res.data[0])
+                        _audit(sb, user, "bulk_update", "fields", match["id"], {"row_key": row.key})
+                        continue
+            skipped.append(match)
+            continue
+
+        payload["farm_id"] = farm_id
+        res = sb.table("fields").insert(payload).execute()
+        if res.data:
+            created.append(res.data[0])
+            _audit(sb, user, "bulk_create", "fields", res.data[0]["id"], {"row_key": row.key})
+
+    return BulkFieldsResult(
+        created=len(created),
+        updated=len(updated),
+        skipped=len(skipped),
+        fields=created + updated + skipped,
+    )
+
+
+# ── Bulk yield records ──────────────────────────────────────────────────────
+
+
+class BulkYieldRow(BaseModel):
+    """One yield record in a bulk import. Field is matched by name within
+    the farm; if it doesn't exist the row is reported as unmatched (no
+    auto-create — yields without a backing field aren't useful).
+    """
+    field_name: str = Field(..., min_length=1, max_length=200)
+    season: str = Field(..., min_length=1, max_length=50)  # e.g. "2024/25"
+    yield_actual: float = Field(..., gt=0, le=1_000_000)
+    yield_unit: str = Field(..., min_length=1, max_length=50)  # "t/ha", "t NIS/ha", etc.
+    harvest_date: Optional[str] = None
+    source: str = Field("imported", max_length=50)
+    notes: Optional[str] = None
+
+
+class BulkYieldsRequest(BaseModel):
+    farm_id: str
+    rows: list[BulkYieldRow] = Field(..., min_length=1, max_length=2000)
+    # 'skip' = leave existing (field_id, season) yields alone
+    # 'update' = overwrite the actual value
+    on_conflict: str = Field("skip", pattern=r"^(skip|update)$")
+
+
+class BulkYieldsResult(BaseModel):
+    created: int
+    updated: int
+    skipped: int
+    unmatched: list[str]  # field_names with no matching field on the farm
+
+
+@router.post("/farms/{farm_id}/yields/bulk", response_model=BulkYieldsResult, status_code=201)
+def bulk_create_yields(
+    farm_id: str,
+    body: BulkYieldsRequest,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Bulk-create yield_records under a farm. Matches each row's
+    field_name against existing fields on the farm; unmatched rows are
+    reported back in `unmatched`.
+
+    Conflict on (field_id, season) is the table's unique constraint;
+    on_conflict='update' overwrites yield_actual + harvest_date + notes,
+    'skip' leaves the existing row.
+    """
+    if body.farm_id != farm_id:
+        raise HTTPException(400, "farm_id mismatch between path and body")
+
+    sb = get_supabase_admin()
+    _check_farm_access(sb, farm_id, user)
+
+    fields = (
+        sb.table("fields").select("id, name").eq("farm_id", farm_id).execute().data or []
+    )
+    by_name = {f["name"].strip().lower(): f["id"] for f in fields}
+
+    field_ids = [v for v in by_name.values()]
+    existing_yields_rows = []
+    if field_ids:
+        existing_yields_rows = (
+            sb.table("yield_records")
+            .select("id, field_id, season")
+            .in_("field_id", field_ids)
+            .execute()
+            .data
+            or []
+        )
+    existing_by_pair = {(y["field_id"], y["season"]): y for y in existing_yields_rows}
+
+    created = 0
+    updated = 0
+    skipped = 0
+    unmatched: list[str] = []
+
+    for row in body.rows:
+        field_id = by_name.get(row.field_name.strip().lower())
+        if not field_id:
+            unmatched.append(row.field_name)
+            continue
+        existing = existing_by_pair.get((field_id, row.season))
+        payload = {
+            "field_id": field_id,
+            "season": row.season,
+            "yield_actual": row.yield_actual,
+            "yield_unit": row.yield_unit,
+            "harvest_date": row.harvest_date,
+            "source": row.source,
+            "notes": row.notes,
+            "created_by": user.id,
+        }
+        if existing:
+            if body.on_conflict == "update":
+                sb.table("yield_records").update({
+                    k: v for k, v in payload.items()
+                    if k not in ("field_id", "season", "created_by")
+                }).eq("id", existing["id"]).execute()
+                updated += 1
+                _audit(sb, user, "bulk_update", "yield_records", existing["id"])
+            else:
+                skipped += 1
+            continue
+        res = sb.table("yield_records").insert(payload).execute()
+        if res.data:
+            created += 1
+            _audit(sb, user, "bulk_create", "yield_records", res.data[0]["id"])
+
+    return BulkYieldsResult(
+        created=created, updated=updated, skipped=skipped, unmatched=unmatched,
+    )
+
+
 @router.delete("/fields/{field_id}", status_code=200)
 def delete_field(field_id: str, user: CurrentUser = Depends(get_current_user)):
     """Delete a field."""

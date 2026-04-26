@@ -531,6 +531,12 @@ export default function ClientHubPage() {
             <Upload className="size-3.5" />
             Upload Lab Results
           </Button>
+          <Link href={`/clients/${clientId}/import`}>
+            <Button size="sm" variant="outline">
+              <Upload className="size-3.5" />
+              Bulk Import
+            </Button>
+          </Link>
           <Link href={`/clients/${clientId}/documents`}>
             <Button size="sm" variant="outline">
               <FileText className="size-3.5" />
