@@ -65,11 +65,10 @@
 --
 -- 3. Citrus organic carbon — no SA-specific number found. Left NULL.
 --
--- 4. The "Manson & Sheard 2007 SAJEV citrus" reference in the existing
---    tests/fixtures/FERTASA_CROSSCHECK.md appears to be misattributed —
---    the publicly-accessible 2007 paper is the Macadamia Fertilization
---    in KwaZulu-Natal one, not citrus. Flag for the next FERTASA cross-
---    check pass.
+-- 4. The research agent flagged a possible Manson & Sheard 2007
+--    misattribution; verified false positive on review. The fixture
+--    correctly cites the KZN macadamia paper (academia.edu/58269049)
+--    for mac N triangulation; no citrus claim made.
 --
 -- ─── ROW COUNT SUMMARY ───────────────────────────────────────────────
 --   fertasa_soil_norms: +9 rows (5 avo, 3 citrus, 1 alt method)

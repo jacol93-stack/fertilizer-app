@@ -1,0 +1,168 @@
+South African Avocado Growers' Association Yearbook 1990. 13:8-10
+
+Fertilisation guidelines for high yields and good fruit quality in avocado
+
+SAAGA Research and Technical Committee
+PO Box 866, Tzaneen 0850
+
+Authors / working group: Dr J S Köhne (Convener), Messrs T J Koen, C J Partridge,
+D Westcott, A W Whiley, D B Woods, R A Abercrombie, J Botha, D Farrell.
+
+This is the canonical SA avocado soil + leaf norms reference cited by FERTASA
+5.7.1.1. Migration 080_citrus_avo_data_fill.sql seeds Avocado fertasa_soil_norms +
+crop_sufficiency_overrides rows from Table 2 below.
+
+============================================================================
+INTRODUCTION
+============================================================================
+
+Three working-group conclusions:
+  1. Standardise the index leaf used for leaf analysis.
+  2. Re-establish leaf-analysis norms via research using that standardised leaf.
+  3. Adopt the phenological growth-cycle approach for avocado tree management.
+
+============================================================================
+SITE SELECTION (citing Nel 1983)
+============================================================================
+
+Per Nel (1983), an avocado-suitable soil should have:
+  - Red colour
+  - Clay content 20-40%
+  - Well-drained
+  - No compacted, clayey or patchy layers
+  - Soil depth > 2 m
+  - pH (water) ~ 6.0
+
+============================================================================
+ESTABLISHMENT (Years 1-3)
+============================================================================
+
+Bower (1980): no extra fertiliser in the planting hole.
+Koen & Langenegger (1980): year-1 trees do well with no soil-applied fertiliser.
+
+Foliar Zn + B essential because suitable soils are typically very low in both
+(Wolstenholme 1987). Apply monthly during active flushing:
+  - Zinc: 200 g zinc oxide / 100 L water
+  - Boron: 100 g Solubor / 100 L water
+  - Combinable in one tank; spray during cool periods.
+
+Chronic boron deficiencies: soil Solubor 4 g/m² drip area, spring or summer
+(Whiley pers comm).
+
+TABLE 1 — Kg of N, P and K per annum per ha in the first three years of growth
+
+  Age (years) | LAN (28% N) or eq | Superphosphate (11.3% P) | KCl (50% K)
+  ------------+-------------------+--------------------------+------------
+  1           | 10                | 15                       | 5
+  2           | 15                | 20                       | 10
+  3           | 25                | 25                       | 15
+
+============================================================================
+LEAF AND SOIL ANALYSIS
+============================================================================
+
+Sampling
+--------
+Leaf samples: from non-fruiting branches not showing flush signs (Koen &
+Langenegger 1981). Take when the summer flush ends (March/April). Same trees
+sampled season to season.
+
+Soil samples: from a uniform sampling area; two depths (0-15 cm and 15-30 cm)
+kept separate; 500 g - 1 kg per analysis.
+
+============================================================================
+TABLE 2 — LEAF AND SOIL ANALYSIS NORMS PER AVOCADO
+============================================================================
+
+SOIL ANALYSIS NORMS
+
+  Element                    | Shortage | Below normal | Normal     | Above normal | Excess | Measured in
+  ---------------------------+----------+--------------+------------+--------------+--------+--------------
+  Phosphorus (Bray 1)  (P)   | 20       | 21 - 29      | 30 - 90    | 91 - 129     | 130    | mg/kg of soil
+  Phosphorus (Hars)    (P)   | 2        | 3 - 7        | 8 - 27     | 28 - 45      | 46     | mg/kg of soil
+  Potassium            (K)   | 100      | 101 - 149    | 150 - 250  | 251 - 499    | 500    | mg/kg of soil
+  Calcium              (Ca)  | 250      | 251 - 749    | 750 - 1000 |              |        | mg/kg of soil
+  Magnesium            (Mg)  | 50       | 51 - 99      | 100 - 300  |              |        | mg/kg of soil
+  Aluminium            (Al)  |          |              | 0 - 30     |              |        | mg/kg of soil
+  pH (water)                 | 4.5      | 4.6 - 5.4    | 5.5 - 6.5  | 6.6 - 7.5    | 7.6    |
+  Resistance                 |          |              | > 500      |              |        | Ohms
+  Ca:Mg Ratio                |          |              | 2.5 - 5    |              |        |
+  (Ca + Mg) : K Ratio        |          |              | 5 - 10     |              |        |
+
+LEAF ANALYSIS NORMS (% of dm unless noted)
+
+  Element              | Shortage | Below normal | Normal      | Above normal | Excess | Unit
+  ---------------------+----------+--------------+-------------+--------------+--------+-------------
+  Nitrogen (Hass)  (N) | 1.40     | 1.41 - 2.19  | 2.20 - 2.40 | 2.41 - 2.69  | 2.70   | % dm
+  Nitrogen (Fuerte)(N) | 1.30     | 1.31 - 1.69  | 1.70 - 2.00 | 2.01 - 2.49  | 2.50   | % dm
+  Nitrogen (Other) (N) | 1.30     | 1.31 - 1.89  | 1.90 - 2.20 | 2.21 - 2.49  | 2.50   | % dm
+  Phosphorus       (P) | 0.05     | 0.06 - 0.07  | 0.08 - 0.15 | 0.16 - 0.24  | 0.25   | % dm
+  Potassium        (K) | 0.35     | 0.36 - 0.74  | 0.75 - 1.25 | 1.26 - 2.24  | 2.25   | % dm
+  Calcium          (Ca)| 0.50     | 0.51 - 0.99  | 1.00 - 2.00 | 2.01 - 2.99  | 3.00   | % dm
+  Magnesium        (Mg)| 0.25     | 0.26 - 0.39  | 0.40 - 0.80 | 0.81 - 0.99  | 1.00   | % dm
+  Sodium           (Na)|          |              | 0.01 - 0.06 | 0.06 - 0.24  | 0.25   | % dm
+  Sulphur          (S) | 0.05     | 0.06 - 0.19  | 0.20 - 0.60 | 0.61 - 0.99  | 1.00   | % dm
+  Chlorine         (Cl)|          |              | 0.07 - 0.23 |              | 0.25   | % dm
+  Copper           (Cu)| 3        | 4            | 5 - 15      | 16 - 24      | 25     | mg/kg dm
+  Iron             (Fe)| 40       | 41 - 49      | 50 - 150    | 151 - 249    | 250    | mg/kg dm
+  Manganese        (Mn)| 19       | 20 - 49      | 50 - 250    | 251 - 749    | 750    | mg/kg dm
+  Molybdenum       (Mo)| 0.01     | 0.02 - 0.04  | 0.05 - 1.00 |              |        | mg/kg dm
+  Zinc             (Zn)| 20       | 21 - 24      | 25 - 100    | 101 - 299    | 300    | mg/kg dm
+  Boron            (B) | 14       | 15 - 49      | 50 - 80     | 81 - 149     | 150    | mg/kg dm
+
+============================================================================
+INTERPRETATION
+============================================================================
+
+Compare each year's results vs Table 2 norms and previous results. Above-
+normal results: cut out the relevant fertiliser entirely for a year+. "It is
+worse to overreact and apply fertiliser, than to do nothing if any of the
+factors affecting results are in question" (Partridge 1989).
+
+============================================================================
+FERTILISATION IN ESTABLISHED ORCHARDS
+============================================================================
+
+Time per phenological cycle (Fig. 1, Fig. 2). Three growth stages: root,
+shoot, reproductive.
+
+Manipulator vs non-manipulator nutrients:
+  - Nitrogen: ONLY manipulator. Timing critical; apply Jan/Feb after fruit-drop.
+    Earlier = vegetative growth → increased fruit-drop. Summer-flush nutrition
+    influences current + future productivity (Whiley, Saranah, Cull, Pegg 1988).
+  - Non-manipulators: P, K, Zn, B, Ca, Mg, S, Fe, Cu, Mn. Broad optimal band;
+    timing not critical but maintain levels in soil + leaf optimal ranges.
+
+TABLE 3 — Kg of N, P and K per annum in established orchards
+
+  LAN (28% N) or eq | Superphosphate (11.3% P) | KCl (50% K)
+  ------------------+--------------------------+------------
+  25 - 50           | 25 - 50                  | 25 - 50
+
+============================================================================
+MULCHING
+============================================================================
+
+Cover crops: legumes where soil low N + root rot present. High C:N covers
+(oats, maize, wheat, napier grass) where soil N excessive. Oats may also
+antagonise Phytophthora (Wolstenholme 1990).
+
+============================================================================
+REFERENCES
+============================================================================
+
+BOWER, J P, 1980. Planting and early care of avocados.
+  Farming in South Africa, Avocados D. 4.
+KOEN, T J, and LANGENEGGER, W, 1980. Soil preparation for avocados.
+  Farming in South Africa, Avocados D. 2.
+KOEN, T J, and LANGENEGGER, W, 1981. Leaf analysis of the avocado.
+  Farming in South Africa, Avocados E. 3.
+NEL, D J, 1983. Soil requirements for avocado cultivation.
+  Farming in South Africa, Avocados E. 2.
+PARTRIDGE, C, 1989. Leaf and soil analysis interpretation. Avokad, vol 9, No 3.
+WHILEY, A W, SARANAH, J B, CULL, B W, PEGG, K G, 1988.
+  Manage avocado tree growth cycles for productivity gains. Avokad, vol 8, No 2.
+WOLSTENHOLME, B N, 1987. Are we catering for the avocado's boron needs?
+  Avokad, vol 7, No 5.
+WOLSTENHOLME, B N, 1990. (Phytophthora antagonism by oats — referenced in text;
+  full citation not provided in original paper.)
