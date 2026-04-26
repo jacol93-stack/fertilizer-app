@@ -886,6 +886,209 @@ async def archive_programme(
 
 
 # ============================================================
+# Season Tracker (artifact_applications + artifact_adjustments)
+# ============================================================
+
+class ApplicationRecord(BaseModel):
+    block_id: str = Field(..., min_length=1, max_length=200)
+    actual_date: date
+    planned_blend_ref: Optional[str] = None
+    product_label: Optional[str] = Field(None, max_length=300)
+    rate_kg_ha: Optional[float] = Field(None, ge=0)
+    rate_l_ha: Optional[float] = Field(None, ge=0)
+    method: Optional[str] = Field(None, max_length=100)
+    notes: Optional[str] = None
+
+
+def _check_artifact_access(supabase, artifact_id: UUID, user: CurrentUser) -> dict:
+    """Read artifact + enforce per-user scope. Returns the row dict."""
+    query = supabase.table("programme_artifacts").select("*").eq("id", str(artifact_id))
+    if user.role != "admin":
+        query = query.eq("user_id", user.id)
+    result = query.limit(1).execute()
+    if not result.data:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Programme not found")
+    return result.data[0]
+
+
+def _classify_variance(
+    artifact_row: dict, block_id: str, actual_date: date, rate: Optional[float],
+) -> str:
+    """Compare an actual application to the artifact's planned schedule.
+
+    Returns:
+      - 'on_plan'      — found a planned event within ±2 weeks of actual,
+                         and (if rate given) within ±10% of planned rate
+      - 'off_plan'     — date or rate diverges from the closest plan
+      - 'unscheduled'  — no planned event for this block at this time of season
+    """
+    artifact = artifact_row.get("artifact") or {}
+    blends = artifact.get("blends") or []
+    closest_delta_days = None
+    closest_rate_diff_pct = None
+    for blend in blends:
+        if blend.get("block_id") != block_id:
+            continue
+        for ev in (blend.get("applications") or []):
+            ev_date_str = ev.get("event_date")
+            if not ev_date_str:
+                continue
+            try:
+                ev_date = date.fromisoformat(ev_date_str[:10])
+            except ValueError:
+                continue
+            delta = abs((ev_date - actual_date).days)
+            if closest_delta_days is None or delta < closest_delta_days:
+                closest_delta_days = delta
+                # Try to pull a rate from the blend's raw_products
+                if rate is not None:
+                    blend_rate = 0.0
+                    for p in (blend.get("raw_products") or []):
+                        rstr = p.get("rate_per_event_per_ha") or ""
+                        try:
+                            num = float(rstr.split()[0]) if rstr else 0.0
+                            blend_rate += num
+                        except ValueError:
+                            pass
+                    if blend_rate > 0:
+                        closest_rate_diff_pct = abs(rate - blend_rate) / blend_rate * 100
+    if closest_delta_days is None:
+        return "unscheduled"
+    if closest_delta_days <= 14 and (closest_rate_diff_pct is None or closest_rate_diff_pct <= 10):
+        return "on_plan"
+    return "off_plan"
+
+
+@router.get("/{artifact_id}/applications")
+async def list_applications(
+    artifact_id: UUID,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """All actual applications recorded against this programme, newest first."""
+    supabase = get_supabase_admin()
+    _check_artifact_access(supabase, artifact_id, user)
+    result = (
+        supabase.table("artifact_applications")
+        .select("*")
+        .eq("artifact_id", str(artifact_id))
+        .order("actual_date", desc=True)
+        .execute()
+    )
+    return result.data or []
+
+
+@router.post("/{artifact_id}/applications", status_code=status.HTTP_201_CREATED)
+async def record_application(
+    artifact_id: UUID,
+    body: ApplicationRecord,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Record an actual application against a programme block.
+
+    Variance is classified at insert time by comparing the actual_date
+    + rate_kg_ha to the artifact's planned blends[].applications.
+    """
+    supabase = get_supabase_admin()
+    artifact_row = _check_artifact_access(supabase, artifact_id, user)
+    rate = body.rate_kg_ha if body.rate_kg_ha is not None else body.rate_l_ha
+    variance = _classify_variance(artifact_row, body.block_id, body.actual_date, rate)
+    payload = body.model_dump(exclude_none=True)
+    payload["actual_date"] = body.actual_date.isoformat()
+    payload["artifact_id"] = str(artifact_id)
+    payload["variance_flag"] = variance
+    payload["created_by"] = user.id
+    result = supabase.table("artifact_applications").insert(payload).execute()
+    if not result.data:
+        raise HTTPException(500, "Failed to record application")
+    return result.data[0]
+
+
+@router.delete("/applications/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_application(
+    record_id: UUID,
+    user: CurrentUser = Depends(get_current_user),
+):
+    supabase = get_supabase_admin()
+    row = supabase.table("artifact_applications").select("artifact_id").eq("id", str(record_id)).execute()
+    if not row.data:
+        raise HTTPException(404, "Application record not found")
+    _check_artifact_access(supabase, UUID(row.data[0]["artifact_id"]), user)
+    supabase.table("artifact_applications").delete().eq("id", str(record_id)).execute()
+    return None
+
+
+class AdjustmentCreate(BaseModel):
+    block_id: Optional[str] = None
+    trigger_type: str = Field(..., pattern=r"^(leaf_analysis|soil_analysis|off_programme|manual)$")
+    trigger_ref: Optional[str] = None
+    proposal: str = Field(..., min_length=1)
+    severity: str = Field("info", pattern=r"^(info|warn|critical)$")
+
+
+class AdjustmentReview(BaseModel):
+    status: str = Field(..., pattern=r"^(approved|rejected|applied)$")
+    reviewer_notes: Optional[str] = None
+
+
+@router.get("/{artifact_id}/adjustments")
+async def list_adjustments(
+    artifact_id: UUID,
+    user: CurrentUser = Depends(get_current_user),
+):
+    supabase = get_supabase_admin()
+    _check_artifact_access(supabase, artifact_id, user)
+    result = (
+        supabase.table("artifact_adjustments")
+        .select("*")
+        .eq("artifact_id", str(artifact_id))
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return result.data or []
+
+
+@router.post("/{artifact_id}/adjustments", status_code=status.HTTP_201_CREATED)
+async def create_adjustment(
+    artifact_id: UUID,
+    body: AdjustmentCreate,
+    user: CurrentUser = Depends(get_current_user),
+):
+    supabase = get_supabase_admin()
+    _check_artifact_access(supabase, artifact_id, user)
+    payload = body.model_dump(exclude_none=True)
+    payload["artifact_id"] = str(artifact_id)
+    payload["created_by"] = user.id
+    result = supabase.table("artifact_adjustments").insert(payload).execute()
+    if not result.data:
+        raise HTTPException(500, "Failed to create adjustment")
+    return result.data[0]
+
+
+@router.patch("/adjustments/{adjustment_id}/review")
+async def review_adjustment(
+    adjustment_id: UUID,
+    body: AdjustmentReview,
+    user: CurrentUser = Depends(get_current_user),
+):
+    supabase = get_supabase_admin()
+    row = supabase.table("artifact_adjustments").select("artifact_id").eq("id", str(adjustment_id)).execute()
+    if not row.data:
+        raise HTTPException(404, "Adjustment not found")
+    _check_artifact_access(supabase, UUID(row.data[0]["artifact_id"]), user)
+    update = {
+        "status": body.status,
+        "reviewed_by": user.id,
+        "reviewed_at": datetime.utcnow().isoformat(),
+    }
+    if body.reviewer_notes is not None:
+        update["reviewer_notes"] = body.reviewer_notes
+    result = supabase.table("artifact_adjustments").update(update).eq("id", str(adjustment_id)).execute()
+    if not result.data:
+        raise HTTPException(500, "Failed to update adjustment")
+    return result.data[0]
+
+
+# ============================================================
 # Helpers
 # ============================================================
 

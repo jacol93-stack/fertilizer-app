@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { ArtifactView } from "@/components/programme-artifact/ArtifactView";
+import { SeasonTracker } from "@/components/season-tracker/SeasonTracker";
 import {
   archiveProgramme,
   downloadProgrammePdf,
@@ -180,6 +181,7 @@ export default function ProgrammeArtifactPage() {
           onApprove={(notes) => onTransition(State.APPROVED, notes)}
         />
         <ArtifactView artifact={data.artifact} />
+        <SeasonTracker artifactId={data.id} artifact={data.artifact} />
       </div>
     </AppShell>
   );
