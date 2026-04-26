@@ -158,6 +158,115 @@ export function mapFieldRow(row: Record<string, string>, idx: number): BulkField
   };
 }
 
+// ─── Soil analysis row mapping (lab CSV → BulkSoilAnalysisRow) ──────
+
+export interface BulkSoilAnalysisRowParsed {
+  field_name: string;
+  crop?: string | null;
+  cultivar?: string | null;
+  lab_name?: string | null;
+  analysis_date?: string | null;
+  yield_target?: number | null;
+  yield_unit?: string | null;
+  /** Canonical soil_values dict — keys match the soil_parameter_map's
+   * `soil_parameter` column. Empty / non-numeric cells become null. */
+  soil_values: Record<string, number | null>;
+  warnings: string[];
+  errors: string[];
+}
+
+const LAB_NAME_ALIASES = ["lab", "lab name", "laboratory"];
+const ANALYSIS_DATE_ALIASES = ["date", "analysis date", "sample date", "sampled"];
+
+/** Canonical soil_parameter names + their CSV header aliases. The
+ * canonical key matches what the engine + sufficiency rows use; the
+ * alias list lets imports tolerate lab-CSV variations. */
+const SOIL_PARAMETER_ALIASES: Record<string, string[]> = {
+  "pH (H2O)":     ["ph", "ph h2o", "ph water", "ph_h2o"],
+  "pH (KCl)":     ["ph kcl", "ph_kcl"],
+  "Org C":        ["org c", "organic c", "organic carbon", "oc", "carbon"],
+  "P (Bray-1)":   ["p", "p bray", "p bray 1", "p bray-1", "phosphorus", "p_bray"],
+  "P (Olsen)":    ["p olsen"],
+  "K":            ["k", "potassium"],
+  "Ca":           ["ca", "calcium"],
+  "Mg":           ["mg", "magnesium"],
+  "Na":           ["na", "sodium"],
+  "S":            ["s", "sulphur", "sulfur"],
+  "Zn":           ["zn", "zinc"],
+  "B":            ["b", "boron"],
+  "Mn":           ["mn", "manganese"],
+  "Fe":           ["fe", "iron"],
+  "Cu":           ["cu", "copper"],
+  "Mo":           ["mo", "molybdenum"],
+  "CEC":          ["cec", "cation exchange capacity"],
+  "Acid_sat_pct": ["acid sat", "acid saturation", "acid sat pct", "acidsat"],
+  "Na_base_sat_pct": ["na base sat", "na bs", "na base sat pct"],
+  "Clay":         ["clay", "clay pct", "clay percent"],
+  "N (total)":    ["n", "n total", "nitrogen", "total n"],
+  "Al":           ["al", "aluminium", "aluminum"],
+};
+
+/** Reverse-lookup: normalised CSV header → canonical soil_parameter. */
+const HEADER_TO_PARAM: Record<string, string> = (() => {
+  const out: Record<string, string> = {};
+  for (const [canonical, aliases] of Object.entries(SOIL_PARAMETER_ALIASES)) {
+    for (const a of aliases) {
+      out[normaliseHeader(a)] = canonical;
+    }
+    // Also include the canonical name itself as a header alias
+    out[normaliseHeader(canonical)] = canonical;
+  }
+  return out;
+})();
+
+export function mapSoilAnalysisRow(
+  row: Record<string, string>,
+  defaults: { lab_name?: string; analysis_date?: string },
+): BulkSoilAnalysisRowParsed {
+  const warnings: string[] = [];
+  const errors: string[] = [];
+  const field_name = (pickField(row, FIELD_NAME_ALIASES) ?? "").trim();
+  if (!field_name) errors.push("Block name is required");
+
+  const lab = pickField(row, LAB_NAME_ALIASES) ?? defaults.lab_name ?? null;
+  const date = pickField(row, ANALYSIS_DATE_ALIASES) ?? defaults.analysis_date ?? null;
+  const crop = pickField(row, CROP_ALIASES) ?? null;
+  const cultivar = pickField(row, CULTIVAR_ALIASES) ?? null;
+  const yield_target = toNumber(pickField(row, YIELD_TARGET_ALIASES));
+  const yield_unit = pickField(row, YIELD_UNIT_ALIASES) ?? null;
+
+  // Walk every column and pick out canonical soil values
+  const soil_values: Record<string, number | null> = {};
+  for (const [normHeader, raw] of Object.entries(row)) {
+    const canonical = HEADER_TO_PARAM[normHeader];
+    if (!canonical) continue;
+    if (raw == null || raw === "") continue;
+    const v = toNumber(raw);
+    if (v == null) {
+      warnings.push(`Couldn't parse ${canonical}="${raw}"`);
+      continue;
+    }
+    soil_values[canonical] = v;
+  }
+
+  if (Object.keys(soil_values).length === 0) {
+    errors.push("No recognised soil parameters in this row");
+  }
+
+  return {
+    field_name,
+    crop,
+    cultivar,
+    lab_name: lab,
+    analysis_date: date,
+    yield_target,
+    yield_unit,
+    soil_values,
+    warnings,
+    errors,
+  };
+}
+
 // ─── Yield-row mapping (Excel sheet → BulkYieldRow) ─────────────────
 
 export interface BulkYieldRowParsed {

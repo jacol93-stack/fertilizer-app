@@ -22,10 +22,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
-  ArrowLeft, Calendar, FlaskConical, Leaf, MapPin, Plus, TrendingUp,
+  AlertCircle, ArrowLeft, Calendar, FlaskConical, Leaf, MapPin, Plus, TrendingUp,
 } from "lucide-react";
 import type { Field, SoilAnalysis } from "@/lib/season-constants";
 import { Sparkline, type SparklinePoint } from "@/components/dashboard/sparkline";
+import { computeFieldInsights, type Insight } from "@/lib/field-insights";
 
 interface YieldRecord {
   id: string;
@@ -150,6 +151,24 @@ export default function FieldDashboardPage() {
     [yields],
   );
 
+  // Insights — sketched, computed client-side from the same data the
+  // sparklines + yield bars use. Pre-canned cards: trend, persistent
+  // low/high, yield vs benchmark, data gap.
+  const insights = useMemo<Insight[]>(() => {
+    const series = [...soilAnalyses]
+      .sort((a, b) => (a.analysis_date || "").localeCompare(b.analysis_date || ""))
+      .map((s) => ({
+        date: s.analysis_date || s.created_at?.slice(0, 10) || "",
+        values: (s.soil_values ?? {}) as Record<string, number>,
+      }))
+      .filter((s) => s.date);
+    const ys = sortedYields.map((y) => ({ season: y.season, yield_actual: y.yield_actual }));
+    const bm = benchmark
+      ? { low: benchmark.low_t_per_ha, typical: benchmark.typical_t_per_ha, high: benchmark.high_t_per_ha }
+      : null;
+    return computeFieldInsights(series, ys, bm);
+  }, [soilAnalyses, sortedYields, benchmark]);
+
   // Timeline — merge events from analyses, programmes, yields
   const timeline = useMemo(() => {
     type TimelineItem = {
@@ -264,6 +283,15 @@ export default function FieldDashboardPage() {
               {completeness}
             </CardContent>
           </Card>
+        )}
+
+        {/* Insights — sketched cards from soil + yield history */}
+        {insights.length > 0 && (
+          <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {insights.map((ins) => (
+              <InsightCard key={ins.id} insight={ins} />
+            ))}
+          </div>
         )}
 
         {/* Sparklines row — soil trends */}
@@ -512,6 +540,37 @@ interface HistoryListProps {
   empty: string;
   rows: Array<{ date: string; primary: string; secondary: string; href?: string }>;
   icon: React.ReactNode;
+}
+
+function InsightCard({ insight }: { insight: Insight }) {
+  const palette = (() => {
+    switch (insight.severity) {
+      case "positive": return { bg: "bg-emerald-50", border: "border-emerald-300", text: "text-emerald-900" };
+      case "warn":     return { bg: "bg-amber-50",   border: "border-amber-300",   text: "text-amber-900"   };
+      case "critical": return { bg: "bg-red-50",     border: "border-red-300",     text: "text-red-900"     };
+      default:         return { bg: "bg-blue-50",    border: "border-blue-300",    text: "text-blue-900"    };
+    }
+  })();
+  const Icon = (() => {
+    switch (insight.kind) {
+      case "trend":             return TrendingUp;
+      case "persistent_low":    return AlertCircle;
+      case "persistent_high":   return AlertCircle;
+      case "yield_vs_benchmark":return TrendingUp;
+      default:                  return AlertCircle;
+    }
+  })();
+  return (
+    <div className={`rounded-lg border ${palette.border} ${palette.bg} p-3`}>
+      <div className={`flex items-start gap-2 ${palette.text}`}>
+        <Icon className="mt-0.5 size-4 shrink-0" />
+        <div>
+          <p className="text-sm font-medium">{insight.title}</p>
+          <p className="mt-0.5 text-xs opacity-80">{insight.detail}</p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function HistoryList({ title, empty, rows, icon }: HistoryListProps) {

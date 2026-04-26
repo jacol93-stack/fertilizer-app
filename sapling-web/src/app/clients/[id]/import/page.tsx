@@ -31,8 +31,10 @@ import {
   parseCsvFile,
   mapFieldRow,
   mapYieldRow,
+  mapSoilAnalysisRow,
   type BulkFieldRowParsed,
   type BulkYieldRowParsed,
+  type BulkSoilAnalysisRowParsed,
   type ParsedSheet,
 } from "@/lib/import-csv";
 
@@ -373,30 +375,250 @@ function YieldsImport({ farmId }: { farmId: string }) {
   );
 }
 
-// ─── Analyses tab — placeholder pointing at existing batch upload ───
+// ─── Analyses tab — soil-analysis CSV bulk import ───────────────────
+
+interface FieldLookup { id: string; name: string }
 
 function AnalysesImport({ farmId, clientId }: { farmId: string; clientId: string }) {
+  const [sheet, setSheet] = useState<ParsedSheet | null>(null);
+  const [parsed, setParsed] = useState<BulkSoilAnalysisRowParsed[]>([]);
+  const [fields, setFields] = useState<FieldLookup[]>([]);
+  const [labName, setLabName] = useState("");
+  const [analysisDate, setAnalysisDate] = useState("");
+  const [conflict, setConflict] = useState<"replace" | "keep_both_new_latest">("replace");
+  const [committing, setCommitting] = useState(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [client, setClient] = useState<{ name: string } | null>(null);
+  useEffect(() => {
+    api.getAll<{ id: string; name: string }>("/api/clients")
+      .then((cs) => setClient(cs.find((c) => c.id === clientId) ?? null))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!farmId) {
+      setFields([]);
+      return;
+    }
+    api.get<FieldLookup[]>(`/api/clients/farms/${farmId}/fields`)
+      .then(setFields)
+      .catch(() => setFields([]));
+  }, [farmId]);
+
+  const handleFile = async (file: File) => {
+    try {
+      const s = await parseCsvFile(file);
+      setSheet(s);
+      setParsed(s.rows.map((r) => mapSoilAnalysisRow(r, {
+        lab_name: labName || undefined,
+        analysis_date: analysisDate || undefined,
+      })));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to parse CSV");
+    }
+  };
+
+  // Resolve field name → field_id from the farm's fields list
+  const resolveField = (name: string): string | null => {
+    const norm = name.trim().toLowerCase();
+    return fields.find((f) => f.name.trim().toLowerCase() === norm)?.id ?? null;
+  };
+
+  const enriched = parsed.map((r) => {
+    const field_id = resolveField(r.field_name);
+    return {
+      ...r,
+      field_id,
+      unmatched: !field_id,
+    };
+  });
+
+  const validRows = enriched.filter((r) => r.errors.length === 0 && r.field_id);
+  const errorRows = enriched.filter((r) => r.errors.length > 0);
+  const unmatched = enriched.filter((r) => r.errors.length === 0 && !r.field_id);
+  const clientName = client?.name ?? "";
+
+  const commit = async () => {
+    if (!farmId) {
+      toast.error("Pick a farm first");
+      return;
+    }
+    if (validRows.length === 0) {
+      toast.error("No valid rows to import");
+      return;
+    }
+    setCommitting(true);
+    setProgress({ done: 0, total: validRows.length });
+
+    // Batch endpoint accepts up to one analysis per row, but we hit it
+    // per-row to keep classification stable + give clear error feedback.
+    let okCount = 0;
+    const errors: string[] = [];
+    for (let i = 0; i < validRows.length; i++) {
+      const row = validRows[i];
+      try {
+        await api.post(`/api/soil/batch`, {
+          client_id: clientId,
+          farm_id: farmId,
+          lab_name: row.lab_name || labName || undefined,
+          analysis_date: row.analysis_date || analysisDate || undefined,
+          conflict_resolution: conflict,
+          items: [{
+            field_id: row.field_id,
+            field_name: row.field_name,
+            crop: row.crop,
+            cultivar: row.cultivar,
+            yield_target: row.yield_target,
+            yield_unit: row.yield_unit,
+            analysis_type: "soil",
+            soil_values: row.soil_values,
+          }],
+        });
+        okCount++;
+      } catch (e) {
+        errors.push(`${row.field_name}: ${e instanceof Error ? e.message : "failed"}`);
+      }
+      setProgress({ done: i + 1, total: validRows.length });
+    }
+
+    if (errors.length === 0) {
+      toast.success(`Imported ${okCount} soil analyses`);
+    } else {
+      toast.warning(
+        `${okCount} ok · ${errors.length} failed`,
+        { description: errors.slice(0, 3).join(" / ") },
+      );
+    }
+    setCommitting(false);
+    setSheet(null);
+    setParsed([]);
+  };
+
+  void clientName; // intentionally referenced for future toast detail
+
   return (
-    <Card>
-      <CardContent className="py-6">
-        <p className="text-sm text-muted-foreground">
-          Soil + leaf analyses use the existing batch-upload flow on the client page —
-          it handles PDF lab reports via the Claude vision extractor and conflict
-          resolution per field.
-        </p>
-        <Button
-          className="mt-3"
-          onClick={() => window.location.assign(`/clients/${clientId}`)}
-          disabled={!farmId}
-        >
-          Go to client page → upload lab results
-        </Button>
-        <p className="mt-3 text-xs text-amber-700">
-          A first-pass CSV importer for analyses (lab CSVs, no PDF) will land in a
-          follow-up — for the demo it&apos;s the existing batch upload.
-        </p>
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="py-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Lab name (default)</Label>
+              <input
+                value={labName}
+                onChange={(e) => setLabName(e.target.value)}
+                placeholder="e.g. NViroTek"
+                className="w-full rounded-md border bg-white px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Analysis date (default)</Label>
+              <input
+                type="date"
+                value={analysisDate}
+                onChange={(e) => setAnalysisDate(e.target.value)}
+                className="w-full rounded-md border bg-white px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">If field has a recent analysis</Label>
+              <select
+                value={conflict}
+                onChange={(e) => setConflict(e.target.value as "replace" | "keep_both_new_latest")}
+                className="w-full rounded-md border bg-white px-3 py-2 text-sm"
+              >
+                <option value="replace">Replace</option>
+                <option value="keep_both_new_latest">Keep both (new becomes latest)</option>
+              </select>
+            </div>
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Per-row Lab / Date columns in the CSV override the defaults above.
+          </p>
+        </CardContent>
+      </Card>
+
+      <FilePicker
+        accept=".csv,text/csv"
+        onFile={handleFile}
+        hint="CSV with one row per block-analysis. Headers like Block, Date, pH, P, K, Ca, Mg, Zn, B, etc. are auto-recognised."
+      />
+
+      {sheet && (
+        <Card>
+          <CardContent className="py-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-sm">
+                {parsed.length} row{parsed.length !== 1 ? "s" : ""} parsed ·
+                {" "}<span className="text-emerald-700">{validRows.length} ok</span> ·
+                {unmatched.length > 0 && (
+                  <> <span className="text-amber-700">{unmatched.length} unmatched</span> · </>
+                )}
+                {" "}<span className="text-red-700">{errorRows.length} with errors</span>
+              </p>
+            </div>
+
+            {unmatched.length > 0 && (
+              <div className="mb-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+                <p className="font-medium">Unmatched block names — won&apos;t be imported:</p>
+                <ul className="mt-1 list-disc pl-5">
+                  {unmatched.slice(0, 5).map((r, i) => (
+                    <li key={i}>{r.field_name}</li>
+                  ))}
+                  {unmatched.length > 5 && <li>… {unmatched.length - 5} more</li>}
+                </ul>
+                <p className="mt-1">
+                  Bulk-import the fields first (or rename the blocks in the CSV) and re-upload.
+                </p>
+              </div>
+            )}
+
+            <PreviewTable
+              rows={enriched.slice(0, 50)}
+              columns={[
+                ["Block", (r) => `${r.field_name}${r.field_id ? "" : " ⚠"}`],
+                ["Date", (r) => r.analysis_date ?? analysisDate ?? "—"],
+                ["Crop", (r) => r.crop ?? "—"],
+                ["Lab", (r) => r.lab_name ?? labName ?? "—"],
+                ["Params", (r) => `${Object.keys(r.soil_values).length}`],
+                ["Issues", (r) => issuesCell(r.errors, r.warnings)],
+              ]}
+            />
+            {parsed.length > 50 && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Showing first 50 rows · {parsed.length - 50} more will be processed
+              </p>
+            )}
+
+            {committing && (
+              <div className="mt-3 rounded-md border bg-muted/30 px-3 py-2 text-xs">
+                Importing… {progress.done} / {progress.total}
+                <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-gray-200">
+                  <div
+                    className="h-full bg-[var(--sapling-orange)] transition-all"
+                    style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => { setSheet(null); setParsed([]); }} disabled={committing}>
+                Discard
+              </Button>
+              <Button
+                onClick={commit}
+                disabled={committing || validRows.length === 0 || !farmId}
+                className="bg-[var(--sapling-orange)] text-white hover:bg-[var(--sapling-orange)]/90"
+              >
+                {committing
+                  ? "Importing…"
+                  : `Import ${validRows.length} analysis${validRows.length !== 1 ? "es" : ""}`}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }
 
