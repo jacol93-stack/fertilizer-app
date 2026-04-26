@@ -31,25 +31,28 @@ export const APPLICATION_METHODS = [
 // orchestrator's MethodKind enum). Anywhere the agronomist sees a
 // method choice, render the label not the enum.
 export const METHOD_LABELS: Record<string, string> = {
-  // Legacy / accepted_methods enum
+  // Display labels used by BlendGroups chips. Engine MethodKind values
+  // collapse onto this set via methodKindForBlendGroups in the wizard.
   broadcast: "Broadcast",
-  band_place: "Band placement",
-  side_dress: "Side-dressing",
-  topdress: "Top-dressing",
-  foliar: "Foliar spray",
-  drip: "Drip / fertigation",
-  fertigation: "Drip / fertigation",
+  band: "Banded",
+  side_dress: "Side-dress",
+  fertigation: "Fertigation",
+  foliar: "Foliar",
+  seed_treat: "Seed treat",
   drench: "Drench",
+  soil_basal: "Soil basal",
+  // Long-form aliases used by other surfaces (field drawer dropdowns, etc.)
+  band_place: "Band placement",
+  topdress: "Top-dressing",
+  drip: "Drip / fertigation",
   dry_blend: "Dry blend / broadcast",
   dry_side_dress: "Dry side-dressing",
-  // v2 MethodKind enum (programme_artifact.ts)
   liquid_drip: "Liquid · drip",
   liquid_pivot: "Liquid · pivot",
   liquid_sprinkler: "Liquid · sprinkler",
   dry_broadcast: "Dry · broadcast",
   dry_band: "Dry · band placement",
   dry_fertigation: "Dry · fertigation",
-  seed_treat: "Seed treatment",
 };
 
 export function methodLabel(method: string): string {

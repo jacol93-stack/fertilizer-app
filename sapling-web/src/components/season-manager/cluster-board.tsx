@@ -199,12 +199,15 @@ export function ClusterBoard(props: ClusterBoardProps) {
     return m;
   }, [previewing, blocks, assignments]);
 
-  const allUsedIds = useMemo(() => {
+  // For minting fresh recipe ids on drop. Built from the COMMITTED
+  // assignments only — never from `clusters` (which can include the
+  // in-flight drag preview's hypothetical id and would cause the next
+  // letter to skip).
+  const committedUsedIds = useMemo(() => {
     const s = new Set<string>(knownClusterIds);
-    for (const c of clusters) s.add(c.cluster_id);
     for (const id of Object.values(assignments)) s.add(id);
     return s;
-  }, [knownClusterIds, clusters, assignments]);
+  }, [knownClusterIds, assignments]);
 
   // Dataless blocks not currently attached → "Unassigned" row.
   const unassignedDataless = datalessBlocks.filter((b) => !assignments[b.block_id]);
@@ -264,7 +267,7 @@ export function ClusterBoard(props: ClusterBoardProps) {
     e.stopPropagation();
     const blockId = readDroppedBlockId(e);
     if (!blockId) return;
-    const newId = nextClusterId(allUsedIds);
+    const newId = nextClusterId(committedUsedIds);
     onAssignmentsChange({ ...assignments, [blockId]: newId });
     draggedBlockIdRef.current = null;
     setDraggedBlockId(null);

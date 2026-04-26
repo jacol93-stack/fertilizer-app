@@ -54,13 +54,17 @@ function parseRatePerHa(s: string | null | undefined): number {
 }
 
 function methodKindForBlendGroups(method: string): string {
-  // ApplicationMethod enum values map onto the legacy BlendGroups display
-  // labels (broadcast / fertigation / foliar). Drop method-specific
-  // qualifiers so the UI stays compact.
+  // Map the engine's MethodKind enum to display labels. Each variant
+  // gets its own chip so paired stages clearly show the agronomic
+  // difference (e.g. heavy basal Broadcast vs soluble Side-dress at
+  // establishment, not "Broadcast" twice).
   const m = method.toLowerCase();
   if (m.includes("foliar")) return "foliar";
-  if (m.includes("fertig")) return "fertigation";
+  if (m.includes("liquid") || m.includes("dry_fertigation")) return "fertigation";
   if (m.includes("seed")) return "seed_treat";
+  if (m.includes("drench")) return "drench";
+  if (m.includes("dry_side_dress") || m.includes("side_dress")) return "side_dress";
+  if (m.includes("dry_band") || (m.endsWith("band") && !m.includes("broadcast"))) return "band";
   if (m.includes("basal")) return "soil_basal";
   return "broadcast";
 }
@@ -107,7 +111,13 @@ function artifactToBlendGroups(
       });
     }
     const group = groupMap.get(blockId)!;
-    const method = methodKindForBlendGroups(String(blend.method));
+    // ApplicationMethod is a discriminated union object — pull the
+    // `kind` discriminator. String(blend.method) on the raw object would
+    // serialize to "[object Object]" and silently default to broadcast,
+    // which is exactly the bug that mislabelled fertigation passes as
+    // BROADCAST in the paired-card display.
+    const methodKindRaw = (blend.method as { kind?: string } | undefined)?.kind ?? "";
+    const method = methodKindForBlendGroups(methodKindRaw);
     const isFoliar = FOLIAR_METHODS.has(method);
     const recipe = (blend.raw_products || []).map((p) => ({
       material: p.product,
@@ -119,20 +129,63 @@ function artifactToBlendGroups(
     const ratePerEvent = recipe.reduce((s, r) => s + (r.kg || 0), 0);
     const events = blend.applications && blend.applications.length > 0
       ? blend.applications
-      : [{ event_index: 0, event_date: "", week_from_planting: 0 }];
-    for (const ev of events) {
-      group.applications.push({
-        stage_name: blend.stage_name,
-        month: eventDateToMonth(ev.event_date),
-        method,
-        sa_notation: blend.raw_products?.map((p) => p.analysis).filter(Boolean).join(" + ") || "",
-        rate_kg_ha: ratePerEvent,
-        recipe,
-        is_foliar: isFoliar,
-      });
+      : [];
+    // One ApplicationBlendData per Blend (per stage-method), NOT per
+    // event. Otherwise a 4-event fortnightly fertigation across 8
+    // blends per cluster blows up to ~32 rows per cluster — too noisy
+    // and misleading ("60 applications" instead of "8 application
+    // windows"). Per-event dates are summarised via dates_label.
+    const eventsCount = events.length || 1;
+    const firstMonth = events.length > 0
+      ? eventDateToMonth(events[0].event_date)
+      : 1;
+    const datesLabel = blend.dates_label || (events.length >= 2
+      ? `${formatShortDate(events[0].event_date)} → ${formatShortDate(events[events.length - 1].event_date)}`
+      : events.length === 1 ? formatShortDate(events[0].event_date) : "");
+    // Backend's nutrients_delivered is per-ha-per-STAGE (sum across all
+    // events in that stage). Normalise to per-event here so the rest of
+    // the wizard treats it consistently with rate_per_event_per_ha.
+    // Without this, SA notation overflows (e.g. shows "(176)" for what
+    // is really a 35% NPK blend applied across 5 events).
+    const nutrientsPerEvent: Record<string, number> = {};
+    if (blend.nutrients_delivered) {
+      for (const [k, v] of Object.entries(blend.nutrients_delivered)) {
+        nutrientsPerEvent[k] = v / eventsCount;
+      }
     }
+    // Fertigation injection volumes (L) — sum across Part A + Part B
+    // concentrates. Stored as TOTAL stage volume; agronomist sees both
+    // total + per-event in the display.
+    const concentrateVolumeL = (blend.concentrates || []).reduce(
+      (s, c) => s + (typeof c.volume_l === "number" ? c.volume_l : 0),
+      0,
+    );
+
+    group.applications.push({
+      stage_name: blend.stage_name,
+      month: firstMonth,
+      method,
+      // Legacy concat — kept as fallback for older artifacts that don't
+      // populate nutrients_delivered. New view prefers the computed
+      // formula derived from nutrients_per_ha + rate.
+      sa_notation: blend.raw_products?.map((p) => p.analysis).filter(Boolean).join(" + ") || "",
+      rate_kg_ha: ratePerEvent,
+      events_count: eventsCount,
+      dates_label: datesLabel,
+      nutrients_per_ha: nutrientsPerEvent,
+      recipe,
+      is_foliar: isFoliar,
+      concentrate_volume_l: concentrateVolumeL > 0 ? concentrateVolumeL : undefined,
+    });
   }
   return Array.from(groupMap.values());
+}
+
+function formatShortDate(iso: string | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-ZA", { day: "2-digit", month: "short" });
 }
 
 function SeasonBuilderPage() {

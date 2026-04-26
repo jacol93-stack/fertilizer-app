@@ -67,7 +67,7 @@ from app.services.pre_season_module import (
     recommend_pre_season_actions,
 )
 from app.services.risk_flag_generator import generate_outstanding_items, generate_risk_flags
-from app.services.similarity_merger import merge_similar_blends
+from app.services.similarity_merger import merge_compatible_within_stage, merge_similar_blends
 from app.services.soil_factor_reasoner import reason_soil_factors
 from app.services.stage_splitter import (
     StageSplit,
@@ -473,22 +473,45 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
                 crop=inputs.crop,
             )
             pre_merge_count = len(block_blends)
+
+            # First pass: merge different-product DRY blends within the
+            # same (block, stage, method) when chemistry allows. Bias
+            # toward fewer bags — agronomists prefer one combined
+            # broadcast over a basal + starter split when it's safe.
+            block_blends = merge_compatible_within_stage(
+                block_blends, block_area_ha=block.block_area_ha,
+            )
+            after_within_stage = len(block_blends)
+
+            # Second pass: F4 — merge identical-product blends across
+            # adjacent stages.
             block_blends = merge_similar_blends(
                 block_blends, crop=inputs.crop, block_area_ha=block.block_area_ha,
             )
             all_blends.extend(block_blends)
-            merged_count = pre_merge_count - len(block_blends)
-            if merged_count > 0:
+
+            within_stage_collapsed = pre_merge_count - after_within_stage
+            similarity_collapsed = after_within_stage - len(block_blends)
+            note_parts: list[str] = []
+            if within_stage_collapsed > 0:
+                note_parts.append(
+                    f"WithinStageMerger collapsed {within_stage_collapsed} dry blend(s) "
+                    f"(same stage, no chemistry conflict)"
+                )
+            if similarity_collapsed > 0:
+                note_parts.append(
+                    f"SimilarityMerger collapsed {similarity_collapsed} adjacent pair(s) "
+                    f"(same recipe, ±10% rate tolerance, no timing wall in gap)"
+                )
+            if note_parts:
                 decision_trace.append(
                     f"Block {block.block_id}: Consolidator — {pre_merge_count} blends → "
-                    f"SimilarityMerger collapsed {merged_count} adjacent pair(s) to "
-                    f"{len(block_blends)} blends (same recipe across spans, ±10% rate tolerance, "
-                    f"no timing wall in gap)"
+                    f"{len(block_blends)} blends (" + "; ".join(note_parts) + ")"
                 )
             else:
                 decision_trace.append(
                     f"Block {block.block_id}: Consolidator — {len(block_blends)} blends "
-                    f"(SimilarityMerger scanned; no adjacent pairs met merge criteria)"
+                    f"(no merges applied)"
                 )
         else:
             decision_trace.append(

@@ -48,6 +48,187 @@ RATE_TOLERANCE = 0.10  # ±10 % on per-event rate per product
 # Public entry point
 # ============================================================
 
+# Dry-blend chemistry rules — narrow set of materials that legitimately
+# can't co-exist in the same physical bag. Most "incompatibility"
+# concerns (Ca + sulphates / phosphates) are fertigation-only because
+# the granules don't dissolve in dry mixing. Conservative: only block
+# the merge when a real reaction would occur.
+DRY_INCOMPATIBLE_PAIRS: list[tuple[str, str, str]] = [
+    # (substring_a, substring_b, reason)
+    ("urea", "lime",
+     "Urea + lime/dolomite releases NH₃ — significant N loss in storage."),
+    ("urea", "calcitic",
+     "Urea + Ca-bearing materials releases NH₃ in storage."),
+    ("urea", "dolomitic",
+     "Urea + dolomitic lime releases NH₃ in storage."),
+    ("urea", "single super",
+     "Urea + SSP releases free acid that volatilises N."),
+    ("urea", "ssp",
+     "Urea + SSP releases free acid that volatilises N."),
+]
+
+
+def _dry_incompatibility(products: set[str]) -> Optional[str]:
+    """Return the reason string if any forbidden pair is present in
+    `products`, else None. `products` is a set of lowercased material
+    names."""
+    for a_sub, b_sub, reason in DRY_INCOMPATIBLE_PAIRS:
+        has_a = any(a_sub in p for p in products)
+        has_b = any(b_sub in p for p in products)
+        if has_a and has_b:
+            return reason
+    return None
+
+
+def merge_compatible_within_stage(
+    blends: list[Blend],
+    block_area_ha: float,
+) -> list[Blend]:
+    """Combine blends that share (block_id, stage_number, method_kind)
+    and have chemically-compatible product sets into a single blend.
+
+    Different from merge_similar_blends (F4): F4 requires identical
+    product sets across adjacent STAGES. This merger combines DIFFERENT
+    product sets WITHIN the same stage — collapsing the engine's "basal
+    + starter" split into one bag whenever it's safe to do so.
+
+    Conservative — only fires for dry methods (broadcast / band /
+    side-dress) where physical mixing in a bag is the relevant concern.
+    Fertigation blends keep their separate Part A / Part B structure.
+    """
+    if not blends or len(blends) == 1:
+        return list(blends)
+
+    DRY_KINDS = {
+        MethodKind.DRY_BROADCAST,
+        MethodKind.DRY_BAND,
+        MethodKind.DRY_SIDE_DRESS,
+    }
+
+    # Group by (block_id, stage_number, method_kind). Skip non-dry kinds.
+    groups: "OrderedDict[tuple[str, int, MethodKind], list[Blend]]" = OrderedDict()
+    passthrough: list[Blend] = []
+    for b in blends:
+        if b.method.kind not in DRY_KINDS:
+            passthrough.append(b)
+            continue
+        key = (b.block_id, b.stage_number, b.method.kind)
+        groups.setdefault(key, []).append(b)
+
+    out: list[Blend] = []
+    for group in groups.values():
+        if len(group) == 1:
+            out.append(group[0])
+            continue
+        # Try to merge all members into one. Conservative: if ANY pair
+        # in the union triggers an incompatibility, don't merge —
+        # leave them separate (factory mixes two bags).
+        union_products = {
+            p.product.strip().lower() for blend in group for p in blend.raw_products
+        }
+        conflict = _dry_incompatibility(union_products)
+        if conflict:
+            out.extend(group)
+            continue
+        out.append(_combine_blends(group, block_area_ha))
+    return out + passthrough
+
+
+def _combine_blends(group: list[Blend], block_area_ha: float) -> Blend:
+    """Fuse a list of dry blends sharing (block, stage, method) into
+    one. Products are unioned (additive when same product appears in
+    multiple inputs); nutrients summed; applications unioned."""
+    # Sort by earliest event so the merged stage_name + applications
+    # come out in chronological order.
+    sorted_group = sorted(group, key=lambda b: _earliest_event(b))
+    primary = sorted_group[0]
+
+    # Union applications, dedup by event_date, relabel
+    seen_dates: set[str] = set()
+    union_apps: list[ApplicationEvent] = []
+    for b in sorted_group:
+        for ev in b.applications:
+            iso = ev.event_date.isoformat() if hasattr(ev.event_date, "isoformat") else str(ev.event_date)
+            if iso in seen_dates:
+                continue
+            seen_dates.add(iso)
+            union_apps.append(ev)
+    union_apps.sort(key=lambda e: e.event_date)
+    n_events = len(union_apps)
+    relabelled_apps = [
+        ApplicationEvent(
+            event_index=ev.event_index,
+            event_date=ev.event_date,
+            week_from_planting=ev.week_from_planting,
+            event_of_stage_index=i + 1,
+            total_events_in_stage=n_events,
+        )
+        for i, ev in enumerate(union_apps)
+    ]
+
+    # Combine raw_products: same product appearing in multiple blends → sum rates
+    by_name: "OrderedDict[str, BlendPart]" = OrderedDict()
+    for b in sorted_group:
+        for p in b.raw_products:
+            key = p.product.strip().lower()
+            if key in by_name:
+                # Sum per-event rates (additive when both blends use the
+                # same product in the same event window)
+                existing = by_name[key]
+                existing_rate = _parse_kg(existing.rate_per_event_per_ha)
+                add_rate = _parse_kg(p.rate_per_event_per_ha)
+                summed = existing_rate + add_rate
+                by_name[key] = BlendPart(
+                    product=existing.product,
+                    analysis=existing.analysis,
+                    stream=existing.stream,
+                    rate_per_event_per_ha=_fmt_kg(summed),
+                    rate_per_stage_per_ha=_fmt_kg(summed * n_events) if n_events else _fmt_kg(summed),
+                    batch_total=_fmt_kg(summed * n_events * block_area_ha),
+                    source=existing.source,
+                )
+            else:
+                by_name[key] = p
+    merged_products = list(by_name.values())
+
+    # Sum delivered nutrients across the group
+    nutrients: dict[str, float] = {}
+    for b in sorted_group:
+        for k, v in b.nutrients_delivered.items():
+            nutrients[k] = nutrients.get(k, 0.0) + v
+    nutrients = {k: round(v, 1) for k, v in nutrients.items()}
+
+    # stage_name dedup so "establishment + establishment" → "establishment"
+    stage_names: list[str] = []
+    for b in sorted_group:
+        for s in _split_stage_name(b.stage_name):
+            if s not in stage_names:
+                stage_names.append(s)
+    combined_stage_name = " + ".join(stage_names)
+
+    sources = _dedup_sources([s for b in sorted_group for s in b.sources])
+    confidence = primary.confidence
+    for b in sorted_group[1:]:
+        if confidence and b.confidence:
+            a_span = confidence.pct_low + confidence.pct_high
+            b_span = b.confidence.pct_low + b.confidence.pct_high
+            if b_span > a_span:
+                confidence = b.confidence
+
+    return Blend(
+        block_id=primary.block_id,
+        stage_number=primary.stage_number,
+        stage_name=combined_stage_name,
+        applications=relabelled_apps,
+        method=primary.method,
+        raw_products=merged_products,
+        concentrates=[],
+        nutrients_delivered=nutrients,
+        sources=sources,
+        confidence=confidence,
+    )
+
+
 def merge_similar_blends(
     blends: list[Blend],
     crop: str,

@@ -257,6 +257,7 @@ def consolidate_blends(
             stage_allocations=allocations_by_stage.get(stage_num, []),
             stage_window=_first_stage_window(stage_schedule, stage_num),
             planting_date=planting_date,
+            method_kind=method_kind,
         )
         events_count = len(application_events)
 
@@ -316,11 +317,52 @@ def _first_stage_window(stage_schedule: Optional[list], stage_num: int):
     return None
 
 
+_SINGLE_EVENT_METHODS = {
+    MethodKind.DRY_BROADCAST,
+    MethodKind.DRY_BAND,
+    MethodKind.DRY_SIDE_DRESS,
+    MethodKind.SEED_TREAT,
+    MethodKind.DRENCH,
+}
+_MULTI_EVENT_FERTIGATION = {
+    MethodKind.LIQUID_DRIP,
+    MethodKind.LIQUID_PIVOT,
+    MethodKind.LIQUID_SPRINKLER,
+    MethodKind.DRY_FERTIGATION,
+}
+_FOLIAR_EVENT_CAP = 3
+
+
+def _is_single_event_method(method_kind: Optional[MethodKind]) -> bool:
+    return method_kind in _SINGLE_EVENT_METHODS
+
+
+def _events_per_stage_for_method(
+    method_kind: Optional[MethodKind], stage_window_events: int,
+) -> int:
+    """Method-aware events count for one stage.
+
+    Dry / seed_treat / drench → always 1 (single basal pass).
+    Fertigation → respect stage_window.events (typical fortnightly).
+    Foliar → respect stage_window.events but cap at 3 (timed peaks).
+    Unknown method → fall back to stage_window.events (safe default).
+    """
+    base = max(1, stage_window_events)
+    if _is_single_event_method(method_kind):
+        return 1
+    if method_kind == MethodKind.FOLIAR:
+        return min(base, _FOLIAR_EVENT_CAP)
+    if method_kind in _MULTI_EVENT_FERTIGATION:
+        return base
+    return base
+
+
 def _build_application_events(
     stage_num: int,
     stage_allocations: list[AllocatedApplication],
     stage_window,
     planting_date: Optional[date],
+    method_kind: Optional[MethodKind] = None,
 ) -> list[ApplicationEvent]:
     """Produce the ApplicationEvent list for one Blend.
 
@@ -329,8 +371,18 @@ def _build_application_events(
     all flow through.
 
     When the allocator did not run (no application_months input), we
-    synthesise a single ApplicationEvent anchored to the stage window's
-    midpoint — preserving the legacy single-event-per-stage semantics.
+    synthesise events from the stage window. Cadence is method-aware:
+
+      - dry_broadcast / dry_band / dry_side_dress / seed_treat / drench
+        → 1 event (placed at stage start). Slow-release reacts over time;
+        running a spreader fortnightly for the same basal blend is
+        operationally absurd and would multiply product totals into
+        nonsense (e.g. 179 kg/ha × 5 events = 895 kg/ha of organic carrier
+        per stage, when the agronomist intended one pass).
+      - liquid_drip / liquid_pivot / liquid_sprinkler / dry_fertigation
+        → respect stage_window.events (typical fortnightly for fertigation).
+      - foliar → respect stage_window.events but capped at 3 (precision
+        sprays at growth-stage demand peaks, not weekly).
     """
     if stage_allocations:
         return [
@@ -345,16 +397,17 @@ def _build_application_events(
         ]
 
     if stage_window is not None:
-        # Spread the stage's annotated event count evenly across its window.
-        n_events = max(1, int(getattr(stage_window, "events", 1) or 1))
+        n_events = _events_per_stage_for_method(
+            method_kind, int(getattr(stage_window, "events", 1) or 1),
+        )
         span_days = (stage_window.date_end - stage_window.date_start).days
         span_weeks = stage_window.week_end - stage_window.week_start
         events_list: list[ApplicationEvent] = []
         for i in range(n_events):
-            # Spacing: at n_events=1 → midpoint; at n_events>1 → evenly
-            # distributed between date_start and date_end.
+            # Dry/seed/drench: placed at stage start (frac=0). Multi-event
+            # methods spread evenly between start and end.
             if n_events == 1:
-                frac = 0.5
+                frac = 0.0 if _is_single_event_method(method_kind) else 0.5
             else:
                 frac = i / (n_events - 1)
             day_offset = int(round(span_days * frac))

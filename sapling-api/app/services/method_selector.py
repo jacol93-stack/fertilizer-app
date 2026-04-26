@@ -137,7 +137,10 @@ def _route_nutrient(
     crop_family: Optional[str],
 ) -> list[MethodAssignment]:
     """Decide method(s) for ONE (stage, nutrient, amount)."""
-    is_pre_plant = stage_name.lower() in ("establishment", "pre-plant", "planting")
+    # First stage of the season: "establishment" / "pre-plant" / "planting".
+    # Maps cleanly across annuals (literally pre-plant) and perennials
+    # (pre-flush / pre-budbreak — early-season nutrient buildup).
+    is_first_stage = stage_name.lower() in ("establishment", "pre-plant", "planting")
     has_liquid = (MethodKind.LIQUID_DRIP in avail or
                   MethodKind.LIQUID_PIVOT in avail or
                   MethodKind.LIQUID_SPRINKLER in avail)
@@ -172,14 +175,14 @@ def _route_nutrient(
             ))
         return out
 
-    # ----- Establishment / pre-plant stage: heavy P goes basal -----
-    if is_pre_plant and nutrient_base == "P":
+    # ----- First stage of season: heavy P goes basal -----
+    if is_first_stage and nutrient_base == "P":
         if has_dry:
             return [MethodAssignment(
                 stage_number=stage_number, stage_name=stage_name,
                 nutrient=nutrient, method=MethodKind.DRY_BROADCAST,
                 kg_per_ha=round(amount, 2),
-                reason="Pre-plant P — broadcast basal; root uptake most efficient; also protects against Al fixation",
+                reason="Early-season P — broadcast basal; slow soil mobility, position before peak demand; also protects against Al fixation",
                 tier=2,
             )]
         if has_liquid:
@@ -187,13 +190,13 @@ def _route_nutrient(
                 stage_number=stage_number, stage_name=stage_name,
                 nutrient=nutrient, method=MethodKind.LIQUID_DRIP,
                 kg_per_ha=round(amount, 2),
-                reason="No dry spreader — route pre-plant P via drip (less ideal but fallback)",
+                reason="No dry spreader — route early-season P via drip (less ideal but fallback)",
                 tier=6,
             )]
 
     # ----- Calcium: basal for amendments (lime), drip for in-season Ca-Nit -----
     if nutrient_base == "Ca":
-        if has_liquid and not is_pre_plant:
+        if has_liquid and not is_first_stage:
             return [MethodAssignment(
                 stage_number=stage_number, stage_name=stage_name,
                 nutrient=nutrient, method=MethodKind.LIQUID_DRIP,
@@ -206,7 +209,7 @@ def _route_nutrient(
                 stage_number=stage_number, stage_name=stage_name,
                 nutrient=nutrient, method=MethodKind.DRY_BROADCAST,
                 kg_per_ha=round(amount, 2),
-                reason="Ca via dry (lime/gypsum) — pre-plant preferred for reaction time",
+                reason="Ca via dry (lime/gypsum) — early-season preferred for reaction time",
                 tier=3,
             )]
 
@@ -221,7 +224,7 @@ def _route_nutrient(
                 tier=3,
             )]
         if has_dry:
-            method = (MethodKind.DRY_BROADCAST if is_pre_plant
+            method = (MethodKind.DRY_BROADCAST if is_first_stage
                       else MethodKind.DRY_SIDE_DRESS)
             return [MethodAssignment(
                 stage_number=stage_number, stage_name=stage_name,
@@ -265,7 +268,7 @@ def _route_nutrient(
                 stage_number=stage_number, stage_name=stage_name,
                 nutrient=nutrient, method=MethodKind.DRY_BROADCAST,
                 kg_per_ha=round(amount, 3),
-                reason="Micro via blended dry — less precise, pre-plant preferred",
+                reason="Micro via blended dry — less precise, early-season preferred",
                 tier=3,
             )]
 

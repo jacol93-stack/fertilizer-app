@@ -340,43 +340,24 @@ export function ScheduleReview({
                 <p className="py-2 text-center text-xs text-muted-foreground">No applications added yet</p>
               )}
 
-              {sortBySeason(sharedApps.map((a, i) => ({ ...a, _idx: i })))
-                .map((entry) => ({ a: entry, i: entry._idx }))
-                .map(({ a, i }) => (
-                  <div key={i} className="flex items-center gap-2 rounded-lg border px-3 py-2">
-                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      Month
-                      <select
-                        value={a.month}
-                        onChange={(e) => updateSharedApplication(i, "month", parseInt(e.target.value))}
-                        className="rounded border bg-white px-2 py-1 text-sm font-medium text-[var(--sapling-dark)]"
-                      >
-                        {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => (
-                          <option key={m} value={m}>{MONTH_NAMES[m]}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      Method
-                      <select
-                        value={a.method}
-                        onChange={(e) => updateSharedApplication(i, "method", e.target.value)}
-                        className="rounded border bg-white px-2 py-1 text-sm text-[var(--sapling-dark)]"
-                      >
-                        {sharedMethods.map((m) => (
-                          <option key={m} value={m}>{methodLabel(m)}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <button
-                      onClick={() => removeSharedApplication(i)}
-                      aria-label="Remove application"
-                      className="ml-auto rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  </div>
-                ))}
+              <MonthRows
+                apps={sharedApps}
+                availableMethods={sharedMethods}
+                onMonthChange={(idx, month) => updateSharedApplication(idx, "month", month)}
+                onToggleMethod={(month, method) => {
+                  // Find existing entry for this (month, method) — if present, remove; else add.
+                  const idx = sharedApps.findIndex((a) => a.month === month && a.method === method);
+                  if (idx >= 0) {
+                    removeSharedApplication(idx);
+                  } else {
+                    broadcastApps([...sharedApps, { month, method }]);
+                  }
+                }}
+                onRemoveMonth={(month) => {
+                  // Drop ALL methods scheduled in that month
+                  broadcastApps(sharedApps.filter((a) => a.month !== month));
+                }}
+              />
 
               <Button variant="outline" size="sm" onClick={addSharedApplication} className="w-full">
                 <Plus className="size-3.5" />
@@ -641,48 +622,33 @@ export function ScheduleReview({
                   <p className="py-2 text-center text-xs text-muted-foreground">No applications added yet</p>
                 )}
 
-                {sortBySeason(blockApps)
-                  .map((app, idx) => {
-                    const stage = getStageForMonth(app.month, shiftedStages);
-                    return (
-                      <div key={idx} className="flex items-center gap-2 rounded-lg border px-3 py-2">
-                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          Month
-                          <select
-                            value={app.month}
-                            onChange={(e) => updateApplication(bi.block_id, idx, "month", parseInt(e.target.value))}
-                            className="rounded border bg-white px-2 py-1 text-sm font-medium text-[var(--sapling-dark)]"
-                          >
-                            {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => (
-                              <option key={m} value={m}>{MONTH_NAMES[m]}</option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          Method
-                          <select
-                            value={app.method}
-                            onChange={(e) => updateApplication(bi.block_id, idx, "method", e.target.value)}
-                            className="rounded border bg-white px-2 py-1 text-sm text-[var(--sapling-dark)]"
-                          >
-                            {bi.accepted_methods.map((m) => (
-                              <option key={m} value={m}>{methodLabel(m)}</option>
-                            ))}
-                          </select>
-                        </label>
-                        {stage && (
-                          <span className="text-xs text-muted-foreground">{stage.stage_name}</span>
-                        )}
-                        <button
-                          onClick={() => removeApplication(bi.block_id, idx)}
-                          aria-label="Remove application"
-                          className="ml-auto rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
-                        >
-                          <X className="size-3.5" />
-                        </button>
-                      </div>
-                    );
-                  })}
+                <MonthRows
+                  apps={blockApps}
+                  availableMethods={bi.accepted_methods}
+                  stageForMonth={(m) => getStageForMonth(m, shiftedStages)}
+                  onMonthChange={(idx, month) => updateApplication(bi.block_id, idx, "month", month)}
+                  onToggleMethod={(month, method) => {
+                    const idx = blockApps.findIndex((a) => a.month === month && a.method === method);
+                    if (idx >= 0) {
+                      removeApplication(bi.block_id, idx);
+                    } else {
+                      const updated = {
+                        ...appsByBlock,
+                        [bi.block_id]: [...blockApps, { month, method }],
+                      };
+                      setAppsByBlock(updated);
+                      emitChange(updated);
+                    }
+                  }}
+                  onRemoveMonth={(month) => {
+                    const updated = {
+                      ...appsByBlock,
+                      [bi.block_id]: blockApps.filter((a) => a.month !== month),
+                    };
+                    setAppsByBlock(updated);
+                    emitChange(updated);
+                  }}
+                />
 
                 <Button
                   variant="outline"
@@ -695,6 +661,117 @@ export function ScheduleReview({
                 </Button>
               </div>
             )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// MonthRows — chip-toggle multi-select per month
+// ─────────────────────────────────────────────────────────────────────
+//
+// Replaces the per-application Month + Method dropdown pair with one
+// row per month, holding chips for each method available on the field.
+// Click a chip to toggle that (month, method) on or off. Lets the
+// agronomist stack a Broadcast + Fertigation pass on the same month
+// (paired-application case) without adding two rows.
+
+interface MonthRowsProps {
+  apps: Array<{ month: number; method: string }>;
+  availableMethods: string[];
+  stageForMonth?: (month: number) => GrowthStage | null | undefined;
+  onMonthChange: (idx: number, month: number) => void;
+  onToggleMethod: (month: number, method: string) => void;
+  onRemoveMonth: (month: number) => void;
+}
+
+function MonthRows({
+  apps,
+  availableMethods,
+  stageForMonth,
+  onMonthChange,
+  onToggleMethod,
+  onRemoveMonth,
+}: MonthRowsProps) {
+  // Group apps by month so each month renders one row regardless of how
+  // many methods are stacked on it.
+  const byMonth = new Map<number, string[]>();
+  for (const a of apps) {
+    if (!byMonth.has(a.month)) byMonth.set(a.month, []);
+    byMonth.get(a.month)!.push(a.method);
+  }
+  // Render in season order
+  const months = Array.from(byMonth.keys()).sort(
+    (a, b) => seasonOrderIndex(a, SEASON_ANCHOR) - seasonOrderIndex(b, SEASON_ANCHOR),
+  );
+
+  return (
+    <div className="space-y-2">
+      {months.map((month) => {
+        const selected = new Set(byMonth.get(month) || []);
+        const stage = stageForMonth?.(month);
+        // Find the LAST app idx in original `apps` for this month — used
+        // by the month-change handler to relabel the entire month group.
+        const groupAppIndices = apps
+          .map((a, i) => (a.month === month ? i : -1))
+          .filter((i) => i >= 0);
+        return (
+          <div
+            key={month}
+            className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2"
+          >
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              Month
+              <select
+                value={month}
+                onChange={(e) => {
+                  // Re-target every entry for this month to the new month.
+                  const newMonth = parseInt(e.target.value);
+                  for (const idx of groupAppIndices) {
+                    onMonthChange(idx, newMonth);
+                  }
+                }}
+                className="rounded border bg-white px-2 py-1 text-sm font-medium text-[var(--sapling-dark)]"
+              >
+                {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => (
+                  <option key={m} value={m}>{MONTH_NAMES[m]}</option>
+                ))}
+              </select>
+            </label>
+            <span className="text-[11px] text-muted-foreground">
+              Methods (click to toggle):
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {availableMethods.map((m) => {
+                const isOn = selected.has(m);
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => onToggleMethod(month, m)}
+                    className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                      isOn
+                        ? "border-[var(--sapling-orange)] bg-orange-50 text-[var(--sapling-orange)]"
+                        : "border-gray-200 text-gray-500 hover:border-gray-400"
+                    }`}
+                  >
+                    {methodLabel(m)}
+                  </button>
+                );
+              })}
+            </div>
+            {stage && (
+              <span className="text-xs text-muted-foreground">{stage.stage_name}</span>
+            )}
+            <button
+              onClick={() => onRemoveMonth(month)}
+              aria-label="Remove month"
+              className="ml-auto rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
+            >
+              <X className="size-3.5" />
+            </button>
           </div>
         );
       })}
