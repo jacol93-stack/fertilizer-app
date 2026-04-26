@@ -401,13 +401,40 @@ function FieldRowCard({
     : null;
 
   return (
-    <Card className={selected ? "border-[var(--sapling-orange)]/40" : "bg-white"}>
+    <Card
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
+      aria-label={`${selected ? "Deselect" : "Select"} ${field.name}`}
+      onClick={(e) => {
+        // Inner controls (dropdowns, buttons, inputs, links) handle
+        // their own clicks — we only toggle when the click bubbles up
+        // from a non-interactive area.
+        const t = e.target as HTMLElement;
+        if (t.closest("button, select, input, a, label, [role='combobox']")) return;
+        onToggle(!selected);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === " " || e.key === "Enter") {
+          const t = e.target as HTMLElement;
+          if (t.closest("button, select, input, a, label, [role='combobox']")) return;
+          e.preventDefault();
+          onToggle(!selected);
+        }
+      }}
+      className={`cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sapling-orange)] focus-visible:ring-offset-1 ${
+        selected
+          ? "border-[var(--sapling-orange)]/40"
+          : "bg-white hover:border-[var(--sapling-orange)]/30 hover:bg-orange-50/30"
+      }`}
+    >
       <CardContent className="py-2.5 px-3">
         <div className="flex items-center gap-3">
           <input
             type="checkbox"
             checked={selected}
             onChange={(e) => onToggle(e.target.checked)}
+            onClick={(e) => e.stopPropagation()}
             className="size-4 shrink-0 accent-[var(--sapling-orange)]"
           />
           <div className="flex flex-1 min-w-0 items-center gap-3">

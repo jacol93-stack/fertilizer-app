@@ -21,7 +21,7 @@ import { FieldPicker } from "@/components/season-manager/field-picker";
 import { ScheduleReview, type BlockInfo, type UserApplication } from "@/components/season-manager/schedule-review";
 import { BlendGroups, type BlendGroupData } from "@/components/season-manager/blend-groups";
 import type { Block, CropNorm, SoilAnalysis } from "@/lib/season-constants";
-import { emptyBlock, MONTH_NAMES, methodLabel } from "@/lib/season-constants";
+import { emptyBlock, MONTH_NAMES, methodLabel, seasonOrderIndex } from "@/lib/season-constants";
 import {
   wizardStateToBuildRequest,
   deriveMethodAvailability,
@@ -179,7 +179,22 @@ function SeasonBuilderPage() {
   // recipe X / Y" summary on the Schedule step. Lower margin → more
   // recipes the farmer mixes; higher margin → simpler stock list.
   const [clusters, setClusters] = useState<ClusterPreview[]>([]);
+  // App-wide default lives on default_materials (admin-managed). The
+  // Schedule step's threshold dropdown is admin-only — non-admins
+  // always run on this default.
   const [clusterMargin, setClusterMargin] = useState<number>(0.25);
+
+  // Pull the admin-set default once on mount. Failure is tolerated —
+  // we fall back to the 0.25 baked default.
+  useEffect(() => {
+    api.get<{ cluster_margin_default?: number }>("/api/materials/defaults")
+      .then((d) => {
+        if (typeof d.cluster_margin_default === "number") {
+          setClusterMargin(d.cluster_margin_default);
+        }
+      })
+      .catch(() => { /* keep default */ });
+  }, []);
   // Per-block v2 targets surfaced by preview-schedule. Used by the
   // ClusterBoard to recompute heterogeneity client-side on drag-drop.
   const [blockTargets, setBlockTargets] = useState<BlockTargets[]>([]);
@@ -767,6 +782,7 @@ function SeasonBuilderPage() {
                     }}
                     busy={saving}
                     knownClusterIds={clusters.map((c) => c.cluster_id)}
+                    showMarginControl={isAdmin}
                   />
                 )}
 
@@ -888,8 +904,16 @@ function SeasonBuilderPage() {
                           blockInfoData.map((bi) => [bi.block_id, bi.block_name]),
                         );
                         const totalBlocks = blockInfoData.length;
+                        // Season order: anchor at the current month so
+                        // applications later in the year (Oct/Dec) sort
+                        // before next-year ones (Jan/Feb) when planning
+                        // mid-season.
+                        const buildMonth = new Date().getMonth() + 1;
                         const rows = Object.values(byKey).sort(
-                          (x, y) => x.month - y.month || x.method.localeCompare(y.method),
+                          (x, y) =>
+                            seasonOrderIndex(x.month, buildMonth) -
+                              seasonOrderIndex(y.month, buildMonth) ||
+                            x.method.localeCompare(y.method),
                         );
                         return rows.map((r, i) => {
                           const all = r.blockIds.size === totalBlocks && totalBlocks > 0;

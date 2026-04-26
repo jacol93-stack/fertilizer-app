@@ -56,6 +56,25 @@ export function methodLabel(method: string): string {
   return METHOD_LABELS[method] ?? method;
 }
 
+/** Season-relative ordering: distance (in months) from `anchorMonth`,
+ * wrapping around year-end. Build in June (anchor=6) → June=0, July=1,
+ * ..., Dec=6, Jan=7, ..., May=11. Drives "applications in season order"
+ * across the wizard, review, BlendGroups, and the artifact view.
+ *
+ * Pass anchorMonth = the build month (1-12). Defaults to current month
+ * when an explicit anchor isn't available.
+ */
+export function seasonOrderIndex(month: number, anchorMonth?: number): number {
+  const anchor = anchorMonth ?? new Date().getMonth() + 1;
+  return (((month - anchor) % 12) + 12) % 12;
+}
+
+/** Convenience comparator. Use as `arr.sort(compareSeasonMonth(buildMonth))`. */
+export function compareSeasonMonth(anchorMonth?: number) {
+  return (a: { month: number }, b: { month: number }): number =>
+    seasonOrderIndex(a.month, anchorMonth) - seasonOrderIndex(b.month, anchorMonth);
+}
+
 export const MONTH_NAMES = [
   "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",

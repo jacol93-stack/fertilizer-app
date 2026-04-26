@@ -109,6 +109,7 @@ class DefaultMaterialsOut(BaseModel):
     agent_min_compost_pct: float = 50
     chemical_filler_material: str = "Dolomitic Lime (Filler)"
     variability_margin: float = 15.0
+    cluster_margin_default: float = 0.25
 
 
 class DefaultMaterialsSet(BaseModel):
@@ -117,6 +118,7 @@ class DefaultMaterialsSet(BaseModel):
     agent_min_compost_pct: float | None = None
     chemical_filler_material: str | None = None
     variability_margin: float | None = None
+    cluster_margin_default: float | None = Field(None, ge=0.05, le=0.5)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────
@@ -154,6 +156,7 @@ def get_default_materials(user: CurrentUser = Depends(get_current_user)):
             agent_min_compost_pct=row.get("agent_min_compost_pct", 50),
             chemical_filler_material=row.get("chemical_filler_material", "Dolomitic Lime (Filler)"),
             variability_margin=row.get("variability_margin", 15.0),
+            cluster_margin_default=row.get("cluster_margin_default") or 0.25,
         )
     return DefaultMaterialsOut(materials=[
         "Urea 46%", "MAP 33%", "DAP",
@@ -180,6 +183,8 @@ def set_default_materials(
         update["chemical_filler_material"] = body.chemical_filler_material
     if body.variability_margin is not None:
         update["variability_margin"] = body.variability_margin
+    if body.cluster_margin_default is not None:
+        update["cluster_margin_default"] = body.cluster_margin_default
     if update:
         update["id"] = 1
         sb.table("default_materials").upsert(update).execute()
@@ -192,6 +197,7 @@ def set_default_materials(
         agent_min_compost_pct=row.get("agent_min_compost_pct", 50),
         chemical_filler_material=row.get("chemical_filler_material", "Dolomitic Lime (Filler)"),
         variability_margin=row.get("variability_margin", 15.0),
+        cluster_margin_default=row.get("cluster_margin_default") or 0.25,
     )
 
 

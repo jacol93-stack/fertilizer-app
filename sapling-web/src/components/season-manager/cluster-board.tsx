@@ -20,7 +20,7 @@
  * editing.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Plus } from "lucide-react";
 import {
@@ -59,6 +59,9 @@ export interface ClusterBoardProps {
   /** Cluster ids currently in use server-side. New clusters created by
    * the user (drop into "+ New Recipe") get the next free letter. */
   knownClusterIds: string[];
+  /** Show the per-build threshold override dropdown? Admin-only — non-
+   * admins always run on the app-wide default set in admin settings. */
+  showMarginControl?: boolean;
 }
 
 const STATUS_LABEL = {
@@ -97,46 +100,104 @@ export function ClusterBoard(props: ClusterBoardProps) {
   const {
     blocks, datalessBlocks, assignments, onAssignmentsChange,
     margin, onMarginChange, busy = false, knownClusterIds,
+    showMarginControl = false,
   } = props;
 
+  // Ref-of-truth so handlers don't depend on a re-render that the
+  // browser's drag session may have aborted. State copy drives the
+  // ghost-preview render only.
+  const draggedBlockIdRef = useRef<string | null>(null);
   const [draggedBlockId, setDraggedBlockId] = useState<string | null>(null);
   const [hoverClusterId, setHoverClusterId] = useState<string | null>(null);
 
-  // Recompute clusters from current assignments. Identity-stable per
-  // assignments dict so React doesn't re-render unnecessarily.
-  const clusters = useMemo(
-    () => recomputeClusters(blocks, assignments),
-    [blocks, assignments],
-  );
+  // Single source of truth: render whatever assignments WOULD be in
+  // effect right now, including any in-flight drag preview. After a
+  // drop the preview clears and assignments are the committed state.
+  const effectiveAssignments = useMemo(() => {
+    if (!draggedBlockId || !hoverClusterId) return assignments;
+    if (hoverClusterId === "__new__") {
+      // Mid-drag over the "+ New Recipe" zone: assign to the next free
+      // letter so a Recipe X card materialises in real time.
+      const used = new Set<string>(knownClusterIds);
+      for (const id of Object.values(assignments)) used.add(id);
+      const newId = nextClusterId(used);
+      if (assignments[draggedBlockId] === newId) return assignments;
+      return { ...assignments, [draggedBlockId]: newId };
+    }
+    if (assignments[draggedBlockId] === hoverClusterId) return assignments;
+    return { ...assignments, [draggedBlockId]: hoverClusterId };
+  }, [assignments, draggedBlockId, hoverClusterId, knownClusterIds]);
 
-  // Per-block fit % vs the cluster the block currently belongs to.
-  // Singletons score 100% by definition.
+  const previewing = effectiveAssignments !== assignments;
+
+  // Compute clusters from the effective (possibly preview) assignments,
+  // overlay dataless blocks afterwards. This is the ONLY rendering
+  // source — no split between base and preview.
+  const clusters = useMemo(() => {
+    const base = recomputeClusters(blocks, effectiveAssignments);
+    if (datalessBlocks.length === 0) return base;
+    const out = base.map((c) => ({
+      ...c,
+      block_ids: [...c.block_ids],
+      block_names: [...c.block_names],
+    }));
+    // Make sure every effective cluster_id exists, even if no
+    // targets-bearing block is in it (dataless-only cluster).
+    for (const cid of Object.values(effectiveAssignments)) {
+      if (!out.find((c) => c.cluster_id === cid)) {
+        out.push({
+          cluster_id: cid,
+          block_ids: [],
+          block_names: [],
+          total_area_ha: 0,
+          weight_strategy: "equal",
+          aggregated_targets: {},
+          heterogeneity: {
+            per_nutrient: {},
+            warnings: [],
+            any_warn: false,
+            any_split: false,
+            citation: "",
+          },
+        });
+      }
+    }
+    for (const db of datalessBlocks) {
+      const assigned = effectiveAssignments[db.block_id];
+      if (!assigned) continue;
+      const target = out.find((c) => c.cluster_id === assigned);
+      if (target) {
+        target.block_ids.push(db.block_id);
+        target.block_names.push(db.block_name);
+        target.total_area_ha = Math.round(
+          (target.total_area_ha + (db.block_area_ha ?? 0)) * 1000,
+        ) / 1000;
+      }
+    }
+    return out;
+  }, [blocks, effectiveAssignments, datalessBlocks]);
+
+  // Per-block fits against the clusters they're currently in (or
+  // would be in if the drag commits).
   const blockFits = useMemo(
     () => computeBlockFits(blocks, clusters),
     [blocks, clusters],
   );
 
-  // Preview clusters: what would the heterogeneity look like if the
-  // currently-dragged block landed in hoverClusterId?
-  const previewClusters = useMemo(() => {
-    if (!draggedBlockId || !hoverClusterId) return null;
-    if (assignments[draggedBlockId] === hoverClusterId) return null;
-    const next = { ...assignments, [draggedBlockId]: hoverClusterId };
-    return recomputeClusters(blocks, next);
-  }, [draggedBlockId, hoverClusterId, assignments, blocks]);
-
-  const previewByClusterId = useMemo(() => {
-    const m: Record<string, ClusterPreview> = {};
-    if (previewClusters) {
-      for (const p of previewClusters) m[p.cluster_id] = p;
+  // For "→" arrow: cluster ids whose heterogeneity differs from the
+  // committed (non-preview) state. When previewing, compare the live
+  // recipe's any_warn/any_split against what it'd be without the drag.
+  const baselineStatusByCluster = useMemo(() => {
+    if (!previewing) return null;
+    const baseline = recomputeClusters(blocks, assignments);
+    const m: Record<string, "ok" | "warn" | "split"> = {};
+    for (const c of baseline) {
+      m[c.cluster_id] = c.heterogeneity.any_split
+        ? "split"
+        : c.heterogeneity.any_warn ? "warn" : "ok";
     }
     return m;
-  }, [previewClusters]);
-
-  const previewBlockFits = useMemo(() => {
-    if (!previewClusters) return null;
-    return computeBlockFits(blocks, previewClusters);
-  }, [blocks, previewClusters]);
+  }, [previewing, blocks, assignments]);
 
   const allUsedIds = useMemo(() => {
     const s = new Set<string>(knownClusterIds);
@@ -149,42 +210,63 @@ export function ClusterBoard(props: ClusterBoardProps) {
   const unassignedDataless = datalessBlocks.filter((b) => !assignments[b.block_id]);
 
   const handleDragStart = (blockId: string) => (e: React.DragEvent) => {
-    setDraggedBlockId(blockId);
     e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", blockId); // Required for some browsers
+    e.dataTransfer.setData("text/plain", blockId);
+    draggedBlockIdRef.current = blockId;
+    // Defer state update to next frame — setting state synchronously
+    // here can trigger a React re-render that aborts the browser's
+    // drag session before it stabilises.
+    requestAnimationFrame(() => setDraggedBlockId(blockId));
   };
 
   const handleDragEnd = () => {
+    draggedBlockIdRef.current = null;
     setDraggedBlockId(null);
     setHoverClusterId(null);
   };
 
   const handleDragOver = (clusterId: string) => (e: React.DragEvent) => {
+    // preventDefault on EVERY dragOver is required for drop to fire.
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     if (hoverClusterId !== clusterId) setHoverClusterId(clusterId);
   };
 
-  const handleDragLeave = (clusterId: string) => () => {
+  const handleDragLeave = (clusterId: string) => (e: React.DragEvent) => {
+    // Without this guard, dragLeave fires every time the cursor crosses
+    // a child element (chip / fit-bar / text), flickering the hover
+    // state. relatedTarget tells us where the cursor went next — if
+    // it's still inside this drop zone, ignore.
+    const next = e.relatedTarget as Node | null;
+    if (next && (e.currentTarget as Node).contains(next)) return;
     if (hoverClusterId === clusterId) setHoverClusterId(null);
+  };
+
+  const readDroppedBlockId = (e: React.DragEvent): string | null => {
+    return e.dataTransfer.getData("text/plain") || draggedBlockIdRef.current;
   };
 
   const handleDrop = (clusterId: string) => (e: React.DragEvent) => {
     e.preventDefault();
-    const blockId = e.dataTransfer.getData("text/plain") || draggedBlockId;
+    e.stopPropagation();
+    const blockId = readDroppedBlockId(e);
     if (!blockId) return;
-    if (assignments[blockId] === clusterId) return;
-    onAssignmentsChange({ ...assignments, [blockId]: clusterId });
+    if (assignments[blockId] !== clusterId) {
+      onAssignmentsChange({ ...assignments, [blockId]: clusterId });
+    }
+    draggedBlockIdRef.current = null;
     setDraggedBlockId(null);
     setHoverClusterId(null);
   };
 
   const handleNewClusterDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    const blockId = e.dataTransfer.getData("text/plain") || draggedBlockId;
+    e.stopPropagation();
+    const blockId = readDroppedBlockId(e);
     if (!blockId) return;
     const newId = nextClusterId(allUsedIds);
     onAssignmentsChange({ ...assignments, [blockId]: newId });
+    draggedBlockIdRef.current = null;
     setDraggedBlockId(null);
     setHoverClusterId(null);
   };
@@ -204,25 +286,27 @@ export function ClusterBoard(props: ClusterBoardProps) {
             is one batch the farmer mixes; per-block rates differ within a recipe.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Label htmlFor="cluster-margin" className="text-xs text-muted-foreground">
-            Auto-group threshold
-          </Label>
-          <select
-            id="cluster-margin"
-            value={margin}
-            disabled={busy}
-            onChange={(e) => onMarginChange(parseFloat(e.target.value))}
-            className="rounded-md border bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sapling-orange)]"
-          >
-            <option value={0.10}>0.10 (tight)</option>
-            <option value={0.15}>0.15</option>
-            <option value={0.20}>0.20</option>
-            <option value={0.25}>0.25 (default)</option>
-            <option value={0.30}>0.30</option>
-            <option value={0.40}>0.40 (loose)</option>
-          </select>
-        </div>
+        {showMarginControl && (
+          <div className="flex items-center gap-2">
+            <Label htmlFor="cluster-margin" className="text-xs text-muted-foreground">
+              Auto-group threshold
+            </Label>
+            <select
+              id="cluster-margin"
+              value={margin}
+              disabled={busy}
+              onChange={(e) => onMarginChange(parseFloat(e.target.value))}
+              className="rounded-md border bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sapling-orange)]"
+            >
+              <option value={0.10}>0.10 (tight)</option>
+              <option value={0.15}>0.15</option>
+              <option value={0.20}>0.20</option>
+              <option value={0.25}>0.25 (default)</option>
+              <option value={0.30}>0.30</option>
+              <option value={0.40}>0.40 (loose)</option>
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Unassigned (dataless) row */}
@@ -250,16 +334,25 @@ export function ClusterBoard(props: ClusterBoardProps) {
         </div>
       )}
 
-      {/* Cluster cards */}
+      {/* Cluster cards. Single source of truth: `clusters` is computed
+          from effectiveAssignments which already includes any in-flight
+          drag preview. Cards appear/disappear in real time as the user
+          drags. */}
       <div className="space-y-2">
         {clusters.map((c) => {
           const status = highestStatus(c);
-          const previewC = previewByClusterId[c.cluster_id];
-          const previewStatus = previewC ? highestStatus(previewC) : null;
-          const previewing = !!previewC && previewStatus !== status;
-          const display = previewC ?? c;
-          const dispStatus = previewStatus ?? status;
-          const label = STATUS_LABEL[dispStatus];
+          const baseline = baselineStatusByCluster?.[c.cluster_id] ?? status;
+          const arrowChange = previewing && baseline !== status;
+          const label = STATUS_LABEL[status];
+          const isHover = hoverClusterId === c.cluster_id;
+          // Set of block ids that are NOT in this cluster in the
+          // committed (non-preview) assignment — i.e. ghost previews.
+          const ghostIds = new Set<string>();
+          if (previewing && draggedBlockId && effectiveAssignments[draggedBlockId] === c.cluster_id) {
+            if (assignments[draggedBlockId] !== c.cluster_id) {
+              ghostIds.add(draggedBlockId);
+            }
+          }
           return (
             <div
               key={c.cluster_id}
@@ -267,7 +360,7 @@ export function ClusterBoard(props: ClusterBoardProps) {
               onDragLeave={handleDragLeave(c.cluster_id)}
               onDrop={handleDrop(c.cluster_id)}
               className={`rounded-md border-2 p-3 transition-colors ${
-                hoverClusterId === c.cluster_id
+                isHover
                   ? "border-[var(--sapling-orange)] bg-orange-50/40"
                   : "border-transparent bg-muted/20"
               }`}
@@ -278,15 +371,15 @@ export function ClusterBoard(props: ClusterBoardProps) {
                     Recipe {c.cluster_id}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {display.total_area_ha} ha · {display.block_names.length} block
-                    {display.block_names.length !== 1 ? "s" : ""}
+                    {c.total_area_ha} ha · {c.block_names.length} block
+                    {c.block_names.length !== 1 ? "s" : ""}
                   </span>
                 </div>
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-medium ${label.pillClass}`}
                   title={label.detail}
                 >
-                  {previewing && "→ "}
+                  {arrowChange && "→ "}
                   {label.pill}
                 </span>
               </div>
@@ -294,36 +387,36 @@ export function ClusterBoard(props: ClusterBoardProps) {
 
               {/* Block chips inside this cluster */}
               <div className="mt-2 flex flex-wrap gap-2">
-                {display.block_ids.map((bid, idx) => {
-                  const blockName = display.block_names[idx];
+                {c.block_ids.map((bid, idx) => {
+                  const blockName = c.block_names[idx];
                   const blockMeta = blocks.find((b) => b.block_id === bid);
-                  const isPreview = previewC && !c.block_ids.includes(bid);
-                  const fitMap = previewing ? previewBlockFits : blockFits;
-                  const fit = fitMap?.[bid] ?? null;
+                  const datalessMeta = datalessBlocks.find((d) => d.block_id === bid);
+                  const isDataless = !!datalessMeta && !blockMeta;
                   return (
                     <BlockChip
                       key={bid}
                       blockName={blockName}
-                      area={blockMeta?.block_area_ha ?? null}
+                      area={blockMeta?.block_area_ha ?? datalessMeta?.block_area_ha ?? null}
+                      dataless={isDataless}
                       onDragStart={handleDragStart(bid)}
                       onDragEnd={handleDragEnd}
-                      ghostPreview={isPreview}
-                      fit={fit}
+                      ghostPreview={ghostIds.has(bid)}
+                      fit={blockFits[bid] ?? null}
                     />
                   );
                 })}
               </div>
 
               {/* Per-nutrient warnings */}
-              {display.heterogeneity.warnings.length > 0 && (
+              {c.heterogeneity.warnings.length > 0 && (
                 <ul className="mt-2 space-y-0.5 text-xs">
-                  {display.heterogeneity.warnings.map((w) => (
+                  {c.heterogeneity.warnings.map((w) => (
                     <WarningLine key={w.nutrient} warning={w} />
                   ))}
                 </ul>
               )}
 
-              {previewing && previewStatus === "split" && status !== "split" && (
+              {arrowChange && status === "split" && baseline !== "split" && (
                 <p className="mt-2 rounded border border-red-300 bg-red-50 p-2 text-xs text-red-800">
                   This move pushes Recipe {c.cluster_id} past the published
                   heterogeneity threshold (Wilding 1985). The averaged recipe
@@ -356,9 +449,8 @@ export function ClusterBoard(props: ClusterBoardProps) {
         </div>
       </div>
 
-      <p className="mt-3 text-[11px] text-muted-foreground">
-        Heterogeneity thresholds: Wilding (1985) via Mulla &amp; Schepers (1997).
-      </p>
+      {/* Citation lives in code comments + admin-mode artifact for
+          audit; agronomist-facing UI stays clean. */}
     </div>
   );
 }

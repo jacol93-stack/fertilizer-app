@@ -2,7 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { MONTH_NAMES, methodLabel } from "@/lib/season-constants";
+import { MONTH_NAMES, methodLabel, seasonOrderIndex } from "@/lib/season-constants";
+
+// Anchor at current month so applications later in the year sort before
+// next-year ones when planning mid-season. Stable per render — built
+// once at module load, fine for our cadence.
+const SEASON_ANCHOR = new Date().getMonth() + 1;
+const sortBySeason = <T extends { month: number }>(arr: T[]): T[] =>
+  [...arr].sort((a, b) =>
+    seasonOrderIndex(a.month, SEASON_ANCHOR) - seasonOrderIndex(b.month, SEASON_ANCHOR));
 import { Plus, X } from "lucide-react";
 
 export interface GrowthStage {
@@ -315,8 +323,9 @@ export function ScheduleReview({
                 Same schedule for all blocks
               </p>
               <p className="text-xs text-muted-foreground">
-                {blockInfo.length} blocks share this programme — edit one schedule that applies to all.
-                Turn off if one block needs a different month or method.
+                Schedule applies to all {blockInfo.length} blocks in this programme — timing is
+                agronomy-driven and independent of how blocks are grouped into recipes upstairs.
+                Turn off if a specific block needs different months or methods.
               </p>
             </div>
           </label>
@@ -331,9 +340,8 @@ export function ScheduleReview({
                 <p className="py-2 text-center text-xs text-muted-foreground">No applications added yet</p>
               )}
 
-              {sharedApps
-                .map((a, i) => ({ a, i }))
-                .sort((x, y) => x.a.month - y.a.month)
+              {sortBySeason(sharedApps.map((a, i) => ({ ...a, _idx: i })))
+                .map((entry) => ({ a: entry, i: entry._idx }))
                 .map(({ a, i }) => (
                   <div key={i} className="flex items-center gap-2 rounded-lg border px-3 py-2">
                     <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -633,8 +641,7 @@ export function ScheduleReview({
                   <p className="py-2 text-center text-xs text-muted-foreground">No applications added yet</p>
                 )}
 
-                {blockApps
-                  .sort((a, b) => a.month - b.month)
+                {sortBySeason(blockApps)
                   .map((app, idx) => {
                     const stage = getStageForMonth(app.month, shiftedStages);
                     return (

@@ -1,12 +1,15 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MONTH_NAMES, methodLabel } from "@/lib/season-constants";
+import { MONTH_NAMES, methodLabel, seasonOrderIndex } from "@/lib/season-constants";
 
-const GROUP_COLORS = [
-  "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-amber-500",
-  "bg-rose-500", "bg-cyan-500", "bg-indigo-500", "bg-emerald-500",
-];
+const SEASON_ANCHOR = new Date().getMonth() + 1;
+
+/** Strip any "cluster_" prefix the engine emits (e.g. cluster_A → A)
+ * so the badge / header read as plain recipe letters. */
+function recipeLetter(groupId: string): string {
+  return groupId.replace(/^cluster_/i, "");
+}
 
 export interface ApplicationBlendData {
   stage_name: string;
@@ -63,7 +66,8 @@ export function BlendGroups({ blendGroups, isAdmin }: BlendGroupsProps) {
         </p>
       </div>
 
-      {blendGroups.map((group, idx) => {
+      {blendGroups.map((group) => {
+        const letter = recipeLetter(group.group);
         const groupTotalKg = group.applications.reduce(
           (s, a) => s + (a.is_foliar ? 0 : a.rate_kg_ha * group.total_area_ha),
           0,
@@ -72,12 +76,12 @@ export function BlendGroups({ blendGroups, isAdmin }: BlendGroupsProps) {
           <Card key={group.group} className="overflow-hidden">
             <CardHeader className="pb-3">
               <div className="flex items-start gap-3">
-                <span className={`flex size-8 items-center justify-center rounded-full text-sm font-bold text-white ${GROUP_COLORS[idx % GROUP_COLORS.length]}`}>
-                  {group.group}
+                <span className="flex size-8 items-center justify-center rounded-full bg-[var(--sapling-orange)] text-sm font-bold text-white">
+                  {letter}
                 </span>
                 <div className="flex-1">
                   <CardTitle className="text-base">
-                    Group {group.group} — {group.applications.length} application{group.applications.length !== 1 ? "s" : ""}
+                    Recipe {letter} — {group.applications.length} application{group.applications.length !== 1 ? "s" : ""}
                   </CardTitle>
                   <p className="text-xs text-muted-foreground">
                     {group.crops.join(", ")} &middot; {group.block_names.join(", ")} &middot; {group.total_area_ha} ha
@@ -88,7 +92,8 @@ export function BlendGroups({ blendGroups, isAdmin }: BlendGroupsProps) {
             <CardContent className="space-y-3">
               {group.applications
                 .slice()
-                .sort((a, b) => a.month - b.month)
+                .sort((a, b) =>
+                  seasonOrderIndex(a.month, SEASON_ANCHOR) - seasonOrderIndex(b.month, SEASON_ANCHOR))
                 .map((app, i) => (
                   <div key={i} className={`rounded-lg border ${app.is_foliar ? "border-violet-200 bg-violet-50/40" : "bg-white"}`}>
                     <div className="flex flex-wrap items-start justify-between gap-3 px-3 py-2">
