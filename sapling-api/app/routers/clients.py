@@ -436,6 +436,108 @@ def update_field(field_id: str, body: FieldUpdate, user: CurrentUser = Depends(g
     return result.data[0]
 
 
+# ── Yield records (per field) ────────────────────────────────────────────────
+
+
+class YieldRecordIn(BaseModel):
+    season: str = Field(..., min_length=1, max_length=50)
+    yield_actual: float = Field(..., gt=0, le=1_000_000)
+    yield_unit: str = Field(..., min_length=1, max_length=50)
+    harvest_date: Optional[str] = None
+    source: str = Field("self_reported", max_length=50)
+    notes: Optional[str] = None
+
+
+@router.get("/fields/{field_id}/yields")
+def list_yield_records(field_id: str, user: CurrentUser = Depends(get_current_user)):
+    """Yield records for a field, ordered most-recent first."""
+    sb = get_supabase_admin()
+    _check_field_access(sb, field_id, user)
+    result = (
+        sb.table("yield_records")
+        .select("*")
+        .eq("field_id", field_id)
+        .order("harvest_date", desc=True, nullsfirst=False)
+        .order("season", desc=True)
+        .execute()
+    )
+    return result.data or []
+
+
+@router.post("/fields/{field_id}/yields", status_code=201)
+def create_yield_record(
+    field_id: str,
+    body: YieldRecordIn,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Add a single yield record. (field_id, season) is unique."""
+    sb = get_supabase_admin()
+    _check_field_access(sb, field_id, user)
+    payload = body.model_dump(exclude_none=True)
+    payload["field_id"] = field_id
+    payload["created_by"] = user.id
+    try:
+        result = sb.table("yield_records").insert(payload).execute()
+    except Exception as e:
+        raise HTTPException(409, f"Yield for {body.season} already exists on this field") from e
+    if not result.data:
+        raise HTTPException(500, "Failed to create yield record")
+    _audit(sb, user, "create", "yield_records", result.data[0]["id"])
+    return result.data[0]
+
+
+@router.delete("/yields/{yield_id}", status_code=200)
+def delete_yield_record(yield_id: str, user: CurrentUser = Depends(get_current_user)):
+    """Delete a yield record."""
+    sb = get_supabase_admin()
+    # Access check — find the field this yield belongs to
+    row = sb.table("yield_records").select("field_id").eq("id", yield_id).execute()
+    if not row.data:
+        raise HTTPException(404, "Yield record not found")
+    _check_field_access(sb, row.data[0]["field_id"], user)
+    sb.table("yield_records").delete().eq("id", yield_id).execute()
+    _audit(sb, user, "delete", "yield_records", yield_id)
+    return {"detail": "Yield record deleted"}
+
+
+@router.get("/fields/{field_id}/benchmarks")
+def get_yield_benchmarks_for_field(field_id: str, user: CurrentUser = Depends(get_current_user)):
+    """Look up yield benchmark band for this field's crop + cultivar +
+    irrigation regime. Returns the most-specific match (cultivar+regime),
+    falling back to generic-cultivar matches in priority order. Empty
+    list if the crop has no benchmarks seeded."""
+    sb = get_supabase_admin()
+    field = _check_field_access(sb, field_id, user)
+    crop = field.get("crop")
+    cultivar = field.get("cultivar")
+    if not crop:
+        return []
+    # Derive irrigation regime: rainfed | irrigated | fertigated.
+    irrigation_type = field.get("irrigation_type")
+    fertigation = field.get("fertigation_capable") is True
+    regime = (
+        "rainfed" if not irrigation_type or irrigation_type == "none"
+        else "fertigated" if fertigation
+        else "irrigated"
+    )
+    # Try cultivar-specific match first, then generic
+    rows = (
+        sb.table("crop_yield_benchmarks")
+        .select("*")
+        .eq("crop", crop)
+        .eq("irrigation_regime", regime)
+        .execute()
+        .data
+        or []
+    )
+    if cultivar:
+        cultivar_match = [r for r in rows if r.get("cultivar") == cultivar]
+        if cultivar_match:
+            return cultivar_match
+    generic = [r for r in rows if r.get("cultivar") is None]
+    return generic if generic else rows
+
+
 # ── Bulk import: fields + yields ─────────────────────────────────────────────
 
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { api } from "@/lib/api";
@@ -151,6 +151,7 @@ function Dialog({
 
 export default function ClientHubPage() {
   const params = useParams();
+  const router = useRouter();
   const clientId = params.id as string;
   const isAdmin = useEffectiveAdmin();
 
@@ -662,11 +663,18 @@ export default function ClientHubPage() {
                     {isExpanded && fields.length > 0 && (
                       <div className="mt-3 grid gap-2 sm:grid-cols-2">
                         {fields.map((f) => (
-                          <button
+                          <div
                             key={f.id}
-                            type="button"
-                            onClick={() => openFieldDrawer(farm.id, f)}
-                            className="flex items-center justify-between rounded-lg border bg-white px-3 py-2.5 text-left text-sm transition-colors hover:border-[var(--sapling-orange)]/40 hover:bg-orange-50/50"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => router.push(`/clients/${clientId}/fields/${f.id}`)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                router.push(`/clients/${clientId}/fields/${f.id}`);
+                              }
+                            }}
+                            className="flex cursor-pointer items-center justify-between rounded-lg border bg-white px-3 py-2.5 text-left text-sm transition-colors hover:border-[var(--sapling-orange)]/40 hover:bg-orange-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sapling-orange)]"
                           >
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2">
@@ -710,9 +718,20 @@ export default function ClientHubPage() {
                               ) : (
                                 <span className="size-2 rounded-full bg-gray-300" title="No analysis" />
                               )}
+                              <button
+                                type="button"
+                                title="Edit field"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openFieldDrawer(farm.id, f);
+                                }}
+                                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-[var(--sapling-orange)]"
+                              >
+                                <Pencil className="size-3.5" />
+                              </button>
                               <ChevronRight className="size-3.5 text-muted-foreground" />
                             </div>
-                          </button>
+                          </div>
                         ))}
                       </div>
                     )}

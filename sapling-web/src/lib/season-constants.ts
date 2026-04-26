@@ -272,6 +272,11 @@ export interface SoilAnalysis {
   yield_unit: string | null;
   created_at: string;
   nutrient_targets: unknown[] | null;
+  /** Lab-measured per-nutrient values (e.g. { "pH (H2O)": 5.8, "Org C": 2.5,
+   *  "P (Bray-1)": 22, "K": 145 }). Optional — list endpoints may strip it
+   *  for payload size; detail endpoints carry it. */
+  soil_values?: Record<string, number> | null;
+  classifications?: Record<string, string> | null;
 }
 
 export function emptyBlock(): Omit<Block, "id"> {
