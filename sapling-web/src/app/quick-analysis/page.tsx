@@ -38,6 +38,9 @@ import { SamplePicker } from "./components/sample-picker";
 import { SoilInputForm } from "./components/soil-input-form";
 import { LeafInputForm } from "./components/leaf-input-form";
 import { CombinedView } from "./components/combined-view";
+import { runAnalysis } from "@/lib/analysis-v2";
+import type { ProgrammeArtifact } from "@/lib/types/programme-artifact";
+import { ArtifactView } from "@/components/programme-artifact/ArtifactView";
 
 // ── Component ─────────────────────────────────────────────────────────
 
@@ -98,6 +101,21 @@ function QuickAnalysisPage() {
   const [targets, setTargets] = useState<NutrientTarget[]>([]);
   const [leafResult, setLeafResult] = useState<Record<string, unknown> | null>(null);
   const [leafLoading, setLeafLoading] = useState(false);
+
+  // ── v2 analysis artifact (the rewired engine output) ───────────
+  // Step 1 renders this via ArtifactView with mode="analysis" — same
+  // visual surface as a full programme minus blends/stage/shopping.
+  // Per the project_programme_builder_scope rule, no fertilizer
+  // recommendation is produced.
+  const [analysisArtifact, setAnalysisArtifact] = useState<ProgrammeArtifact | null>(null);
+
+  // ── Perennial context for age + density scaling ───────────────
+  // Captured from the field record when a field is selected so the
+  // v2 engine applies the correct age curve. Falls back to manual
+  // entry — not surfaced in UI yet (form follow-up).
+  const [treeAge, setTreeAge] = useState<number | null>(null);
+  const [plantingDate, setPlantingDate] = useState<string | null>(null);
+  const [popPerHa, setPopPerHa] = useState<number | null>(null);
 
   // ── UI state ────────────────────────────────────────────────────
   const [loading, setLoading] = useState(false);
@@ -265,37 +283,82 @@ function QuickAnalysisPage() {
     }
   };
 
-  // Run soil analysis (classify + optional targets if crop+yield provided)
+  // Run soil + leaf analysis through the v2 interpretation engine.
+  //
+  // Replaces the legacy /api/soil/run + /api/leaf/classify pair with
+  // a single /api/analysis/v2/run call. The v2 path automatically
+  // pulls in everything migration 080/081 seeded (citrus + avo +
+  // mac sufficiency + leaf bands), the Phase A age-factor scaling,
+  // soil-factor reasoning (Al / SAR / antagonisms), foliar trigger
+  // detection, and current-stage detection — all of which the legacy
+  // path missed.
+  //
+  // Underlying soil + leaf records still persist via /api/soil/ for
+  // downstream wizard/quote use; the analysis report itself is
+  // ephemeral.
   const handleAnalyze = async () => {
     if (!clientId || !farmId) {
       toast.error("Please select a client and farm first");
       return;
     }
+    if (!selectedCrop) {
+      toast.error("Pick a crop — needed to score soil/leaf against the right bands");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const res = await api.post<{
-        classifications: Classification;
-        ratios: RatioResult[];
-        thresholds: Record<string, { very_low_max: number; low_max: number; optimal_max: number; high_max: number }> | null;
-        targets: NutrientTarget[] | null;
-      }>("/api/soil/run", {
-        soil_values: getNumericSoilValues(),
-        crop_name: selectedCrop || null,
-        yield_target: parseFloat(yieldTarget) || null,
-      });
-      setClassifications(res.classifications);
-      setRatios(res.ratios);
-      if (res.thresholds) setSoilThresholds(res.thresholds);
-      if (res.targets && res.targets.length > 0) setTargets(res.targets);
+      // Build leaf_values dict (only entries with parseable positive values)
+      const leafNum: Record<string, number> = {};
+      for (const [k, v] of Object.entries(leafValues)) {
+        const n = parseFloat(v);
+        if (n > 0) leafNum[k] = n;
+      }
+      const hasLeaf = Object.keys(leafNum).length > 0;
+      const yieldTargetNum = parseFloat(yieldTarget);
 
-      // Also run leaf if we have leaf values
-      if (analysisType === "both" || Object.values(leafValues).some((v) => v)) {
-        await runLeafClassification();
+      // numericSoilValues emits null for empty cells; the engine only
+      // wants populated entries (nulls confuse the soil-factor reasoner
+      // that uses .get(...) lookups).
+      const soilNumRaw = getNumericSoilValues();
+      const soilNum: Record<string, number> = {};
+      for (const [k, v] of Object.entries(soilNumRaw)) {
+        if (typeof v === "number" && Number.isFinite(v)) soilNum[k] = v;
       }
 
-      // Auto-save to farm/field
-      await autoSaveAnalysis(res.classifications, res.ratios, res.targets || []);
+      const { artifact } = await runAnalysis({
+        crop: selectedCrop,
+        prepared_for: customer || "Quick Analysis",
+        client_name: customer || null,
+        farm_name: farm || null,
+        planting_date: plantingDate,
+        blocks: [
+          {
+            block_id: fieldId || "manual",
+            block_name: field || "Quick Analysis",
+            block_area_ha: 1.0, // placeholder — analysis is per-ha so area=1 is fine
+            soil_parameters: soilNum,
+            leaf_values: hasLeaf ? leafNum : null,
+            yield_target_per_ha: Number.isFinite(yieldTargetNum) && yieldTargetNum > 0
+              ? yieldTargetNum
+              : null,
+            tree_age: treeAge,
+            pop_per_ha: popPerHa,
+            lab_name: labName || null,
+            sample_date: analysisDate || null,
+          },
+        ],
+      });
+      setAnalysisArtifact(artifact);
+
+      // Auto-save the underlying soil/leaf record (legacy persistence
+      // path stays — the wizard, quotes, and Season Tracker still
+      // consume those rows).
+      await autoSaveAnalysis(
+        {} as Classification, // legacy fields no longer drive UI; pass empty
+        [],
+        [],
+      );
 
       setStep(1);
 
@@ -578,6 +641,12 @@ function QuickAnalysisPage() {
                           if (fieldData.cultivar && !cultivar) setCultivar(String(fieldData.cultivar));
                           if (fieldData.yield_target && !yieldTarget) setYieldTarget(String(fieldData.yield_target));
                           if (fieldData.yield_unit) setYieldUnit(String(fieldData.yield_unit));
+                          // Perennial context for v2 engine — drives
+                          // age + density scaling so a young block
+                          // isn't read against full-bearing norms.
+                          setTreeAge(typeof fieldData.tree_age === "number" ? fieldData.tree_age : null);
+                          setPlantingDate(typeof fieldData.planting_date === "string" ? fieldData.planting_date : null);
+                          setPopPerHa(typeof fieldData.pop_per_ha === "number" ? fieldData.pop_per_ha : null);
 
                           // Auto-populate from linked analysis
                           if (fieldData.latest_analysis_id) {
@@ -785,31 +854,29 @@ function QuickAnalysisPage() {
             </div>
           </div>
 
-        {/* ═══════════ STEP 1: DIAGNOSTIC RESULTS ═══════════ */}
-        {step === 1 && (
-          <CombinedView
-            hasSoil={hasSoilData}
-            classifications={classifications}
-            soilValues={soilValues}
-            soilThresholds={soilThresholds}
-            ratios={ratios}
-            customer={customer}
-            farm={farm}
-            field={field}
-            cropName={selectedCrop}
-            cultivar={cultivar}
-            yieldTarget={yieldTarget}
-            yieldUnit={yieldUnit}
-            labName={labName}
-            analysisDate={analysisDate}
-            hasLeaf={hasLeafData}
-            leafResult={leafResult}
-            savedAnalysisId={savedAnalysisId}
-            saving={loading}
-            onSaveAnalysis={handleSaveAnalysis}
-            onBuildProgramme={handleBuildProgramme}
-            onBack={() => setStep(0)}
-          />
+        {/* ═══════════ STEP 1: DIAGNOSTIC RESULTS (v2 engine) ═══════ */}
+        {/* The v2 analysis pipeline produces a ProgrammeArtifact-shaped
+            report with empty blends/stage_schedules/shopping_list.
+            ArtifactView with mode="analysis" hides those sections so
+            we get the same visual surface as a full programme minus
+            the fertilizer recommendation. */}
+        {step === 1 && analysisArtifact && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Button variant="outline" onClick={() => setStep(0)}>
+                ← Back to inputs
+              </Button>
+              {savedAnalysisId && (
+                <Button
+                  onClick={handleBuildProgramme}
+                  className="bg-[var(--sapling-orange)] text-white hover:bg-[var(--sapling-orange)]/90"
+                >
+                  Build full programme from this analysis →
+                </Button>
+              )}
+            </div>
+            <ArtifactView artifact={analysisArtifact} mode="analysis" />
+          </div>
         )}
       </div>
       <ConflictResolutionDialog

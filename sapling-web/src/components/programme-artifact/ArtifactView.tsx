@@ -83,29 +83,49 @@ function prettyBlockLabel(
   return `Block ${blockId}`;
 }
 
-export function ArtifactView({ artifact }: { artifact: ProgrammeArtifact }) {
+export function ArtifactView({
+  artifact,
+  mode = "programme",
+}: {
+  artifact: ProgrammeArtifact;
+  /** "programme" (default) renders all sections including Blends /
+   *  Stage Schedules / Shopping List / Pre-Season. "analysis" hides
+   *  those four since /quick-analysis intentionally produces an
+   *  interpretation-only artifact (no fertilizer recommendation per
+   *  the project_programme_builder_scope rule). */
+  mode?: "programme" | "analysis";
+}) {
   const blockNameById = buildBlockNameMap(artifact.soil_snapshots);
+  const isProgramme = mode === "programme";
   return (
     <div className="space-y-6">
       <HeaderCard artifact={artifact} />
       <SoilSnapshotsSection snapshots={artifact.soil_snapshots} />
-      <PreSeasonSection
-        inputs={artifact.pre_season_inputs}
-        recommendations={artifact.pre_season_recommendations}
-      />
-      <StageScheduleSection
-        schedules={artifact.stage_schedules}
-        blockNameById={blockNameById}
-      />
-      <BlendsSection
-        blends={artifact.blends}
-        blockNameById={blockNameById}
-      />
+      {isProgramme && (
+        <PreSeasonSection
+          inputs={artifact.pre_season_inputs}
+          recommendations={artifact.pre_season_recommendations}
+        />
+      )}
+      {isProgramme && (
+        <StageScheduleSection
+          schedules={artifact.stage_schedules}
+          blockNameById={blockNameById}
+        />
+      )}
+      {isProgramme && (
+        <BlendsSection
+          blends={artifact.blends}
+          blockNameById={blockNameById}
+        />
+      )}
       <FoliarSection events={artifact.foliar_events} />
-      <ShoppingListSection
-        entries={artifact.shopping_list}
-        blockNameById={blockNameById}
-      />
+      {isProgramme && (
+        <ShoppingListSection
+          entries={artifact.shopping_list}
+          blockNameById={blockNameById}
+        />
+      )}
       <RiskFlagsSection flags={artifact.risk_flags} />
       <OutstandingItemsSection items={artifact.outstanding_items} />
       <AssumptionsSection assumptions={artifact.assumptions} />
