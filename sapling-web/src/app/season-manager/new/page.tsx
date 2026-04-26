@@ -20,7 +20,7 @@ import { ChevronRight, ChevronLeft, Loader2, Leaf, Check, AlertTriangle } from "
 import { FieldPicker } from "@/components/season-manager/field-picker";
 import { ScheduleReview, type BlockInfo, type UserApplication } from "@/components/season-manager/schedule-review";
 import { BlendGroups, type BlendGroupData } from "@/components/season-manager/blend-groups";
-import type { Programme, Block, CropNorm, SoilAnalysis } from "@/lib/season-constants";
+import type { Block, CropNorm, SoilAnalysis } from "@/lib/season-constants";
 import { emptyBlock, MONTH_NAMES, methodLabel } from "@/lib/season-constants";
 import {
   wizardStateToBuildRequest,
@@ -28,7 +28,8 @@ import {
   WizardAdapterError,
   type SoilAnalysisMeta,
 } from "@/lib/adapters/wizard-to-v2";
-import { buildProgramme } from "@/lib/programmes-v2";
+import { buildProgramme, previewSchedule } from "@/lib/programmes-v2";
+import type { Blend as ArtifactBlend, ProgrammeArtifact } from "@/lib/types/programme-artifact";
 
 export default function SeasonBuilderPageWrapper() {
   return (
@@ -39,6 +40,98 @@ export default function SeasonBuilderPageWrapper() {
 }
 
 const STEPS = ["Client", "Blocks", "Schedule", "Blends", "Review"];
+
+const FOLIAR_METHODS = new Set(["foliar", "foliar_spray"]);
+
+const NUMERIC_RATE_RE = /([\d.]+)/;
+
+function parseRatePerHa(s: string | null | undefined): number {
+  if (!s) return 0;
+  const m = NUMERIC_RATE_RE.exec(s);
+  return m ? parseFloat(m[1]) : 0;
+}
+
+function methodKindForBlendGroups(method: string): string {
+  // ApplicationMethod enum values map onto the legacy BlendGroups display
+  // labels (broadcast / fertigation / foliar). Drop method-specific
+  // qualifiers so the UI stays compact.
+  const m = method.toLowerCase();
+  if (m.includes("foliar")) return "foliar";
+  if (m.includes("fertig")) return "fertigation";
+  if (m.includes("seed")) return "seed_treat";
+  if (m.includes("basal")) return "soil_basal";
+  return "broadcast";
+}
+
+function eventDateToMonth(iso: string | undefined): number {
+  if (!iso) return 1;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return 1;
+  return d.getMonth() + 1;
+}
+
+/** Map a v2 ProgrammeArtifact's blends list into the BlendGroupData
+ * shape the existing BlendGroups component expects. One group per
+ * block; each blend's ApplicationEvents become one ApplicationBlendData
+ * row each so the wizard preview shows real per-event timing. */
+function artifactToBlendGroups(
+  artifact: ProgrammeArtifact,
+  wizardBlocks: Omit<Block, "id">[],
+): BlendGroupData[] {
+  const blends = (artifact.blends || []) as ArtifactBlend[];
+  const snapshots = artifact.soil_snapshots || [];
+  const cropByBlockId = new Map<string, string>();
+  for (const wb of wizardBlocks) {
+    if (wb.crop && wb.name) cropByBlockId.set(wb.name, wb.crop);
+  }
+  const areaByBlockId = new Map<string, number>();
+  for (const s of snapshots) {
+    if (s.block_id && typeof s.block_area_ha === "number") {
+      areaByBlockId.set(s.block_id, s.block_area_ha);
+    }
+  }
+
+  const groupMap = new Map<string, BlendGroupData>();
+  for (const blend of blends) {
+    const blockId = blend.block_id;
+    if (!groupMap.has(blockId)) {
+      const crop = cropByBlockId.get(blockId) || "";
+      groupMap.set(blockId, {
+        group: blockId,
+        crops: crop ? [crop] : [],
+        block_names: [blockId],
+        total_area_ha: areaByBlockId.get(blockId) ?? 0,
+        applications: [],
+      });
+    }
+    const group = groupMap.get(blockId)!;
+    const method = methodKindForBlendGroups(String(blend.method));
+    const isFoliar = FOLIAR_METHODS.has(method);
+    const recipe = (blend.raw_products || []).map((p) => ({
+      material: p.product,
+      type: p.analysis,
+      kg: parseRatePerHa(p.rate_per_event_per_ha),
+      pct: 0,
+      cost: 0,
+    }));
+    const ratePerEvent = recipe.reduce((s, r) => s + (r.kg || 0), 0);
+    const events = blend.applications && blend.applications.length > 0
+      ? blend.applications
+      : [{ event_index: 0, event_date: "", week_from_planting: 0 }];
+    for (const ev of events) {
+      group.applications.push({
+        stage_name: blend.stage_name,
+        month: eventDateToMonth(ev.event_date),
+        method,
+        sa_notation: blend.raw_products?.map((p) => p.analysis).filter(Boolean).join(" + ") || "",
+        rate_kg_ha: ratePerEvent,
+        recipe,
+        is_foliar: isFoliar,
+      });
+    }
+  }
+  return Array.from(groupMap.values());
+}
 
 function SeasonBuilderPage() {
   const router = useRouter();
@@ -66,22 +159,23 @@ function SeasonBuilderPage() {
   const [season, setSeason] = useState("");
   const [blocks, setBlocks] = useState<Omit<Block, "id">[]>([emptyBlock()]);
 
-  // Programme ID (created when advancing past step 2)
-  const [programmeId, setProgrammeId] = useState<string | null>(null);
+  // v2 ProgrammeArtifact id, set when buildProgramme() succeeds at step 2→3.
+  const [artifactId, setArtifactId] = useState<string | null>(null);
 
-  // Schedule data (from preview-schedule)
+  // Schedule data (from v2 preview-schedule)
   const [blockInfoData, setBlockInfoData] = useState<BlockInfo[]>([]);
   const [userApplications, setUserApplications] = useState<UserApplication[]>([]);
   const [plantingMonths, setPlantingMonths] = useState<Record<string, number>>({});
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [unplanableBlocks, setUnplanableBlocks] = useState<Array<{ block_id: string; block_name: string; reason: string; crop?: string }>>([]);
 
-  // Blend groups data (from generate)
+  // Blend groups display data — mapped from the v2 ProgrammeArtifact's
+  // blends after step 2→3 build. One group per block.
   const [blendGroupsData, setBlendGroupsData] = useState<BlendGroupData[]>([]);
 
   // Method availability is derived from field-level accepted_methods +
-  // irrigation_type during handleBuildArtifact — not a separate wizard
-  // step. Field drawer is the single source of truth.
+  // irrigation_type during the build — not a separate wizard step.
+  // Field drawer is the single source of truth.
   const [buildingArtifact, setBuildingArtifact] = useState(false);
 
   // Reference data
@@ -93,9 +187,10 @@ function SeasonBuilderPage() {
   // Survive accidental refreshes mid-wizard. Persist to localStorage
   // on any state change; rehydrate on mount unless the URL is
   // carrying a fresh handoff (analysis_id / client_id), in which
-  // case the handoff intent wins. Cleared on Build Full Programme,
-  // legacy Activate, Save as Draft, and explicit Cancel.
-  const DRAFT_KEY = "sapling.wizard.draft.v1";
+  // case the handoff intent wins. Cleared on Build Full Programme
+  // and explicit Cancel.
+  // v2 = post-legacy-rip key — drops `programmeId`, adds `artifactId`.
+  const DRAFT_KEY = "sapling.wizard.draft.v2";
   const hasHydrated = useRef(false);
 
   useEffect(() => {
@@ -118,7 +213,7 @@ function SeasonBuilderPage() {
         programmeName?: string;
         season?: string;
         blocks?: Omit<Block, "id">[];
-        programmeId?: string | null;
+        artifactId?: string | null;
         blockInfoData?: BlockInfo[];
         userApplications?: UserApplication[];
         plantingMonths?: Record<string, number>;
@@ -132,7 +227,7 @@ function SeasonBuilderPage() {
       if (draft.programmeName) setProgrammeName(draft.programmeName);
       if (draft.season) setSeason(draft.season);
       if (draft.blocks) setBlocks(draft.blocks);
-      if (draft.programmeId !== undefined) setProgrammeId(draft.programmeId);
+      if (draft.artifactId !== undefined) setArtifactId(draft.artifactId);
       if (draft.blockInfoData) setBlockInfoData(draft.blockInfoData);
       if (draft.userApplications) setUserApplications(draft.userApplications);
       if (draft.plantingMonths) setPlantingMonths(draft.plantingMonths);
@@ -154,7 +249,7 @@ function SeasonBuilderPage() {
     try {
       const draft = {
         wizardStep, clientId, farmId, clientName, farmName,
-        programmeName, season, blocks, programmeId,
+        programmeName, season, blocks, artifactId,
         blockInfoData, userApplications, plantingMonths, blendGroupsData,
       };
       window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
@@ -163,7 +258,7 @@ function SeasonBuilderPage() {
       // their in-memory wizard state.
     }
   }, [wizardStep, clientId, farmId, clientName, farmName, programmeName,
-      season, blocks, programmeId, blockInfoData, userApplications,
+      season, blocks, artifactId, blockInfoData, userApplications,
       plantingMonths, blendGroupsData]);
 
   const clearDraft = () => {
@@ -271,7 +366,9 @@ function SeasonBuilderPage() {
 
   // ── Step transitions ────────────────────────────────────────────
 
-  // Step 1→2: Create programme (if not yet created), then preview schedule
+  // Step 1→2: Resolve growth stages, accepted methods, nutrient targets
+  // and corrections per block via the v2 preview-schedule endpoint.
+  // Stateless — no DB writes.
   const handleAdvanceToSchedule = async () => {
     if (!clientId) {
       toast.error("Please select a client");
@@ -281,39 +378,24 @@ function SeasonBuilderPage() {
     setSaving(true);
     setScheduleError(null);
     try {
-      // Create programme if needed
-      let pid = programmeId;
-      if (!pid) {
-        const validBlocks = blocks.filter((b) => b.crop && b.name);
-        const result = await api.post<Programme>("/api/programmes", {
-          client_id: clientId || null,
-          farm_id: farmId || null,
-          name: programmeName,
-          season,
-          status: "draft",
-          blocks: validBlocks.map((b) => ({
-            name: b.name,
-            area_ha: b.area_ha || null,
-            crop: b.crop,
-            cultivar: b.cultivar || null,
-            yield_target: b.yield_target || null,
-            yield_unit: b.yield_unit || null,
-            tree_age: b.tree_age || null,
-            pop_per_ha: b.pop_per_ha || null,
-            soil_analysis_id: b.soil_analysis_id || null,
-          })),
-        });
-        pid = result.id;
-        setProgrammeId(pid);
+      const validBlocks = blocks.filter((b) => b.crop && b.name);
+      if (validBlocks.length === 0) {
+        throw new Error("Add at least one block with a crop on Step 1.");
       }
-
-      // Preview schedule — get block info with growth stages
-      const preview = await api.post<{
-        schedule: unknown[];
-        block_info: BlockInfo[];
-        unplanable_blocks?: Array<{ block_id: string; block_name: string; reason: string; crop?: string }>;
-      }>(`/api/programmes/${pid}/preview-schedule`);
-      setBlockInfoData(preview.block_info);
+      const previewBlocks = validBlocks.map((b) => ({
+        block_id: b.name,
+        block_name: b.name,
+        crop: b.crop!,
+        cultivar: b.cultivar || null,
+        soil_analysis_id: b.soil_analysis_id || null,
+        field_id: (b as { field_id?: string | null }).field_id ?? null,
+        yield_target: b.yield_target ?? null,
+        yield_unit: b.yield_unit || null,
+        tree_age: b.tree_age ?? null,
+        pop_per_ha: b.pop_per_ha ?? null,
+      }));
+      const preview = await previewSchedule(previewBlocks);
+      setBlockInfoData(preview.block_info as unknown as BlockInfo[]);
       setUnplanableBlocks(preview.unplanable_blocks || []);
       setUserApplications([]);
       if (preview.unplanable_blocks && preview.unplanable_blocks.length > 0) {
@@ -329,101 +411,21 @@ function SeasonBuilderPage() {
     }
   };
 
-  // Step 2→3: Generate blends
+  // Step 2→3: Run the v2 builder, persist the artifact (state=draft),
+  // and map artifact.blends → BlendGroupData for the preview step.
   const handleAdvanceToBlends = async () => {
-    if (!programmeId) return;
     setGenerating(true);
     try {
-      const generateBody: Record<string, unknown> = {};
-      if (userApplications.length > 0) generateBody.applications = userApplications;
-      if (Object.keys(plantingMonths).length > 0) {
-        generateBody.planting_months = Object.entries(plantingMonths).map(([block_id, month]) => ({ block_id, month }));
-      }
-      const result = await api.post<Record<string, unknown>>(
-        `/api/programmes/${programmeId}/generate`,
-        generateBody
-      );
-
-      // Build blend group display data from the programme detail
-      const prog = await api.get<Record<string, unknown>>(`/api/programmes/${programmeId}`);
-      const blends = (prog.blends || []) as Array<Record<string, unknown>>;
-      const progBlocks = (prog.blocks || []) as Array<Record<string, unknown>>;
-
-      // Group blends by blend_group — each saved blend row now carries
-      // its own recipe/notation/rate (one row per application), so the
-      // aggregator pushes a full application record per blend, not a
-      // single per-group summary.
-      const FOLIAR_METHODS = new Set(["foliar", "foliar_spray"]);
-      const groupMap = new Map<string, BlendGroupData>();
-      for (const blend of blends) {
-        const group = String(blend.blend_group || "A");
-        if (!groupMap.has(group)) {
-          const groupBlocks = progBlocks.filter((b) => b.blend_group === group);
-          groupMap.set(group, {
-            group,
-            crops: [...new Set(groupBlocks.map((b) => String(b.crop)))],
-            block_names: groupBlocks.map((b) => String(b.name)),
-            total_area_ha: groupBlocks.reduce((s, b) => s + (Number(b.area_ha) || 0), 0),
-            applications: [],
-          });
-        }
-        const method = String(blend.method || "broadcast");
-        groupMap.get(group)!.applications.push({
-          stage_name: String(blend.stage_name || ""),
-          month: Number(blend.application_month) || 1,
-          method,
-          sa_notation: String(blend.sa_notation || ""),
-          rate_kg_ha: Number(blend.rate_kg_ha) || 0,
-          cost_per_ton: blend.blend_cost_per_ton != null ? Number(blend.blend_cost_per_ton) : undefined,
-          recipe: (blend.blend_recipe || []) as NonNullable<BlendGroupData["applications"][number]["recipe"]>,
-          is_foliar: FOLIAR_METHODS.has(method),
-        });
-      }
-
-      setBlendGroupsData(Array.from(groupMap.values()));
-      setWizardStep(3);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Generation failed");
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  // Build programme artifact via the new v2 engine. Runs alongside the
-  // legacy generate flow — needs plantingMonths (step 2) + blockInfoData
-  // so it can resolve server block_ids back to block names.
-  const handleBuildArtifact = async () => {
-    try {
-      setBuildingArtifact(true);
-
-      // Pre-flight — Build Artifact sits on the last wizard step, so
-      // all of these should already be populated. Guard with specific
-      // messages so the agronomist doesn't stare at a generic error
-      // when they skipped a step.
       const validBlocks = blocks.filter((b) => b.crop && b.name && b.soil_analysis_id);
       if (validBlocks.length === 0) {
-        toast.error(
-          "No blocks have a soil analysis linked. Go back to Step 1 and link one.",
-          { duration: 8000 },
-        );
-        return;
+        throw new Error("No blocks have a soil analysis linked. Go back to Step 1 and link one.");
       }
       if (blockInfoData.length === 0) {
-        toast.error(
-          "Schedule hasn't been generated. Go back to Step 2 (Schedule) first.",
-          { duration: 8000 },
-        );
-        return;
+        throw new Error("Schedule isn't ready. Go back to Step 2 first.");
       }
 
-      // Build block_id → block_name from preview-schedule output.
-      // plantingMonths is user-set via ScheduleReview dropdown — only
-      // populated when the user *interacts* with the dropdown. If the
-      // user accepted the defaults without clicking, it stays empty.
-      // Fall back to the first growth-stage month for each block (same
-      // default ScheduleReview shows visually), so a "no click" flow
-      // still produces a valid request.
-      const nameByBlockId = new Map(blockInfoData.map((bi) => [bi.block_id, bi.block_name]));
+      // Resolve planting month per block — user-set on Step 2, fallback
+      // to first growth-stage month if the user accepted defaults.
       const plantingMonthByBlockName: Record<string, number> = {};
       for (const bi of blockInfoData) {
         const userSet = plantingMonths[bi.block_id];
@@ -434,17 +436,10 @@ function SeasonBuilderPage() {
         }
       }
       if (Object.keys(plantingMonthByBlockName).length === 0) {
-        toast.error(
-          "No planting months available. Set one on Step 2 (Schedule) for each block.",
-          { duration: 8000 },
-        );
-        return;
+        throw new Error("No planting months available. Set one on Step 2 (Schedule) for each block.");
       }
 
-      // Fetch soil_values per analysis (list view doesn't include them).
-      // A single failing fetch shouldn't break the whole build — wrap
-      // each in a .catch so one bad analysis becomes a skipped block
-      // (via empty soil_values), not a hard error.
+      // Fetch soil_values per analysis (list endpoint omits them).
       const analysisIds = Array.from(
         new Set(validBlocks.map((b) => b.soil_analysis_id!).filter(Boolean)),
       );
@@ -471,18 +466,9 @@ function SeasonBuilderPage() {
         };
       }
 
-      // Derive farm-level MethodAvailability from field-level
-      // accepted_methods (the field drawer is the single source of
-      // truth). preview-schedule already surfaces accepted_methods
-      // on each BlockInfo, so we aggregate across selected blocks.
-      const allAcceptedMethods = blockInfoData
-        .flatMap((bi) => bi.accepted_methods || []);
+      const allAcceptedMethods = blockInfoData.flatMap((bi) => bi.accepted_methods || []);
       const methodAvailability = deriveMethodAvailability(allAcceptedMethods);
 
-      // Pass ALL named blocks (not just those with soil data) so the
-      // adapter can split them into planned vs skipped; the skipped set
-      // flows to the artifact as OutstandingItems instead of being
-      // silently dropped.
       const namedBlocks = blocks.filter((b) => b.crop && b.name);
       const { request, skippedBlocks } = wizardStateToBuildRequest({
         clientName,
@@ -508,56 +494,39 @@ function SeasonBuilderPage() {
       });
 
       const response = await buildProgramme(request);
+      setArtifactId(response.id);
+      setBlendGroupsData(artifactToBlendGroups(response.artifact as ProgrammeArtifact, blocks));
+
       if (skippedBlocks.length > 0) {
         toast.warning(
           `${skippedBlocks.length} block${skippedBlocks.length !== 1 ? "s" : ""} not planned (no soil analysis) — see Outstanding Items`,
         );
-      } else {
-        toast.success("Programme generated");
       }
-      // Wizard work is now persisted as an artifact — drop the
-      // draft so the next "New programme" starts clean.
-      clearDraft();
-      router.push(`/season-manager/artifact/${response.id}`);
+      setWizardStep(3);
     } catch (e) {
-      // Always log — toast messages are short; console gets the raw
-      // exception for actual debugging. Long duration on the toast so
-      // an agronomist on a slow network can read the detail string
-      // before it fades (default 4s clips long detail messages).
-      console.error("handleBuildArtifact failed", e);
+      console.error("handleAdvanceToBlends failed", e);
       if (e instanceof WizardAdapterError) {
         toast.error(e.message, { duration: 10000 });
       } else if (e instanceof Error) {
-        toast.error(`Build failed: ${e.message}`, { duration: 10000 });
+        toast.error(e.message, { duration: 10000 });
       } else {
-        toast.error("Build failed (unknown error — check console)", { duration: 10000 });
+        toast.error("Generation failed (unknown error — check console)", { duration: 10000 });
       }
     } finally {
-      setBuildingArtifact(false);
+      setGenerating(false);
     }
   };
 
-  // Final: navigate to programme detail. Both paths persist the
-  // wizard's work into the legacy `programmes` table, so the draft
-  // can be cleared.
-  const handleFinish = (activate: boolean) => {
-    if (!programmeId) return;
-    if (activate) {
-      api.patch(`/api/programmes/${programmeId}`, { status: "active" })
-        .then(() => {
-          toast.success("Programme activated");
-          clearDraft();
-          router.push(`/season-manager/${programmeId}`);
-        })
-        .catch(() => {
-          toast.error("Failed to activate");
-          router.push(`/season-manager/${programmeId}`);
-        });
-    } else {
-      toast.success("Programme saved as draft");
-      clearDraft();
-      router.push(`/season-manager/${programmeId}`);
+  // Step 4 (Review) → navigate to the persisted artifact view. The
+  // artifact was saved as draft when the user advanced past Step 2.
+  const handleBuildArtifact = () => {
+    if (!artifactId) {
+      toast.error("Programme not built yet — go back to Step 3 first.");
+      return;
     }
+    setBuildingArtifact(true);
+    clearDraft();
+    router.push(`/season-manager/artifact/${artifactId}`);
   };
 
   // ── Validation ──────────────────────────────────────────────────
@@ -902,36 +871,21 @@ function SeasonBuilderPage() {
               {wizardStep === 1 ? "Preview Schedule" : wizardStep === 2 ? "Generate Blends" : "Next"}
             </Button>
           ) : (
-            // CTA hierarchy: the v2 "Build Full Programme" path is the
-            // primary action (orange filled). The legacy "Activate"
-            // path is secondary (outlined) and explicitly tagged so
-            // the agronomist knows which engine they're committing to.
-            // "Save as Draft" is the tertiary escape hatch.
-            <div className="flex flex-wrap items-center gap-3">
-              <Button variant="ghost" onClick={() => handleFinish(false)}>
-                Save as Draft
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleFinish(true)}
-                title="Save the programme to the legacy season-manager engine. Use this if you don't need the v2 ProgrammeArtifact pipeline."
-              >
-                <Check className="size-4" />
-                Activate (legacy)
-              </Button>
-              <Button
-                onClick={handleBuildArtifact}
-                disabled={buildingArtifact}
-                className="bg-[var(--sapling-orange)] text-white hover:bg-[var(--sapling-orange)]/90"
-              >
-                {buildingArtifact ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Leaf className="size-4" />
-                )}
-                Build Full Programme
-              </Button>
-            </div>
+            // The v2 build runs at Step 2→3, persisting an artifact in
+            // draft state. This button just navigates to the saved
+            // artifact view.
+            <Button
+              onClick={handleBuildArtifact}
+              disabled={buildingArtifact || !artifactId}
+              className="bg-[var(--sapling-orange)] text-white hover:bg-[var(--sapling-orange)]/90"
+            >
+              {buildingArtifact ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Leaf className="size-4" />
+              )}
+              View Full Programme
+            </Button>
           )}
         </div>
       </div>

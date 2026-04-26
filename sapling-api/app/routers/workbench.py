@@ -104,26 +104,16 @@ def _get_stats(sb, agent_id: str) -> dict[str, int]:
         .execute()
     ).count or 0
 
-    # Open programmes = anything not archived/completed (legacy
-    # `programmes` table) + active v2 artifacts. The user's mental
-    # model is "programmes still in flight", which spans drafts,
-    # approved, and activated — just `status == 'active'` undercounts.
-    open_legacy = (
-        sb.table("programmes")
-        .select("id", count="exact")
-        .eq("agent_id", agent_id)
-        .in_("status", ["draft", "active"])
-        .is_("deleted_at", "null")
-        .execute()
-    ).count or 0
-    open_v2 = (
+    # Open programmes = v2 artifacts in any non-terminal state. The user's
+    # mental model is "programmes still in flight", which spans drafts,
+    # approved, and activated.
+    active_programmes = (
         sb.table("programme_artifacts")
         .select("id", count="exact")
         .eq("user_id", agent_id)
         .in_("state", ["draft", "approved", "activated", "in_progress"])
         .execute()
     ).count or 0
-    active_programmes = open_legacy + open_v2
 
     pending_quotes = (
         sb.table("quotes")
@@ -270,106 +260,10 @@ def _get_pending_quotes(sb, agent_id: str) -> dict[str, Any]:
     return {"count": len(rows), "preview": preview}
 
 
-def _get_overdue_applications(sb, agent_id: str) -> dict[str, Any]:
-    """Planned blends whose application month has passed without a
-    matching actual application recorded.
-
-    Heuristic: application_month < current month AND no programme_applications
-    row links to this blend with status='applied'. Only checks active
-    programmes (status='active').
-    """
-    progs = (
-        sb.table("programmes")
-        .select("id, name")
-        .eq("agent_id", agent_id)
-        .eq("status", "active")
-        .is_("deleted_at", "null")
-        .execute()
-    )
-    prog_ids = [p["id"] for p in (progs.data or [])]
-    if not prog_ids:
-        return {"count": 0, "preview": []}
-    prog_name_by_id = {p["id"]: p["name"] for p in progs.data}
-
-    current_month = datetime.now(timezone.utc).month
-
-    # Planned blends in past months
-    blends = (
-        sb.table("programme_blends")
-        .select("id, programme_id, stage_name, application_month, blend_group, rate_kg_ha")
-        .in_("programme_id", prog_ids)
-        .lt("application_month", current_month)
-        .execute()
-    ).data or []
-    if not blends:
-        return {"count": 0, "preview": []}
-
-    # Map of (programme_id, planned_blend_id) that WERE applied
-    blend_ids = [b["id"] for b in blends]
-    apps = (
-        sb.table("programme_applications")
-        .select("planned_blend_id, status")
-        .in_("planned_blend_id", blend_ids)
-        .execute()
-    ).data or []
-    applied_blend_ids = {a["planned_blend_id"] for a in apps if a.get("status") == "applied"}
-
-    overdue = [b for b in blends if b["id"] not in applied_blend_ids]
-    preview = []
-    for b in overdue[:CARD_PREVIEW_LIMIT]:
-        preview.append({
-            "blend_id": b["id"],
-            "programme_id": b["programme_id"],
-            "programme_name": prog_name_by_id.get(b["programme_id"], "Programme"),
-            "stage_name": b.get("stage_name") or "Application",
-            "application_month": b.get("application_month"),
-            "months_late": current_month - (b.get("application_month") or current_month),
-        })
-    return {"count": len(overdue), "preview": preview}
-
-
-def _get_pending_adjustments(sb, agent_id: str) -> dict[str, Any]:
-    """Programmes with status='suggested' adjustments waiting for review.
-
-    These are raised by the season tracker when a new soil or leaf
-    analysis arrives for a block mid-season. Agronomist must approve
-    or reject before the programme shifts.
-    """
-    # Agents only — admins see through impersonation
-    progs = (
-        sb.table("programmes")
-        .select("id, name")
-        .eq("agent_id", agent_id)
-        .is_("deleted_at", "null")
-        .execute()
-    )
-    prog_ids = [p["id"] for p in (progs.data or [])]
-    if not prog_ids:
-        return {"count": 0, "preview": []}
-
-    adj = (
-        sb.table("programme_adjustments")
-        .select("id, programme_id, block_id, trigger_type, notes, created_at")
-        .in_("programme_id", prog_ids)
-        .eq("status", "suggested")
-        .order("created_at", desc=True)
-        .limit(CARD_PREVIEW_LIMIT * 2)
-        .execute()
-    )
-    rows = adj.data or []
-    prog_name_by_id = {p["id"]: p.get("name") or "Programme" for p in (progs.data or [])}
-    preview = []
-    for r in rows[:CARD_PREVIEW_LIMIT]:
-        preview.append({
-            "adjustment_id": r["id"],
-            "programme_id": r["programme_id"],
-            "programme_name": prog_name_by_id.get(r["programme_id"], "Programme"),
-            "block_id": r.get("block_id"),
-            "trigger_type": r.get("trigger_type"),
-            "notes": r.get("notes"),
-            "created_at": r.get("created_at"),
-        })
-    return {"count": len(rows), "preview": preview}
+# NOTE: _get_overdue_applications and _get_pending_adjustments were
+# v1-coupled (programmes / programme_blends / programme_applications /
+# programme_adjustments). Phase 4 will rebuild these against v2
+# ProgrammeArtifact's tracking surface.
 
 
 def _get_unread_messages(sb, agent_id: str) -> int:
@@ -400,21 +294,18 @@ def _build_today(
     never: dict[str, Any],
     pending: dict[str, Any],
     unread_count: int,
-    pending_adjustments: dict[str, Any],
-    overdue_applications: dict[str, Any],
 ) -> list[dict]:
     """Merge attention sections into a single urgency-ranked feed.
 
     Urgency rubric (higher = more urgent):
       unread message       → 100
-      overdue application  → 90 (season is moving past what was planned —
-                                 highest farm-level operational urgency)
-      pending adjustment   → 85 (new soil/leaf data needs review before
-                                 the programme goes stale)
       stale analysis       → 50 + clamp(months_old - threshold, 0, 40)
       pending quote        → 40 + clamp(days_pending, 0, 30)
       never-analysed       → 20
     Ties broken by insertion order.
+
+    Phase 4 will reintroduce overdue-application + pending-adjustment
+    items once those are rebuilt against v2 ProgrammeArtifact tracking.
     """
     items: list[dict] = []
 
@@ -426,29 +317,6 @@ def _build_today(
             "subtitle": "Someone replied on a quote you sent",
             "badge": f"{unread_count} new",
             "href": "/quotes",
-        })
-
-    for o in overdue_applications.get("preview", []):
-        months_late = o.get("months_late", 0) or 0
-        items.append({
-            "kind": "overdue_application",
-            "urgency": 90,
-            "title": o.get("programme_name") or "Programme",
-            "subtitle": f"{o.get('stage_name', 'Application')} — {months_late}mo overdue",
-            "badge": f"{months_late}mo late",
-            "href": f"/season-manager/{o['programme_id']}?tab=applications",
-        })
-
-    for a in pending_adjustments.get("preview", []):
-        trigger = a.get("trigger_type") or "data"
-        trigger_pretty = trigger.replace("_", " ")
-        items.append({
-            "kind": "pending_adjustment",
-            "urgency": 85,
-            "title": a.get("programme_name") or "Programme",
-            "subtitle": f"New {trigger_pretty} — {a.get('notes') or 'review adjustment'}",
-            "badge": "review",
-            "href": f"/season-manager/{a['programme_id']}?tab=adjustments",
         })
 
     for s in stale.get("preview", []):
@@ -531,22 +399,26 @@ def _get_recent_activity(sb, agent_id: str) -> list[dict]:
         })
 
     programmes = (
-        sb.table("programmes")
-        .select("id, name, season, status, created_at")
-        .eq("agent_id", agent_id)
-        .is_("deleted_at", "null")
+        sb.table("programme_artifacts")
+        .select("id, farm_name, crop, season, state, created_at")
+        .eq("user_id", agent_id)
         .order("created_at", desc=True)
         .limit(ACTIVITY_FEED_LIMIT)
         .execute()
     )
     for p in (programmes.data or []):
+        title = (
+            f"{p['farm_name']} — {p['crop']}"
+            if p.get("farm_name")
+            else (p.get("crop") or "Programme")
+        )
         feed.append({
             "type": "programme",
             "id": p["id"],
-            "title": p.get("name") or "Programme",
-            "subtitle": f"{p.get('season') or ''} · {p.get('status') or ''}".strip(" ·"),
+            "title": title,
+            "subtitle": f"{p.get('season') or ''} · {p.get('state') or ''}".strip(" ·"),
             "created_at": p["created_at"],
-            "href": f"/season-manager/{p['id']}",
+            "href": f"/season-manager/artifact/{p['id']}",
         })
 
     feed.sort(key=lambda x: x.get("created_at", ""), reverse=True)
@@ -592,23 +464,12 @@ def get_workbench(
         lambda: _get_pending_quotes(sb, agent_id),
         {"count": 0, "preview": []},
     )
-    pending_adjustments = _safe(
-        "pending_adjustments",
-        lambda: _get_pending_adjustments(sb, agent_id),
-        {"count": 0, "preview": []},
-    )
-    overdue_applications = _safe(
-        "overdue_applications",
-        lambda: _get_overdue_applications(sb, agent_id),
-        {"count": 0, "preview": []},
-    )
     unread_messages = _safe("unread_messages", lambda: _get_unread_messages(sb, agent_id), 0)
     activity = _safe("recent_activity", lambda: _get_recent_activity(sb, agent_id), [])
     today = _safe(
         "today",
         lambda: _build_today(
             stale_analyses, never_analysed, pending_quotes, unread_messages,
-            pending_adjustments, overdue_applications,
         ),
         [],
     )
@@ -636,8 +497,6 @@ def get_workbench(
             "stale_analyses": stale_analyses,
             "clients_never_analysed": never_analysed,
             "pending_quotes": pending_quotes,
-            "pending_adjustments": pending_adjustments,
-            "overdue_applications": overdue_applications,
             "unread_messages": unread_messages,
         },
         "today": today,

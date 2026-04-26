@@ -92,20 +92,8 @@ def save_leaf_analysis(body: LeafSaveRequest, user: CurrentUser = Depends(get_cu
     record = result.data[0]
     _audit(sb, user, "leaf_save", record["id"], {"crop": body.crop})
 
-    # If linked to a programme, fire the detector so the adjustment
-    # lands in the review queue with a full classification snapshot.
-    if body.programme_id:
-        try:
-            from app.services.adjustment_detector import detect_leaf_adjustment
-            detect_leaf_adjustment(
-                sb,
-                programme_id=body.programme_id,
-                block_id=body.block_id,
-                new_leaf_id=record["id"],
-                created_by=user.id,
-            )
-        except Exception:
-            pass
+    # Adjustment-detection on save was previously coupled to the v1
+    # programme tables. Phase 4 will rebuild this on v2 ProgrammeArtifact.
 
     return record
 
@@ -153,55 +141,8 @@ def get_sampling_guide(crop: str, user: CurrentUser = Depends(get_current_user))
     return guide
 
 
-@router.post("/{analysis_id}/link-programme/{programme_id}")
-def link_to_programme(
-    analysis_id: str,
-    programme_id: str,
-    block_id: str | None = None,
-    user: CurrentUser = Depends(get_current_user),
-):
-    """Link a leaf analysis to a programme block and trigger adjustment if needed."""
-    sb = get_supabase_admin()
-
-    # Verify access
-    leaf = sb.table("leaf_analyses").select("*").eq("id", analysis_id).execute()
-    if not leaf.data:
-        raise HTTPException(404, "Leaf analysis not found")
-
-    prog = sb.table("programmes").select("agent_id").eq("id", programme_id).execute()
-    if not prog.data:
-        raise HTTPException(404, "Programme not found")
-
-    record = leaf.data[0]
-
-    # Update leaf analysis with programme link
-    updates = {"programme_id": programme_id}
-    if block_id:
-        updates["block_id"] = block_id
-    sb.table("leaf_analyses").update(updates).eq("id", analysis_id).execute()
-
-    # Fire the detector to land a suggested adjustment in the review queue
-    from app.services.adjustment_detector import detect_leaf_adjustment
-    adj = detect_leaf_adjustment(
-        sb,
-        programme_id=programme_id,
-        block_id=block_id,
-        new_leaf_id=analysis_id,
-        created_by=user.id,
-    )
-
-    classifications = record.get("classifications") or {}
-    deficiencies = [k for k, v in classifications.items() if v in ("Deficient", "Low")]
-    _audit(sb, user, "leaf_link_programme", analysis_id, {
-        "programme_id": programme_id,
-        "deficiencies": deficiencies,
-    })
-
-    return {
-        "linked": True,
-        "deficiencies_found": len(deficiencies),
-        "adjustment_id": adj["id"] if adj else None,
-    }
+# NOTE: /link-programme endpoint removed with the v1 programmes rip-out.
+# Phase 4 will reintroduce leaf→programme linkage on v2 ProgrammeArtifact.
 
 
 @router.post("/{analysis_id}/delete", status_code=200)

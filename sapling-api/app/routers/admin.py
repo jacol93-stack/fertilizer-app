@@ -363,7 +363,6 @@ def deactivate_user(user_id: str, body: DeactivateRequest, user: CurrentUser = D
             sb.table("clients").update({"agent_id": body.reassign_to, "original_agent_id": user_id}).eq("agent_id", user_id).execute()
             sb.table("soil_analyses").update({"agent_id": body.reassign_to, "original_agent_id": user_id}).eq("agent_id", user_id).execute()
             sb.table("blends").update({"agent_id": body.reassign_to, "original_agent_id": user_id}).eq("agent_id", user_id).execute()
-            sb.table("feeding_plans").update({"agent_id": body.reassign_to, "original_agent_id": user_id}).eq("agent_id", user_id).execute()
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Data reassignment failed: {e}")
 

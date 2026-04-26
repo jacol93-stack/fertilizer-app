@@ -326,6 +326,184 @@ async def build_programme_endpoint(
     )
 
 
+# ============================================================
+# Preview-schedule endpoint
+# ============================================================
+# Stateless wizard helper: takes the in-memory blocks the user has
+# assembled in step 1 and returns growth_stages + accepted_methods +
+# nutrient_targets + soil corrections per block, without writing
+# anything to the DB. Replaces the legacy /api/programmes/{id}/preview-schedule
+# which required a v1 programme row.
+
+class PreviewBlockRequest(BaseModel):
+    """Per-block input for the wizard's Schedule step. Lighter than
+    BlockRequest — no method availability or season targets needed yet."""
+    block_id: str
+    block_name: str
+    crop: str
+    cultivar: Optional[str] = None
+    soil_analysis_id: Optional[str] = None
+    field_id: Optional[str] = None
+    yield_target: Optional[float] = None
+    yield_unit: Optional[str] = None
+    tree_age: Optional[int] = None
+    pop_per_ha: Optional[int] = None
+
+
+class PreviewScheduleRequest(BaseModel):
+    blocks: list[PreviewBlockRequest]
+
+
+@router.post("/preview-schedule")
+async def preview_schedule(
+    request: PreviewScheduleRequest,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Resolve growth stages, accepted methods, nutrient targets, and soil
+    corrections for each block. Drives the wizard's Schedule Review step.
+    No DB writes."""
+    from app.services.soil_corrections import calculate_all_corrections, calculate_corrective_targets
+
+    sb = get_supabase_admin()
+
+    if not request.blocks:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No blocks provided")
+
+    # Pre-fetch soil analyses (one batched query is cheaper than N round-trips)
+    analysis_ids = [b.soil_analysis_id for b in request.blocks if b.soil_analysis_id]
+    analyses_by_id: dict[str, dict] = {}
+    if analysis_ids:
+        ar = (
+            sb.table("soil_analyses")
+            .select("id, soil_values, classifications, ratio_results, nutrient_targets, norms_snapshot")
+            .in_("id", analysis_ids)
+            .execute()
+        )
+        for row in ar.data or []:
+            analyses_by_id[row["id"]] = row
+
+    # Pre-fetch field accepted_methods + irrigation_type
+    field_ids = [b.field_id for b in request.blocks if b.field_id]
+    fields_by_id: dict[str, dict] = {}
+    if field_ids:
+        fr = (
+            sb.table("fields")
+            .select("id, accepted_methods, irrigation_type")
+            .in_("id", field_ids)
+            .execute()
+        )
+        for row in fr.data or []:
+            fields_by_id[row["id"]] = row
+
+    pm_rows = sb.table("soil_parameter_map").select("*").execute().data or []
+
+    block_info: list[dict] = []
+    unplanable_blocks: list[dict] = []
+    all_corrections: list[dict] = []
+
+    for b in request.blocks:
+        analysis = analyses_by_id.get(b.soil_analysis_id) if b.soil_analysis_id else None
+        nutrient_targets = (analysis or {}).get("nutrient_targets") or []
+
+        if not nutrient_targets:
+            unplanable_blocks.append({
+                "block_id": b.block_id,
+                "block_name": b.block_name,
+                "reason": "missing_targets",
+            })
+            continue
+
+        # Growth stages — try crop, fall back to base crop ("Citrus (Valencia)" → "Citrus")
+        crop = b.crop
+        base_crop = crop.split("(")[0].strip() if "(" in crop else crop
+        stage_cols = "stage_name, stage_order, month_start, month_end, n_pct, p_pct, k_pct, ca_pct, mg_pct, s_pct"
+        stages_result = sb.table("crop_growth_stages").select(stage_cols).eq("crop", crop).order("stage_order").execute()
+        stages = stages_result.data or []
+        if not stages and base_crop != crop:
+            stages_result = sb.table("crop_growth_stages").select(stage_cols).eq("crop", base_crop).order("stage_order").execute()
+            stages = stages_result.data or []
+        if not stages:
+            unplanable_blocks.append({
+                "block_id": b.block_id,
+                "block_name": b.block_name,
+                "reason": "missing_growth_stages",
+                "crop": crop,
+            })
+            continue
+
+        # Accepted methods — field first, then crop_application_methods, then default
+        field_row = fields_by_id.get(b.field_id) if b.field_id else None
+        accepted_methods = (field_row or {}).get("accepted_methods") or []
+        if not accepted_methods:
+            try:
+                cm = sb.table("crop_application_methods").select("method").eq("crop", crop).execute()
+                accepted_methods = [m["method"] for m in (cm.data or [])]
+            except Exception:
+                accepted_methods = []
+        if not accepted_methods:
+            accepted_methods = ["broadcast"]
+
+        # Soil corrections (uses linked analysis when present)
+        corrections_payload = {"corrections": [], "nutrient_explanations": []}
+        corrective_payload = {"corrective_items": [], "missing_data": []}
+        if analysis:
+            soil_vals = analysis.get("soil_values") or {}
+            corrections_payload = calculate_all_corrections(
+                soil_values=soil_vals,
+                classifications=analysis.get("classifications") or {},
+                ratio_results=analysis.get("ratio_results"),
+                nutrient_targets=nutrient_targets,
+                crop=crop,
+            )
+            for c in corrections_payload["corrections"]:
+                c["block_id"] = b.block_id
+                c["block_name"] = b.block_name
+            all_corrections.extend(corrections_payload["corrections"])
+
+            snapshot = analysis.get("norms_snapshot") or {}
+            suf_rows = snapshot.get("sufficiency") or []
+            if suf_rows:
+                corrective_payload = calculate_corrective_targets(
+                    soil_values=soil_vals,
+                    nutrient_targets=nutrient_targets,
+                    sufficiency_rows=suf_rows,
+                    param_map_rows=pm_rows,
+                )
+
+        # Crop type for the UI (annual / perennial)
+        crop_type = "annual"
+        try:
+            ct = sb.table("crop_requirements").select("crop_type").eq("crop", crop).limit(1).execute()
+            if ct.data:
+                crop_type = ct.data[0].get("crop_type", "annual") or "annual"
+            elif base_crop != crop:
+                ct = sb.table("crop_requirements").select("crop_type").eq("crop", base_crop).limit(1).execute()
+                if ct.data:
+                    crop_type = ct.data[0].get("crop_type", "annual") or "annual"
+        except Exception:
+            pass
+
+        block_info.append({
+            "block_id": b.block_id,
+            "block_name": b.block_name,
+            "crop": crop,
+            "crop_type": crop_type,
+            "growth_stages": stages,
+            "nutrient_targets": nutrient_targets,
+            "accepted_methods": accepted_methods,
+            "corrections": corrections_payload["corrections"],
+            "nutrient_explanations": corrections_payload["nutrient_explanations"],
+            "corrective_targets": corrective_payload["corrective_items"],
+            "missing_corrective_data": corrective_payload["missing_data"],
+        })
+
+    return {
+        "block_info": block_info,
+        "unplanable_blocks": unplanable_blocks,
+        "corrections": all_corrections,
+    }
+
+
 @router.get("/{artifact_id}", response_model=BuildProgrammeResponse)
 async def get_programme_artifact(
     artifact_id: UUID,
@@ -426,6 +604,7 @@ def _suggest_pdf_filename(artifact: ProgrammeArtifact) -> str:
 async def list_programmes(
     state: Optional[str] = Query(None),
     crop: Optional[str] = Query(None),
+    client_id: Optional[UUID] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     user: CurrentUser = Depends(get_current_user),
 ):
@@ -447,6 +626,8 @@ async def list_programmes(
         query = query.eq("state", state)
     if crop:
         query = query.eq("crop", crop)
+    if client_id:
+        query = query.eq("client_id", str(client_id))
     result = query.execute()
     return result.data or []
 

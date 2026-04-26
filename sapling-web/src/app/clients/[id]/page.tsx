@@ -89,13 +89,16 @@ interface Blend {
   created_at: string;
 }
 
+// v2 ProgrammeArtifact list-row shape (from /api/programmes/v2 list endpoint).
+// One row per saved programme; full artifact JSON only loaded on click.
 interface Programme {
   id: string;
-  name: string;
-  season: string | null;
-  status: string;
   created_at: string;
-  programme_blocks?: Array<{ id: string; name: string; crop: string; area_ha: number | null }>;
+  farm_name?: string | null;
+  crop: string;
+  state: string;
+  blocks_count: number;
+  ref_number?: string | null;
 }
 
 interface LocalSoilAnalysis {
@@ -208,7 +211,7 @@ export default function ClientHubPage() {
           api.getAll<LocalSoilAnalysis>(`/api/soil?client_id=${clientId}`).catch(() => [] as LocalSoilAnalysis[]),
           api.getAll<Record<string, unknown>>(`/api/leaf?client_id=${clientId}`).catch(() => [] as Record<string, unknown>[]),
           api.getAll<Blend>(`/api/blends?client_id=${clientId}`).catch(() => [] as Blend[]),
-          api.getAll<Programme>(`/api/programmes?client_id=${clientId}`).catch(() => [] as Programme[]),
+          api.get<Programme[]>(`/api/programmes/v2?client_id=${clientId}&limit=200`).catch(() => [] as Programme[]),
           api.get<CropNorm[]>("/api/crop-norms").catch(() => [] as CropNorm[]),
         ]);
 
@@ -784,31 +787,38 @@ export default function ClientHubPage() {
                   </CardContent>
                 </Card>
               ) : (
-                programmes.map((prog) => (
-                  <Link key={prog.id} href={`/season-manager/${prog.id}`}>
-                    <div className="flex items-center justify-between rounded-lg border bg-white p-3 transition-colors hover:border-[var(--sapling-orange)]/40 hover:bg-orange-50/30">
-                      <div>
-                        <p className="font-medium text-[var(--sapling-dark)]">{prog.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {prog.season && `${prog.season} · `}
-                          {prog.programme_blocks?.length ?? 0} blocks ·{" "}
-                          {new Date(prog.created_at).toLocaleDateString()}
-                        </p>
+                programmes.map((prog) => {
+                  const title = prog.farm_name
+                    ? `${prog.farm_name} — ${prog.crop}`
+                    : prog.crop;
+                  return (
+                    <Link key={prog.id} href={`/season-manager/artifact/${prog.id}`}>
+                      <div className="flex items-center justify-between rounded-lg border bg-white p-3 transition-colors hover:border-[var(--sapling-orange)]/40 hover:bg-orange-50/30">
+                        <div>
+                          <p className="font-medium text-[var(--sapling-dark)]">{title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {prog.blocks_count} block{prog.blocks_count !== 1 ? "s" : ""} ·{" "}
+                            {new Date(prog.created_at).toLocaleDateString()}
+                            {prog.ref_number ? ` · ${prog.ref_number}` : ""}
+                          </p>
+                        </div>
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            prog.state === "approved" || prog.state === "activated" || prog.state === "in_progress"
+                              ? "bg-green-100 text-green-700"
+                              : prog.state === "completed"
+                                ? "bg-blue-100 text-blue-700"
+                                : prog.state === "archived"
+                                  ? "bg-gray-100 text-gray-500"
+                                  : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {prog.state}
+                        </span>
                       </div>
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          prog.status === "active"
-                            ? "bg-green-100 text-green-700"
-                            : prog.status === "completed"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-gray-100 text-gray-700"
-                        }`}
-                      >
-                        {prog.status}
-                      </span>
-                    </div>
-                  </Link>
-                ))
+                    </Link>
+                  );
+                })
               )}
             </div>
           )}
@@ -1036,14 +1046,10 @@ export default function ClientHubPage() {
               date: new Date(b.created_at).toLocaleDateString(),
               detail: b.targets ? `${Math.round(b.targets.N || 0)}:${Math.round(b.targets.P || 0)}:${Math.round(b.targets.K || 0)}` : undefined,
             })),
-          ...programmes
-            .filter((p) => p.programme_blocks?.some((pb) => pb.name === fieldDrawerField.name))
-            .map((p) => ({
-              id: p.id,
-              name: p.name,
-              type: "programme" as const,
-              date: p.season || undefined,
-            })),
+          // Programme→field linking via the v2 artifact list isn't
+          // available yet — the list endpoint omits per-block detail.
+          // Could be added back by fetching each artifact's soil_snapshots,
+          // but keeping the drawer fast for now.
         ] : []}
       />
 

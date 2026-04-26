@@ -21,6 +21,33 @@ export async function buildProgramme(
   return api.post<BuildProgrammeResponse>(`${BASE}/build`, req);
 }
 
+/** Wizard helper — resolve growth stages, methods, and corrections per
+ * block without touching the DB. Drives the Schedule Review step. */
+export interface PreviewBlockInput {
+  block_id: string;
+  block_name: string;
+  crop: string;
+  cultivar?: string | null;
+  soil_analysis_id?: string | null;
+  field_id?: string | null;
+  yield_target?: number | null;
+  yield_unit?: string | null;
+  tree_age?: number | null;
+  pop_per_ha?: number | null;
+}
+
+export interface PreviewScheduleResponse {
+  block_info: Array<Record<string, unknown>>;
+  unplanable_blocks: Array<{ block_id: string; block_name: string; reason: string; crop?: string }>;
+  corrections: Array<Record<string, unknown>>;
+}
+
+export async function previewSchedule(
+  blocks: PreviewBlockInput[],
+): Promise<PreviewScheduleResponse> {
+  return api.post<PreviewScheduleResponse>(`${BASE}/preview-schedule`, { blocks });
+}
+
 /** Fetch one programme artifact by id. */
 export async function getProgramme(
   id: string,
@@ -32,11 +59,13 @@ export async function getProgramme(
 export async function listProgrammes(params?: {
   state?: ProgrammeState;
   crop?: string;
+  clientId?: string;
   limit?: number;
 }): Promise<ProgrammeListItem[]> {
   const qs = new URLSearchParams();
   if (params?.state) qs.set("state", params.state);
   if (params?.crop) qs.set("crop", params.crop);
+  if (params?.clientId) qs.set("client_id", params.clientId);
   if (params?.limit !== undefined) qs.set("limit", String(params.limit));
   const query = qs.toString();
   return api.get<ProgrammeListItem[]>(

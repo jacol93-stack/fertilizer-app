@@ -14,7 +14,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.rate_limit import limiter, rate_limit_middleware
-from app.routers import analysis_v2, blends, soil, materials, clients, crop_norms, reports, admin, feeding_plans, quotes, programmes, programmes_v2, leaf, sessions, dashboard, workbench
+from app.routers import analysis_v2, blends, soil, materials, clients, crop_norms, reports, admin, quotes, programmes_v2, leaf, sessions, dashboard, workbench
 
 
 class _JsonLogFormatter(logging.Formatter):
@@ -196,14 +196,9 @@ app.include_router(clients.router, prefix="/api/clients", tags=["Clients"])
 app.include_router(crop_norms.router, prefix="/api/crop-norms", tags=["Crop Norms"])
 app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
-app.include_router(feeding_plans.router, prefix="/api/feeding-plans", tags=["Feeding Plans"])
 app.include_router(quotes.router, prefix="/api/quotes", tags=["Quotes"])
-# v2 MUST be registered before legacy: /api/programmes/v2/* routes would
-# otherwise be matched by legacy /api/programmes/{programme_id} with
-# programme_id="v2" and fail on PostgreSQL UUID cast.
 app.include_router(programmes_v2.router, prefix="/api", tags=["Programmes v2"])
 app.include_router(analysis_v2.router, prefix="/api/analysis/v2", tags=["Quick Analysis v2"])
-app.include_router(programmes.router, prefix="/api/programmes", tags=["Programmes"])
 app.include_router(leaf.router, prefix="/api/leaf", tags=["Leaf Analysis"])
 app.include_router(sessions.router, prefix="/api/sessions", tags=["Sessions"])
 app.include_router(dashboard.router, prefix="/api/admin/dashboard", tags=["Dashboard"])
