@@ -127,6 +127,11 @@ class BuildProgrammeRequest(BaseModel):
     application_months: Optional[list[int]] = None
     client_id: Optional[UUID] = None
     skipped_blocks: list[SkippedBlockRequest] = Field(default_factory=list)
+    # NPK-ratio L1 distance threshold for grouping blocks into shared
+    # clusters. Same recipe shared across cluster, per-block rates differ.
+    # Lower = more singleton blocks, more recipes; higher = fewer recipes
+    # for the farmer to mix and stock. Default 0.25.
+    cluster_margin: float = Field(default=0.25, ge=0.05, le=0.5)
 
 
 class ReviewInfo(BaseModel):
@@ -211,7 +216,9 @@ async def build_programme_endpoint(
     # area-weighted (equal-weight fallback if any block lacks area_ha).
     # Blocks carrying pre_season_inputs are kept as singletons — those
     # inputs are per-block history, not safely aggregatable here.
-    effective_blocks, cluster_aggs, cluster_sources = _cluster_block_inputs(block_inputs)
+    effective_blocks, cluster_aggs, cluster_sources = _cluster_block_inputs(
+        block_inputs, cluster_margin=request.cluster_margin,
+    )
 
     build_date = request.build_date or date.today()
 
@@ -337,21 +344,41 @@ async def build_programme_endpoint(
 
 class PreviewBlockRequest(BaseModel):
     """Per-block input for the wizard's Schedule step. Lighter than
-    BlockRequest — no method availability or season targets needed yet."""
+    BlockRequest — no method availability needed yet."""
     block_id: str
     block_name: str
     crop: str
     cultivar: Optional[str] = None
     soil_analysis_id: Optional[str] = None
     field_id: Optional[str] = None
+    area_ha: Optional[float] = Field(None, gt=0)  # for cluster aggregation
     yield_target: Optional[float] = None
     yield_unit: Optional[str] = None
-    tree_age: Optional[int] = None
-    pop_per_ha: Optional[int] = None
+    tree_age: Optional[int] = Field(None, ge=0, le=200)
+    pop_per_ha: Optional[int] = Field(None, gt=0)
 
 
 class PreviewScheduleRequest(BaseModel):
     blocks: list[PreviewBlockRequest]
+    # Mirror of BuildProgrammeRequest.cluster_margin so the preview shows
+    # the same grouping the build will produce.
+    cluster_margin: float = Field(default=0.25, ge=0.05, le=0.5)
+    # Hooks for future build-input parity. Defaults match BuildProgrammeRequest.
+    subtract_harvested_removal: bool = False
+    harvest_mode: Optional[str] = None
+
+
+class _ClusterStub:
+    """Minimal block-shaped object the clustering helpers can consume.
+    Avoids importing BlockInput here (would be a circular dep)."""
+    __slots__ = ("block_id", "block_name", "block_area_ha", "season_targets", "soil_parameters")
+
+    def __init__(self, block_id, block_name, block_area_ha, season_targets, soil_parameters):
+        self.block_id = block_id
+        self.block_name = block_name
+        self.block_area_ha = block_area_ha
+        self.season_targets = season_targets
+        self.soil_parameters = soil_parameters
 
 
 @router.post("/preview-schedule")
@@ -359,15 +386,24 @@ async def preview_schedule(
     request: PreviewScheduleRequest,
     user: CurrentUser = Depends(get_current_user),
 ):
-    """Resolve growth stages, accepted methods, nutrient targets, and soil
-    corrections for each block. Drives the wizard's Schedule Review step.
-    No DB writes."""
+    """Resolve growth stages, accepted methods, nutrient targets, soil
+    corrections, and the proposed block clustering for each block. Drives
+    the wizard's Schedule Review step. No DB writes.
+
+    Cluster grouping mirrors what the v2 build will produce so the
+    agronomist can see "blocks A+B+C share recipe X; block D is its own
+    recipe" before committing.
+    """
     from app.services.soil_corrections import calculate_all_corrections, calculate_corrective_targets
 
     sb = get_supabase_admin()
 
     if not request.blocks:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "No blocks provided")
+
+    # Catalog drives target_computation. Same load as the build endpoint
+    # so preview targets match what the build will produce.
+    catalog = _load_soil_catalog(sb)
 
     # Pre-fetch soil analyses (one batched query is cheaper than N round-trips)
     analysis_ids = [b.soil_analysis_id for b in request.blocks if b.soil_analysis_id]
@@ -395,11 +431,12 @@ async def preview_schedule(
         for row in fr.data or []:
             fields_by_id[row["id"]] = row
 
-    pm_rows = sb.table("soil_parameter_map").select("*").execute().data or []
+    pm_rows = catalog.param_map_rows
 
     block_info: list[dict] = []
     unplanable_blocks: list[dict] = []
     all_corrections: list[dict] = []
+    cluster_stubs: list[_ClusterStub] = []  # one per planable block
 
     for b in request.blocks:
         analysis = analyses_by_id.get(b.soil_analysis_id) if b.soil_analysis_id else None
@@ -412,6 +449,30 @@ async def preview_schedule(
                 "reason": "missing_targets",
             })
             continue
+
+        # Compute fresh v2 season targets so clustering uses the same
+        # numbers the build will produce. Skip if yield_target missing —
+        # target_computation needs it to scale removal.
+        v2_targets: dict[str, float] = {}
+        soil_values_for_targets = (analysis or {}).get("soil_values") or {}
+        if b.yield_target and soil_values_for_targets:
+            try:
+                tc_result = compute_season_targets(
+                    crop=b.crop,
+                    yield_target=float(b.yield_target),
+                    soil_values=soil_values_for_targets,
+                    catalog=catalog,
+                    subtract_harvested_removal=request.subtract_harvested_removal,
+                    expected_yield_harvested=float(b.yield_target),
+                    block_pop_per_ha=b.pop_per_ha,
+                    harvest_mode=request.harvest_mode,
+                    tree_age=b.tree_age,
+                )
+                v2_targets = tc_result.targets
+            except Exception:
+                # Don't block the preview on a target-computation hiccup —
+                # the block still gets growth-stage + correction info.
+                v2_targets = {}
 
         # Growth stages — try crop, fall back to base crop ("Citrus (Valencia)" → "Citrus")
         crop = b.crop
@@ -497,10 +558,53 @@ async def preview_schedule(
             "missing_corrective_data": corrective_payload["missing_data"],
         })
 
+        # Build a cluster stub if we have v2 targets to cluster on.
+        # Area falls back to 1.0 ha for blocks missing area_ha — keeps
+        # them in the cluster, just down-weights their aggregation share.
+        if v2_targets:
+            cluster_stubs.append(_ClusterStub(
+                block_id=b.block_id,
+                block_name=b.block_name,
+                block_area_ha=float(b.area_ha) if b.area_ha else 1.0,
+                season_targets=v2_targets,
+                soil_parameters=soil_values_for_targets,
+            ))
+
+    # Cluster the planable blocks with the user-chosen margin.
+    clusters_payload: list[dict] = []
+    if cluster_stubs:
+        cluster_aggs = cluster_and_aggregate(cluster_stubs, margin=request.cluster_margin)
+        for agg in cluster_aggs:
+            clusters_payload.append({
+                "cluster_id": agg.cluster_id,
+                "block_ids": agg.block_ids,
+                "block_names": agg.block_names,
+                "total_area_ha": agg.total_area_ha,
+                "weight_strategy": agg.weight_strategy,
+                "aggregated_targets": agg.aggregated_targets,
+                "heterogeneity": {
+                    "per_nutrient": agg.heterogeneity.per_nutrient,
+                    "warnings": [
+                        {
+                            "nutrient": w.nutrient,
+                            "cv_pct": w.cv_pct,
+                            "level": w.level,
+                            "threshold_pct": w.threshold_pct,
+                        }
+                        for w in agg.heterogeneity.warnings
+                    ],
+                    "any_warn": agg.heterogeneity.any_warn,
+                    "any_split": agg.heterogeneity.any_split,
+                    "citation": agg.heterogeneity.citation,
+                },
+            })
+
     return {
         "block_info": block_info,
         "unplanable_blocks": unplanable_blocks,
         "corrections": all_corrections,
+        "clusters": clusters_payload,
+        "cluster_margin": request.cluster_margin,
     }
 
 
@@ -749,6 +853,7 @@ async def archive_programme(
 
 def _cluster_block_inputs(
     block_inputs: list[BlockInput],
+    cluster_margin: float = 0.25,
 ) -> tuple[list[BlockInput], list[ClusterAggregate], dict[str, list[BlockInput]]]:
     """Group similar blocks into clusters + build the effective block
     list the orchestrator sees.
@@ -773,7 +878,7 @@ def _cluster_block_inputs(
     clusterable = [b for b in block_inputs if not b.pre_season_inputs]
     non_clusterable = [b for b in block_inputs if b.pre_season_inputs]
 
-    cluster_aggs = cluster_and_aggregate(clusterable)
+    cluster_aggs = cluster_and_aggregate(clusterable, margin=cluster_margin)
 
     effective: list[BlockInput] = []
     by_id = {b.block_id: b for b in clusterable}

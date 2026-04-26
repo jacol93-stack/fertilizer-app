@@ -463,6 +463,9 @@ export interface BuildProgrammeRequest {
   /** Blocks the caller couldn't plan (e.g. no soil analysis) — backend
    * appends one OutstandingItem per entry to the resulting artifact. */
   skipped_blocks?: SkippedBlockRequest[];
+  /** NPK-ratio L1 distance threshold for clustering blocks into shared
+   * recipes. Default 0.25; range 0.05–0.5. Lower = more separate blends. */
+  cluster_margin?: number;
 }
 
 export interface ReviewInfo {

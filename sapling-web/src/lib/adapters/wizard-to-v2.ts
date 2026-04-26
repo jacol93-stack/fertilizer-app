@@ -45,6 +45,10 @@ export interface WizardToV2Input {
   /** Soil analysis metadata (lab + sample date) per analysis id. */
   soilMetaByAnalysisId?: Record<string, SoilAnalysisMeta>;
   methodAvailability: MethodAvailability;
+  /** NPK-ratio L1 distance threshold for clustering blocks. Lower =
+   * more separate recipes; higher = simpler stock list for the farmer.
+   * Default 0.25 — wizard surfaces it on the Schedule step. */
+  clusterMargin?: number;
 }
 
 export class WizardAdapterError extends Error {
@@ -214,6 +218,7 @@ export function wizardStateToBuildRequest(
     blocks: blockRequests,
     method_availability: methodAvailability,
     skipped_blocks: skippedBlocks,
+    ...(input.clusterMargin !== undefined && { cluster_margin: input.clusterMargin }),
   };
   return { request, skippedBlocks };
 }

@@ -107,7 +107,7 @@ def _npk_ratio(targets: dict[str, float]) -> tuple[float, float, float, float]:
 
 def cluster_blocks_by_npk(
     blocks: list[Any],
-    margin: float = 0.15,
+    margin: float = 0.25,
 ) -> list[list[Any]]:
     """First-fit grouping: blocks with total L1 NPK-ratio distance below
     `margin` share a cluster.
@@ -115,6 +115,12 @@ def cluster_blocks_by_npk(
     `blocks` is any iterable of objects with `.season_targets: dict` —
     typed as `list[Any]` so this module doesn't import BlockInput
     (circular with the orchestrator).
+
+    Default margin 0.25 — same recipe shared, per-block rates differ;
+    farmer mixes one batch and applies different volumes per ha. Tighter
+    margins fragment the programme into more recipes than a farmer can
+    track. Caller can override (BuildProgrammeRequest.cluster_margin) when
+    a particular farm needs tighter or looser grouping.
 
     Blocks with degenerate totals (<0.01 kg/ha combined NPK) become
     their own singleton cluster — nothing useful to cluster on.
@@ -267,7 +273,7 @@ def aggregate_cluster(
 
 def cluster_and_aggregate(
     blocks: list[Any],
-    margin: float = 0.15,
+    margin: float = 0.25,
 ) -> list[ClusterAggregate]:
     """End-to-end: cluster by NPK ratio, then aggregate each cluster.
 

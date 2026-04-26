@@ -30,22 +30,52 @@ export interface PreviewBlockInput {
   cultivar?: string | null;
   soil_analysis_id?: string | null;
   field_id?: string | null;
+  area_ha?: number | null;
   yield_target?: number | null;
   yield_unit?: string | null;
   tree_age?: number | null;
   pop_per_ha?: number | null;
 }
 
+export interface HeterogeneityWarning {
+  nutrient: string;
+  cv_pct: number | null;
+  level: "warn" | "split";
+  threshold_pct: number;
+}
+
+export interface ClusterPreview {
+  cluster_id: string;
+  block_ids: string[];
+  block_names: string[];
+  total_area_ha: number;
+  weight_strategy: string;
+  aggregated_targets: Record<string, number>;
+  heterogeneity: {
+    per_nutrient: Record<string, { cv_pct: number | null; n: number; level: string }>;
+    warnings: HeterogeneityWarning[];
+    any_warn: boolean;
+    any_split: boolean;
+    citation: string;
+  };
+}
+
 export interface PreviewScheduleResponse {
   block_info: Array<Record<string, unknown>>;
   unplanable_blocks: Array<{ block_id: string; block_name: string; reason: string; crop?: string }>;
   corrections: Array<Record<string, unknown>>;
+  clusters: ClusterPreview[];
+  cluster_margin: number;
 }
 
 export async function previewSchedule(
   blocks: PreviewBlockInput[],
+  options?: { clusterMargin?: number },
 ): Promise<PreviewScheduleResponse> {
-  return api.post<PreviewScheduleResponse>(`${BASE}/preview-schedule`, { blocks });
+  return api.post<PreviewScheduleResponse>(`${BASE}/preview-schedule`, {
+    blocks,
+    cluster_margin: options?.clusterMargin ?? 0.25,
+  });
 }
 
 /** Fetch one programme artifact by id. */
