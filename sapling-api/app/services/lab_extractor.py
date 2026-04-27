@@ -2,12 +2,26 @@
 
 import base64
 import json
+import logging
+import time
 from typing import Any
 
 import anthropic
 
 from app.config import get_settings
 from app.supabase_client import get_supabase_admin
+
+logger = logging.getLogger(__name__)
+
+# Anthropic transient errors to retry on. APIError is the parent;
+# RateLimitError + APIConnectionError + InternalServerError are the
+# specific subclasses we expect from network blips or load.
+_RETRYABLE_ERRORS = (
+    anthropic.APIConnectionError,
+    anthropic.APITimeoutError,
+    anthropic.InternalServerError,
+    anthropic.RateLimitError,
+)
 
 # Soil parameters we expect from lab reports
 SOIL_PARAMS = [
@@ -82,6 +96,9 @@ def _build_extraction_prompt(
         "- If a value is given as a range, use the midpoint\n"
         "- If a value shows '<' (below detection), use 0\n"
         "- Map lab-specific parameter names to the standard names above\n"
+        '- Add a top-level "confidence": "high" | "medium" | "low" reflecting\n'
+        '  how confident you are in the extracted numbers overall (low = blurry/skewed/illegible)\n'
+        '- Per-sample, if more than 3 values are illegible/uncertain, set "low_confidence": true on that sample\n'
     )
     if is_leaf:
         base += (
@@ -149,29 +166,43 @@ def extract_from_document(
 
     b64_data = base64.standard_b64encode(file_bytes).decode("utf-8")
 
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=8000,
-        messages=[
-            {
-                "role": "user",
-                "content": [
+    # One retry on transient API errors with a short backoff. Lab uploads
+    # are user-blocking; a single retry covers the common load-spike +
+    # network-blip case without making the user wait too long.
+    message = None
+    last_err: Exception | None = None
+    for attempt in range(2):
+        try:
+            message = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=8000,
+                messages=[
                     {
-                        "type": "document" if content_type == "application/pdf" else "image",
-                        "source": {
-                            "type": source_type,
-                            "media_type": media_type,
-                            source_key: b64_data,
-                        },
-                    },
-                    {
-                        "type": "text",
-                        "text": prompt,
-                    },
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "document" if content_type == "application/pdf" else "image",
+                                "source": {
+                                    "type": source_type,
+                                    "media_type": media_type,
+                                    source_key: b64_data,
+                                },
+                            },
+                            {"type": "text", "text": prompt},
+                        ],
+                    }
                 ],
-            }
-        ],
-    )
+            )
+            break
+        except _RETRYABLE_ERRORS as exc:
+            last_err = exc
+            if attempt == 0:
+                logger.warning("Anthropic transient error on extract, retrying once: %s", exc)
+                time.sleep(1.5)
+                continue
+            raise
+    if message is None:
+        raise last_err or RuntimeError("Extraction failed without a response")
 
     # Track usage
     input_tokens = message.usage.input_tokens if message.usage else 0
@@ -229,6 +260,7 @@ def extract_from_document(
         "client": extracted.get("client"),
         "department": extracted.get("department"),
         "num_samples": len(samples),
+        "confidence": extracted.get("confidence"),
         "ai_usage": {
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
