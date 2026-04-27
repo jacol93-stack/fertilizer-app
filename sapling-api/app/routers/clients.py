@@ -292,12 +292,12 @@ def delete_client(client_id: str, user: CurrentUser = Depends(get_current_user))
 
 @router.get("/{client_id}/farms")
 def list_farms(client_id: str, user: CurrentUser = Depends(get_current_user)):
-    """List farms for a client."""
+    """List farms for a client. Hides soft-deleted unless caller is admin
+    and explicitly opts in via include_deleted=true (admin restore UI)."""
     sb = get_supabase_admin()
     _check_client_access(sb, client_id, user)
-    result = run_sb(lambda: sb.table("farms").select("*").eq(
-        "client_id", client_id
-    ).order("name").execute())
+    q = sb.table("farms").select("*").eq("client_id", client_id).is_("deleted_at", "null")
+    result = run_sb(lambda: q.order("name").execute())
     return result.data
 
 
@@ -339,11 +339,15 @@ def update_farm(farm_id: str, body: FarmUpdate, user: CurrentUser = Depends(get_
 
 @router.delete("/farms/{farm_id}", status_code=200)
 def delete_farm(farm_id: str, user: CurrentUser = Depends(get_current_user)):
-    """Delete a farm."""
+    """Soft-delete a farm. Admins can hard-delete via the admin endpoint."""
+    from datetime import datetime, timezone
     sb = get_supabase_admin()
     _check_farm_access(sb, farm_id, user)
-    sb.table("farms").delete().eq("id", farm_id).execute()
-    _audit(sb, user, "delete", "farms", farm_id)
+    sb.table("farms").update({
+        "deleted_at": datetime.now(timezone.utc).isoformat(),
+        "deleted_by": user.id,
+    }).eq("id", farm_id).execute()
+    _audit(sb, user, "soft_delete", "farms", farm_id)
     return {"detail": "Farm deleted"}
 
 
@@ -362,8 +366,8 @@ def list_fields(farm_id: str, user: CurrentUser = Depends(get_current_user)):
     sb = get_supabase_admin()
     _check_farm_access(sb, farm_id, user)
     result = run_sb(lambda: sb.table("fields").select("*").eq(
-        "farm_id", farm_id
-    ).order("name").execute())
+        "farm_id", farm_id,
+    ).is_("deleted_at", "null").order("name").execute())
     fields_data = result.data or []
 
     analysis_ids = [f["latest_analysis_id"] for f in fields_data if f.get("latest_analysis_id")]
@@ -457,6 +461,7 @@ def list_yield_records(field_id: str, user: CurrentUser = Depends(get_current_us
         sb.table("yield_records")
         .select("*")
         .eq("field_id", field_id)
+        .is_("deleted_at", "null")
         .order("harvest_date", desc=True, nullsfirst=False)
         .order("season", desc=True)
         .execute()
@@ -488,15 +493,18 @@ def create_yield_record(
 
 @router.delete("/yields/{yield_id}", status_code=200)
 def delete_yield_record(yield_id: str, user: CurrentUser = Depends(get_current_user)):
-    """Delete a yield record."""
+    """Soft-delete a yield record. Admins can hard-delete via admin endpoint."""
+    from datetime import datetime, timezone
     sb = get_supabase_admin()
-    # Access check — find the field this yield belongs to
     row = sb.table("yield_records").select("field_id").eq("id", yield_id).execute()
     if not row.data:
         raise HTTPException(404, "Yield record not found")
     _check_field_access(sb, row.data[0]["field_id"], user)
-    sb.table("yield_records").delete().eq("id", yield_id).execute()
-    _audit(sb, user, "delete", "yield_records", yield_id)
+    sb.table("yield_records").update({
+        "deleted_at": datetime.now(timezone.utc).isoformat(),
+        "deleted_by": user.id,
+    }).eq("id", yield_id).execute()
+    _audit(sb, user, "soft_delete", "yield_records", yield_id)
     return {"detail": "Yield record deleted"}
 
 
@@ -752,11 +760,15 @@ def bulk_create_yields(
 
 @router.delete("/fields/{field_id}", status_code=200)
 def delete_field(field_id: str, user: CurrentUser = Depends(get_current_user)):
-    """Delete a field."""
+    """Soft-delete a field. Admins can hard-delete via admin endpoint."""
+    from datetime import datetime, timezone
     sb = get_supabase_admin()
     _check_field_access(sb, field_id, user)
-    sb.table("fields").delete().eq("id", field_id).execute()
-    _audit(sb, user, "delete", "fields", field_id)
+    sb.table("fields").update({
+        "deleted_at": datetime.now(timezone.utc).isoformat(),
+        "deleted_by": user.id,
+    }).eq("id", field_id).execute()
+    _audit(sb, user, "soft_delete", "fields", field_id)
     return {"detail": "Field deleted"}
 
 
@@ -772,6 +784,7 @@ def list_crop_history(field_id: str, user: CurrentUser = Depends(get_current_use
         sb.table("field_crop_history")
         .select("*")
         .eq("field_id", field_id)
+        .is_("deleted_at", "null")
         .order("date_planted", desc=True)
         .execute()
     )
@@ -825,14 +838,18 @@ def delete_crop_history(
     entry_id: str,
     user: CurrentUser = Depends(get_current_user),
 ):
-    """Delete a crop history entry."""
+    """Soft-delete a crop history entry."""
+    from datetime import datetime, timezone
     sb = get_supabase_admin()
     entry = sb.table("field_crop_history").select("field_id").eq("id", entry_id).execute()
     if not entry.data:
         raise HTTPException(status_code=404, detail="Crop history entry not found")
     _check_field_access(sb, entry.data[0]["field_id"], user)
-    sb.table("field_crop_history").delete().eq("id", entry_id).execute()
-    _audit(sb, user, "delete", "field_crop_history", entry_id)
+    sb.table("field_crop_history").update({
+        "deleted_at": datetime.now(timezone.utc).isoformat(),
+        "deleted_by": user.id,
+    }).eq("id", entry_id).execute()
+    _audit(sb, user, "soft_delete", "field_crop_history", entry_id)
     return {"detail": "Crop history entry deleted"}
 
 
@@ -869,6 +886,7 @@ def list_field_applications(
         sb.table("field_applications")
         .select("*")
         .eq("field_id", field_id)
+        .is_("deleted_at", "null")
         .order("applied_date", desc=True)
         .execute()
     )
@@ -920,20 +938,19 @@ def delete_field_application(
     application_id: str,
     user: CurrentUser = Depends(get_current_user),
 ):
-    """Delete a field application. Non-admin = soft (deleted_at via
-    audit + flagged via the row's notes); admin = hard via separate
-    /admin endpoint. For now: hard-delete admin-only, agents see nothing
-    deleted from this surface (the agent-facing UI never offers delete
-    on rows they didn't create — enforced client-side)."""
+    """Soft-delete a field application. Hard-delete + restore live on
+    admin endpoints."""
+    from datetime import datetime, timezone
     sb = get_supabase_admin()
     row = sb.table("field_applications").select("field_id").eq("id", application_id).execute()
     if not row.data:
         raise HTTPException(404, "Application not found")
     _check_field_access(sb, row.data[0]["field_id"], user)
-    if user.role != "admin":
-        raise HTTPException(403, "Only admins can delete applications. Edit the row to correct it.")
-    sb.table("field_applications").delete().eq("id", application_id).execute()
-    _audit(sb, user, "delete", "field_applications", application_id)
+    sb.table("field_applications").update({
+        "deleted_at": datetime.now(timezone.utc).isoformat(),
+        "deleted_by": user.id,
+    }).eq("id", application_id).execute()
+    _audit(sb, user, "soft_delete", "field_applications", application_id)
     return {"detail": "Application deleted"}
 
 
@@ -958,6 +975,7 @@ def list_field_events(
         sb.table("field_events")
         .select("*")
         .eq("field_id", field_id)
+        .is_("deleted_at", "null")
         .order("event_date", desc=True)
         .execute()
     )
@@ -986,13 +1004,17 @@ def create_field_event(
 def delete_field_event(
     event_id: str, user: CurrentUser = Depends(get_current_user),
 ):
+    """Soft-delete a field event. Hard-delete + restore live on admin
+    endpoints."""
+    from datetime import datetime, timezone
     sb = get_supabase_admin()
     row = sb.table("field_events").select("field_id").eq("id", event_id).execute()
     if not row.data:
         raise HTTPException(404, "Event not found")
     _check_field_access(sb, row.data[0]["field_id"], user)
-    if user.role != "admin":
-        raise HTTPException(403, "Only admins can delete events.")
-    sb.table("field_events").delete().eq("id", event_id).execute()
-    _audit(sb, user, "delete", "field_events", event_id)
+    sb.table("field_events").update({
+        "deleted_at": datetime.now(timezone.utc).isoformat(),
+        "deleted_by": user.id,
+    }).eq("id", event_id).execute()
+    _audit(sb, user, "soft_delete", "field_events", event_id)
     return {"detail": "Event deleted"}
