@@ -1,45 +1,28 @@
 "use client";
 
 /**
- * Home page — command bar + today list.
+ * Home page — search-first.
  *
- * One question: "what needs my attention right now, and how do I jump
- * to anything?" No stacked cards, no six-stat strip. Just:
- *   1. A big search input (focus-on-load, ⌘K / "/" to re-focus) that
- *      queries /api/workbench/search across clients, analyses, blends,
- *      and quotes. Arrow keys + Enter navigate results.
- *   2. A single "Today" list — stale tests, pending quotes, unread
- *      messages, and never-analysed clients merged and sorted by
- *      urgency server-side.
- *   3. A compact stats strip + quick-action buttons below.
- *
- * Onboarding (brand-new agent) keeps its dedicated welcome screen.
+ * Single big command bar that jumps to anything (clients, analyses,
+ * blends, quotes). One line of stats below for context. No shortcut
+ * grid, no recent-activity list, no onboarding ladder — the top nav
+ * handles navigation and the search handles everything else.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { AppShell } from "@/components/app-shell";
 import { api } from "@/lib/api";
-import { Button } from "@/components/ui/button";
 import {
   AlertTriangle,
-  Calendar,
-  ChevronRight,
-  Clock,
   FileText,
   FlaskConical,
   Leaf,
-  MessageSquare,
-  Plus,
+  Loader2,
   Search,
-  Sparkles,
-  UserPlus,
   Users,
 } from "lucide-react";
-
-// ── Types ────────────────────────────────────────────────────────────────
 
 interface WorkbenchStats {
   clients: number;
@@ -50,25 +33,9 @@ interface WorkbenchStats {
   pending_quotes: number;
 }
 
-type TodayKind =
-  | "unread_messages"
-  | "stale_analysis"
-  | "pending_quote"
-  | "never_analysed";
-
-interface TodayItem {
-  kind: TodayKind;
-  urgency: number;
-  title: string;
-  subtitle: string;
-  badge: string;
-  href: string;
-}
-
 interface WorkbenchResponse {
   user: { id: string; name?: string; email?: string; role: string };
   stats: WorkbenchStats;
-  today: TodayItem[];
   is_onboarding: boolean;
 }
 
@@ -87,22 +54,6 @@ interface SearchResponse {
   results: SearchResult[];
 }
 
-// ── Icon + label maps ────────────────────────────────────────────────────
-
-const TODAY_ICON: Record<TodayKind, React.ComponentType<{ className?: string }>> = {
-  unread_messages: MessageSquare,
-  stale_analysis: Clock,
-  pending_quote: FileText,
-  never_analysed: UserPlus,
-};
-
-const TODAY_TONE: Record<TodayKind, string> = {
-  unread_messages: "bg-red-50 text-red-600",
-  stale_analysis: "bg-amber-50 text-amber-600",
-  pending_quote: "bg-blue-50 text-blue-600",
-  never_analysed: "bg-gray-50 text-gray-600",
-};
-
 const SEARCH_ICON: Record<SearchKind, React.ComponentType<{ className?: string }>> = {
   client: Users,
   analysis: Leaf,
@@ -117,8 +68,6 @@ const SEARCH_KIND_LABEL: Record<SearchKind, string> = {
   quote: "Quote",
 };
 
-// ── Command bar ──────────────────────────────────────────────────────────
-
 function CommandBar() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -129,7 +78,6 @@ function CommandBar() {
   const [open, setOpen] = useState(false);
   const [cursor, setCursor] = useState(0);
 
-  // Focus on mount + global shortcuts (⌘K, "/")
   useEffect(() => {
     inputRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
@@ -148,7 +96,6 @@ function CommandBar() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // Close results when clicking outside
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
       if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
@@ -157,7 +104,6 @@ function CommandBar() {
     return () => window.removeEventListener("mousedown", onDown);
   }, []);
 
-  // Debounced search
   useEffect(() => {
     const q = query.trim();
     if (q.length < 2) {
@@ -286,136 +232,8 @@ function CommandBar() {
   );
 }
 
-// ── Today list row ───────────────────────────────────────────────────────
-
-function TodayRow({ item }: { item: TodayItem }) {
-  const Icon = TODAY_ICON[item.kind];
-  const tone = TODAY_TONE[item.kind];
-  return (
-    <Link
-      href={item.href}
-      className="flex items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 transition-colors hover:border-gray-200 hover:bg-gray-50"
-    >
-      <div className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${tone}`}>
-        <Icon className="size-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium text-[var(--sapling-dark)]">
-          {item.title}
-        </div>
-        <div className="truncate text-xs text-[var(--sapling-medium-grey)]">
-          {item.subtitle}
-        </div>
-      </div>
-      <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-[var(--sapling-dark)]">
-        {item.badge}
-      </span>
-      <ChevronRight className="size-4 shrink-0 text-[var(--sapling-medium-grey)]" />
-    </Link>
-  );
-}
-
-// ── Skeleton + error + onboarding ────────────────────────────────────────
-
-function HomeSkeleton() {
-  return (
-    <div className="mx-auto max-w-3xl animate-pulse space-y-6 px-4 py-10">
-      <div className="h-14 rounded-xl bg-gray-100" />
-      <div className="h-64 rounded-xl bg-gray-100" />
-      <div className="h-16 rounded-xl bg-gray-100" />
-    </div>
-  );
-}
-
-function HomeError({ onRetry }: { onRetry: () => void }) {
-  return (
-    <div className="mx-auto max-w-3xl px-4 py-12 text-center">
-      <AlertTriangle className="mx-auto size-8 text-amber-500" />
-      <h2 className="mt-3 text-lg font-semibold text-[var(--sapling-dark)]">
-        Couldn&apos;t reach the server
-      </h2>
-      <p className="mt-1 text-sm text-[var(--sapling-medium-grey)]">
-        Check your connection and try again in a moment.
-      </p>
-      <Button onClick={onRetry} variant="outline" className="mt-4">
-        Retry
-      </Button>
-    </div>
-  );
-}
-
-function OnboardingWelcome({ name }: { name: string }) {
-  const steps = [
-    {
-      icon: Users,
-      title: "Add your first client",
-      body: "Create a client record so you can attach farms, fields, analyses and reports.",
-      href: "/clients",
-      cta: "Add client",
-    },
-    {
-      icon: Leaf,
-      title: "Run a soil analysis",
-      body: "Enter lab values or upload a lab PDF to get classification, targets and a feeding plan.",
-      href: "/quick-analysis",
-      cta: "New analysis",
-    },
-    {
-      icon: FlaskConical,
-      title: "Build a blend",
-      body: "Plug NPK targets into the optimizer and get a cost-optimised recipe.",
-      href: "/quick-blend",
-      cta: "New blend",
-    },
-  ];
-  return (
-    <div className="mx-auto max-w-4xl px-4 py-10">
-      <div className="rounded-2xl border border-orange-200 bg-gradient-to-br from-orange-50 to-white p-8">
-        <div className="flex items-center gap-3">
-          <Sparkles className="size-6 text-[var(--sapling-orange)]" />
-          <h1 className="text-2xl font-bold text-[var(--sapling-dark)]">
-            Welcome to Sapling, {name}
-          </h1>
-        </div>
-        <p className="mt-2 text-[var(--sapling-medium-grey)]">
-          Let&apos;s get you set up. Three steps to your first report.
-        </p>
-      </div>
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
-        {steps.map((s, i) => {
-          const Icon = s.icon;
-          return (
-            <div key={s.title} className="rounded-xl border bg-white p-5">
-              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--sapling-orange)]">
-                Step {i + 1}
-              </div>
-              <div className="mb-3 flex size-10 items-center justify-center rounded-lg bg-orange-50 text-[var(--sapling-orange)]">
-                <Icon className="size-5" />
-              </div>
-              <h3 className="font-semibold text-[var(--sapling-dark)]">{s.title}</h3>
-              <p className="mt-1 text-sm text-[var(--sapling-medium-grey)]">{s.body}</p>
-              <Link href={s.href} className="mt-4 inline-block">
-                <Button
-                  variant="outline"
-                  className="w-full border-[var(--sapling-orange)]/40 text-[var(--sapling-orange)] hover:bg-orange-50"
-                >
-                  <Plus className="size-4" />
-                  {s.cta}
-                </Button>
-              </Link>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ── Main page ────────────────────────────────────────────────────────────
-
 export default function HomePage() {
   const { profile, isLoading: authLoading } = useAuth();
-  const router = useRouter();
   const [data, setData] = useState<WorkbenchResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -445,151 +263,60 @@ export default function HomePage() {
     return "Good evening";
   }, []);
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <AppShell>
-        <HomeSkeleton />
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <Loader2 className="size-6 animate-spin text-[var(--sapling-orange)]" />
+        </div>
       </AppShell>
     );
   }
 
-  if (error || !data) {
+  if (error) {
     return (
       <AppShell>
-        <HomeError onRetry={load} />
+        <div className="mx-auto max-w-3xl px-4 py-16 text-center">
+          <AlertTriangle className="mx-auto size-6 text-amber-500" />
+          <p className="mt-2 text-sm text-[var(--sapling-medium-grey)]">
+            Couldn&apos;t reach the server. Refresh the page when you&apos;re back online.
+          </p>
+        </div>
       </AppShell>
     );
   }
 
-  if (data.is_onboarding) {
-    return (
-      <AppShell>
-        <OnboardingWelcome name={profile?.name || "there"} />
-      </AppShell>
-    );
-  }
-
-  const { stats, today } = data;
+  const stats = data?.stats;
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-3xl px-4 py-10">
-        {/* Greeting */}
-        <div className="mb-5">
-          <h1 className="text-xl font-semibold text-[var(--sapling-dark)]">
-            {greeting}, {profile?.name ?? "there"}
-          </h1>
-          <p className="mt-0.5 text-sm text-[var(--sapling-medium-grey)]">
-            {today.length === 0
-              ? "You're all caught up — nothing needs attention."
-              : `${today.length} ${today.length === 1 ? "item" : "items"} need a look.`}
-          </p>
-        </div>
+      <div className="mx-auto flex min-h-[70vh] max-w-2xl flex-col justify-center px-4 py-10">
+        <h1 className="mb-6 text-center text-lg text-[var(--sapling-dark)]">
+          {greeting}
+          {profile?.name ? `, ${profile.name}` : ""}
+        </h1>
 
-        {/* Command bar */}
         <CommandBar />
 
-        {/* Today */}
-        <section className="mt-8">
-          <div className="mb-2 flex items-baseline justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--sapling-medium-grey)]">
-              Today
-            </h2>
-            {today.length > 0 && (
-              <Link
-                href="/records"
-                className="text-xs font-medium text-[var(--sapling-medium-grey)] hover:text-[var(--sapling-orange)]"
-              >
-                All records →
-              </Link>
-            )}
+        {stats && (
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-xs text-[var(--sapling-medium-grey)]">
+            <Stat n={stats.clients} label="clients" />
+            <Stat n={stats.fields} label="fields" />
+            <Stat n={stats.analyses_this_month} label="analyses this month" />
+            <Stat n={stats.active_programmes} label="open programmes" />
+            <Stat n={stats.pending_quotes} label="pending quotes" />
           </div>
-          {today.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-8 text-center">
-              <Sparkles className="mx-auto size-5 text-[var(--sapling-orange)]" />
-              <p className="mt-2 text-sm text-[var(--sapling-medium-grey)]">
-                Nothing overdue. Start something new below.
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-xl border bg-white p-1">
-              {today.map((item, i) => (
-                <TodayRow key={`${item.kind}-${i}`} item={item} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Quick actions */}
-        <section className="mt-6 grid gap-2 sm:grid-cols-4">
-          <Button
-            variant="outline"
-            className="h-auto flex-col gap-1.5 py-4"
-            onClick={() => router.push("/quick-analysis")}
-          >
-            <Leaf className="size-5 text-[var(--sapling-orange)]" />
-            <span className="text-sm font-medium">New analysis</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-auto flex-col gap-1.5 py-4"
-            onClick={() => router.push("/quick-blend")}
-          >
-            <FlaskConical className="size-5 text-[var(--sapling-orange)]" />
-            <span className="text-sm font-medium">New blend</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-auto flex-col gap-1.5 py-4"
-            onClick={() => router.push("/season-manager/new")}
-          >
-            <Calendar className="size-5 text-[var(--sapling-orange)]" />
-            <span className="text-sm font-medium">New programme</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-auto flex-col gap-1.5 py-4"
-            onClick={() => router.push("/quotes")}
-          >
-            <FileText className="size-5 text-[var(--sapling-orange)]" />
-            <span className="text-sm font-medium">New quote</span>
-          </Button>
-        </section>
-
-        {/* Compact stats footer */}
-        <section className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-gray-200 pt-4 text-xs text-[var(--sapling-medium-grey)]">
-          <span>
-            <strong className="font-semibold text-[var(--sapling-dark)]">{stats.clients}</strong>{" "}
-            clients
-          </span>
-          <span>
-            <strong className="font-semibold text-[var(--sapling-dark)]">{stats.farms}</strong>{" "}
-            farms
-          </span>
-          <span>
-            <strong className="font-semibold text-[var(--sapling-dark)]">{stats.fields}</strong>{" "}
-            fields
-          </span>
-          <span>
-            <strong className="font-semibold text-[var(--sapling-dark)]">
-              {stats.analyses_this_month}
-            </strong>{" "}
-            analyses this month
-          </span>
-          <span>
-            <strong className="font-semibold text-[var(--sapling-dark)]">
-              {stats.active_programmes}
-            </strong>{" "}
-            open programmes
-          </span>
-          <span>
-            <strong className="font-semibold text-[var(--sapling-dark)]">
-              {stats.pending_quotes}
-            </strong>{" "}
-            pending quotes
-          </span>
-        </section>
+        )}
       </div>
     </AppShell>
+  );
+}
+
+function Stat({ n, label }: { n: number; label: string }) {
+  return (
+    <span>
+      <strong className="font-semibold text-[var(--sapling-dark)] tabular-nums">{n}</strong>{" "}
+      {label}
+    </span>
   );
 }
