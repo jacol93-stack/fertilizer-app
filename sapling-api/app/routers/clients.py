@@ -834,3 +834,165 @@ def delete_crop_history(
     sb.table("field_crop_history").delete().eq("id", entry_id).execute()
     _audit(sb, user, "delete", "field_crop_history", entry_id)
     return {"detail": "Crop history entry deleted"}
+
+
+# ── Field applications (historical-analysis tool) ─────────────────────────────
+
+
+class FieldApplicationCreate(BaseModel):
+    applied_date: str = Field(..., description="ISO date the application happened")
+    product_label: Optional[str] = Field(None, max_length=400)
+    rate_kg_ha: Optional[float] = Field(None, ge=0, le=100_000)
+    rate_l_ha: Optional[float] = Field(None, ge=0, le=100_000)
+    method: Optional[str] = Field(None, max_length=80)
+    nutrients_kg_per_ha: Optional[dict] = None
+    notes: Optional[str] = Field(None, max_length=2000)
+
+
+class FieldApplicationUpdate(BaseModel):
+    applied_date: Optional[str] = None
+    product_label: Optional[str] = Field(None, max_length=400)
+    rate_kg_ha: Optional[float] = Field(None, ge=0, le=100_000)
+    rate_l_ha: Optional[float] = Field(None, ge=0, le=100_000)
+    method: Optional[str] = Field(None, max_length=80)
+    nutrients_kg_per_ha: Optional[dict] = None
+    notes: Optional[str] = Field(None, max_length=2000)
+
+
+@router.get("/fields/{field_id}/applications")
+def list_field_applications(
+    field_id: str, user: CurrentUser = Depends(get_current_user),
+):
+    sb = get_supabase_admin()
+    _check_field_access(sb, field_id, user)
+    res = (
+        sb.table("field_applications")
+        .select("*")
+        .eq("field_id", field_id)
+        .order("applied_date", desc=True)
+        .execute()
+    )
+    return res.data or []
+
+
+@router.post("/fields/{field_id}/applications", status_code=201)
+def create_field_application(
+    field_id: str,
+    body: FieldApplicationCreate,
+    user: CurrentUser = Depends(get_current_user),
+):
+    sb = get_supabase_admin()
+    _check_field_access(sb, field_id, user)
+    payload = body.model_dump(exclude_none=True)
+    payload["field_id"] = field_id
+    payload["created_by"] = user.id
+    payload["source"] = "manual"
+    res = sb.table("field_applications").insert(payload).execute()
+    if not res.data:
+        raise HTTPException(500, "Failed to create application")
+    _audit(sb, user, "create", "field_applications", res.data[0]["id"])
+    return res.data[0]
+
+
+@router.patch("/applications/{application_id}")
+def update_field_application(
+    application_id: str,
+    body: FieldApplicationUpdate,
+    user: CurrentUser = Depends(get_current_user),
+):
+    sb = get_supabase_admin()
+    row = sb.table("field_applications").select("field_id").eq("id", application_id).execute()
+    if not row.data:
+        raise HTTPException(404, "Application not found")
+    _check_field_access(sb, row.data[0]["field_id"], user)
+    updates = body.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(400, "No fields to update")
+    res = sb.table("field_applications").update(updates).eq("id", application_id).execute()
+    if not res.data:
+        raise HTTPException(500, "Failed to update")
+    _audit(sb, user, "update", "field_applications", application_id, updates)
+    return res.data[0]
+
+
+@router.delete("/applications/{application_id}", status_code=200)
+def delete_field_application(
+    application_id: str,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Delete a field application. Non-admin = soft (deleted_at via
+    audit + flagged via the row's notes); admin = hard via separate
+    /admin endpoint. For now: hard-delete admin-only, agents see nothing
+    deleted from this surface (the agent-facing UI never offers delete
+    on rows they didn't create — enforced client-side)."""
+    sb = get_supabase_admin()
+    row = sb.table("field_applications").select("field_id").eq("id", application_id).execute()
+    if not row.data:
+        raise HTTPException(404, "Application not found")
+    _check_field_access(sb, row.data[0]["field_id"], user)
+    if user.role != "admin":
+        raise HTTPException(403, "Only admins can delete applications. Edit the row to correct it.")
+    sb.table("field_applications").delete().eq("id", application_id).execute()
+    _audit(sb, user, "delete", "field_applications", application_id)
+    return {"detail": "Application deleted"}
+
+
+# ── Field events (cultivar change, replant, weather, etc.) ────────────────────
+
+
+class FieldEventCreate(BaseModel):
+    event_date: str
+    event_type: str = Field(..., max_length=80)
+    title: str = Field(..., max_length=200)
+    description: Optional[str] = Field(None, max_length=2000)
+    metadata: Optional[dict] = None
+
+
+@router.get("/fields/{field_id}/events")
+def list_field_events(
+    field_id: str, user: CurrentUser = Depends(get_current_user),
+):
+    sb = get_supabase_admin()
+    _check_field_access(sb, field_id, user)
+    res = (
+        sb.table("field_events")
+        .select("*")
+        .eq("field_id", field_id)
+        .order("event_date", desc=True)
+        .execute()
+    )
+    return res.data or []
+
+
+@router.post("/fields/{field_id}/events", status_code=201)
+def create_field_event(
+    field_id: str,
+    body: FieldEventCreate,
+    user: CurrentUser = Depends(get_current_user),
+):
+    sb = get_supabase_admin()
+    _check_field_access(sb, field_id, user)
+    payload = body.model_dump(exclude_none=True)
+    payload["field_id"] = field_id
+    payload["created_by"] = user.id
+    res = sb.table("field_events").insert(payload).execute()
+    if not res.data:
+        raise HTTPException(500, "Failed to create event")
+    _audit(sb, user, "create", "field_events", res.data[0]["id"])
+    return res.data[0]
+
+
+@router.delete("/events/{event_id}", status_code=200)
+def delete_field_event(
+    event_id: str, user: CurrentUser = Depends(get_current_user),
+):
+    sb = get_supabase_admin()
+    row = sb.table("field_events").select("field_id").eq("id", event_id).execute()
+    if not row.data:
+        raise HTTPException(404, "Event not found")
+    _check_field_access(sb, row.data[0]["field_id"], user)
+    if user.role != "admin":
+        raise HTTPException(403, "Only admins can delete events.")
+    sb.table("field_events").delete().eq("id", event_id).execute()
+    _audit(sb, user, "delete", "field_events", event_id)
+    return {"detail": "Event deleted"}

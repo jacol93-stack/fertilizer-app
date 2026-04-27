@@ -21,11 +21,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
-  AlertCircle, ArrowLeft, Calendar, FlaskConical, Leaf, MapPin, Plus, TrendingUp,
+  AlertCircle, ArrowLeft, Calendar, FlaskConical, Leaf, MapPin, Plus, Printer, Sprout, TrendingUp, Wrench,
 } from "lucide-react";
 import type { Field, SoilAnalysis } from "@/lib/season-constants";
 import { Sparkline, type SparklinePoint } from "@/components/dashboard/sparkline";
 import { computeFieldInsights, type Insight } from "@/lib/field-insights";
+import { LogApplicationForm } from "@/components/field-history/log-application";
+import { LogYieldForm } from "@/components/field-history/log-yield";
+import { LogEventForm } from "@/components/field-history/log-event";
+import { buildAnnualSummaries, yieldVsNitrogenInsights, type FieldApplicationRow, type FieldEventRow } from "@/lib/field-annual-summary";
 
 interface YieldRecord {
   id: string;
@@ -90,7 +94,25 @@ export default function FieldDashboardPage() {
   const [yields, setYields] = useState<YieldRecord[]>([]);
   const [benchmarks, setBenchmarks] = useState<YieldBenchmark[]>([]);
   const [programmes, setProgrammes] = useState<ProgrammeArtifactSummary[]>([]);
+  const [applications, setApplications] = useState<FieldApplicationRow[]>([]);
+  const [events, setEvents] = useState<FieldEventRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openForm, setOpenForm] = useState<null | "application" | "yield" | "event">(null);
+
+  const reload = async () => {
+    const [soil, leaf, ys, apps, evts] = await Promise.all([
+      api.getAll<SoilAnalysis>(`/api/soil?field_id=${fieldId}`).catch(() => [] as SoilAnalysis[]),
+      api.getAll<LeafAnalysis>(`/api/leaf?field_id=${fieldId}`).catch(() => [] as LeafAnalysis[]),
+      api.get<YieldRecord[]>(`/api/clients/fields/${fieldId}/yields`).catch(() => []),
+      api.get<FieldApplicationRow[]>(`/api/clients/fields/${fieldId}/applications`).catch(() => []),
+      api.get<FieldEventRow[]>(`/api/clients/fields/${fieldId}/events`).catch(() => []),
+    ]);
+    setSoilAnalyses(soil);
+    setLeafAnalyses(leaf);
+    setYields(ys);
+    setApplications(apps);
+    setEvents(evts);
+  };
 
   useEffect(() => {
     (async () => {
@@ -102,13 +124,15 @@ export default function FieldDashboardPage() {
         if (fieldData.farms) {
           setFarm({ id: fieldData.farms.id, name: fieldData.farms.name, region: fieldData.farms.region });
         }
-        const [allClients, soil, leaf, ys, bm, progs] = await Promise.all([
+        const [allClients, soil, leaf, ys, bm, progs, apps, evts] = await Promise.all([
           api.getAll<{ id: string; name: string }>("/api/clients"),
           api.getAll<SoilAnalysis>(`/api/soil?field_id=${fieldId}`).catch(() => [] as SoilAnalysis[]),
           api.getAll<LeafAnalysis>(`/api/leaf?field_id=${fieldId}`).catch(() => [] as LeafAnalysis[]),
           api.get<YieldRecord[]>(`/api/clients/fields/${fieldId}/yields`).catch(() => []),
           api.get<YieldBenchmark[]>(`/api/clients/fields/${fieldId}/benchmarks`).catch(() => []),
           api.get<ProgrammeArtifactSummary[]>(`/api/programmes/v2?client_id=${clientId}&limit=200`).catch(() => []),
+          api.get<FieldApplicationRow[]>(`/api/clients/fields/${fieldId}/applications`).catch(() => []),
+          api.get<FieldEventRow[]>(`/api/clients/fields/${fieldId}/events`).catch(() => []),
         ]);
         const c = allClients.find((cl) => cl.id === clientId);
         if (c) setClient({ name: c.name });
@@ -117,6 +141,8 @@ export default function FieldDashboardPage() {
         setYields(ys);
         setBenchmarks(bm);
         setProgrammes(progs);
+        setApplications(apps);
+        setEvents(evts);
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Failed to load field");
       } finally {
@@ -168,11 +194,11 @@ export default function FieldDashboardPage() {
     return computeFieldInsights(series, ys, bm);
   }, [soilAnalyses, sortedYields, benchmark]);
 
-  // Timeline — merge events from analyses, programmes, yields
+  // Timeline — merge every event type onto one chronological feed
   const timeline = useMemo(() => {
     type TimelineItem = {
       date: string;
-      kind: "soil" | "leaf" | "yield" | "programme";
+      kind: "soil" | "leaf" | "yield" | "programme" | "application" | "event";
       label: string;
       detail: string;
       href?: string;
@@ -211,8 +237,45 @@ export default function FieldDashboardPage() {
         href: `/season-manager/artifact/${p.id}`,
       });
     }
+    for (const a of applications) {
+      const nuts = a.nutrients_kg_per_ha
+        ? Object.entries(a.nutrients_kg_per_ha)
+            .filter(([, v]) => typeof v === "number" && v > 0)
+            .map(([k, v]) => `${k} ${v}`)
+            .join(" · ")
+        : "";
+      items.push({
+        date: a.applied_date,
+        kind: "application",
+        label: a.product_label || "Application",
+        detail: [
+          a.method,
+          a.rate_kg_ha ? `${a.rate_kg_ha} kg/ha` : null,
+          a.rate_l_ha ? `${a.rate_l_ha} L/ha` : null,
+          nuts || null,
+        ].filter(Boolean).join(" · "),
+      });
+    }
+    for (const e of events) {
+      items.push({
+        date: e.event_date,
+        kind: "event",
+        label: e.title,
+        detail: `${e.event_type.replace("_", " ")}${e.description ? ` — ${e.description}` : ""}`,
+      });
+    }
     return items.filter((i) => i.date).sort((a, b) => b.date.localeCompare(a.date));
-  }, [soilAnalyses, leafAnalyses, yields, programmes]);
+  }, [soilAnalyses, leafAnalyses, yields, programmes, applications, events]);
+
+  // Annual summary roll-ups
+  const annualSummaries = useMemo(
+    () => buildAnnualSummaries({ applications, events, soil: soilAnalyses, leaf: leafAnalyses, yields }),
+    [applications, events, soilAnalyses, leafAnalyses, yields],
+  );
+  const yoyInsights = useMemo(
+    () => yieldVsNitrogenInsights(annualSummaries),
+    [annualSummaries],
+  );
 
   if (loading || !field) {
     return (
@@ -264,6 +327,144 @@ export default function FieldDashboardPage() {
             </Link>
           </div>
         </div>
+
+        {/* Quick log toolbar — feeds the historical-analysis pipeline */}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-white px-3 py-2">
+          <div className="text-xs text-muted-foreground">
+            Quick log:
+          </div>
+          <div className="flex flex-wrap gap-1">
+            <button
+              onClick={() => setOpenForm(openForm === "application" ? null : "application")}
+              className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs ${
+                openForm === "application"
+                  ? "border-[var(--sapling-orange)] bg-orange-50 text-[var(--sapling-orange)]"
+                  : "bg-white hover:bg-orange-50"
+              }`}
+            >
+              <Sprout className="size-3" /> Application
+            </button>
+            <button
+              onClick={() => setOpenForm(openForm === "yield" ? null : "yield")}
+              className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs ${
+                openForm === "yield"
+                  ? "border-[var(--sapling-orange)] bg-orange-50 text-[var(--sapling-orange)]"
+                  : "bg-white hover:bg-orange-50"
+              }`}
+            >
+              <TrendingUp className="size-3" /> Yield
+            </button>
+            <button
+              onClick={() => setOpenForm(openForm === "event" ? null : "event")}
+              className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs ${
+                openForm === "event"
+                  ? "border-[var(--sapling-orange)] bg-orange-50 text-[var(--sapling-orange)]"
+                  : "bg-white hover:bg-orange-50"
+              }`}
+            >
+              <Wrench className="size-3" /> Event
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-1 rounded-md border bg-white px-2 py-1 text-xs hover:bg-gray-50"
+              title="Print field report"
+            >
+              <Printer className="size-3" /> Print report
+            </button>
+          </div>
+        </div>
+
+        {openForm === "application" && (
+          <div className="mb-4">
+            <LogApplicationForm
+              fieldId={fieldId}
+              onSaved={async () => {
+                await reload();
+                setOpenForm(null);
+              }}
+              onCancel={() => setOpenForm(null)}
+            />
+          </div>
+        )}
+        {openForm === "yield" && (
+          <div className="mb-4">
+            <LogYieldForm
+              fieldId={fieldId}
+              defaultUnit={field.yield_unit ?? "t/ha"}
+              onSaved={async () => {
+                await reload();
+                setOpenForm(null);
+              }}
+              onCancel={() => setOpenForm(null)}
+            />
+          </div>
+        )}
+        {openForm === "event" && (
+          <div className="mb-4">
+            <LogEventForm
+              fieldId={fieldId}
+              onSaved={async () => {
+                await reload();
+                setOpenForm(null);
+              }}
+              onCancel={() => setOpenForm(null)}
+            />
+          </div>
+        )}
+
+        {/* Annual summary — one card per year */}
+        {annualSummaries.length > 0 && (
+          <Card className="mb-4">
+            <CardContent className="py-4">
+              <div className="mb-3 flex items-baseline justify-between">
+                <h2 className="text-base font-semibold text-[var(--sapling-dark)]">
+                  Annual summary
+                </h2>
+                {yoyInsights.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {yoyInsights.join(" · ")}
+                  </span>
+                )}
+              </div>
+              <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                {annualSummaries.map((s) => (
+                  <div key={s.year} className="rounded-lg border bg-white p-3">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-base font-semibold text-[var(--sapling-dark)]">{s.year}</span>
+                      {s.yieldTotal != null && (
+                        <span className="text-sm font-semibold text-[var(--sapling-dark)] tabular-nums">
+                          {s.yieldTotal} <span className="text-[10px] font-normal text-muted-foreground">{s.yieldUnit}</span>
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                      {Object.entries(s.nutrientTotals).map(([n, v]) => (
+                        <span key={n}>
+                          <span className="font-semibold text-[var(--sapling-dark)] tabular-nums">{v.toFixed(0)}</span>{" "}
+                          {n}
+                        </span>
+                      ))}
+                      {Object.keys(s.nutrientTotals).length === 0 && (
+                        <span className="italic">no applications logged</span>
+                      )}
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
+                      {s.soilSampleCount > 0 && <span>{s.soilSampleCount} soil</span>}
+                      {s.leafSampleCount > 0 && <span>{s.leafSampleCount} leaf</span>}
+                      {s.applicationCount > 0 && <span>{s.applicationCount} apps</span>}
+                      {s.events.length > 0 && <span>{s.events.length} events</span>}
+                    </div>
+                    {s.leafLowFlags.length > 0 && (
+                      <div className="mt-1.5 text-[11px] text-amber-700">
+                        Low: {s.leafLowFlags.join(", ")}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Completeness banner */}
         {completeness && (
@@ -415,6 +616,10 @@ export default function FieldDashboardPage() {
                           ? "bg-emerald-500"
                           : t.kind === "yield"
                           ? "bg-blue-500"
+                          : t.kind === "application"
+                          ? "bg-violet-500"
+                          : t.kind === "event"
+                          ? "bg-pink-500"
                           : "bg-[var(--sapling-orange)]"
                       }`}
                     />
