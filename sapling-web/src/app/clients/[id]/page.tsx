@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -148,9 +148,18 @@ function Dialog({
 
 // ── Main Component ────────────────────────────────────────────────────
 
-export default function ClientHubPage() {
+export default function ClientHubPageWrapper() {
+  return (
+    <Suspense>
+      <ClientHubPage />
+    </Suspense>
+  );
+}
+
+function ClientHubPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const clientId = params.id as string;
   const isAdmin = useEffectiveAdmin();
 
@@ -247,6 +256,25 @@ export default function ClientHubPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Sidebar quick-action triggers — sidebar / sub-page links navigate
+  // here with `?action=add-farm`, `?action=upload`, or `?addFieldFarm=<id>`
+  // to open the right dialog from any context. Cleared from the URL
+  // once handled so refreshing doesn't re-fire.
+  useEffect(() => {
+    const action = searchParams.get("action");
+    const addFieldFarm = searchParams.get("addFieldFarm");
+    if (!action && !addFieldFarm) return;
+    if (action === "add-farm") setAddFarmOpen(true);
+    if (action === "upload") setBatchUploadOpen(true);
+    if (addFieldFarm) {
+      setFieldDrawerFarmId(addFieldFarm);
+      setFieldDrawerField(null);
+      setFieldDrawerPrefill(null);
+      setFieldDrawerOpen(true);
+    }
+    router.replace(`/clients/${clientId}`, { scroll: false });
+  }, [searchParams, router, clientId]);
 
   // ── Derived stats ───────────────────────────────────────────────────
 

@@ -214,11 +214,25 @@ export function ClientPortalShell({
               Quick actions
             </p>
             <Link
+              href={`/clients/${clientId}?action=add-farm`}
+              className="flex items-center gap-2 rounded-md px-3 py-1.5 text-xs text-[var(--sapling-dark)] transition-colors hover:bg-orange-50"
+            >
+              <Plus className="size-3.5" />
+              Add farm
+            </Link>
+            <Link
+              href={`/clients/${clientId}?action=upload`}
+              className="flex items-center gap-2 rounded-md px-3 py-1.5 text-xs text-[var(--sapling-dark)] transition-colors hover:bg-orange-50"
+            >
+              <Upload className="size-3.5" />
+              Add soil / leaf analysis
+            </Link>
+            <Link
               href={`/clients/${clientId}/import`}
               className="flex items-center gap-2 rounded-md px-3 py-1.5 text-xs text-[var(--sapling-dark)] transition-colors hover:bg-orange-50"
             >
               <Upload className="size-3.5" />
-              Upload lab results
+              Bulk import (CSV)
             </Link>
             <Link
               href={newBlendHref}

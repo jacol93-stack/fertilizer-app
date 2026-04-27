@@ -60,6 +60,9 @@ interface SampleRow {
   key: string; // unique key for React
   field_id: string;
   field_name: string;
+  /** Additional field IDs the same analysis should be cloned to on save.
+   * Lets one composite/zonal sample link to several blocks in one go. */
+  additional_field_ids: string[];
   crop: string;
   cultivar: string;
   yield_target: string;
@@ -222,6 +225,7 @@ export function BatchAnalysisUpload({
             key: `${Date.now()}-${i}`,
             field_id: match?.id || "",
             field_name: match?.name || sampleName,
+            additional_field_ids: [],
             crop: s.crop || match?.crop || "",
             cultivar: s.cultivar || match?.cultivar || "",
             yield_target: match?.yield_target ? String(match.yield_target) : "",
@@ -255,6 +259,7 @@ export function BatchAnalysisUpload({
         key: `manual-${Date.now()}`,
         field_id: "",
         field_name: "",
+        additional_field_ids: [],
         crop: "",
         cultivar: "",
         yield_target: "",
@@ -460,7 +465,7 @@ export function BatchAnalysisUpload({
 
     setSaving(true);
     try {
-      const items = validRows.map((r) => {
+      const items = validRows.flatMap((r) => {
         const toNumericValues = (vals: Record<string, string>) => {
           const out: Record<string, number | null> = {};
           for (const [k, v] of Object.entries(vals)) {
@@ -476,10 +481,27 @@ export function BatchAnalysisUpload({
         const filledComponents =
           r.components?.filter((c) => hasAnyValue(c.values)) ?? [];
 
+        // Resolve which fields this analysis links to. Empty primary +
+        // additionals → one unlinked row. Otherwise: primary first, then
+        // each additional (with the same values, distinct field_id).
+        const fieldsToWrite: Array<{ id: string | null; name: string | null }> = [];
+        const seen = new Set<string>();
+        const pushField = (id: string) => {
+          if (!id || seen.has(id)) return;
+          seen.add(id);
+          const f = localFields.find((lf) => lf.id === id);
+          fieldsToWrite.push({ id, name: f?.name ?? null });
+        };
+        if (r.field_id) pushField(r.field_id);
+        for (const fid of r.additional_field_ids ?? []) pushField(fid);
+        if (fieldsToWrite.length === 0) {
+          fieldsToWrite.push({ id: null, name: r.field_name || null });
+        }
+
         if (filledComponents.length >= 2) {
-          return {
-            field_id: r.field_id || null,
-            field_name: r.field_name || null,
+          return fieldsToWrite.map((f) => ({
+            field_id: f.id,
+            field_name: f.name,
             crop: r.crop || null,
             cultivar: r.cultivar || null,
             yield_target: r.yield_target ? parseFloat(r.yield_target) : null,
@@ -492,20 +514,20 @@ export function BatchAnalysisUpload({
               location_label: c.location_label || null,
               depth_cm: c.depth_cm ? parseFloat(c.depth_cm) : null,
             })),
-          };
+          }));
         }
 
         const baseValues = filledComponents[0]?.values ?? r.values;
-        return {
-          field_id: r.field_id || null,
-          field_name: r.field_name || null,
+        return fieldsToWrite.map((f) => ({
+          field_id: f.id,
+          field_name: f.name,
           crop: r.crop || null,
           cultivar: r.cultivar || null,
           yield_target: r.yield_target ? parseFloat(r.yield_target) : null,
           yield_unit: r.yield_unit || null,
           analysis_type: r.analysis_type,
           soil_values: toNumericValues(baseValues),
-        };
+        }));
       });
 
       const basePayload = {
@@ -769,23 +791,34 @@ export function BatchAnalysisUpload({
                           </div>
                         </td>
                         <td className="px-2 py-1">
-                          <div className="flex items-center gap-0.5">
-                            <select
-                              value={row.field_id}
-                              onChange={(e) => selectField(row.key, e.target.value)}
-                              className="h-6 w-36 rounded border bg-transparent px-1 text-xs"
-                            >
-                              <option value="">Select...</option>
-                              {localFields.map((f) => (
-                                <option key={f.id} value={f.id}>
-                                  {f.farm_name ? `${f.farm_name} / ` : ""}{f.name}
-                                </option>
-                              ))}
-                            </select>
-                            {!row.field_id && (
-                              <button onClick={() => createFieldForRow(row.key)} className="text-[var(--sapling-orange)]" title="Create field">
-                                <Plus className="size-3" />
-                              </button>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-0.5">
+                              <select
+                                value={row.field_id}
+                                onChange={(e) => selectField(row.key, e.target.value)}
+                                className="h-6 w-36 rounded border bg-transparent px-1 text-xs"
+                              >
+                                <option value="">Select...</option>
+                                {localFields.map((f) => (
+                                  <option key={f.id} value={f.id}>
+                                    {f.farm_name ? `${f.farm_name} / ` : ""}{f.name}
+                                  </option>
+                                ))}
+                              </select>
+                              {!row.field_id && (
+                                <button onClick={() => createFieldForRow(row.key)} className="text-[var(--sapling-orange)]" title="Create field">
+                                  <Plus className="size-3" />
+                                </button>
+                              )}
+                            </div>
+                            {row.field_id && (
+                              <AdditionalFieldsPicker
+                                row={row}
+                                allFields={localFields}
+                                onChange={(ids) =>
+                                  updateRow(row.key, { additional_field_ids: ids })
+                                }
+                              />
                             )}
                           </div>
                         </td>
@@ -952,5 +985,63 @@ export function BatchAnalysisUpload({
         onCancel={handleConflictCancelled}
       />
     </Sheet>
+  );
+}
+
+/** Sub-row picker that lets the agronomist clone the same analysis to
+ * additional blocks at save time — composite samples often represent
+ * several blocks at once. The primary field stays in row.field_id;
+ * extras land in row.additional_field_ids and the save flow expands
+ * them into one soil_analyses row per linked field. */
+function AdditionalFieldsPicker({
+  row,
+  allFields,
+  onChange,
+}: {
+  row: SampleRow;
+  allFields: FieldOption[];
+  onChange: (ids: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const candidates = allFields.filter((f) => f.id !== row.field_id);
+  if (candidates.length === 0) return null;
+  const selected = new Set(row.additional_field_ids ?? []);
+  const toggle = (id: string) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    onChange(Array.from(next));
+  };
+  return (
+    <div className="flex flex-col items-start">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="text-[10px] text-muted-foreground hover:text-[var(--sapling-orange)]"
+      >
+        + also apply to {selected.size > 0 ? `${selected.size} more` : "other blocks"}
+      </button>
+      {open && (
+        <div className="mt-1 max-h-40 w-44 overflow-y-auto rounded border bg-white p-1 shadow-sm">
+          {candidates.map((f) => (
+            <label
+              key={f.id}
+              className="flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-[11px] hover:bg-orange-50"
+            >
+              <input
+                type="checkbox"
+                checked={selected.has(f.id)}
+                onChange={() => toggle(f.id)}
+                className="size-3 accent-[var(--sapling-orange)]"
+              />
+              <span className="truncate">
+                {f.farm_name ? `${f.farm_name} / ` : ""}
+                {f.name}
+              </span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

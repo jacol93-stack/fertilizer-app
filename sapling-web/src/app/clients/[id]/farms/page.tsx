@@ -186,22 +186,35 @@ export default function FarmsAndBlocksPage() {
             {Object.values(farmFields).flat().length} blocks
           </p>
         </div>
-        <Link
-          href={`/clients/${clientId}/import`}
-          className="inline-flex items-center gap-1.5 rounded-md border bg-white px-3 py-1.5 text-xs font-medium text-[var(--sapling-dark)] hover:bg-orange-50"
-        >
-          <Upload className="size-3.5" />
-          Bulk import
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/clients/${clientId}?action=add-farm`}
+            className="inline-flex items-center gap-1.5 rounded-md bg-[var(--sapling-orange)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--sapling-orange)]/90"
+          >
+            <Plus className="size-3.5" />
+            Add farm
+          </Link>
+          <Link
+            href={`/clients/${clientId}/import`}
+            className="inline-flex items-center gap-1.5 rounded-md border bg-white px-3 py-1.5 text-xs font-medium text-[var(--sapling-dark)] hover:bg-orange-50"
+          >
+            <Upload className="size-3.5" />
+            Bulk import
+          </Link>
+        </div>
       </div>
 
       {farms.length === 0 ? (
         <div className="rounded-lg border border-dashed bg-white py-12 text-center">
           <Trees className="mx-auto size-8 text-muted-foreground/40" />
           <p className="mt-3 text-sm text-muted-foreground">No farms yet for this client.</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Add a farm from the client overview page.
-          </p>
+          <Link
+            href={`/clients/${clientId}?action=add-farm`}
+            className="mt-3 inline-flex items-center gap-1.5 text-xs text-[var(--sapling-orange)] hover:underline"
+          >
+            <Plus className="size-3" />
+            Add the first farm
+          </Link>
         </div>
       ) : (
         farms.map((farm) => {
@@ -220,13 +233,20 @@ export default function FarmsAndBlocksPage() {
                     {totalArea.toFixed(1)} ha
                   </p>
                 </div>
+                <Link
+                  href={`/clients/${clientId}?addFieldFarm=${farm.id}`}
+                  className="inline-flex items-center gap-1 rounded-md border bg-white px-2 py-1 text-[11px] text-[var(--sapling-dark)] hover:bg-orange-50"
+                >
+                  <Plus className="size-3" />
+                  Add block
+                </Link>
               </header>
 
               {fields.length === 0 ? (
                 <div className="rounded-lg border border-dashed bg-white py-6 text-center text-sm text-muted-foreground">
                   No blocks yet.{" "}
                   <Link
-                    href={`/clients/${clientId}`}
+                    href={`/clients/${clientId}?addFieldFarm=${farm.id}`}
                     className="text-[var(--sapling-orange)] hover:underline"
                   >
                     Add one
