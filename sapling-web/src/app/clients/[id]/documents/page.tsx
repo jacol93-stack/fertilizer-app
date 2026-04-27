@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { AppShell } from "@/components/app-shell";
 import { api } from "@/lib/api";
 import { useEffectiveAdmin } from "@/lib/use-effective-role";
 import { SoilDetailView } from "@/components/soil-detail-view";
@@ -269,25 +268,15 @@ function DocumentsPage() {
 
   if (loading) {
     return (
-      <AppShell>
-        <div className="flex min-h-[60vh] items-center justify-center">
-          <Loader2 className="size-8 animate-spin text-[var(--sapling-orange)]" />
-        </div>
-      </AppShell>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-[var(--sapling-orange)]" />
+      </div>
     );
   }
 
   return (
-    <AppShell>
-      <div className="mx-auto max-w-6xl px-4 py-8">
-        {/* Back link */}
-        <Link
-          href={`/clients/${clientId}`}
-          className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-[var(--sapling-dark)]"
-        >
-          <ArrowLeft className="size-3.5" />
-          Back to {clientName}
-        </Link>
+    <>
+      <div>
 
         {/* Header */}
         <div className="mb-6">
@@ -536,6 +525,6 @@ function DocumentsPage() {
           </div>
         </SheetContent>
       </Sheet>
-    </AppShell>
+    </>
   );
 }

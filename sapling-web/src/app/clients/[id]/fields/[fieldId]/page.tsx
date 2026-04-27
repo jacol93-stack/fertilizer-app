@@ -15,7 +15,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AppShell } from "@/components/app-shell";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -217,25 +216,15 @@ export default function FieldDashboardPage() {
 
   if (loading || !field) {
     return (
-      <AppShell>
-        <div className="mx-auto max-w-6xl px-4 py-8 text-sm text-muted-foreground">
-          Loading field…
-        </div>
-      </AppShell>
+      <div className="text-sm text-muted-foreground">Loading field…</div>
     );
   }
 
   const completeness = computeCompleteness(soilAnalyses.length, leafAnalyses.length, yields.length);
 
   return (
-    <AppShell>
-      <div className="mx-auto max-w-6xl px-4 py-6">
-        <button
-          onClick={() => router.push(`/clients/${clientId}`)}
-          className="mb-4 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-[var(--sapling-dark)]"
-        >
-          <ArrowLeft className="size-4" /> Back to {client?.name ?? "client"}
-        </button>
+    <>
+      <div>
 
         {/* Header */}
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -448,7 +437,7 @@ export default function FieldDashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </AppShell>
+    </>
   );
 }
 

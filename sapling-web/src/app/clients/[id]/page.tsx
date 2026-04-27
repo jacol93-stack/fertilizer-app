@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AppShell } from "@/components/app-shell";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useEffectiveAdmin } from "@/lib/use-effective-role";
@@ -424,40 +423,28 @@ export default function ClientHubPage() {
 
   if (loading) {
     return (
-      <AppShell>
-        <div className="flex justify-center py-20">
-          <Loader2 className="size-6 animate-spin text-[var(--sapling-orange)]" />
-        </div>
-      </AppShell>
+      <div className="flex justify-center py-20">
+        <Loader2 className="size-6 animate-spin text-[var(--sapling-orange)]" />
+      </div>
     );
   }
 
   if (!client) {
     return (
-      <AppShell>
-        <div className="mx-auto max-w-5xl px-4 py-8">
-          <p className="text-muted-foreground">Client not found</p>
-          <Link href="/clients" className="mt-2 text-sm text-[var(--sapling-orange)] hover:underline">
-            Back to clients
-          </Link>
-        </div>
-      </AppShell>
+      <div className="py-8">
+        <p className="text-muted-foreground">Client not found</p>
+        <Link href="/clients" className="mt-2 text-sm text-[var(--sapling-orange)] hover:underline">
+          Back to clients
+        </Link>
+      </div>
     );
   }
 
   // ── Render ──────────────────────────────────────────────────────────
 
   return (
-    <AppShell>
-      <div className="mx-auto max-w-5xl px-4 py-8">
-        {/* Back link */}
-        <Link
-          href="/clients"
-          className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-[var(--sapling-dark)]"
-        >
-          <ArrowLeft className="size-3.5" />
-          Back to clients
-        </Link>
+    <>
+      <div>
 
         {/* ── Header ───────────────────────────────────────────── */}
         <div className="mb-6">
@@ -1207,6 +1194,6 @@ export default function ClientHubPage() {
           }}
         />
       )}
-    </AppShell>
+    </>
   );
 }

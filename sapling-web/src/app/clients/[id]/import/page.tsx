@@ -18,7 +18,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { AppShell } from "@/components/app-shell";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -70,14 +69,8 @@ export default function ImportPage() {
   }, [clientId]);
 
   return (
-    <AppShell>
-      <div className="mx-auto max-w-5xl px-4 py-6">
-        <button
-          onClick={() => router.push(`/clients/${clientId}`)}
-          className="mb-4 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-[var(--sapling-dark)]"
-        >
-          <ArrowLeft className="size-4" /> Back to client
-        </button>
+    <>
+      <div>
 
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-[var(--sapling-dark)]">
@@ -136,7 +129,7 @@ export default function ImportPage() {
         {tab === "yields" && <YieldsImport farmId={farmId} />}
         {tab === "analyses" && <AnalysesImport farmId={farmId} clientId={clientId} />}
       </div>
-    </AppShell>
+    </>
   );
 }
 
