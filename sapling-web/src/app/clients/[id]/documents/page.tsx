@@ -103,6 +103,7 @@ function DocumentsPage() {
   const [activeTab, setActiveTab] = useState<"soil" | "leaf">("soil");
   const [filter, setFilter] = useState<"all" | "unlinked" | "deleted">(initialFilter || "all");
   const [view, setView] = useState<"table" | "tray">(initialFilter === "unlinked" ? "tray" : "table");
+  const [yearFilter, setYearFilter] = useState<string>("all");
   const [sheetRecord, setSheetRecord] = useState<{ type: "soil" | "leaf"; id: string } | null>(null);
   const [sheetData, setSheetData] = useState<Record<string, unknown> | null>(null);
   const [sheetLoading, setSheetLoading] = useState(false);
@@ -259,21 +260,51 @@ function DocumentsPage() {
 
   // ── Filtered lists ──────────────────────────────────────────────────
 
-  const filteredSoil =
+  function applyYearFilter<T extends { created_at: string }>(
+    rows: T[],
+    dateField: "analysis_date" | "sample_date",
+  ): T[] {
+    if (yearFilter === "all") return rows;
+    return rows.filter((r) => {
+      const d = (r as Record<string, unknown>)[dateField] as string | null | undefined;
+      const fallback = d ?? r.created_at;
+      if (!fallback) return false;
+      return fallback.startsWith(yearFilter);
+    });
+  }
+
+  const filteredSoil = applyYearFilter(
     filter === "deleted"
       ? deletedSoil
       : filter === "unlinked"
         ? soilAnalyses.filter((a) => !a.field_id)
-        : soilAnalyses;
+        : soilAnalyses,
+    "analysis_date",
+  );
 
-  const filteredLeaf =
+  const filteredLeaf = applyYearFilter(
     filter === "deleted"
       ? deletedLeaf
       : filter === "unlinked"
         ? leafAnalyses.filter((a) => !a.field_id)
-        : leafAnalyses;
+        : leafAnalyses,
+    "sample_date",
+  );
 
   const displayList = activeTab === "soil" ? filteredSoil : filteredLeaf;
+
+  const availableYears = (() => {
+    const years = new Set<string>();
+    for (const a of soilAnalyses) {
+      const d = a.analysis_date ?? a.created_at;
+      if (d && d.length >= 4) years.add(d.slice(0, 4));
+    }
+    for (const a of leafAnalyses) {
+      const d = a.sample_date ?? a.created_at;
+      if (d && d.length >= 4) years.add(d.slice(0, 4));
+    }
+    return Array.from(years).sort().reverse();
+  })();
 
   // ── Render ──────────────────────────────────────────────────────────
 
@@ -356,8 +387,24 @@ function DocumentsPage() {
           })}
         </div>
 
-        {/* View toggle */}
-        <div className="mb-4 flex justify-end">
+        {/* View toggle + year filter */}
+        <div className="mb-4 flex items-center justify-between gap-3">
+          {availableYears.length > 1 ? (
+            <select
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value)}
+              className="rounded-md border bg-white px-3 py-1.5 text-xs font-medium text-[var(--sapling-dark)]"
+            >
+              <option value="all">All years</option>
+              {availableYears.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span />
+          )}
           <div className="inline-flex gap-1 rounded-md border bg-white p-0.5">
             {(["table", "tray"] as const).map((v) => (
               <button
