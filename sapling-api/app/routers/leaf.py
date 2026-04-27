@@ -1,14 +1,17 @@
 """Leaf/sap analysis router: classify, save, recommend foliar corrections."""
 
+import hashlib
+import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 from app.auth import CurrentUser, get_current_user, require_admin
 from app.pagination import Page, PageParams, apply_page
 from app.supabase_client import get_supabase_admin, run_sb
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Leaf Analysis"])
 
 
@@ -201,3 +204,92 @@ def get_leaf_document(analysis_id: str, user: CurrentUser = Depends(get_current_
 
     signed = sb.storage.from_("lab-reports").create_signed_url(doc_url, 300)
     return {"url": signed.get("signedURL") or signed.get("signedUrl", "")}
+
+
+@router.post("/extract")
+async def extract_leaf_report(
+    file: UploadFile = File(...),
+    lab_name_hint: str | None = Form(None),
+    client_id: str | None = Form(None),
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Extract leaf analysis values from an uploaded lab report (PDF or photo).
+
+    Mirrors /api/soil/extract — same Claude vision pipeline, same lab-template
+    learning, same document persistence — but selects the leaf parameter set
+    (macros in %, micros in mg/kg) and adds leaf-specific guidance.
+    """
+    from app.services.lab_extractor import extract_from_document
+
+    allowed_types = {
+        "application/pdf", "image/jpeg", "image/png", "image/webp", "image/gif",
+    }
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            400, f"Unsupported file type: {file.content_type}. Upload a PDF or image."
+        )
+
+    contents = await file.read()
+    if len(contents) > 50 * 1024 * 1024:
+        raise HTTPException(400, "File too large. Maximum 50 MB.")
+
+    try:
+        result = extract_from_document(contents, file.content_type, lab_name_hint, mode="leaf")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        logger.exception(
+            "leaf extract failed for user %s (%s, %d bytes)",
+            user.id, file.content_type, len(contents),
+        )
+        raise HTTPException(500, f"Extraction failed: {str(e)}")
+
+    sb = get_supabase_admin()
+
+    source_document_url = None
+    try:
+        ext = {"application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}.get(
+            file.content_type, "bin",
+        )
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        file_hash = hashlib.md5(contents).hexdigest()[:8]
+        owner = client_id or user.id
+        storage_path = f"clients/{owner}/leaf_{ts}_{file_hash}.{ext}"
+        sb.storage.from_("lab-reports").upload(
+            path=storage_path,
+            file=contents,
+            file_options={"content-type": file.content_type},
+        )
+        source_document_url = storage_path
+    except Exception as e:
+        logger.warning("lab-report storage upload failed for user %s: %s", user.id, e)
+
+    _audit(sb, user, "lab_extract_leaf", detail={
+        "lab_name": result.get("lab_name"),
+        "num_samples": result.get("num_samples", 0),
+        "file_type": file.content_type,
+    })
+
+    ai_usage = result.get("ai_usage")
+    if ai_usage:
+        try:
+            sb.table("ai_usage").insert({
+                "user_id": user.id,
+                "operation": "extract_leaf",
+                "model": ai_usage.get("model", ""),
+                "input_tokens": ai_usage.get("input_tokens", 0),
+                "output_tokens": ai_usage.get("output_tokens", 0),
+                "cost_usd": ai_usage.get("cost_usd", 0),
+                "metadata": {
+                    "lab_name": result.get("lab_name"),
+                    "num_samples": result.get("num_samples", 0),
+                    "file_type": file.content_type,
+                },
+            }).execute()
+        except Exception as e:
+            logger.warning("ai_usage insert failed for user %s: %s", user.id, e)
+
+    if source_document_url:
+        result["source_document_url"] = source_document_url
+
+    return result

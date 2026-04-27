@@ -10,7 +10,7 @@ from app.config import get_settings
 from app.supabase_client import get_supabase_admin
 
 # Soil parameters we expect from lab reports
-EXPECTED_PARAMS = [
+SOIL_PARAMS = [
     "pH (KCl)", "pH (H2O)", "Resistance (Ohm)", "Organic C (%)",
     "Total N (%)", "NH4-N (mg/kg)", "NO3-N (mg/kg)",
     "P (Bray-1) (mg/kg)", "P (Bray-2) (mg/kg)", "P (Olsen) (mg/kg)",
@@ -22,11 +22,30 @@ EXPECTED_PARAMS = [
     "Na Saturation (%)", "Acid Saturation (%)",
 ]
 
+# Leaf / foliar parameters — macros in %, micros in mg/kg.
+LEAF_PARAMS = [
+    "N (%)", "P (%)", "K (%)", "Ca (%)", "Mg (%)", "S (%)", "Na (%)", "Cl (%)",
+    "Mn (mg/kg)", "Fe (mg/kg)", "Cu (mg/kg)", "Zn (mg/kg)", "B (mg/kg)",
+    "Mo (mg/kg)", "Al (mg/kg)",
+]
 
-def _build_extraction_prompt(lab_template: dict | None = None) -> str:
-    """Build the system prompt for Claude to extract soil values."""
+# Backwards-compat alias — older callers and templates reference EXPECTED_PARAMS.
+EXPECTED_PARAMS = SOIL_PARAMS
+
+
+def _build_extraction_prompt(
+    lab_template: dict | None = None,
+    mode: str = "soil",
+) -> str:
+    """Build the system prompt for Claude to extract lab values.
+
+    `mode` selects soil vs leaf parameter set + crop-specific guidance.
+    """
+    is_leaf = mode == "leaf"
+    domain = "leaf/foliar" if is_leaf else "soil"
+    params = LEAF_PARAMS if is_leaf else SOIL_PARAMS
     base = (
-        "You are a soil/leaf lab report data extractor. Extract ALL analysis values "
+        f"You are a {domain} lab report data extractor. Extract ALL analysis values "
         "from this lab report image/PDF.\n\n"
         "IMPORTANT: The report may contain MULTIPLE samples (rows in a table). "
         "Each row is a separate sample/block with its own values.\n\n"
@@ -35,18 +54,25 @@ def _build_extraction_prompt(lab_template: dict | None = None) -> str:
         '- "report_number": report/certificate number if visible (string or null)\n'
         '- "analysis_date": date of analysis if visible (string or null)\n'
         '- "client": client name if visible (string or null)\n'
-        '- "department": e.g. "Soil", "Leaf", "Water" (string or null)\n'
+        f'- "department": e.g. "{ "Leaf" if is_leaf else "Soil" }", "Water" (string or null)\n'
         '- "samples": array of sample objects, one per row/sample in the report\n\n'
         "Each sample object must have:\n"
         '- "sample_id": lab sample number (string)\n'
         '- "block_name": block/field identifier if visible (string or null)\n'
         '- "crop": fruit/crop type if visible (string or null)\n'
         '- "cultivar": cultivar/variety if visible (string or null)\n'
+    )
+    if is_leaf:
+        base += (
+            '- "sample_part": leaf age / part sampled (e.g. "spring flush", '
+            '"petiole at bloom") if visible (string or null)\n'
+        )
+    base += (
         '- "values": object mapping parameter names to numeric values\n\n'
         "If there is only ONE sample, still return it as a single-element array.\n\n"
         "For the values object, use these standard parameter names where possible:\n"
     )
-    for p in EXPECTED_PARAMS:
+    for p in params:
         base += f"  - {p}\n"
 
     base += (
@@ -56,7 +82,19 @@ def _build_extraction_prompt(lab_template: dict | None = None) -> str:
         "- If a value is given as a range, use the midpoint\n"
         "- If a value shows '<' (below detection), use 0\n"
         "- Map lab-specific parameter names to the standard names above\n"
-        "- For leaf analyses: N, P, K, Ca, Mg are typically in %, micros in mg/kg\n"
+    )
+    if is_leaf:
+        base += (
+            "- Macros (N, P, K, Ca, Mg, S, Na, Cl) are typically reported in %\n"
+            "- Micros (Mn, Fe, Cu, Zn, B, Mo) are typically in mg/kg or ppm\n"
+            "- If lab reports leaf macros in mg/kg or ppm by mistake, convert "
+            "to % (divide by 10,000)\n"
+        )
+    else:
+        base += (
+            "- For mixed soil+leaf reports, only extract the SOIL section\n"
+        )
+    base += (
         "- Include norms/reference rows if present (mark them with block_name: 'Norm - Low', 'Norm - High' etc.)\n"
         "- Return ONLY valid JSON, no markdown or explanation\n"
     )
@@ -76,10 +114,12 @@ def extract_from_document(
     file_bytes: bytes,
     content_type: str,
     lab_name_hint: str | None = None,
+    mode: str = "soil",
 ) -> dict[str, Any]:
-    """Extract soil analysis values from a lab report PDF or image.
+    """Extract soil or leaf analysis values from a lab report PDF or image.
 
-    Returns dict with keys: lab_name, analysis_date, sample_id, values, confidence
+    `mode` selects soil vs leaf parameter set. Returns dict with keys:
+    lab_name, analysis_date, samples, ai_usage.
     """
     settings = get_settings()
     if not settings.anthropic_api_key:
@@ -87,12 +127,13 @@ def extract_from_document(
 
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
-    # Check for existing lab template
+    # Check for existing lab template — keyed on (lab_name, department) so
+    # soil and leaf templates from the same lab don't collide.
     lab_template = None
     if lab_name_hint:
-        lab_template = _get_lab_template(lab_name_hint)
+        lab_template = _get_lab_template(lab_name_hint, department=mode)
 
-    prompt = _build_extraction_prompt(lab_template)
+    prompt = _build_extraction_prompt(lab_template, mode=mode)
 
     # Build the message content based on file type
     if content_type == "application/pdf":
@@ -157,10 +198,11 @@ def extract_from_document(
     except json.JSONDecodeError:
         raise ValueError(f"Failed to parse extraction result from AI: {response_text[:200]}")
 
-    # If we got a lab name, try to find/create template
+    # If we got a lab name, try to find/create template — keep
+    # soil/leaf templates separate via department.
     detected_lab = extracted.get("lab_name", "")
     if detected_lab and not lab_template:
-        lab_template = _get_lab_template(detected_lab)
+        lab_template = _get_lab_template(detected_lab, department=mode)
 
     # Handle both multi-sample and single-sample responses
     samples = extracted.get("samples", [])
@@ -253,10 +295,26 @@ def learn_from_corrections(
     }
 
 
-def _get_lab_template(lab_name: str) -> dict | None:
-    """Fetch a lab template by name (case-insensitive partial match)."""
+def _get_lab_template(lab_name: str, department: str | None = None) -> dict | None:
+    """Fetch a lab template by name (case-insensitive partial match).
+
+    When `department` is given, prefer a template whose department matches
+    so soil and leaf templates from the same lab don't collide. Falls back
+    to any matching template if no exact dept match exists.
+    """
     sb = get_supabase_admin()
     try:
+        if department:
+            result = (
+                sb.table("lab_templates")
+                .select("*")
+                .ilike("lab_name", f"%{lab_name}%")
+                .ilike("department", f"%{department}%")
+                .limit(1)
+                .execute()
+            )
+            if result.data:
+                return result.data[0]
         result = sb.table("lab_templates").select("*").ilike("lab_name", f"%{lab_name}%").limit(1).execute()
         return result.data[0] if result.data else None
     except Exception:
