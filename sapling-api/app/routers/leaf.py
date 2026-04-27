@@ -206,6 +206,42 @@ def get_leaf_document(analysis_id: str, user: CurrentUser = Depends(get_current_
     return {"url": signed.get("signedURL") or signed.get("signedUrl", "")}
 
 
+class LinkFieldRequest(BaseModel):
+    field_id: str
+
+
+@router.post("/{analysis_id}/link-field")
+def link_leaf_to_field(
+    analysis_id: str,
+    body: LinkFieldRequest,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Link a leaf analysis to a field. Mirrors the soil link-field endpoint
+    so the documents tray can relink either type via the same flow."""
+    sb = get_supabase_admin()
+
+    result = sb.table("leaf_analyses").select("id, agent_id").eq("id", analysis_id).execute()
+    if not result.data:
+        raise HTTPException(404, "Leaf analysis not found")
+    if user.role != "admin" and result.data[0].get("agent_id") != user.id:
+        raise HTTPException(403, "Access denied")
+
+    field_result = sb.table("fields").select("name, farm_id").eq("id", body.field_id).execute()
+    if not field_result.data:
+        raise HTTPException(404, "Field not found")
+
+    farm_id = field_result.data[0].get("farm_id")
+
+    sb.table("leaf_analyses").update({
+        "field_id": body.field_id,
+        "farm_id": farm_id,
+    }).eq("id", analysis_id).execute()
+
+    _audit(sb, user, "link_field", analysis_id, {"field_id": body.field_id})
+
+    return {"ok": True}
+
+
 @router.post("/extract")
 async def extract_leaf_report(
     file: UploadFile = File(...),

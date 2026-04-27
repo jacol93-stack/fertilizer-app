@@ -10,6 +10,7 @@ import { LeafDetailView } from "@/components/leaf-detail-view";
 import type { Field } from "@/lib/season-constants";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { DocumentTray, type TrayDoc, type TrayBlock } from "@/components/client-portal/document-tray";
 import {
   Sheet,
   SheetContent,
@@ -101,6 +102,7 @@ function DocumentsPage() {
   // UI state
   const [activeTab, setActiveTab] = useState<"soil" | "leaf">("soil");
   const [filter, setFilter] = useState<"all" | "unlinked" | "deleted">(initialFilter || "all");
+  const [view, setView] = useState<"table" | "tray">(initialFilter === "unlinked" ? "tray" : "table");
   const [sheetRecord, setSheetRecord] = useState<{ type: "soil" | "leaf"; id: string } | null>(null);
   const [sheetData, setSheetData] = useState<Record<string, unknown> | null>(null);
   const [sheetLoading, setSheetLoading] = useState(false);
@@ -212,13 +214,22 @@ function DocumentsPage() {
     }
   }
 
-  async function handleLinkField(analysisId: string, fieldId: string) {
+  async function handleLinkField(
+    type: "soil" | "leaf",
+    analysisId: string,
+    fieldId: string,
+  ) {
     try {
-      await api.post(`/api/soil/${analysisId}/link-field`, { field_id: fieldId });
+      await api.post(`/api/${type}/${analysisId}/link-field`, { field_id: fieldId });
       const fieldInfo = allFields.find((f) => f.id === fieldId);
       toast.success(`Linked to ${fieldInfo?.name || "field"}`);
-      const updated = await api.getAll<SoilAnalysis>(`/api/soil?client_id=${clientId}`);
-      setSoilAnalyses(updated);
+      if (type === "soil") {
+        const updated = await api.getAll<SoilAnalysis>(`/api/soil?client_id=${clientId}`);
+        setSoilAnalyses(updated);
+      } else {
+        const updated = await api.getAll<LeafAnalysis>(`/api/leaf?client_id=${clientId}`);
+        setLeafAnalyses(updated);
+      }
     } catch {
       toast.error("Failed to link");
     }
@@ -345,7 +356,63 @@ function DocumentsPage() {
           })}
         </div>
 
-        {/* Table */}
+        {/* View toggle */}
+        <div className="mb-4 flex justify-end">
+          <div className="inline-flex gap-1 rounded-md border bg-white p-0.5">
+            {(["table", "tray"] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`rounded-sm px-3 py-1 text-xs font-medium transition-colors ${
+                  view === v
+                    ? "bg-[var(--sapling-orange)] text-white"
+                    : "text-muted-foreground hover:bg-orange-50"
+                }`}
+              >
+                {v === "table" ? "Table" : "Drag-link tray"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {view === "tray" ? (
+          <DocumentTray
+            unlinkedDocs={[
+              ...soilAnalyses
+                .filter((a) => !a.field_id)
+                .map<TrayDoc>((a) => ({
+                  id: a.id,
+                  type: "soil",
+                  lab_name: a.lab_name,
+                  date: a.analysis_date ?? a.created_at,
+                  crop: a.crop,
+                  source_document_url: a.source_document_url,
+                  field_id: a.field_id,
+                })),
+              ...leafAnalyses
+                .filter((a) => !a.field_id)
+                .map<TrayDoc>((a) => ({
+                  id: a.id,
+                  type: "leaf",
+                  lab_name: a.lab_name,
+                  date: a.sample_date ?? a.created_at,
+                  crop: a.crop,
+                  source_document_url: a.source_document_url,
+                  field_id: a.field_id,
+                })),
+            ]}
+            blocks={allFields.map<TrayBlock>((f) => {
+              const fieldRow = Object.values(farmFields).flat().find((row) => row.id === f.id);
+              return {
+                id: f.id,
+                name: f.name,
+                farm_name: f.farmName,
+                crop: fieldRow?.crop ?? null,
+              };
+            })}
+            onLinked={fetchData}
+          />
+        ) : (
         <Card>
           <CardContent className="py-3">
             {displayList.length === 0 ? (
@@ -426,12 +493,13 @@ function DocumentsPage() {
                                 </button>
                               )}
 
-                              {/* Link to field (unlinked soil only) */}
-                              {isUnlinked && isSoil && !isDeleted && (
+                              {/* Link to field — works for soil + leaf */}
+                              {isUnlinked && !isDeleted && (
                                 <select
                                   defaultValue=""
                                   onChange={(e) => {
-                                    if (e.target.value) handleLinkField(a.id, e.target.value);
+                                    if (e.target.value)
+                                      handleLinkField(activeTab, a.id, e.target.value);
                                   }}
                                   className="h-7 w-32 rounded border bg-white px-1.5 text-[11px]"
                                   title="Link to field"
@@ -484,6 +552,7 @@ function DocumentsPage() {
             )}
           </CardContent>
         </Card>
+        )}
       </div>
 
       {/* ── Detail Sheet ───────────────────────────────────────── */}
