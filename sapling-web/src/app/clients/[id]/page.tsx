@@ -191,9 +191,6 @@ export default function ClientHubPage() {
   const [fieldDrawerFarmId, setFieldDrawerFarmId] = useState("");
   const [fieldDrawerPrefill, setFieldDrawerPrefill] = useState<Partial<Field> | null>(null);
 
-  // Records tab
-  const [recordsTab, setRecordsTab] = useState<"programmes" | "analyses" | "blends">("programmes");
-
   // Detail sheet
   const [sheetRecord, setSheetRecord] = useState<{ type: "blend" | "soil"; id: string } | null>(null);
   const [sheetData, setSheetData] = useState<any>(null);
@@ -446,104 +443,24 @@ export default function ClientHubPage() {
     <>
       <div>
 
-        {/* ── Header ───────────────────────────────────────────── */}
-        <div className="mb-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-[var(--sapling-dark)]">{client.name}</h1>
-              <div className="mt-1 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                {client.company_details?.company_name && (
-                  <span>{client.company_details.company_name}</span>
-                )}
-                {client.contact_person && (
-                  <span className="flex items-center gap-1">
-                    <User className="size-3" />
-                    {client.contact_person}
-                  </span>
-                )}
-                {client.email && (
-                  <span className="flex items-center gap-1">
-                    <Mail className="size-3" />
-                    {client.email}
-                  </span>
-                )}
-                {client.phone && (
-                  <span className="flex items-center gap-1">
-                    <Phone className="size-3" />
-                    {client.phone}
-                  </span>
-                )}
-              </div>
-            </div>
-            <Button size="sm" variant="outline" onClick={openEditClient}>
-              <Pencil className="size-3" />
-              Edit
-            </Button>
-          </div>
-
-          {/* Quick stats — each panel links to the relevant section or page */}
-          <div className="mt-4 flex flex-wrap gap-4">
-            {[
-              { label: "Farms", value: farms.length, icon: MapPin, href: "#farms" },
-              { label: "Fields", value: totalFields, icon: Layers, href: "#farms" },
-              { label: "Blends", value: blends.length, icon: FlaskConical, href: "#records", tab: "blends" as const },
-              { label: "Analyses", value: soilAnalyses.length + leafAnalyses.length, icon: Leaf, href: `/clients/${clientId}/documents` },
-              { label: "Programmes", value: programmes.length, icon: Calendar, href: "#records", tab: "programmes" as const },
-            ].map((s) => {
-              const inner = (
-                <div
-                  className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2 cursor-pointer transition-colors hover:border-[var(--sapling-orange)]/40"
-                >
-                  <s.icon className="size-4 text-[var(--sapling-orange)]" />
-                  <span className="text-lg font-bold text-[var(--sapling-dark)]">{s.value}</span>
-                  <span className="text-xs text-muted-foreground">{s.label}</span>
-                </div>
-              );
-              const onClick = "tab" in s && s.tab ? () => setRecordsTab(s.tab) : undefined;
-              return (
-                <Link key={s.label} href={s.href} onClick={onClick}>
-                  {inner}
-                </Link>
-              );
-            })}
-          </div>
+        {/* Page header — slim. Client name + contact already in sidebar; this
+         * is a contextual title for the Overview pane only. Edit lives in the
+         * sidebar Settings link. */}
+        <div className="mb-5 flex items-baseline justify-between">
+          <h1 className="text-xl font-semibold text-[var(--sapling-dark)]">Overview</h1>
+          <button
+            onClick={openEditClient}
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-[var(--sapling-dark)]"
+          >
+            <Pencil className="size-3" />
+            Edit client details
+          </button>
         </div>
 
-        {/* ── Quick Actions Bar ─────────────────────────────────── */}
-        <div className="mb-8 flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={() => setAddFarmOpen(true)}>
-            <Plus className="size-3.5" />
-            Add Farm
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setBatchUploadOpen(true)}>
-            <Upload className="size-3.5" />
-            Upload Lab Results
-          </Button>
-          <Link href={`/clients/${clientId}/import`}>
-            <Button size="sm" variant="outline">
-              <Upload className="size-3.5" />
-              Bulk Import
-            </Button>
-          </Link>
-          <Link href={`/clients/${clientId}/documents`}>
-            <Button size="sm" variant="outline">
-              <FileText className="size-3.5" />
-              Documents
-            </Button>
-          </Link>
-          <Link href={`/quick-blend?client=${encodeURIComponent(client.name)}&client_id=${clientId}`}>
-            <Button size="sm" variant="outline">
-              <FlaskConical className="size-3.5" />
-              New Blend
-            </Button>
-          </Link>
-          <Link href={`/season-manager/new?client_id=${clientId}${farms.length > 0 ? `&farm_id=${farms[0].id}&farm=${encodeURIComponent(farms[0].name)}` : ""}${client ? `&client=${encodeURIComponent(client.name)}` : ""}`}>
-            <Button size="sm" className="bg-[var(--sapling-orange)] text-white hover:bg-[var(--sapling-orange)]/90">
-              <Calendar className="size-3.5" />
-              Build Programme
-            </Button>
-          </Link>
-        </div>
+        {/* Stats + quick actions are now in the sidebar (see ClientPortalShell).
+         * The legacy in-page action bar (Add Farm, Upload Lab Results, Bulk
+         * Import, Documents, New Blend, Build Programme) was removed in this
+         * commit — all reachable from the sidebar without duplication. */}
 
         {/* ── Farms & Fields ────────────────────────────────────── */}
         <div id="farms" className="mb-8 space-y-3 scroll-mt-20">
@@ -759,247 +676,6 @@ export default function ClientHubPage() {
           );
         })()}
 
-        {/* ── Records Section ───────────────────────────────────── */}
-        <div id="records" className="scroll-mt-20">
-          <h2 className="mb-3 text-lg font-semibold text-[var(--sapling-dark)]">Records</h2>
-
-          {/* Tabs */}
-          <div className="mb-4 flex gap-1 rounded-lg bg-muted p-1">
-            {(["programmes", "analyses", "blends"] as const).map((tab) => {
-              const labels = { programmes: "Programmes", analyses: "Analyses", blends: "Blends" };
-              const counts = { programmes: programmes.length, analyses: soilAnalyses.length + leafAnalyses.length, blends: blends.length };
-              return (
-                <button
-                  key={tab}
-                  onClick={() => setRecordsTab(tab)}
-                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    recordsTab === tab
-                      ? "bg-white text-[var(--sapling-dark)] shadow-sm"
-                      : "text-[var(--sapling-medium-grey)] hover:text-[var(--sapling-dark)]"
-                  }`}
-                >
-                  {labels[tab]}
-                  {counts[tab] > 0 && (
-                    <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums">
-                      {counts[tab]}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Programmes tab */}
-          {recordsTab === "programmes" && (
-            <div className="space-y-2">
-              {programmes.length === 0 ? (
-                <Card>
-                  <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                    No programmes yet
-                  </CardContent>
-                </Card>
-              ) : (
-                programmes.map((prog) => {
-                  const title = prog.farm_name
-                    ? `${prog.farm_name} — ${prog.crop}`
-                    : prog.crop;
-                  return (
-                    <Link key={prog.id} href={`/season-manager/artifact/${prog.id}`}>
-                      <div className="flex items-center justify-between rounded-lg border bg-white p-3 transition-colors hover:border-[var(--sapling-orange)]/40 hover:bg-orange-50/30">
-                        <div>
-                          <p className="font-medium text-[var(--sapling-dark)]">{title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {prog.blocks_count} block{prog.blocks_count !== 1 ? "s" : ""} ·{" "}
-                            {new Date(prog.created_at).toLocaleDateString()}
-                            {prog.ref_number ? ` · ${prog.ref_number}` : ""}
-                          </p>
-                        </div>
-                        <span
-                          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                            prog.state === "approved" || prog.state === "activated" || prog.state === "in_progress"
-                              ? "bg-green-100 text-green-700"
-                              : prog.state === "completed"
-                                ? "bg-blue-100 text-blue-700"
-                                : prog.state === "archived"
-                                  ? "bg-gray-100 text-gray-500"
-                                  : "bg-gray-100 text-gray-700"
-                          }`}
-                        >
-                          {prog.state}
-                        </span>
-                      </div>
-                    </Link>
-                  );
-                })
-              )}
-            </div>
-          )}
-
-          {/* Analyses tab */}
-          {recordsTab === "analyses" && (
-            <Card>
-              <CardContent className="py-3">
-                {soilAnalyses.length === 0 && leafAnalyses.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-muted-foreground">No analyses found</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b text-left text-muted-foreground">
-                          <th className="pb-2 pr-4 font-medium">Type</th>
-                          <th className="pb-2 pr-4 font-medium">Crop</th>
-                          <th className="pb-2 pr-4 font-medium">Cultivar</th>
-                          <th className="pb-2 pr-4 font-medium">Farm / Field</th>
-                          <th className="pb-2 pr-4 font-medium">Lab</th>
-                          <th className="pb-2 font-medium">Date</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {soilAnalyses.map((a) => (
-                          <tr
-                            key={a.id}
-                            role="button"
-                            tabIndex={0}
-                            aria-label={`Open soil analysis for ${a.crop || "unspecified crop"} on ${a.field || "unspecified field"}`}
-                            onClick={() => openDetail("soil", a.id)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                openDetail("soil", a.id);
-                              }
-                            }}
-                            className="cursor-pointer border-b last:border-0 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sapling-orange)] focus-visible:ring-inset"
-                          >
-                            <td className="py-2.5 pr-4">
-                              <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">Soil</span>
-                            </td>
-                            <td className="py-2.5 pr-4 font-medium text-[var(--sapling-dark)]">
-                              {a.crop || "-"}
-                            </td>
-                            <td className="py-2.5 pr-4">{a.cultivar || "-"}</td>
-                            <td className="py-2.5 pr-4 text-muted-foreground">
-                              {[a.farm, a.field].filter(Boolean).join(" / ") || "-"}
-                            </td>
-                            <td className="py-2.5 pr-4 text-muted-foreground">{a.lab_name || "-"}</td>
-                            <td className="py-2.5 text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="size-3" />
-                                {a.analysis_date
-                                  ? new Date(a.analysis_date).toLocaleDateString()
-                                  : new Date(a.created_at).toLocaleDateString()}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                        {leafAnalyses.map((a: Record<string, unknown>) => (
-                          <tr
-                            key={String(a.id)}
-                            className="border-b last:border-0 hover:bg-gray-50"
-                          >
-                            <td className="py-2.5 pr-4">
-                              <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700">Leaf</span>
-                            </td>
-                            <td className="py-2.5 pr-4 font-medium text-[var(--sapling-dark)]">
-                              {String(a.crop || "-")}
-                            </td>
-                            <td className="py-2.5 pr-4">{String(a.cultivar || "-")}</td>
-                            <td className="py-2.5 pr-4 text-muted-foreground">
-                              {String(a.field_id ? "Linked" : "-")}
-                            </td>
-                            <td className="py-2.5 pr-4 text-muted-foreground">{String(a.lab_name || "-")}</td>
-                            <td className="py-2.5 text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="size-3" />
-                                {a.sample_date
-                                  ? new Date(String(a.sample_date)).toLocaleDateString()
-                                  : new Date(String(a.created_at)).toLocaleDateString()}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Blends tab */}
-          {recordsTab === "blends" && (
-            <Card>
-              <CardContent className="py-3">
-                {blends.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-muted-foreground">No blends found</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b text-left text-muted-foreground">
-                          <th className="pb-2 pr-4 font-medium">Name</th>
-                          <th className="pb-2 pr-4 font-medium">Type</th>
-                          <th className="pb-2 pr-4 font-medium">Farm / Field</th>
-                          {isAdmin && <th className="pb-2 pr-4 font-medium">Cost/ton</th>}
-                          <th className="pb-2 font-medium">Date</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {blends.map((b) => (
-                          <tr
-                            key={b.id}
-                            role="button"
-                            tabIndex={0}
-                            aria-label={`Open blend ${b.blend_name || "unnamed"}`}
-                            onClick={() => openDetail("blend", b.id)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                openDetail("blend", b.id);
-                              }
-                            }}
-                            className="cursor-pointer border-b last:border-0 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sapling-orange)] focus-visible:ring-inset"
-                          >
-                            <td className="py-2.5 pr-4 font-medium text-[var(--sapling-dark)]">
-                              <span className="flex items-center gap-1.5">
-                                {b.blend_type === "liquid" ? (
-                                  <Droplets className="size-3.5 shrink-0 text-blue-500" />
-                                ) : (
-                                  <FlaskConical className="size-3.5 shrink-0 text-[var(--sapling-orange)]" />
-                                )}
-                                {b.blend_name || "Unnamed"}
-                              </span>
-                            </td>
-                            <td className="py-2.5 pr-4">
-                              {b.blend_type === "liquid" ? (
-                                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">Liquid</span>
-                              ) : (
-                                <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-700">Pelletised</span>
-                              )}
-                            </td>
-                            <td className="py-2.5 pr-4 text-muted-foreground">
-                              {[b.farm, b.field].filter(Boolean).join(" / ") || "-"}
-                            </td>
-                            {isAdmin && (
-                              <td className="py-2.5 pr-4 tabular-nums">
-                                {b.cost_per_ton != null ? `R${b.cost_per_ton.toFixed(0)}` : "-"}
-                              </td>
-                            )}
-                            <td className="py-2.5 text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="size-3" />
-                                {new Date(b.created_at).toLocaleDateString()}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </div>
       </div>
 
       {/* ── Detail Sheet ───────────────────────────────────────── */}

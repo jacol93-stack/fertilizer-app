@@ -12,6 +12,8 @@ import {
   Activity,
   Upload,
   Settings,
+  Plus,
+  FlaskConical,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { api } from "@/lib/api";
@@ -22,6 +24,9 @@ interface PortalCounts {
   documents: number;
   unlinkedDocuments: number;
   programmes: number;
+  /** Earliest farm in the client — used to pre-fill the Build Programme link
+   * with a sensible default farm so the wizard doesn't start blank. */
+  firstFarm?: { id: string; name: string };
 }
 
 interface Client {
@@ -49,7 +54,7 @@ export function ClientPortalShell({
       try {
         const [clients, farms, soil, leaf, programmes] = await Promise.all([
           api.getAll<Client>("/api/clients"),
-          api.get<Array<{ id: string }>>(`/api/clients/${clientId}/farms`),
+          api.get<Array<{ id: string; name: string }>>(`/api/clients/${clientId}/farms`),
           api.getAll<{ field_id: string | null }>(`/api/soil?client_id=${clientId}`).catch(() => []),
           api.getAll<{ field_id: string | null }>(`/api/leaf?client_id=${clientId}`).catch(() => []),
           api.get<Array<{ id: string }>>(`/api/programmes/v2?client_id=${clientId}&limit=500`).catch(() => []),
@@ -72,6 +77,7 @@ export function ClientPortalShell({
           documents: soil.length + leaf.length,
           unlinkedDocuments: unlinked,
           programmes: programmes.length,
+          firstFarm: farms[0] ? { id: farms[0].id, name: farms[0].name } : undefined,
         });
       } catch {
         // Counts are decorative — silent failure is fine.
@@ -81,6 +87,17 @@ export function ClientPortalShell({
       alive = false;
     };
   }, [clientId]);
+
+  const buildProgrammeHref = (() => {
+    const params = new URLSearchParams({ client_id: clientId });
+    if (client?.name) params.set("client", client.name);
+    if (counts?.firstFarm) {
+      params.set("farm_id", counts.firstFarm.id);
+      params.set("farm", counts.firstFarm.name);
+    }
+    return `/season-manager/new?${params.toString()}`;
+  })();
+  const newBlendHref = `/quick-blend?${client?.name ? `client=${encodeURIComponent(client.name)}&` : ""}client_id=${clientId}`;
 
   const sections: Array<{
     href: string;
@@ -127,7 +144,7 @@ export function ClientPortalShell({
             All clients
           </Link>
 
-          <div className="mb-5 rounded-lg border bg-white p-3">
+          <div className="mb-4 rounded-lg border bg-white p-3">
             <div className="text-base font-semibold leading-tight text-[var(--sapling-dark)]">
               {client?.name ?? "Loading…"}
             </div>
@@ -139,7 +156,22 @@ export function ClientPortalShell({
                 {[client?.email, client?.phone].filter(Boolean).join(" · ")}
               </div>
             )}
+            {counts && (
+              <div className="mt-2.5 grid grid-cols-3 gap-1 border-t pt-2.5 text-center">
+                <Stat label="Farms" value={counts.farms} />
+                <Stat label="Blocks" value={counts.fields} />
+                <Stat label="Programmes" value={counts.programmes} />
+              </div>
+            )}
           </div>
+
+          <Link
+            href={buildProgrammeHref}
+            className="mb-3 flex items-center justify-center gap-1.5 rounded-md bg-[var(--sapling-orange)] px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--sapling-orange)]/90"
+          >
+            <Plus className="size-4" />
+            Build Programme
+          </Link>
 
           <nav className="space-y-1">
             {sections.map(({ href, label, icon: Icon, count, badgeColor }) => {
@@ -177,19 +209,29 @@ export function ClientPortalShell({
             })}
           </nav>
 
-          <div className="mt-6 space-y-1 border-t pt-4">
+          <div className="mt-5 space-y-0.5 border-t pt-3">
+            <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Quick actions
+            </p>
             <Link
               href={`/clients/${clientId}/import`}
-              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-[var(--sapling-dark)] transition-colors hover:bg-orange-50"
+              className="flex items-center gap-2 rounded-md px-3 py-1.5 text-xs text-[var(--sapling-dark)] transition-colors hover:bg-orange-50"
             >
-              <Upload className="size-4" />
-              Bulk import
+              <Upload className="size-3.5" />
+              Upload lab results
+            </Link>
+            <Link
+              href={newBlendHref}
+              className="flex items-center gap-2 rounded-md px-3 py-1.5 text-xs text-[var(--sapling-dark)] transition-colors hover:bg-orange-50"
+            >
+              <FlaskConical className="size-3.5" />
+              New blend
             </Link>
             <Link
               href={`/clients/${clientId}/settings`}
-              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-gray-50 hover:text-[var(--sapling-dark)]"
+              className="flex items-center gap-2 rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-gray-50 hover:text-[var(--sapling-dark)]"
             >
-              <Settings className="size-4" />
+              <Settings className="size-3.5" />
               Settings
             </Link>
           </div>
@@ -198,5 +240,14 @@ export function ClientPortalShell({
         <div className="min-w-0 flex-1">{children}</div>
       </div>
     </AppShell>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <div className="text-sm font-semibold text-[var(--sapling-dark)] tabular-nums">{value}</div>
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+    </div>
   );
 }
