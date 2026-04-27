@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
-import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -212,7 +211,7 @@ export default function MaterialsPage() {
   if (authLoading) return null;
 
   return (
-    <AppShell>
+    <>
       <div className="mx-auto max-w-7xl px-4 py-8">
         <div className="flex items-center justify-between">
           <div>
@@ -685,6 +684,6 @@ export default function MaterialsPage() {
           </div>
         </div>
       )}
-    </AppShell>
+    </>
   );
 }

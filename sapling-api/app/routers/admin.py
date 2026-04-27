@@ -116,52 +116,145 @@ def get_agent_activity(
 
 # ── Deleted records (trash) ──────────────────────────────────────────────
 
+_DELETED_KIND_TO_TABLE = {
+    "blend": "blends",
+    "soil_analysis": "soil_analyses",
+    "leaf_analysis": "leaf_analyses",
+    "farm": "farms",
+    "field": "fields",
+    "yield_record": "yield_records",
+    "field_crop_history": "field_crop_history",
+    "field_application": "field_applications",
+    "field_event": "field_events",
+    "client": "clients",
+}
+
+
 @router.get("/deleted")
 def get_deleted_records(
     page: PageParams = Depends(PageParams.as_query),
-    record_type: str | None = Query(None, description="Filter: blend, soil_analysis"),
+    record_type: str | None = Query(None, description="Filter by record type"),
     user_id: str | None = Query(None, description="Filter by agent"),
     user: CurrentUser = Depends(require_admin),
 ):
-    """Admin only — list all soft-deleted records across blends and soil analyses.
+    """Admin only — list every soft-deleted record across the schema.
 
-    Combines two tables in Python then slices for pagination. Trash is
-    intentionally small (old items get hard-deleted by admins) so an
-    O(N) combine is fine.
+    Each row gets a unified `_type / _name / _detail` so the recovery
+    UI can render one tombstone list regardless of source table.
     """
     sb = get_supabase_admin()
     results: list[dict] = []
 
-    if not record_type or record_type == "blend":
-        query = sb.table("blends").select(
-            "id, blend_name, client, farm, created_by, created_at, deleted_at, deleted_by, agent_id"
-        ).not_.is_("deleted_at", "null").order("deleted_at", desc=True)
-        if user_id:
-            query = query.eq("agent_id", user_id)
-        blends = query.execute().data or []
-        for b in blends:
-            b["_type"] = "blend"
-            b["_name"] = b.get("blend_name") or "Unnamed blend"
-            b["_detail"] = b.get("client") or ""
-        results.extend(blends)
+    def fetch(kind: str, table: str, columns: str, name_fn, detail_fn):
+        if record_type and record_type != kind:
+            return
+        q = sb.table(table).select(columns).not_.is_("deleted_at", "null").order("deleted_at", desc=True)
+        # agent_id filter only applies where the column exists
+        if user_id and "agent_id" in columns:
+            q = q.eq("agent_id", user_id)
+        rows = q.execute().data or []
+        for r in rows:
+            r["_type"] = kind
+            r["_table"] = table
+            r["_name"] = name_fn(r)
+            r["_detail"] = detail_fn(r)
+        results.extend(rows)
 
-    if not record_type or record_type == "soil_analysis":
-        query = sb.table("soil_analyses").select(
-            "id, customer, farm, field, crop, created_by, created_at, deleted_at, deleted_by, agent_id"
-        ).not_.is_("deleted_at", "null").order("deleted_at", desc=True)
-        if user_id:
-            query = query.eq("agent_id", user_id)
-        soils = query.execute().data or []
-        for s in soils:
-            s["_type"] = "soil_analysis"
-            s["_name"] = f"{s.get('crop', '')} - {s.get('customer', '')}"
-            s["_detail"] = f"{s.get('farm', '')} / {s.get('field', '')}"
-        results.extend(soils)
+    fetch(
+        "blend", "blends",
+        "id, blend_name, client, farm, created_by, created_at, deleted_at, deleted_by, agent_id",
+        lambda r: r.get("blend_name") or "Unnamed blend",
+        lambda r: r.get("client") or "",
+    )
+    fetch(
+        "soil_analysis", "soil_analyses",
+        "id, customer, farm, field, crop, created_by, created_at, deleted_at, deleted_by, agent_id",
+        lambda r: f"{r.get('crop', '')} — {r.get('customer', '')}".strip(" —"),
+        lambda r: f"{r.get('farm', '')} / {r.get('field', '')}".strip(" /"),
+    )
+    fetch(
+        "leaf_analysis", "leaf_analyses",
+        "id, crop, lab_name, sample_date, created_at, deleted_at, deleted_by, agent_id",
+        lambda r: f"{r.get('crop', '')} leaf".strip(),
+        lambda r: f"{r.get('lab_name', '')} · {r.get('sample_date', '')}".strip(" ·"),
+    )
+    fetch(
+        "client", "clients",
+        "id, name, contact_person, created_at, deleted_at, deleted_by, agent_id",
+        lambda r: r.get("name") or "Client",
+        lambda r: r.get("contact_person") or "",
+    )
+    fetch(
+        "farm", "farms",
+        "id, name, region, client_id, created_at, deleted_at, deleted_by",
+        lambda r: r.get("name") or "Farm",
+        lambda r: r.get("region") or "",
+    )
+    fetch(
+        "field", "fields",
+        "id, name, crop, cultivar, farm_id, created_at, deleted_at, deleted_by",
+        lambda r: r.get("name") or "Field",
+        lambda r: f"{r.get('crop', '')} {r.get('cultivar', '')}".strip(),
+    )
+    fetch(
+        "yield_record", "yield_records",
+        "id, season, yield_actual, yield_unit, field_id, created_at, deleted_at, deleted_by, created_by",
+        lambda r: f"{r.get('season', '')} yield",
+        lambda r: f"{r.get('yield_actual', '')} {r.get('yield_unit', '')}".strip(),
+    )
+    fetch(
+        "field_crop_history", "field_crop_history",
+        "id, crop, cultivar, season, field_id, created_at, deleted_at, deleted_by",
+        lambda r: f"{r.get('crop', '')} {r.get('season', '')}".strip(),
+        lambda r: r.get("cultivar") or "",
+    )
+    fetch(
+        "field_application", "field_applications",
+        "id, applied_date, product_label, method, field_id, created_at, deleted_at, deleted_by, created_by",
+        lambda r: r.get("product_label") or "Application",
+        lambda r: f"{r.get('applied_date', '')} · {r.get('method', '')}".strip(" ·"),
+    )
+    fetch(
+        "field_event", "field_events",
+        "id, title, event_type, event_date, field_id, created_at, deleted_at, deleted_by, created_by",
+        lambda r: r.get("title") or "Event",
+        lambda r: f"{r.get('event_type', '')} · {r.get('event_date', '')}".strip(" ·"),
+    )
 
     results.sort(key=lambda r: r.get("deleted_at", ""), reverse=True)
     total = len(results)
     sliced = results[page.skip : page.skip + page.limit]
     return Page.from_list(sliced, page, total=total)
+
+
+@router.post("/deleted/{record_type}/{record_id}/restore")
+def restore_deleted_record(
+    record_type: str,
+    record_id: str,
+    user: CurrentUser = Depends(require_admin),
+):
+    """Admin only — clear deleted_at to bring a soft-deleted row back."""
+    sb = get_supabase_admin()
+    table = _DELETED_KIND_TO_TABLE.get(record_type)
+    if not table:
+        raise HTTPException(400, f"Unknown record_type: {record_type}")
+    res = sb.table(table).update({
+        "deleted_at": None,
+        "deleted_by": None,
+    }).eq("id", record_id).execute()
+    if not res.data:
+        raise HTTPException(404, "Record not found")
+    try:
+        sb.rpc("log_audit_event", {
+            "p_event_type": "restore",
+            "p_entity_type": table,
+            "p_entity_id": record_id,
+            "p_metadata": {},
+            "p_user_id": user.id,
+        }).execute()
+    except Exception:
+        pass
+    return {"detail": "Record restored"}
 
 
 @router.delete("/deleted/{record_type}/{record_id}")
@@ -172,7 +265,9 @@ def hard_delete_record(
 ):
     """Admin only — permanently delete a soft-deleted record."""
     sb = get_supabase_admin()
-    table = "blends" if record_type == "blend" else "soil_analyses"
+    table = _DELETED_KIND_TO_TABLE.get(record_type)
+    if not table:
+        raise HTTPException(400, f"Unknown record_type: {record_type}")
     result = sb.table(table).delete().eq("id", record_id).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Record not found")

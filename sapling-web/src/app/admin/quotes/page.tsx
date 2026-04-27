@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
-import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -218,7 +217,7 @@ function AdminQuotesPage() {
   if (authLoading) return null;
 
   return (
-    <AppShell>
+    <>
       <div className="mx-auto max-w-6xl px-4 py-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-[var(--sapling-dark)]">Quote Management</h1>
@@ -707,6 +706,6 @@ function AdminQuotesPage() {
         loading={blendPreview.loading}
         onClose={blendPreview.closePreview}
       />
-    </AppShell>
+    </>
   );
 }

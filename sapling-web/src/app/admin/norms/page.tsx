@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
-import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -155,7 +154,7 @@ export default function NormsPage() {
   const hasEdits = editedRows.size > 0;
 
   return (
-    <AppShell>
+    <>
       <div className="mx-auto max-w-7xl px-4 py-8">
         <div className="flex items-center justify-between">
           <div>
@@ -267,6 +266,6 @@ export default function NormsPage() {
           </div>
         )}
       </div>
-    </AppShell>
+    </>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { AppShell } from "@/components/app-shell";
 import { api } from "@/lib/api";
 import {
   Card,
@@ -45,18 +44,18 @@ export default function AiUsagePage() {
 
   if (loading) {
     return (
-      <AppShell>
+      <>
         <div className="flex justify-center py-20">
           <Loader2 className="size-6 animate-spin text-[var(--sapling-orange)]" />
         </div>
-      </AppShell>
+      </>
     );
   }
 
   if (!data) return null;
 
   return (
-    <AppShell>
+    <>
       <div className="mx-auto max-w-5xl px-4 py-8">
         <h1 className="mb-6 text-2xl font-bold text-[var(--sapling-dark)]">AI Usage</h1>
 
@@ -192,6 +191,6 @@ export default function AiUsagePage() {
           </CardContent>
         </Card>
       </div>
-    </AppShell>
+    </>
   );
 }
