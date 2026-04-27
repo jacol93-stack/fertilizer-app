@@ -1527,23 +1527,23 @@ def _load_soil_catalog(supabase) -> SoilCatalog:
 def _load_materials_for_user(supabase, user: CurrentUser) -> list[dict]:
     """Return the materials list the orchestrator should plan against.
 
-    Admins get everything — the full catalog is theirs to curate.
-    Agents get the admin-approved subset from `default_materials.materials`
-    + `default_materials.liquid_materials`, with "Manure Compost" always
-    included (matches the legacy auto-blend flow's behavior).
+    Everyone — admin and agent alike — runs against the admin-approved
+    subset from `default_materials.materials` + `.liquid_materials`,
+    with "Manure Compost" always included. Defaults are meant as the
+    real production material pool; in a one-man shop where the same
+    person curates the catalogue and builds programmes, the previous
+    admin escape hatch meant the defaults never applied to the
+    programmes the admin actually built.
 
-    If no default_materials row exists yet (fresh install), agents fall
-    back to the full catalog with a warning logged — safer than
-    blocking the build.
+    If no default_materials row exists yet (fresh install), falls back
+    to the full catalog with a warning logged — safer than blocking
+    the build.
     """
     all_mats = supabase.table("materials").select("*").execute().data or []
-    if getattr(user, "role", None) == "admin":
-        return all_mats
-
     defaults_res = supabase.table("default_materials").select("*").execute()
     if not defaults_res.data:
         logger.warning(
-            "No default_materials row found — agent user %s falling back "
+            "No default_materials row found — user %s falling back "
             "to full materials catalog. Admin should configure defaults.",
             user.id,
         )
@@ -1557,7 +1557,7 @@ def _load_materials_for_user(supabase, user: CurrentUser) -> list[dict]:
         # Defaults row exists but empty — don't silently cripple the
         # build. Log and return the full catalog.
         logger.warning(
-            "default_materials for agent %s resolves to zero matches — "
+            "default_materials for user %s resolves to zero matches — "
             "falling back to full catalog.",
             user.id,
         )
