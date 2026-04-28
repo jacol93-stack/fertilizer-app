@@ -38,8 +38,10 @@ from app.models import (
     Assumption,
     Blend,
     DataCompleteness,
+    FactorFindingOut,
     FoliarEvent,
     MethodAvailability,
+    NutrientStatusEntry,
     OutstandingItem,
     PreSeasonInput,
     PreSeasonRecommendation,
@@ -135,6 +137,13 @@ class OrchestratorInput:
     # allocations onto these slots with timing walls enforced. When None,
     # engine uses the default stage-count-aligned calendar.
     application_months: Optional[list[int]] = None
+    # Sufficiency catalog rows (soil_sufficiency, soil_parameter_map) —
+    # used to populate per-block NutrientStatusEntry on the output
+    # snapshot so the UI can render 'value vs ideal' range bars without
+    # re-fetching from the DB. Pass-through; the orchestrator does no
+    # work with these beyond reading optimal bands per parameter.
+    sufficiency_rows: Optional[list[dict]] = None
+    param_map_rows: Optional[list[dict]] = None
 
 
 # ============================================================
@@ -531,6 +540,28 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
             k: float(v) for k, v in (sf_report.computed or {}).items()
             if isinstance(v, (int, float))
         }
+        # Structured findings — same data the engine used for adjustments,
+        # exposed verbatim for the visual ratio panel + tooltips.
+        factor_findings = [
+            FactorFindingOut(
+                kind=f.kind,
+                severity=f.severity,
+                parameter=f.parameter,
+                value=float(f.value),
+                threshold=float(f.threshold) if f.threshold is not None else None,
+                message=f.message,
+                recommended_action=f.recommended_action,
+                source_id=f.source_id,
+                source_section=f.source_section,
+                tier=f.tier,
+            )
+            for f in sf_report.findings
+        ]
+        nutrient_status = _build_nutrient_status(
+            soil_parameters=block.soil_parameters,
+            sufficiency_rows=inputs.sufficiency_rows or [],
+            param_map_rows=inputs.param_map_rows or [],
+        )
         soil_snapshots_out.append(SoilSnapshot(
             block_id=block.block_id,
             block_name=block.block_name,
@@ -541,6 +572,8 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
             sample_id=block.sample_id,
             parameters=block.soil_parameters,
             computed_ratios=computed_ratios,
+            factor_findings=factor_findings,
+            nutrient_status=nutrient_status,
             headline_signals=headline,
         ))
 
@@ -627,6 +660,175 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
 # ============================================================
 # Helpers
 # ============================================================
+
+# Display labels + units per soil parameter — used by the per-block
+# 'nutrients vs ideal' visual on the artifact view. Keys must match
+# the soil_values column names emitted by the lab (parameters dict on
+# SoilSnapshot). Anything not in this map still renders, but with the
+# bare key as the label.
+_NUTRIENT_DISPLAY: dict[str, tuple[str, str]] = {
+    "pH_H2O": ("pH (H₂O)", ""),
+    "pH_KCl": ("pH (KCl)", ""),
+    "Org_C_pct": ("Organic carbon", "%"),
+    "Total_N_pct": ("Total N", "%"),
+    "P_Mehlich3": ("Phosphorus (P)", "mg/kg"),
+    "P_Bray1": ("Phosphorus (P)", "mg/kg"),
+    "P_Olsen": ("Phosphorus (P)", "mg/kg"),
+    "P_Truog": ("Phosphorus (P)", "mg/kg"),
+    "P_Ambic": ("Phosphorus (P)", "mg/kg"),
+    "K": ("Potassium (K)", "mg/kg"),
+    "Ca": ("Calcium (Ca)", "mg/kg"),
+    "Mg": ("Magnesium (Mg)", "mg/kg"),
+    "Na": ("Sodium (Na)", "mg/kg"),
+    "S": ("Sulphur (S)", "mg/kg"),
+    "Zn": ("Zinc (Zn)", "mg/kg"),
+    "B": ("Boron (B)", "mg/kg"),
+    "Mn": ("Manganese (Mn)", "mg/kg"),
+    "Fe": ("Iron (Fe)", "mg/kg"),
+    "Cu": ("Copper (Cu)", "mg/kg"),
+    "CEC": ("CEC", "cmol/kg"),
+    "Ca_pct_BS": ("Ca base saturation", "%"),
+    "Mg_pct_BS": ("Mg base saturation", "%"),
+    "K_pct_BS": ("K base saturation", "%"),
+    "Na_pct_BS": ("Na base saturation", "%"),
+}
+
+
+def _classify_status(value: float, low_max: float, optimal_max: float) -> str:
+    """Bucket a parameter into low / ok / high relative to the
+    sufficiency band. low_max is the upper bound of 'low' (i.e. the
+    start of the optimal range), optimal_max is the upper bound of the
+    optimal range. Anything below low_max is low; above optimal_max is
+    high; in between is ok."""
+    if value < low_max:
+        return "low"
+    if value > optimal_max:
+        return "high"
+    return "ok"
+
+
+def _build_nutrient_status(
+    soil_parameters: dict[str, float],
+    sufficiency_rows: list[dict],
+    param_map_rows: list[dict],
+) -> list[NutrientStatusEntry]:
+    """Build the 'nutrients vs ideal' rows for one block's snapshot.
+
+    Iterates the block's soil_parameters and emits one entry per
+    parameter that has a sufficiency band in the catalog. Skips
+    parameters without bands (e.g. ratio columns, anything purely
+    diagnostic) — those surface via factor_findings instead.
+
+    param_map_rows is consulted as a fallback when a soil column name
+    doesn't directly match a sufficiency row's parameter (e.g. when
+    the lab names it `P_Mehlich3` but sufficiency keys it as `P`).
+    """
+    if not soil_parameters or not sufficiency_rows:
+        return []
+
+    suff_by_param: dict[str, dict] = {}
+    for r in sufficiency_rows:
+        key = r.get("parameter")
+        if isinstance(key, str):
+            suff_by_param[key] = r
+    nutrient_by_soil_param: dict[str, str] = {}
+    for r in param_map_rows:
+        sp = r.get("soil_parameter") or r.get("parameter")
+        nut = r.get("nutrient")
+        if isinstance(sp, str) and isinstance(nut, str):
+            nutrient_by_soil_param[sp] = nut
+
+    entries: list[NutrientStatusEntry] = []
+    seen_keys: set[str] = set()
+    for soil_param, raw_value in soil_parameters.items():
+        if raw_value is None or not isinstance(raw_value, (int, float)):
+            continue
+        value = float(raw_value)
+        # Direct match → use the soil parameter's own row. Otherwise
+        # try the catalog mapping (e.g. P_Mehlich3 → P).
+        suff = suff_by_param.get(soil_param)
+        if not suff:
+            mapped = nutrient_by_soil_param.get(soil_param)
+            if mapped:
+                suff = suff_by_param.get(mapped)
+        if not suff:
+            continue
+        try:
+            low_max = float(suff["low_max"])
+            optimal_max = float(suff["optimal_max"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        # Avoid emitting two rows for the same nutrient (e.g. when both
+        # the soil column and its mapped nutrient match — the soil
+        # column wins because it's what the lab actually reported).
+        key = f"{soil_param}|{low_max}|{optimal_max}"
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        label, unit = _NUTRIENT_DISPLAY.get(soil_param, (soil_param, ""))
+        chart_min, chart_max = _resolve_chart_bounds(suff, value, low_max, optimal_max)
+        entries.append(NutrientStatusEntry(
+            parameter=soil_param,
+            nutrient_label=label,
+            value=round(value, 2),
+            optimal_low=low_max,
+            optimal_high=optimal_max,
+            unit=unit or None,
+            status=_classify_status(value, low_max, optimal_max),
+            chart_min=chart_min,
+            chart_max=chart_max,
+        ))
+    # Stable ordering — macros first, then secondary, then micros, then
+    # everything else. Mirrors how an agronomist scans a soil report.
+    macro_order = [
+        "pH_H2O", "pH_KCl",
+        "P_Mehlich3", "P_Bray1", "P_Olsen", "P_Truog", "P_Ambic",
+        "K", "Ca", "Mg",
+        "S", "Na",
+        "Zn", "B", "Mn", "Fe", "Cu",
+        "Org_C_pct", "Total_N_pct", "CEC",
+        "Ca_pct_BS", "Mg_pct_BS", "K_pct_BS", "Na_pct_BS",
+    ]
+    rank = {p: i for i, p in enumerate(macro_order)}
+    entries.sort(key=lambda e: rank.get(e.parameter, len(rank) + 1))
+    return entries
+
+
+def _resolve_chart_bounds(
+    suff_row: dict,
+    value: float,
+    low_max: float,
+    optimal_max: float,
+) -> tuple[Optional[float], Optional[float]]:
+    """Decide the bar's min/max so the optimal band reads as a
+    proportional slice rather than a hairline. Prefer explicit
+    display_min/display_max columns when present; otherwise pad the
+    optimal range by 25% on either side, but always include the
+    block's actual value so a critical-low or critical-high reading
+    is visible on the bar.
+    """
+    explicit_min = suff_row.get("display_min")
+    explicit_max = suff_row.get("display_max")
+    try:
+        cmin = float(explicit_min) if explicit_min is not None else None
+    except (TypeError, ValueError):
+        cmin = None
+    try:
+        cmax = float(explicit_max) if explicit_max is not None else None
+    except (TypeError, ValueError):
+        cmax = None
+    if cmin is None or cmax is None:
+        span = max(optimal_max - low_max, 1.0)
+        if cmin is None:
+            cmin = max(0.0, low_max - span * 0.5)
+        if cmax is None:
+            cmax = optimal_max + span * 0.5
+    if value < cmin:
+        cmin = max(0.0, value - max(value * 0.1, 1.0))
+    if value > cmax:
+        cmax = value + max(value * 0.1, 1.0)
+    return cmin, cmax
+
 
 def _uses_fertigation(avail: MethodAvailability) -> bool:
     return any(k.name.startswith("LIQUID_") for k in avail.available_kinds())

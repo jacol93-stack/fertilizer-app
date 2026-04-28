@@ -1,7 +1,6 @@
 "use client";
 
 import type { Field } from "@/lib/season-constants";
-import { MONTH_NAMES } from "@/lib/season-constants";
 import { Card, CardContent } from "@/components/ui/card";
 import { Droplets, Sprout, TreeDeciduous, CheckCircle2, Pencil, Layers } from "lucide-react";
 
@@ -11,12 +10,6 @@ interface FieldCardProps {
   selectable?: boolean;
   onToggle?: (fieldId: string) => void;
   onClick?: (fieldId: string) => void;
-}
-
-function formatFertigationMonths(months: number[]): string {
-  if (!months.length) return "";
-  const sorted = [...months].sort((a, b) => a - b);
-  return sorted.map((m) => MONTH_NAMES[m]).join(", ");
 }
 
 const irrigationIcons: Record<string, string> = {
@@ -128,13 +121,6 @@ export function FieldCard({ field, selected, selectable, onToggle, onClick }: Fi
             </span>
           ))}
         </div>
-
-        {/* Fertigation months */}
-        {field.fertigation_months?.length > 0 && (
-          <p className="mt-1.5 text-[10px] text-[var(--sapling-medium-grey)]">
-            Fertigation: {formatFertigationMonths(field.fertigation_months)}
-          </p>
-        )}
 
         {/* Analysis status */}
         <div className="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2">

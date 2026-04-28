@@ -191,6 +191,38 @@ export interface ProgrammeHeader {
   method_availability: MethodAvailability;
 }
 
+export interface FactorFinding {
+  /** 'antagonism' | 'toxicity' | 'deficiency' | 'balance' | 'info' */
+  kind: string;
+  /** 'info' | 'watch' | 'warn' | 'critical' */
+  severity: string;
+  /** Identifier the engine used — e.g. 'Ca:Mg', 'Al_saturation_pct', 'P:Zn'. */
+  parameter: string;
+  value: number;
+  threshold?: number | null;
+  message: string;
+  recommended_action?: string | null;
+  source_id?: string | null;
+  source_section?: string | null;
+  tier?: number | null;
+}
+
+export interface NutrientStatus {
+  parameter: string;
+  nutrient_label: string;
+  value: number;
+  optimal_low: number;
+  optimal_high: number;
+  unit?: string | null;
+  /** 'low' | 'ok' | 'high' — bucket relative to the optimal band. */
+  status: string;
+  /** Display-only — bar minimum / maximum so the optimal band reads as
+   * a proportional slice. Engine includes the actual value within
+   * these bounds even if it's outside the optimal range. */
+  chart_min?: number | null;
+  chart_max?: number | null;
+}
+
 export interface SoilSnapshot {
   block_id: string;
   block_name: string;
@@ -201,6 +233,16 @@ export interface SoilSnapshot {
   sample_id?: string | null;
   sample_depth_cm?: number | null;
   parameters: Record<string, number>;
+  /** Engine-computed ratios (Ca:Mg, ESP, SAR, P:Zn, C:N, Al sat, …). */
+  computed_ratios?: Record<string, number>;
+  /** Structured findings from the soil-factor reasoner — drives the
+   * ratio status pills + 'why was this flagged' explanations. Empty
+   * for legacy artifacts built before the field was added. */
+  factor_findings?: FactorFinding[];
+  /** Per-parameter optimal-band data driving the 'value vs ideal'
+   * visual. Only emitted for parameters with sufficiency thresholds in
+   * the catalog; ratio columns and diagnostic-only readings stay out. */
+  nutrient_status?: NutrientStatus[];
   headline_signals: string[];
 }
 

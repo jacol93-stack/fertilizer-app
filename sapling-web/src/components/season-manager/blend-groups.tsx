@@ -6,17 +6,17 @@ import { MONTH_NAMES, methodLabel, seasonOrderIndex } from "@/lib/season-constan
 const SEASON_ANCHOR = new Date().getMonth() + 1;
 
 /** Strip any "cluster_" prefix the engine emits (e.g. cluster_A → A)
- * so the badge / header read as plain recipe letters. */
-function recipeLetter(groupId: string): string {
+ * so the badge / header read as plain group letters. */
+function groupLetter(groupId: string): string {
   return groupId.replace(/^cluster_/i, "");
 }
 
-/** Singleton recipes (one block, no cluster letter) get a positional
- * letter computed from index — "Recipe B / C / …" reads cleaner than
- * "Recipe Blok N5 — Young Beaumont/A4" which duplicates the block name
+/** Singleton groups (one block, no cluster letter) get a positional
+ * letter computed from index — "Group B / C / …" reads cleaner than
+ * "Group Blok N5 — Young Beaumont/A4" which duplicates the block name
  * already shown in the subtitle. */
-function recipeLetterAt(group: BlendGroupData, idx: number): string {
-  if (group.group.startsWith("cluster_")) return recipeLetter(group.group);
+function groupLetterAt(group: BlendGroupData, idx: number): string {
+  if (group.group.startsWith("cluster_")) return groupLetter(group.group);
   return String.fromCharCode("A".charCodeAt(0) + idx);
 }
 
@@ -81,14 +81,14 @@ export function BlendGroups({ blendGroups, isAdmin }: BlendGroupsProps) {
       <div>
         <h3 className="text-lg font-semibold text-[var(--sapling-dark)]">Optimized Blends</h3>
         <p className="text-sm text-muted-foreground">
-          {totalWindows} application window{totalWindows !== 1 ? "s" : ""} across {blendGroups.length} recipe{blendGroups.length !== 1 ? "s" : ""}
+          {totalWindows} application window{totalWindows !== 1 ? "s" : ""} across {blendGroups.length} group{blendGroups.length !== 1 ? "s" : ""}
           {totalEvents > totalWindows && <> &middot; {totalEvents} events total</>} —
-          each stage-method combination gets its own recipe.
+          each stage-method combination gets its own blend.
         </p>
       </div>
 
       {blendGroups.map((group, idx) => {
-        const letter = recipeLetterAt(group, idx);
+        const letter = groupLetterAt(group, idx);
         const groupEvents = group.applications.reduce((m, a) => m + (a.events_count || 1), 0);
         const groupTotalKg = group.applications.reduce(
           (s, a) => s + (a.is_foliar ? 0 : a.rate_kg_ha * (a.events_count || 1) * group.total_area_ha),
@@ -103,7 +103,7 @@ export function BlendGroups({ blendGroups, isAdmin }: BlendGroupsProps) {
                 </span>
                 <div className="flex-1">
                   <CardTitle className="text-base">
-                    Recipe {letter} — {group.applications.length} application window{group.applications.length !== 1 ? "s" : ""}
+                    Group {letter} — {group.applications.length} application window{group.applications.length !== 1 ? "s" : ""}
                     {groupEvents > group.applications.length && (
                       <span className="ml-2 text-xs font-normal text-muted-foreground">
                         ({groupEvents} events)
@@ -172,9 +172,9 @@ export function BlendGroups({ blendGroups, isAdmin }: BlendGroupsProps) {
                 });
               })()}
 
-              {/* Per-recipe season totals — nutrients delivered + product
+              {/* Per-group season totals — nutrients delivered + product
                   mass. Programme builder is agronomy-scoped (no cost). */}
-              <RecipeSeasonTotals group={group} />
+              <GroupSeasonTotals group={group} />
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2 text-xs">
                 <span className="text-muted-foreground">
                   Estimated product total:
@@ -191,10 +191,10 @@ export function BlendGroups({ blendGroups, isAdmin }: BlendGroupsProps) {
   );
 }
 
-/** Season-total nutrient roll-up per recipe — sum of (nutrient kg/ha ×
+/** Season-total nutrient roll-up per group — sum of (nutrient kg/ha ×
  * events × area_ha) across all applications. The agronomist's "what
  * goes on this farm in total" view. */
-function RecipeSeasonTotals({ group }: { group: BlendGroupData }) {
+function GroupSeasonTotals({ group }: { group: BlendGroupData }) {
   const totals: Record<string, number> = {};
   for (const app of group.applications) {
     if (app.is_foliar) continue;
@@ -214,7 +214,7 @@ function RecipeSeasonTotals({ group }: { group: BlendGroupData }) {
   return (
     <div className="rounded-lg border bg-orange-50/30 px-3 py-2">
       <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-[var(--sapling-orange)]">
-        Season totals (this recipe, all blocks)
+        Season totals (this group, all blocks)
       </p>
       <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 text-xs sm:grid-cols-6">
         {macroEntries.map((e) => (
@@ -274,7 +274,7 @@ function computeSANotation(nutrients: Record<string, number>, totalMassKgPerHa: 
   const peak = Math.max(nPct, pPct, kPct);
   const scale = peak > 0 ? 15 / peak : 0;
   const r = (v: number) => Math.max(0, Math.round(v * scale));
-  let s = `${r(nPct)}:${r(pPct)}:${r(kPct)} (${sumPct.toFixed(0)})`;
+  const s = `${r(nPct)}:${r(pPct)}:${r(kPct)} (${sumPct.toFixed(0)})`;
 
   const tail: string[] = [];
   for (const key of SECONDARY_KEYS) {

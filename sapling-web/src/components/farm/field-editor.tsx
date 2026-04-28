@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ComboBox } from "@/components/client-selector";
 import { toast } from "sonner";
-import { Loader2, Plus, Copy, Trash2, X, Save } from "lucide-react";
+import { Loader2, Plus, Copy, X, Save } from "lucide-react";
 import type { Field, CropNorm, SoilAnalysis } from "@/lib/season-constants";
-import { MONTH_NAMES, IRRIGATION_TYPES, methodLabel } from "@/lib/season-constants";
+import { IRRIGATION_TYPES, methodLabel } from "@/lib/season-constants";
 
 interface FieldEditorProps {
   open: boolean;
@@ -45,7 +45,6 @@ interface FieldForm {
   irrigationType: string;
   fertigationCapable: "" | "yes" | "no";
   acceptedMethods: string[];
-  fertigationMonths: number[];
   latestAnalysisId: string;
   cropMethods: CropMethod[];
 }
@@ -54,7 +53,7 @@ const EMPTY_FORM: FieldForm = {
   name: "", sizeHa: "", gpsLat: "", gpsLng: "", soilType: "", crop: "", cultivar: "",
   cropType: null, plantingDate: "", treeAge: "", popPerHa: "",
   yieldTarget: "", yieldUnit: "", irrigationType: "", fertigationCapable: "",
-  acceptedMethods: [], fertigationMonths: [], latestAnalysisId: "",
+  acceptedMethods: [], latestAnalysisId: "",
   cropMethods: [],
 };
 
@@ -76,7 +75,6 @@ function formFromField(f: Field): FieldForm {
     irrigationType: f.irrigation_type || "",
     fertigationCapable: f.fertigation_capable === true ? "yes" : f.fertigation_capable === false ? "no" : "",
     acceptedMethods: f.accepted_methods || [],
-    fertigationMonths: f.fertigation_months || [],
     latestAnalysisId: f.latest_analysis_id || "",
     cropMethods: [],
   };
@@ -115,7 +113,6 @@ export function FieldEditor({ open, onClose, field, farmId, crops, analyses, exi
           updated[idx] = { ...updated[idx], cropMethods: methods || [] };
           const validNames = (methods || []).map((m) => m.method);
           updated[idx].acceptedMethods = updated[idx].acceptedMethods.filter((m) => validNames.includes(m));
-          if (!validNames.includes("fertigation")) updated[idx].fertigationMonths = [];
         }
         return updated;
       });
@@ -143,22 +140,9 @@ export function FieldEditor({ open, onClose, field, farmId, crops, analyses, exi
       const f = { ...updated[idx] };
       if (f.acceptedMethods.includes(method)) {
         f.acceptedMethods = f.acceptedMethods.filter((m) => m !== method);
-        if (method === "fertigation") f.fertigationMonths = [];
       } else {
         f.acceptedMethods = [...f.acceptedMethods, method];
       }
-      updated[idx] = f;
-      return updated;
-    });
-  };
-
-  const toggleFertigationMonth = (idx: number, month: number) => {
-    setForms((prev) => {
-      const updated = [...prev];
-      const f = { ...updated[idx] };
-      f.fertigationMonths = f.fertigationMonths.includes(month)
-        ? f.fertigationMonths.filter((m) => m !== month)
-        : [...f.fertigationMonths, month];
       updated[idx] = f;
       return updated;
     });
@@ -231,7 +215,6 @@ export function FieldEditor({ open, onClose, field, farmId, crops, analyses, exi
           irrigation_type: f.irrigationType || null,
           fertigation_capable: f.fertigationCapable === "yes" ? true : f.fertigationCapable === "no" ? false : null,
           accepted_methods: f.acceptedMethods,
-          fertigation_months: f.fertigationMonths,
           latest_analysis_id: f.latestAnalysisId || null,
         };
 
@@ -255,7 +238,6 @@ export function FieldEditor({ open, onClose, field, farmId, crops, analyses, exi
   if (!open) return null;
 
   const form = forms[activeIdx] || forms[0];
-  const showFertigation = form.acceptedMethods.includes("fertigation");
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 pt-[3vh]">
@@ -424,7 +406,6 @@ export function FieldEditor({ open, onClose, field, farmId, crops, analyses, exi
                               ...u[activeIdx],
                               irrigationType: val,
                               acceptedMethods: u[activeIdx].acceptedMethods.filter((m) => m !== "fertigation"),
-                              fertigationMonths: [],
                             };
                             return u;
                           });
@@ -474,30 +455,6 @@ export function FieldEditor({ open, onClose, field, farmId, crops, analyses, exi
                     )}
                   </div>
 
-                  {showFertigation && (
-                    <div className="space-y-1.5">
-                      <Label>Fertigation Available Months</Label>
-                      <div className="grid grid-cols-6 gap-1.5">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => {
-                          const active = form.fertigationMonths.includes(m);
-                          return (
-                            <button
-                              key={m}
-                              type="button"
-                              onClick={() => toggleFertigationMonth(activeIdx, m)}
-                              className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
-                                active
-                                  ? "border-cyan-400 bg-cyan-50 text-cyan-700"
-                                  : "border-gray-200 text-gray-500 hover:border-gray-400"
-                              }`}
-                            >
-                              {MONTH_NAMES[m]}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
 

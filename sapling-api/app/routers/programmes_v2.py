@@ -269,6 +269,8 @@ async def build_programme_endpoint(
         available_materials=materials,
         water_values=request.water_values,
         application_months=request.application_months,
+        sufficiency_rows=catalog.sufficiency_rows,
+        param_map_rows=catalog.param_map_rows,
     )
 
     try:

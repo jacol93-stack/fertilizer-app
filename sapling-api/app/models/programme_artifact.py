@@ -115,6 +115,46 @@ class ProgrammeHeader(BaseModel):
 # Inputs / state
 # ============================================================
 
+class FactorFindingOut(BaseModel):
+    """One reasoner finding exposed on the artifact for UI rendering.
+
+    Mirrors `soil_factor_reasoner.SoilFactorFinding` minus internal
+    plumbing (source_id/section/tier are kept for citation but the rest
+    is what the visual needs to draw a labelled status row).
+    """
+    kind: str  # 'antagonism' | 'toxicity' | 'deficiency' | 'balance' | 'info'
+    severity: str  # 'info' | 'watch' | 'warn' | 'critical'
+    parameter: str  # e.g. 'Ca:Mg', 'Al_saturation_pct', 'P:Zn'
+    value: float
+    threshold: Optional[float] = None
+    message: str
+    recommended_action: Optional[str] = None
+    source_id: Optional[str] = None
+    source_section: Optional[str] = None
+    tier: Optional[int] = None
+
+
+class NutrientStatusEntry(BaseModel):
+    """One row in the per-block 'nutrients vs ideal' visual.
+
+    Range bars need (value, optimal_low, optimal_high) to draw the
+    shaded band + position the marker. Status is pre-computed server-
+    side so the UI doesn't re-derive thresholds.
+    """
+    parameter: str  # e.g. 'P_Mehlich3', 'K', 'pH_H2O'
+    nutrient_label: str  # 'Phosphorus (P)'
+    value: float
+    optimal_low: float
+    optimal_high: float
+    unit: Optional[str] = None  # 'mg/kg', '%', etc.
+    status: str  # 'low' | 'ok' | 'high'
+    # Display-only chart bounds so the bar doesn't span [0, 1000]. Pulled
+    # from sufficiency thresholds (display_min/display_max) when set,
+    # otherwise the renderer falls back to a sensible auto-bound.
+    chart_min: Optional[float] = None
+    chart_max: Optional[float] = None
+
+
 class SoilSnapshot(BaseModel):
     """Per-block soil analysis snapshot with status-vs-target flags.
 
@@ -145,6 +185,17 @@ class SoilSnapshot(BaseModel):
     # 'C:N', 'Al_saturation_pct', 'water_SAR', 'water_RSC_meq', etc.
     # Surfaced in the renderer's Ratios section.
     computed_ratios: dict[str, float] = Field(default_factory=dict)
+
+    # Structured ratio findings — the engine's "Ca:Mg above ideal" /
+    # "P:Zn antagonism" verdicts with severity + threshold context. Lets
+    # the UI render coloured ratio pills tied to citations rather than
+    # re-classifying the bare numbers.
+    factor_findings: list[FactorFindingOut] = Field(default_factory=list)
+
+    # Per-parameter optimal-band data driving the 'nutrients vs ideal'
+    # range-bar visual. One entry per surfacable soil parameter (only
+    # those with sufficiency thresholds in the catalog appear here).
+    nutrient_status: list[NutrientStatusEntry] = Field(default_factory=list)
 
     # "Three loudest signals" — agronomist narrative, engine-derived
     headline_signals: list[str] = Field(default_factory=list)

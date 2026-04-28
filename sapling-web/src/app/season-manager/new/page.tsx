@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ClientSelector } from "@/components/client-selector";
@@ -98,7 +98,7 @@ function artifactToBlendGroups(
     }
   }
   // Cluster id (e.g. "cluster_A") → list of pinned block names. Lets us
-  // surface real block names + summed area in the recipe subtitle
+  // surface real block names + summed area in the group subtitle
   // instead of the bare cluster id.
   const blocksByCluster = new Map<string, string[]>();
   for (const [blockName, clusterId] of Object.entries(clusterAssignments ?? {})) {
@@ -244,9 +244,9 @@ function SeasonBuilderPage() {
   // blends after step 2→3 build. One group per cluster.
   const [blendGroupsData, setBlendGroupsData] = useState<BlendGroupData[]>([]);
 
-  // Cluster preview from /preview-schedule. Drives the "blocks share
-  // recipe X / Y" summary on the Schedule step. Lower margin → more
-  // recipes the farmer mixes; higher margin → simpler stock list.
+  // Cluster preview from /preview-schedule. Drives the "blocks grouped
+  // X / Y" summary on the Schedule step. Lower margin → more groups
+  // (more distinct programmes); higher margin → simpler stock list.
   const [clusters, setClusters] = useState<ClusterPreview[]>([]);
   // App-wide default lives on default_materials (admin-managed). The
   // Schedule step's threshold dropdown is admin-only — non-admins
@@ -689,6 +689,58 @@ function SeasonBuilderPage() {
   };
 
   // ── Validation ──────────────────────────────────────────────────
+  // ── Schedule-step derivations ───────────────────────────────────────
+  // Banner only highlights blocks the engine would skip outright. Once
+  // the user drags a dataless block onto a group, the build attaches it
+  // to that group's programme (area-only contribution — soil aggregate
+  // stays driven by the group's real-data members), so it's no longer
+  // "missing from the programme."
+  const trulyOutstandingBlocks = useMemo(
+    () => unplanableBlocks.filter(
+      (u) => !(u.reason === "missing_targets" && clusterAssignments[u.block_id]),
+    ),
+    [unplanableBlocks, clusterAssignments],
+  );
+
+  // Synthesize per-block info for attached dataless blocks so the
+  // schedule list shows them as passengers under their group's plan.
+  // Stages + accepted methods are copied from the first real-data mate
+  // in the group; the schedule itself is read-only because the engine
+  // bumps area but doesn't author an independent plan for them.
+  const scheduleBlockInfo: BlockInfo[] = useMemo(() => {
+    const inherited: BlockInfo[] = [];
+    for (const u of unplanableBlocks) {
+      if (u.reason !== "missing_targets") continue;
+      const groupId = clusterAssignments[u.block_id];
+      if (!groupId) continue;
+      const cluster = clusters.find((c) => c.cluster_id === groupId);
+      const mateId = cluster?.block_ids.find((bid) =>
+        blockInfoData.some((b) => b.block_id === bid),
+      );
+      const mate = blockInfoData.find((b) => b.block_id === mateId);
+      if (!mate) continue;
+      const wb = blocks.find((b) => b.name === u.block_id);
+      const synthetic: BlockInfo = {
+        ...mate,
+        block_id: u.block_id,
+        block_name: u.block_name,
+        // Drop mate-specific guidance — the soil corrections, ratio
+        // explanations, and corrective targets all came from the
+        // mate's analysis. Surfacing them under the inherited block
+        // would imply that block has soil readings, which it doesn't.
+        corrections: [],
+        corrective_targets: [],
+        missing_corrective_data: [],
+        nutrient_explanations: [],
+        inherited_from_group: groupId,
+        inherited_from_block_name: mate.block_name,
+        block_area_ha: wb?.area_ha ?? null,
+      };
+      inherited.push(synthetic);
+    }
+    return [...blockInfoData, ...inherited];
+  }, [blockInfoData, unplanableBlocks, clusterAssignments, clusters, blocks]);
+
   const canNext = () => {
     // Step 0: client + farm + programme name all required. Helper text
     // says "A programme covers a whole farm" — enforce that here so
@@ -823,26 +875,23 @@ function SeasonBuilderPage() {
                     {scheduleError}
                   </div>
                 )}
-                {unplanableBlocks.length > 0 && (
+                {trulyOutstandingBlocks.length > 0 && (
                   <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
                     <div className="flex items-start gap-2 text-amber-800">
                       <AlertTriangle className="mt-0.5 size-4 shrink-0" />
                       <div className="flex-1">
                         <p className="font-medium">
-                          {unplanableBlocks.length} block{unplanableBlocks.length !== 1 ? "s" : ""} skipped
+                          {trulyOutstandingBlocks.length} block{trulyOutstandingBlocks.length !== 1 ? "s" : ""} not yet planned
                         </p>
                         <ul className="mt-1 space-y-0.5 text-amber-700">
-                          {unplanableBlocks.map((b) => (
+                          {trulyOutstandingBlocks.map((b) => (
                             <li key={b.block_id}>
                               <span className="font-medium">{b.block_name}</span>
-                              {b.reason === "missing_targets" && " — no soil analysis linked"}
+                              {b.reason === "missing_targets" && " — no soil analysis linked; drag onto a group below to ride along"}
                               {b.reason === "missing_growth_stages" && ` — growth stages not configured for ${b.crop}`}
                             </li>
                           ))}
                         </ul>
-                        <p className="mt-1 text-xs text-amber-600">
-                          These blocks will be included in the programme once the missing data is supplied.
-                        </p>
                       </div>
                     </div>
                   </div>
@@ -873,9 +922,9 @@ function SeasonBuilderPage() {
                   />
                 )}
 
-                {blockInfoData.length > 0 ? (
+                {scheduleBlockInfo.length > 0 ? (
                   <ScheduleReview
-                    blockInfo={blockInfoData}
+                    blockInfo={scheduleBlockInfo}
                     onApplicationsChange={setUserApplications}
                     onPlantingMonthsChange={setPlantingMonths}
                     initialApplications={userApplications}

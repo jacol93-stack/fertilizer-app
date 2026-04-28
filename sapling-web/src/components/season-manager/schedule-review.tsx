@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MONTH_NAMES, methodLabel, seasonOrderIndex } from "@/lib/season-constants";
 
@@ -8,9 +8,6 @@ import { MONTH_NAMES, methodLabel, seasonOrderIndex } from "@/lib/season-constan
 // next-year ones when planning mid-season. Stable per render — built
 // once at module load, fine for our cadence.
 const SEASON_ANCHOR = new Date().getMonth() + 1;
-const sortBySeason = <T extends { month: number }>(arr: T[]): T[] =>
-  [...arr].sort((a, b) =>
-    seasonOrderIndex(a.month, SEASON_ANCHOR) - seasonOrderIndex(b.month, SEASON_ANCHOR));
 import { Plus, X } from "lucide-react";
 
 export interface GrowthStage {
@@ -68,6 +65,13 @@ export interface BlockInfo {
   nutrient_explanations?: NutrientExplanation[];
   corrective_targets?: CorrectiveTarget[];
   missing_corrective_data?: string[];
+  /** Set when this block has no soil analysis but the user attached it
+   * to a group on the cluster step. Triggers the read-only "passenger"
+   * presentation: stages copied from the group's mate, no editable
+   * schedule of its own, and a pill explaining the inheritance. */
+  inherited_from_group?: string;
+  inherited_from_block_name?: string;
+  block_area_ha?: number | null;
 }
 
 export interface UserApplication {
@@ -196,6 +200,15 @@ export function ScheduleReview({
 
   const [sharedSchedule, setSharedSchedule] = useState<boolean>(initiallyShared);
 
+  // Drag-paint on the growth-stage strip fires pointer events faster than
+  // React commits state, so closures over appsByBlock go stale mid-drag.
+  // The ref mirrors the latest committed state AND is mutated synchronously
+  // inside paintMonth so successive cells in the same drag see fresh data.
+  const liveAppsRef = useRef(appsByBlock);
+  useEffect(() => {
+    liveAppsRef.current = appsByBlock;
+  }, [appsByBlock]);
+
   const emitChange = (updated: Record<string, Array<{ month: number; method: string }>>) => {
     const apps: UserApplication[] = [];
     for (const [blockId, list] of Object.entries(updated)) {
@@ -279,6 +292,47 @@ export function ScheduleReview({
     broadcastApps(sharedApps.map((a, i) => (i === idx ? { ...a, [field]: value } : a)));
   };
 
+  // Click / drag-paint on the growth-stage strip. `action` is decided by
+  // the gesture entry point (see GrowthStageStrip): click on an empty cell
+  // → "add"; click on a populated cell → "remove"; subsequent cells in a
+  // drag inherit the same action so the user paints uniformly. In shared
+  // mode the change is broadcast across every block; in per-block mode it
+  // mutates only the strip's own block.
+  const paintMonth = (blockId: string, month: number, action: "add" | "remove") => {
+    const prev = liveAppsRef.current;
+    let updated: Record<string, Array<{ month: number; method: string }>>;
+    if (sharedSchedule) {
+      const cur = prev[blockInfo[0].block_id] || [];
+      let next: Array<{ month: number; method: string }>;
+      if (action === "add") {
+        if (cur.some((a) => a.month === month)) return;
+        const defaultMethod = sharedMethods[0] || "broadcast";
+        next = [...cur, { month, method: defaultMethod }];
+      } else {
+        if (!cur.some((a) => a.month === month)) return;
+        next = cur.filter((a) => a.month !== month);
+      }
+      updated = {};
+      for (const bi of blockInfo) updated[bi.block_id] = next.map((a) => ({ ...a }));
+    } else {
+      const list = prev[blockId] || [];
+      let nextList: Array<{ month: number; method: string }>;
+      if (action === "add") {
+        if (list.some((a) => a.month === month)) return;
+        const bi = blockInfo.find((b) => b.block_id === blockId);
+        const defaultMethod = bi?.accepted_methods[0] || "broadcast";
+        nextList = [...list, { month, method: defaultMethod }];
+      } else {
+        if (!list.some((a) => a.month === month)) return;
+        nextList = list.filter((a) => a.month !== month);
+      }
+      updated = { ...prev, [blockId]: nextList };
+    }
+    liveAppsRef.current = updated;
+    setAppsByBlock(updated);
+    emitChange(updated);
+  };
+
   const handleToggleShared = (next: boolean) => {
     setSharedSchedule(next);
     // When enabling shared mode, broadcast whichever block already has
@@ -324,7 +378,7 @@ export function ScheduleReview({
               </p>
               <p className="text-xs text-muted-foreground">
                 Schedule applies to all {blockInfo.length} blocks in this programme — timing is
-                agronomy-driven and independent of how blocks are grouped into recipes upstairs.
+                agronomy-driven and independent of how blocks are grouped upstairs.
                 Turn off if a specific block needs different months or methods.
               </p>
             </div>
@@ -378,14 +432,31 @@ export function ScheduleReview({
         const shiftedStages = bi.growth_stages.map((s) => shiftStage(s, offset));
 
         return (
-          <div key={bi.block_id} className="rounded-xl border bg-white">
+          <div
+            key={bi.block_id}
+            className={`rounded-xl border bg-white ${bi.inherited_from_group ? "border-dashed bg-amber-50/40" : ""}`}
+          >
             {/* Block header */}
             <div className="flex items-center justify-between border-b px-4 py-3">
-              <div>
-                <p className="font-semibold text-[var(--sapling-dark)]">{bi.block_name}</p>
-                <p className="text-xs text-muted-foreground">{bi.crop}</p>
+              <div className="flex items-center gap-2">
+                <div>
+                  <p className="font-semibold text-[var(--sapling-dark)]">
+                    {bi.block_name}
+                    {typeof bi.block_area_ha === "number" && (
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        {bi.block_area_ha} ha
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{bi.crop}</p>
+                </div>
+                {bi.inherited_from_group && (
+                  <span className="ml-1 rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-800">
+                    Follows Group {bi.inherited_from_group}
+                  </span>
+                )}
               </div>
-              {bi.crop_type !== "perennial" && (
+              {bi.crop_type !== "perennial" && !bi.inherited_from_group && (
                 <div className="flex items-center gap-2">
                   <label className="text-xs font-medium text-muted-foreground">Planting month:</label>
                   <select
@@ -405,6 +476,14 @@ export function ScheduleReview({
                 </div>
               )}
             </div>
+
+            {bi.inherited_from_group && (
+              <p className="border-b px-4 py-2 text-[11px] text-amber-800">
+                No soil analysis — this block rides Group {bi.inherited_from_group}&rsquo;s plan
+                {bi.inherited_from_block_name ? ` (driven by ${bi.inherited_from_block_name})` : ""}.
+                Per-ha rates apply to its area; growth stages and schedule are read-only.
+              </p>
+            )}
 
             {/* Soil corrections */}
             {bi.corrections && bi.corrections.length > 0 && (
@@ -522,97 +601,30 @@ export function ScheduleReview({
                 bar starts at the planting month — for SH crops planted
                 in Oct, a Jan-Dec layout reads as discontinuous (mid-
                 cycle on the left, planting on the right). Starting at
-                planting month gives a clean left→right growth cycle. */}
+                planting month gives a clean left→right growth cycle.
+                Cells are click + drag-paint to schedule applications. */}
             <div className="px-4 py-3">
               <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 Growth Stages
                 <span className="ml-2 normal-case text-muted-foreground/70">
-                  · cycle starts at planting month
+                  {bi.inherited_from_group
+                    ? "· read-only for inherited blocks"
+                    : "· cycle starts at planting month · click or drag months to schedule"}
                 </span>
               </p>
-              {(() => {
-                const monthSequence: number[] = [];
-                for (let i = 0; i < 12; i++) {
-                  monthSequence.push(((plantMonth - 1 + i) % 12) + 1);
-                }
-                return (
-                  <>
-                    <div className="flex gap-0.5 rounded-lg overflow-hidden">
-                      {monthSequence.map((m) => {
-                        const stage = getStageForMonth(m, shiftedStages);
-                        const stageIdx = stage ? shiftedStages.indexOf(stage) : -1;
-                        const colorClass = stageIdx >= 0 ? STAGE_COLORS[stageIdx % STAGE_COLORS.length] : "bg-gray-100 text-gray-400";
-                        const hasApp = blockApps.some((a) => a.month === m);
-                        const isPlanting = m === plantMonth;
-
-                        return (
-                          <div
-                            key={m}
-                            className={`flex-1 py-1.5 text-center text-[10px] font-medium ${colorClass} ${hasApp ? "ring-2 ring-[var(--sapling-orange)] ring-inset" : ""} ${isPlanting ? "border-b-2 border-black" : ""}`}
-                            title={stage?.stage_name || "No stage"}
-                          >
-                            {MONTH_NAMES[m]?.slice(0, 3)}
-                          </div>
-                        );
-                      })}
-                    </div>
-              {/* Stage names aligned under their months */}
-              <div className="relative mt-0.5 flex gap-0.5">
-                {(() => {
-                  // Build spans: walk the rotated monthSequence and
-                  // group adjacent months that share the same stage.
-                  const cells: Array<{ stage: GrowthStage; stageIdx: number; startCol: number; span: number }> = [];
-                  let prevStageIdx = -1;
-                  let currentStart = 0;
-                  let currentSpan = 0;
-
-                  for (let i = 0; i < 12; i++) {
-                    const m = monthSequence[i];
-                    const stage = getStageForMonth(m, shiftedStages);
-                    const idx = stage ? shiftedStages.indexOf(stage) : -1;
-                    if (idx !== prevStageIdx) {
-                      if (prevStageIdx >= 0 && currentSpan > 0) {
-                        cells.push({ stage: shiftedStages[prevStageIdx], stageIdx: prevStageIdx, startCol: currentStart, span: currentSpan });
-                      }
-                      currentStart = i;
-                      currentSpan = idx >= 0 ? 1 : 0;
-                      prevStageIdx = idx;
-                    } else if (idx >= 0) {
-                      currentSpan++;
-                    }
-                  }
-                  if (prevStageIdx >= 0 && currentSpan > 0) {
-                    cells.push({ stage: shiftedStages[prevStageIdx], stageIdx: prevStageIdx, startCol: currentStart, span: currentSpan });
-                  }
-
-                  return cells.map((c) => (
-                    <div
-                      key={`${c.stage.stage_name}-${c.startCol}`}
-                      className={`overflow-hidden text-center text-[9px] font-medium leading-tight py-0.5 rounded-sm ${STAGE_COLORS[c.stageIdx % STAGE_COLORS.length].split(" ")[0]} ${STAGE_COLORS[c.stageIdx % STAGE_COLORS.length].split(" ")[1]}`}
-                      style={{
-                        position: "absolute",
-                        left: `${(c.startCol / 12) * 100}%`,
-                        width: `${(c.span / 12) * 100}%`,
-                      }}
-                      title={c.stage.stage_name}
-                    >
-                      {c.stage.stage_name}
-                    </div>
-                  ));
-                })()}
-                {/* Spacer for height */}
-                <div className="h-4 w-full" />
-              </div>
-                  </>
-                );
-              })()}
+              <GrowthStageStrip
+                plantMonth={plantMonth}
+                shiftedStages={shiftedStages}
+                appMonths={new Set(blockApps.map((a) => a.month))}
+                onPaint={(month, action) => paintMonth(bi.block_id, month, action)}
+                readOnly={!!bi.inherited_from_group}
+              />
             </div>
 
             {/* Applications — hidden when the shared-schedule panel
-                above is driving every block. Per-block planting month
-                and growth timeline stay visible because those are about
-                the block itself, not the application schedule. */}
-            {!sharedSchedule && (
+                above is driving every block, and hidden for inherited
+                passengers (their schedule rides the group's mate). */}
+            {!sharedSchedule && !bi.inherited_from_group && (
               <div className="border-t px-4 py-3 space-y-2">
                 <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                   Fertilizer Applications ({blockApps.length})
@@ -695,6 +707,20 @@ function MonthRows({
   onToggleMethod,
   onRemoveMonth,
 }: MonthRowsProps) {
+  // Per-row "advanced" toggle — chips stay collapsed by default since the
+  // field's accepted_methods already declared capability at block setup.
+  // Field infrastructure rarely changes, so the default method is right
+  // for almost every application; the override is for the paired-method
+  // edge case (broadcast + foliar in the same month, etc).
+  const [overrideOpen, setOverrideOpen] = useState<Set<number>>(new Set());
+  const toggleOverride = (month: number) =>
+    setOverrideOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(month)) next.delete(month);
+      else next.add(month);
+      return next;
+    });
+
   // Group apps by month so each month renders one row regardless of how
   // many methods are stacked on it.
   const byMonth = new Map<number, string[]>();
@@ -707,6 +733,9 @@ function MonthRows({
     (a, b) => seasonOrderIndex(a, SEASON_ANCHOR) - seasonOrderIndex(b, SEASON_ANCHOR),
   );
 
+  // Hide the override affordance entirely when there's no choice to make.
+  const hasAlternatives = availableMethods.length > 1;
+
   return (
     <div className="space-y-2">
       {months.map((month) => {
@@ -717,6 +746,8 @@ function MonthRows({
         const groupAppIndices = apps
           .map((a, i) => (a.month === month ? i : -1))
           .filter((i) => i >= 0);
+        const isOverride = overrideOpen.has(month);
+        const selectedList = Array.from(selected);
         return (
           <div
             key={month}
@@ -740,28 +771,31 @@ function MonthRows({
                 ))}
               </select>
             </label>
-            <span className="text-[11px] text-muted-foreground">
-              Methods (click to toggle):
-            </span>
-            <div className="flex flex-wrap gap-1.5">
-              {availableMethods.map((m) => {
-                const isOn = selected.has(m);
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => onToggleMethod(month, m)}
-                    className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
-                      isOn
-                        ? "border-[var(--sapling-orange)] bg-orange-50 text-[var(--sapling-orange)]"
-                        : "border-gray-200 text-gray-500 hover:border-gray-400"
-                    }`}
-                  >
-                    {methodLabel(m)}
-                  </button>
-                );
-              })}
+
+            {/* Selected method(s) as compact badges. The default already
+                came from the field's accepted_methods, so most rows will
+                show one badge and never need the override. */}
+            <div className="flex flex-wrap gap-1">
+              {selectedList.map((m) => (
+                <span
+                  key={m}
+                  className="rounded-full bg-orange-50 px-2 py-0.5 text-[11px] font-medium text-[var(--sapling-orange)]"
+                >
+                  {methodLabel(m)}
+                </span>
+              ))}
             </div>
+
+            {hasAlternatives && (
+              <button
+                type="button"
+                onClick={() => toggleOverride(month)}
+                className="text-[11px] font-medium text-[var(--sapling-medium-grey)] underline-offset-2 hover:text-[var(--sapling-dark)] hover:underline"
+              >
+                {isOverride ? "Hide methods" : "Override method"}
+              </button>
+            )}
+
             {stage && (
               <span className="text-xs text-muted-foreground">{stage.stage_name}</span>
             )}
@@ -772,9 +806,231 @@ function MonthRows({
             >
               <X className="size-3.5" />
             </button>
+
+            {/* Advanced — full chip strip. Shown only when the user opts
+                into overriding the default for this row. */}
+            {hasAlternatives && isOverride && (
+              <div className="basis-full pt-1">
+                <p className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Methods (click to toggle)
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {availableMethods.map((m) => {
+                    const isOn = selected.has(m);
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => onToggleMethod(month, m)}
+                        className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                          isOn
+                            ? "border-[var(--sapling-orange)] bg-orange-50 text-[var(--sapling-orange)]"
+                            : "border-gray-200 text-gray-500 hover:border-gray-400"
+                        }`}
+                      >
+                        {methodLabel(m)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         );
       })}
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// GrowthStageStrip — click + drag to schedule applications
+// ─────────────────────────────────────────────────────────────────────
+//
+// One row per month coloured by growth stage, with a stage-name overlay
+// underneath. Pointer-down on a cell starts a paint gesture: if the cell
+// already has an application the gesture removes; otherwise it adds.
+// Pointer-enter on subsequent cells (with the button still held) extends
+// the same action across the range. Pointer-up anywhere ends the gesture.
+//
+// Touch users get tap-to-toggle via pointerdown; multi-cell drag on touch
+// would need elementFromPoint plumbing, which we skip for v1 — the
+// agronomist's primary surface is desktop.
+
+interface GrowthStageStripProps {
+  plantMonth: number;
+  shiftedStages: GrowthStage[];
+  appMonths: Set<number>;
+  onPaint: (month: number, action: "add" | "remove") => void;
+  /** Inherited blocks ride a group's plan — show the stages but block
+   * paint gestures so the user can't accidentally author a schedule
+   * that nothing will apply. */
+  readOnly?: boolean;
+}
+
+function GrowthStageStrip({
+  plantMonth,
+  shiftedStages,
+  appMonths,
+  onPaint,
+  readOnly = false,
+}: GrowthStageStripProps) {
+  const [paintAction, setPaintAction] = useState<null | "add" | "remove">(null);
+  // Months already painted in the current gesture so re-entering a cell
+  // (e.g. dragging back) doesn't ping-pong its state.
+  const visitedRef = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    const stop = () => {
+      setPaintAction(null);
+      visitedRef.current.clear();
+    };
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("pointercancel", stop);
+    return () => {
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
+    };
+  }, []);
+
+  const monthSequence: number[] = [];
+  for (let i = 0; i < 12; i++) {
+    monthSequence.push(((plantMonth - 1 + i) % 12) + 1);
+  }
+
+  const startPaint = (m: number) => {
+    const action: "add" | "remove" = appMonths.has(m) ? "remove" : "add";
+    setPaintAction(action);
+    visitedRef.current = new Set([m]);
+    onPaint(m, action);
+  };
+
+  const continuePaint = (m: number) => {
+    if (!paintAction) return;
+    if (visitedRef.current.has(m)) return;
+    visitedRef.current.add(m);
+    onPaint(m, paintAction);
+  };
+
+  return (
+    <>
+      <div className="flex select-none gap-0.5 overflow-hidden rounded-lg">
+        {monthSequence.map((m) => {
+          const stage = getStageForMonth(m, shiftedStages);
+          const stageIdx = stage ? shiftedStages.indexOf(stage) : -1;
+          const colorClass = stageIdx >= 0
+            ? STAGE_COLORS[stageIdx % STAGE_COLORS.length]
+            : "bg-gray-100 text-gray-400";
+          const hasApp = appMonths.has(m);
+          const isPlanting = m === plantMonth;
+
+          return (
+            <div
+              key={m}
+              role={readOnly ? undefined : "button"}
+              aria-pressed={readOnly ? undefined : hasApp}
+              aria-label={`${MONTH_NAMES[m]} — ${stage?.stage_name || "no stage"}${hasApp ? " (scheduled)" : ""}`}
+              tabIndex={readOnly ? undefined : 0}
+              onPointerDown={readOnly ? undefined : (e) => {
+                // Prevent the browser from capturing the pointer to the
+                // first cell (which would block pointerenter on neighbours).
+                e.preventDefault();
+                (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+                startPaint(m);
+              }}
+              onPointerEnter={readOnly ? undefined : (e) => {
+                if (e.buttons > 0) continuePaint(m);
+              }}
+              onKeyDown={readOnly ? undefined : (e) => {
+                if (e.key === " " || e.key === "Enter") {
+                  e.preventDefault();
+                  onPaint(m, appMonths.has(m) ? "remove" : "add");
+                }
+              }}
+              className={`flex-1 py-1.5 text-center text-[10px] font-medium transition-shadow ${colorClass} ${
+                readOnly ? "cursor-default opacity-80" : "cursor-pointer"
+              } ${
+                hasApp
+                  ? "ring-2 ring-inset ring-[var(--sapling-orange)]"
+                  : readOnly
+                    ? ""
+                    : "ring-1 ring-inset ring-transparent hover:ring-gray-400"
+              } ${isPlanting ? "border-b-2 border-black" : ""}`}
+              title={
+                readOnly
+                  ? stage?.stage_name || "No stage"
+                  : `${stage?.stage_name || "No stage"} — ${hasApp ? "click to remove" : "click to schedule"}`
+              }
+            >
+              {MONTH_NAMES[m]?.slice(0, 3)}
+            </div>
+          );
+        })}
+      </div>
+      {/* Stage names aligned under their months */}
+      <div className="pointer-events-none relative mt-0.5 flex gap-0.5">
+        {(() => {
+          // Build spans: walk the rotated monthSequence and group adjacent
+          // months that share the same stage.
+          const cells: Array<{
+            stage: GrowthStage;
+            stageIdx: number;
+            startCol: number;
+            span: number;
+          }> = [];
+          let prevStageIdx = -1;
+          let currentStart = 0;
+          let currentSpan = 0;
+
+          for (let i = 0; i < 12; i++) {
+            const m = monthSequence[i];
+            const stage = getStageForMonth(m, shiftedStages);
+            const idx = stage ? shiftedStages.indexOf(stage) : -1;
+            if (idx !== prevStageIdx) {
+              if (prevStageIdx >= 0 && currentSpan > 0) {
+                cells.push({
+                  stage: shiftedStages[prevStageIdx],
+                  stageIdx: prevStageIdx,
+                  startCol: currentStart,
+                  span: currentSpan,
+                });
+              }
+              currentStart = i;
+              currentSpan = idx >= 0 ? 1 : 0;
+              prevStageIdx = idx;
+            } else if (idx >= 0) {
+              currentSpan++;
+            }
+          }
+          if (prevStageIdx >= 0 && currentSpan > 0) {
+            cells.push({
+              stage: shiftedStages[prevStageIdx],
+              stageIdx: prevStageIdx,
+              startCol: currentStart,
+              span: currentSpan,
+            });
+          }
+
+          return cells.map((c) => {
+            const [bg, fg] = STAGE_COLORS[c.stageIdx % STAGE_COLORS.length].split(" ");
+            return (
+              <div
+                key={`${c.stage.stage_name}-${c.startCol}`}
+                className={`overflow-hidden rounded-sm py-0.5 text-center text-[9px] font-medium leading-tight ${bg} ${fg}`}
+                style={{
+                  position: "absolute",
+                  left: `${(c.startCol / 12) * 100}%`,
+                  width: `${(c.span / 12) * 100}%`,
+                }}
+                title={c.stage.stage_name}
+              >
+                {c.stage.stage_name}
+              </div>
+            );
+          });
+        })()}
+        {/* Spacer for height */}
+        <div className="h-4 w-full" />
+      </div>
+    </>
   );
 }

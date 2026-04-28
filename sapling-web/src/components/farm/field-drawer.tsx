@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { ComboBox } from "@/components/client-selector";
 import { toast } from "sonner";
 import { Loader2, X, Save, Trash2, Copy, Layers, ChevronRight, ChevronDown } from "lucide-react";
 import type { Field, CropNorm, SoilAnalysis } from "@/lib/season-constants";
-import { MONTH_NAMES, IRRIGATION_TYPES, methodLabel } from "@/lib/season-constants";
+import { IRRIGATION_TYPES, methodLabel } from "@/lib/season-constants";
 
 interface LinkedRecord {
   id: string;
@@ -73,7 +73,6 @@ interface FieldForm {
    * the demo dataset has 60-odd legacy fields where it's never been answered. */
   fertigationCapable: "" | "yes" | "no";
   acceptedMethods: string[];
-  fertigationMonths: number[];
   latestAnalysisId: string;
 }
 
@@ -95,7 +94,6 @@ function fieldToForm(f: Field): FieldForm {
     irrigationType: f.irrigation_type || "",
     fertigationCapable: f.fertigation_capable === true ? "yes" : f.fertigation_capable === false ? "no" : "",
     acceptedMethods: f.accepted_methods || [],
-    fertigationMonths: f.fertigation_months || [],
     latestAnalysisId: f.latest_analysis_id || "",
   };
 }
@@ -118,7 +116,6 @@ function formToPayload(f: FieldForm): Record<string, unknown> {
     irrigation_type: f.irrigationType || null,
     fertigation_capable: f.fertigationCapable === "yes" ? true : f.fertigationCapable === "no" ? false : null,
     accepted_methods: f.acceptedMethods,
-    fertigation_months: f.fertigationMonths,
     latest_analysis_id: f.latestAnalysisId || null,
   };
 }
@@ -129,7 +126,7 @@ export function FieldDrawer({ open, onClose, field, farmId, crops, analyses, onS
     name: "", sizeHa: "", gpsLat: "", gpsLng: "", soilType: "", crop: "", cultivar: "",
     cropType: null, plantingDate: "", treeAge: "", popPerHa: "",
     yieldTarget: "", yieldUnit: "", irrigationType: "", fertigationCapable: "",
-    acceptedMethods: [], fertigationMonths: [], latestAnalysisId: "",
+    acceptedMethods: [], latestAnalysisId: "",
   });
   const [cropMethods, setCropMethods] = useState<CropMethod[]>([]);
   const [saving, setSaving] = useState(false);
@@ -145,7 +142,7 @@ export function FieldDrawer({ open, onClose, field, farmId, crops, analyses, onS
       name: "", sizeHa: "", gpsLat: "", gpsLng: "", soilType: "", crop: "", cultivar: "",
       cropType: null, plantingDate: "", treeAge: "", popPerHa: "",
       yieldTarget: "", yieldUnit: "", irrigationType: "", fertigationCapable: "",
-      acceptedMethods: [], fertigationMonths: [], latestAnalysisId: "",
+      acceptedMethods: [], latestAnalysisId: "",
     };
     let f: FieldForm;
     if (field) {
@@ -225,8 +222,7 @@ export function FieldDrawer({ open, onClose, field, farmId, crops, analyses, onS
     const next = form.acceptedMethods.includes(method)
       ? form.acceptedMethods.filter((m) => m !== method)
       : [...form.acceptedMethods, method];
-    const fm = method === "fertigation" && form.acceptedMethods.includes(method) ? [] : form.fertigationMonths;
-    update({ acceptedMethods: next, fertigationMonths: fm });
+    update({ acceptedMethods: next });
   };
 
   const handleSave = async () => {
@@ -402,7 +398,6 @@ export function FieldDrawer({ open, onClose, field, farmId, crops, analyses, onS
                       irrigationType: val,
                       fertigationCapable: "no",
                       acceptedMethods: form.acceptedMethods.filter((m) => m !== "fertigation"),
-                      fertigationMonths: [],
                     });
                   } else {
                     update({ irrigationType: val });
@@ -434,7 +429,6 @@ export function FieldDrawer({ open, onClose, field, farmId, crops, analyses, onS
                           update({
                             fertigationCapable: next,
                             acceptedMethods: form.acceptedMethods.filter((m) => m !== "fertigation"),
-                            fertigationMonths: [],
                           });
                         } else {
                           update({ fertigationCapable: next });

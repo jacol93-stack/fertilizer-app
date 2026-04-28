@@ -12,7 +12,7 @@
  * Dataless blocks (no soil_analysis_id) appear in an "Unassigned" row at
  * the top. Dropping them onto a cluster card attaches them via the
  * SkippedBlockRequest.attach_to_cluster mechanism — they get the cluster's
- * averaged recipe at their own area, and an OutstandingItem still flags
+ * averaged programme at their own area, and an OutstandingItem still flags
  * the missing soil sample.
  *
  * The threshold dropdown (cluster margin) re-runs preview-schedule when
@@ -42,7 +42,7 @@ export interface ClusterBoardProps {
    * Used for client-side heterogeneity recompute on drop. */
   blocks: BlockTargets[];
   /** Blocks with no linked soil analysis. Show in the Unassigned row;
-   * dropping them onto a cluster attaches via the cluster's averaged recipe. */
+   * dropping them onto a group attaches via the group's averaged programme. */
   datalessBlocks: DatalessBlock[];
   /** Current block_id → cluster_id assignment map. Drives both the
    * rendered grouping and what the build endpoint sees. */
@@ -57,7 +57,7 @@ export interface ClusterBoardProps {
   /** Disabled while a server preview is in flight (margin change). */
   busy?: boolean;
   /** Cluster ids currently in use server-side. New clusters created by
-   * the user (drop into "+ New Recipe") get the next free letter. */
+   * the user (drop into "+ New Group") get the next free letter. */
   knownClusterIds: string[];
   /** Show the per-build threshold override dropdown? Admin-only — non-
    * admins always run on the app-wide default set in admin settings. */
@@ -68,17 +68,17 @@ const STATUS_LABEL = {
   ok: {
     pill: "consistent",
     pillClass: "bg-emerald-100 text-emerald-700",
-    detail: "All blocks need similar nutrients — one recipe works.",
+    detail: "All blocks need similar nutrients — one shared programme works.",
   },
   warn: {
     pill: "moderate variability",
     pillClass: "bg-amber-100 text-amber-700",
-    detail: "Blocks differ enough that one recipe is a workable compromise.",
+    detail: "Blocks differ enough that one shared programme is a workable compromise.",
   },
   split: {
     pill: "high variability — consider splitting",
     pillClass: "bg-red-100 text-red-700",
-    detail: "Blocks differ enough that one averaged recipe will over-fertilise some and under-fertilise others.",
+    detail: "Blocks differ enough that one averaged programme will over-fertilise some and under-fertilise others.",
   },
 } as const;
 
@@ -116,8 +116,8 @@ export function ClusterBoard(props: ClusterBoardProps) {
   const effectiveAssignments = useMemo(() => {
     if (!draggedBlockId || !hoverClusterId) return assignments;
     if (hoverClusterId === "__new__") {
-      // Mid-drag over the "+ New Recipe" zone: assign to the next free
-      // letter so a Recipe X card materialises in real time.
+      // Mid-drag over the "+ New Group" zone: assign to the next free
+      // letter so a Group X card materialises in real time.
       const used = new Set<string>(knownClusterIds);
       for (const id of Object.values(assignments)) used.add(id);
       const newId = nextClusterId(used);
@@ -186,7 +186,7 @@ export function ClusterBoard(props: ClusterBoardProps) {
 
   // For "→" arrow: cluster ids whose heterogeneity differs from the
   // committed (non-preview) state. When previewing, compare the live
-  // recipe's any_warn/any_split against what it'd be without the drag.
+  // group's any_warn/any_split against what it'd be without the drag.
   const baselineStatusByCluster = useMemo(() => {
     if (!previewing) return null;
     const baseline = recomputeClusters(blocks, assignments);
@@ -199,7 +199,7 @@ export function ClusterBoard(props: ClusterBoardProps) {
     return m;
   }, [previewing, blocks, assignments]);
 
-  // For minting fresh recipe ids on drop. Built from the COMMITTED
+  // For minting fresh group ids on drop. Built from the COMMITTED
   // assignments only — never from `clusters` (which can include the
   // in-flight drag preview's hypothetical id and would cause the next
   // letter to skip).
@@ -274,7 +274,7 @@ export function ClusterBoard(props: ClusterBoardProps) {
     setHoverClusterId(null);
   };
 
-  const recipeWord = clusters.length === 1 ? "recipe" : "recipes";
+  const groupWord = clusters.length === 1 ? "group" : "groups";
   const totalBlockCount = blocks.length + datalessBlocks.length;
 
   return (
@@ -282,11 +282,11 @@ export function ClusterBoard(props: ClusterBoardProps) {
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-[var(--sapling-dark)]">
-            {clusters.length} {recipeWord} across {totalBlockCount} block{totalBlockCount !== 1 ? "s" : ""}
+            {clusters.length} {groupWord} across {totalBlockCount} block{totalBlockCount !== 1 ? "s" : ""}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Drag blocks between recipes to override the auto-grouping. Each recipe
-            is one batch the farmer mixes; per-block rates differ within a recipe.
+            Drag blocks between groups to override the auto-grouping. Each group
+            shares one programme across the season; per-block kg scales with area.
           </p>
         </div>
         {showMarginControl && (
@@ -319,7 +319,7 @@ export function ClusterBoard(props: ClusterBoardProps) {
             Unassigned — no soil analysis ({unassignedDataless.length})
           </p>
           <p className="mb-2 text-xs text-amber-700">
-            Drag onto a recipe to apply a rough plan based on that recipe&apos;s averaged targets.
+            Drag onto a group to apply a rough plan based on that group&apos;s averaged targets.
             The block will still be flagged as needing a soil analysis.
           </p>
           <div className="flex flex-wrap gap-2">
@@ -371,7 +371,7 @@ export function ClusterBoard(props: ClusterBoardProps) {
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <div className="flex items-baseline gap-2">
                   <span className="text-sm font-medium text-[var(--sapling-dark)]">
-                    Recipe {c.cluster_id}
+                    Group {c.cluster_id}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {c.total_area_ha} ha · {c.block_names.length} block
@@ -421,8 +421,8 @@ export function ClusterBoard(props: ClusterBoardProps) {
 
               {arrowChange && status === "split" && baseline !== "split" && (
                 <p className="mt-2 rounded border border-red-300 bg-red-50 p-2 text-xs text-red-800">
-                  This move pushes Recipe {c.cluster_id} past the published
-                  heterogeneity threshold (Wilding 1985). The averaged recipe
+                  This move pushes Group {c.cluster_id} past the published
+                  heterogeneity threshold (Wilding 1985). The averaged programme
                   will over- or under-fertilise some blocks.
                 </p>
               )}
@@ -430,7 +430,7 @@ export function ClusterBoard(props: ClusterBoardProps) {
           );
         })}
 
-        {/* "+ New Recipe" drop zone */}
+        {/* "+ New Group" drop zone */}
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -448,7 +448,7 @@ export function ClusterBoard(props: ClusterBoardProps) {
           }`}
         >
           <Plus className="size-3" />
-          Drop here to start a new recipe
+          Drop here to start a new group
         </div>
       </div>
 
@@ -538,10 +538,10 @@ function FitBar({ fit }: { fit: BlockFit }) {
 
 function buildChipTooltip(args: { dataless?: boolean; fit?: BlockFit | null }): string {
   if (args.dataless) {
-    return "No soil analysis — drag onto a recipe to apply a rough plan.";
+    return "No soil analysis — drag onto a group to apply a rough plan.";
   }
   if (!args.fit) return "Drag to reassign";
-  const lines = ["Drag to reassign", "", "Fit vs current recipe:"];
+  const lines = ["Drag to reassign", "", "Fit vs current group:"];
   for (const [nut, pct] of Object.entries(args.fit.per_nutrient)) {
     const marker = nut === args.fit.worst_nutrient ? " ← worst" : "";
     lines.push(`  ${nut}: ${Math.round(pct)}%${marker}`);
