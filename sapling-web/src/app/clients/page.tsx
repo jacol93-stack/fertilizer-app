@@ -10,6 +10,7 @@ import { PaginationControls } from "@/components/pagination-controls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SelectionToolbar } from "@/components/ui/selection-toolbar";
 import { toast } from "sonner";
 import {
   Users,
@@ -97,6 +98,45 @@ function ClientsPage() {
   const [farmCounts, setFarmCounts] = useState<Record<string, number>>({});
   const [fieldCounts, setFieldCounts] = useState<Record<string, number>>({});
 
+  // Bulk-select state — rows the user has ticked in selection mode.
+  // Lifted to page level so the toolbar + per-card checkboxes share state.
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    let ok = 0;
+    const failures: string[] = [];
+    for (const id of ids) {
+      try {
+        await api.delete(`/api/clients/${id}`);
+        ok++;
+      } catch (e) {
+        const c = clients.find((x) => x.id === id);
+        failures.push(c?.name ?? id);
+      }
+    }
+    if (failures.length === 0) {
+      toast.success(`Deleted ${ok} client${ok === 1 ? "" : "s"}`);
+    } else {
+      toast.warning(
+        `${ok} deleted · ${failures.length} failed`,
+        { description: failures.slice(0, 3).join(", ") },
+      );
+    }
+    setSelectedIds(new Set());
+    pagination.refetch();
+  };
+
   // Add client dialog
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -106,6 +146,22 @@ function ClientsPage() {
   const [formEmail, setFormEmail] = useState("");
   const [formPhone, setFormPhone] = useState("");
   const [formNotes, setFormNotes] = useState("");
+  // Inline error surfaced inside the dialog instead of via toast — used
+  // for duplicate-name (409) and any other backend rejection that the
+  // agronomist needs to act on before re-trying.
+  const [formError, setFormError] = useState<{
+    message: string;
+    existingClientId?: string;
+  } | null>(null);
+
+  // Pre-flight duplicate detection — case-insensitive match of the
+  // typed name against currently-loaded clients. Saves a round trip
+  // when the duplicate is already on the page; the backend 409 still
+  // catches duplicates that aren't on the current page (>20 rows in).
+  const trimmedName = formName.trim().toLowerCase();
+  const dialogDuplicate = trimmedName
+    ? clients.find((c) => c.name.trim().toLowerCase() === trimmedName) ?? null
+    : null;
 
   const resetForm = () => {
     setFormName("");
@@ -114,6 +170,7 @@ function ClientsPage() {
     setFormEmail("");
     setFormPhone("");
     setFormNotes("");
+    setFormError(null);
   };
 
   // Server now returns farm_count + field_count directly on each
@@ -139,9 +196,10 @@ function ClientsPage() {
 
   const handleSaveClient = async () => {
     if (!formName.trim()) {
-      toast.error("Client name is required");
+      setFormError({ message: "Client name is required." });
       return;
     }
+    setFormError(null);
     setSaving(true);
     try {
       await api.post("/api/clients", {
@@ -157,7 +215,21 @@ function ClientsPage() {
       toast.success("Client created");
       pagination.refetch();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to create client");
+      const msg = e instanceof Error ? e.message : "Failed to create client";
+      // Recognise the duplicate-name response from the backend (HTTP
+      // 409 — see clients.create_client). Surface the existing-client
+      // link inline so the agronomist can jump straight there.
+      const isDuplicate =
+        msg.toLowerCase().includes("already exists") ||
+        (dialogDuplicate !== null && msg.toLowerCase().includes("conflict"));
+      if (isDuplicate) {
+        setFormError({
+          message: msg,
+          existingClientId: dialogDuplicate?.id,
+        });
+      } else {
+        setFormError({ message: msg });
+      }
     } finally {
       setSaving(false);
     }
@@ -191,13 +263,30 @@ function ClientsPage() {
               </p>
             </div>
           </div>
-          <Button
-            onClick={() => { resetForm(); setDialogOpen(true); }}
-            className="bg-[var(--sapling-orange)] text-white hover:bg-[var(--sapling-orange)]/90"
-          >
-            <Plus className="size-4" />
-            Add Client
-          </Button>
+          <div className="flex items-center gap-2">
+            <SelectionToolbar
+              selectionMode={selectionMode}
+              onToggleMode={(next) => {
+                setSelectionMode(next);
+                if (!next) setSelectedIds(new Set());
+              }}
+              totalCount={clients.length}
+              selectedCount={selectedIds.size}
+              onSelectAll={(selectAll) => {
+                if (selectAll) setSelectedIds(new Set(clients.map((c) => c.id)));
+                else setSelectedIds(new Set());
+              }}
+              onDelete={handleBulkDelete}
+              itemLabel={{ singular: "client", plural: "clients" }}
+            />
+            <Button
+              onClick={() => { resetForm(); setDialogOpen(true); }}
+              className="bg-[var(--sapling-orange)] text-white hover:bg-[var(--sapling-orange)]/90"
+            >
+              <Plus className="size-4" />
+              Add Client
+            </Button>
+          </div>
         </div>
 
         {/* Search */}
@@ -245,71 +334,97 @@ function ClientsPage() {
         ) : (
           /* Card grid */
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {clients.map((client) => (
-              <Link
-                key={client.id}
-                href={`/clients/${client.id}`}
-                className="group rounded-xl border bg-white p-5 transition-all hover:border-[var(--sapling-orange)]/40 hover:shadow-md no-underline"
-              >
-                {/* Name + company */}
-                <h3 className="text-lg font-semibold text-[var(--sapling-dark)] group-hover:text-[var(--sapling-orange)]">
-                  {client.name}
-                </h3>
-                {client.company_details?.name && (
-                  <p className="mt-0.5 text-sm text-[var(--sapling-medium-grey)]">
-                    {String(client.company_details.name)}
-                  </p>
-                )}
+            {clients.map((client) => {
+              const isSelected = selectedIds.has(client.id);
+              const cardClass = `group relative rounded-xl border bg-white p-5 transition-all hover:border-[var(--sapling-orange)]/40 hover:shadow-md no-underline ${
+                isSelected ? "ring-2 ring-[var(--sapling-orange)]" : ""
+              }`;
+              const inner = (
+                <>
+                  {selectionMode && (
+                    <div
+                      className={`absolute right-3 top-3 z-10 flex size-5 items-center justify-center rounded-full border-2 ${
+                        isSelected
+                          ? "border-[var(--sapling-orange)] bg-[var(--sapling-orange)]"
+                          : "border-gray-300 bg-white"
+                      }`}
+                    >
+                      {isSelected && <span className="text-[10px] leading-none text-white">✓</span>}
+                    </div>
+                  )}
+                  <h3 className="text-lg font-semibold text-[var(--sapling-dark)] group-hover:text-[var(--sapling-orange)]">
+                    {client.name}
+                  </h3>
+                  {client.company_details?.name && (
+                    <p className="mt-0.5 text-sm text-[var(--sapling-medium-grey)]">
+                      {String(client.company_details.name)}
+                    </p>
+                  )}
 
-                {/* Contact details */}
-                <div className="mt-3 space-y-1">
-                  {client.contact_person && (
-                    <div className="flex items-center gap-2 text-xs text-[var(--sapling-medium-grey)]">
-                      <User className="size-3 shrink-0" />
-                      <span>{client.contact_person}</span>
-                    </div>
-                  )}
-                  {client.email && (
-                    <div className="flex items-center gap-2 text-xs text-[var(--sapling-medium-grey)]">
-                      <Mail className="size-3 shrink-0" />
-                      <span className="truncate">{client.email}</span>
-                    </div>
-                  )}
-                  {client.phone && (
-                    <div className="flex items-center gap-2 text-xs text-[var(--sapling-medium-grey)]">
-                      <Phone className="size-3 shrink-0" />
-                      <span>{client.phone}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Stats + Delete */}
-                <div className="mt-4 flex items-center justify-between border-t pt-3">
-                  <div className="flex gap-4">
-                    <div className="flex items-center gap-1.5 text-xs text-[var(--sapling-medium-grey)]">
-                      <MapPin className="size-3" />
-                      <span className="font-medium text-[var(--sapling-dark)]">{farmCounts[client.id] ?? 0}</span> farm{(farmCounts[client.id] ?? 0) !== 1 ? "s" : ""}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-[var(--sapling-medium-grey)]">
-                      <Layers className="size-3" />
-                      <span className="font-medium text-[var(--sapling-dark)]">{fieldCounts[client.id] ?? 0}</span> field{(fieldCounts[client.id] ?? 0) !== 1 ? "s" : ""}
-                    </div>
+                  <div className="mt-3 space-y-1">
+                    {client.contact_person && (
+                      <div className="flex items-center gap-2 text-xs text-[var(--sapling-medium-grey)]">
+                        <User className="size-3 shrink-0" />
+                        <span>{client.contact_person}</span>
+                      </div>
+                    )}
+                    {client.email && (
+                      <div className="flex items-center gap-2 text-xs text-[var(--sapling-medium-grey)]">
+                        <Mail className="size-3 shrink-0" />
+                        <span className="truncate">{client.email}</span>
+                      </div>
+                    )}
+                    {client.phone && (
+                      <div className="flex items-center gap-2 text-xs text-[var(--sapling-medium-grey)]">
+                        <Phone className="size-3 shrink-0" />
+                        <span>{client.phone}</span>
+                      </div>
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleDeleteClient(client.id, client.name);
-                    }}
-                    className="rounded-md p-1.5 text-gray-400 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
-                    title="Delete client"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
-                </div>
-              </Link>
-            ))}
+
+                  <div className="mt-4 flex items-center justify-between border-t pt-3">
+                    <div className="flex gap-4">
+                      <div className="flex items-center gap-1.5 text-xs text-[var(--sapling-medium-grey)]">
+                        <MapPin className="size-3" />
+                        <span className="font-medium text-[var(--sapling-dark)]">{farmCounts[client.id] ?? 0}</span> farm{(farmCounts[client.id] ?? 0) !== 1 ? "s" : ""}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-[var(--sapling-medium-grey)]">
+                        <Layers className="size-3" />
+                        <span className="font-medium text-[var(--sapling-dark)]">{fieldCounts[client.id] ?? 0}</span> field{(fieldCounts[client.id] ?? 0) !== 1 ? "s" : ""}
+                      </div>
+                    </div>
+                    {!selectionMode && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDeleteClient(client.id, client.name);
+                        }}
+                        className="rounded-md p-1.5 text-gray-400 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+                        title="Delete client"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </>
+              );
+              return selectionMode ? (
+                <button
+                  type="button"
+                  key={client.id}
+                  onClick={() => toggleSelected(client.id)}
+                  className={`${cardClass} cursor-pointer text-left`}
+                >
+                  {inner}
+                </button>
+              ) : (
+                <Link key={client.id} href={`/clients/${client.id}`} className={cardClass}>
+                  {inner}
+                </Link>
+              );
+            })}
           </div>
         )}
 
@@ -322,11 +437,35 @@ function ClientsPage() {
       </div>
 
       {/* Add Client Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} title="Add Client">
+      <Dialog
+        open={dialogOpen}
+        onClose={() => { setDialogOpen(false); setFormError(null); }}
+        title="Add Client"
+      >
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label>Client Name *</Label>
-            <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g. John Smith" autoFocus />
+            <Input
+              value={formName}
+              onChange={(e) => { setFormName(e.target.value); setFormError(null); }}
+              placeholder="e.g. John Smith"
+              autoFocus
+            />
+            {dialogDuplicate && (
+              <div className="flex items-start justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+                <p>
+                  A client named <strong>{dialogDuplicate.name}</strong> already
+                  exists on your account.
+                </p>
+                <Link
+                  href={`/clients/${dialogDuplicate.id}`}
+                  className="shrink-0 font-medium text-[var(--sapling-orange)] hover:underline"
+                  onClick={() => setDialogOpen(false)}
+                >
+                  Open existing →
+                </Link>
+              </div>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>Company Name</Label>
@@ -350,12 +489,32 @@ function ClientsPage() {
             <Label>Notes</Label>
             <Input value={formNotes} onChange={(e) => setFormNotes(e.target.value)} placeholder="Optional" />
           </div>
+          {formError && (
+            <div className="rounded-md border border-red-300 bg-red-50 p-2 text-xs text-red-900">
+              <p>{formError.message}</p>
+              {formError.existingClientId && (
+                <Link
+                  href={`/clients/${formError.existingClientId}`}
+                  className="mt-1 inline-block font-medium text-[var(--sapling-orange)] hover:underline"
+                  onClick={() => setDialogOpen(false)}
+                >
+                  Open existing client →
+                </Link>
+              )}
+            </div>
+          )}
           <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button
+              variant="outline"
+              onClick={() => { setDialogOpen(false); setFormError(null); }}
+            >
+              Cancel
+            </Button>
             <Button
               onClick={handleSaveClient}
-              disabled={saving || !formName.trim()}
+              disabled={saving || !formName.trim() || !!dialogDuplicate}
               className="bg-[var(--sapling-orange)] text-white hover:bg-[var(--sapling-orange)]/90"
+              title={dialogDuplicate ? "A client with this name already exists" : undefined}
             >
               {saving && <Loader2 className="size-4 animate-spin" />}
               Create Client

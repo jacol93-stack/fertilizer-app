@@ -463,6 +463,11 @@ export function BatchAnalysisUpload({
       return;
     }
 
+    if (!analysisDate) {
+      toast.error("Set an Analysis date — every persisted analysis needs a sample date.");
+      return;
+    }
+
     setSaving(true);
     try {
       const items = validRows.flatMap((r) => {
@@ -534,7 +539,7 @@ export function BatchAnalysisUpload({
         client_id: clientId,
         farm_id: farmId || null,
         lab_name: labName || null,
-        analysis_date: analysisDate || null,
+        analysis_date: analysisDate,
         source_document_url: sourceDocumentUrl || null,
         items,
       };

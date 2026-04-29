@@ -188,28 +188,29 @@ def analyse_blocks(
 
         # 2. Season targets (with age + density scaling baked in by
         #    target_computation since Phase A 2026-04-26). When no
-        #    yield_target supplied, skip — analysis stays purely
-        #    interpretive without a kg/ha demand calc.
-        targets: dict[str, float] = {}
-        target_assumptions: list[Assumption] = []
-        if block.yield_target_per_ha and block.yield_target_per_ha > 0:
-            tc_result = compute_season_targets(
-                crop=crop,
-                yield_target=block.yield_target_per_ha,
-                soil_values=block.soil_parameters,
-                catalog=catalog,
-                block_pop_per_ha=block.pop_per_ha,
-                tree_age=block.tree_age,
-            )
-            targets = tc_result.targets
-            target_assumptions = list(tc_result.assumptions)
-            block_totals[block.block_id] = targets
-            if tc_result.worst_tier is not None:
-                tiers_seen.append(tc_result.worst_tier.value)
-            decision_trace.append(
-                f"Block {block.block_id}: target_computation — "
-                f"{len(targets)} nutrients, worst tier {tc_result.worst_tier}"
-            )
+        #    yield_target is supplied, target_computation falls back to
+        #    crop_requirements.default_yield (full-bearing potential)
+        #    and emits an Assumption — combined with tree_age +
+        #    perennial_age_factors this gives the right rates for young
+        #    perennials without forcing the agronomist to supply a yield.
+        tc_result = compute_season_targets(
+            crop=crop,
+            yield_target=block.yield_target_per_ha,
+            soil_values=block.soil_parameters,
+            catalog=catalog,
+            block_pop_per_ha=block.pop_per_ha,
+            tree_age=block.tree_age,
+            block_name=block.block_name,
+        )
+        targets = tc_result.targets
+        target_assumptions = list(tc_result.assumptions)
+        block_totals[block.block_id] = targets
+        if tc_result.worst_tier is not None:
+            tiers_seen.append(tc_result.worst_tier.value)
+        decision_trace.append(
+            f"Block {block.block_id}: target_computation — "
+            f"{len(targets)} nutrients, worst tier {tc_result.worst_tier}"
+        )
 
         # 3. Foliar triggers — stage-peak demand + soil availability gaps
         foliar = trigger_foliar_events(

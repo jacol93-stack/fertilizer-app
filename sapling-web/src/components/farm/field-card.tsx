@@ -2,7 +2,7 @@
 
 import type { Field } from "@/lib/season-constants";
 import { Card, CardContent } from "@/components/ui/card";
-import { Droplets, Sprout, TreeDeciduous, CheckCircle2, Pencil, Layers } from "lucide-react";
+import { AlertTriangle, CheckCircle, Droplets, Sprout, TreeDeciduous, CheckCircle2, Pencil, Layers } from "lucide-react";
 
 interface FieldCardProps {
   field: Field;
@@ -19,6 +19,62 @@ const irrigationIcons: Record<string, string> = {
   flood: "Flood",
   none: "None",
 };
+
+// Friendly labels for the health-issue keys returned by the API.
+// Keys mirror what _compute_field_health emits in clients.py.
+const HEALTH_LABELS: Record<string, string> = {
+  size: "size (ha)",
+  crop: "crop",
+  soil_analysis: "soil analysis link",
+  soil_macros_missing: "soil macros (K/Ca/Mg/P)",
+  tree_age: "tree age",
+  planting_date: "planting date",
+  yield_target: "yield target",
+  irrigation_type: "irrigation type",
+  accepted_methods: "application methods",
+  pop_per_ha: "trees / ha",
+  soil_pH_missing: "soil pH",
+  soil_CEC_missing: "soil CEC",
+};
+
+function humanise(keys: string[]): string {
+  return keys.map((k) => HEALTH_LABELS[k] ?? k).join(", ");
+}
+
+function HealthPill({ health }: { health: NonNullable<Field["health"]> }) {
+  if (health.level === "ok") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
+        title="All engine-relevant inputs present"
+      >
+        <CheckCircle className="size-3" />
+        Ready
+      </span>
+    );
+  }
+  if (health.level === "critical") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700"
+        title={`Engine can't build a programme until you set: ${humanise(health.critical)}`}
+      >
+        <AlertTriangle className="size-3" />
+        Missing: {humanise(health.critical)}
+      </span>
+    );
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700"
+      title={`Programme will build with assumptions on: ${humanise(health.warnings)}`}
+    >
+      <AlertTriangle className="size-3" />
+      Assumes: {humanise(health.warnings.slice(0, 2))}
+      {health.warnings.length > 2 && ` +${health.warnings.length - 2}`}
+    </span>
+  );
+}
 
 export function FieldCard({ field, selected, selectable, onToggle, onClick }: FieldCardProps) {
   const isPerennial = field.crop_type?.toLowerCase() === "perennial";
@@ -122,12 +178,21 @@ export function FieldCard({ field, selected, selectable, onToggle, onClick }: Fi
           ))}
         </div>
 
-        {/* Analysis status */}
-        <div className="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2">
+        {/* Analysis status + data-completeness pill */}
+        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-2">
           {field.latest_analysis_id ? (
-            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-600">
+            <span
+              className="inline-flex items-center gap-1 text-[10px] font-medium text-green-600"
+              title={
+                field.latest_analysis_date
+                  ? `Sampled ${new Date(field.latest_analysis_date).toLocaleDateString()}`
+                  : "Linked"
+              }
+            >
               <span className="size-1.5 rounded-full bg-green-500" />
-              Analysis linked
+              {field.latest_analysis_date
+                ? `Soil ${field.latest_analysis_date}`
+                : "Analysis linked"}
             </span>
           ) : (
             <span className="text-[10px] text-gray-400">No analysis</span>
@@ -141,6 +206,7 @@ export function FieldCard({ field, selected, selectable, onToggle, onClick }: Fi
               {field.latest_analysis_composite.replicate_count} samples
             </span>
           )}
+          {field.health && <HealthPill health={field.health} />}
         </div>
       </CardContent>
     </Card>

@@ -208,9 +208,12 @@ def test_build_endpoint_surfaces_skipped_blocks_as_outstanding_items(
 def test_build_endpoint_clusters_similar_blocks_and_attaches_per_block_snapshots(
     fake_sb, fake_user,
 ):
-    """Multi-block cluster: the orchestrator runs on one synthetic
-    block, but per-original-block SoilSnapshots are appended post-
-    build so the agronomist keeps drill-down visibility."""
+    """Multi-block cluster: the orchestrator runs soil-side reasoning
+    on each SOURCE block (preserves block-specific signals like
+    Al-saturation that would average out in a cluster aggregate), then
+    emits a cluster-directory snapshot whose block_id is `cluster_<X>`
+    and whose block_name is the comma-joined member list. Blend
+    production still runs on the cluster aggregate."""
     request = _build_request([
         _block_request("1", "Land A", 2.0),   # same ratio
         _block_request("2", "Land B", 8.0),   # same ratio → same cluster
@@ -218,12 +221,21 @@ def test_build_endpoint_clusters_similar_blocks_and_attaches_per_block_snapshots
     response = asyncio.run(build_programme_endpoint(request, fake_user))
 
     snapshots = response.artifact["soil_snapshots"]
-    # 1 cluster-level (from orchestrator) + 2 per-block (from router)
+    # 2 per-source snapshots ("Land A", "Land B") + 1 cluster directory snapshot
     assert len(snapshots) == 3
-    names = [s["block_name"] for s in snapshots]
-    assert any("Cluster" in n for n in names)
-    assert any("Land A" in n and "in Cluster" in n for n in names)
-    assert any("Land B" in n and "in Cluster" in n for n in names)
+
+    cluster_snaps = [s for s in snapshots if s["block_id"].startswith("cluster_")]
+    source_snaps = [s for s in snapshots if not s["block_id"].startswith("cluster_")]
+
+    # Exactly one cluster-directory snapshot, with comma-joined member names.
+    assert len(cluster_snaps) == 1
+    cluster_name = cluster_snaps[0]["block_name"]
+    assert "Land A" in cluster_name and "Land B" in cluster_name
+
+    # Per-source snapshots keep their original block names so the
+    # agronomist can still drill into block-specific findings.
+    source_names = {s["block_name"] for s in source_snaps}
+    assert source_names == {"Land A", "Land B"}
 
 
 def test_build_endpoint_leaves_dissimilar_blocks_as_singletons(fake_sb, fake_user):
@@ -246,12 +258,14 @@ def test_build_endpoint_leaves_dissimilar_blocks_as_singletons(fake_sb, fake_use
     assert cluster_flags == []
 
 
-def test_build_endpoint_emits_heterogeneity_risk_flag_when_cluster_breaches_thresholds(
+def test_build_endpoint_auto_splits_heterogeneous_clusters_into_homogeneous_subgroups(
     fake_sb, fake_user,
 ):
     """Blocks with the same NPK ratio but wildly different magnitudes
-    cluster together, then fail the heterogeneity check — the router
-    must emit a RiskFlag naming the affected nutrient + citation."""
+    used to cluster together and trigger a heterogeneity warning. The
+    auto-split post-pass now subdivides them by the worst-CV nutrient
+    until each resulting cluster is below the split threshold — so the
+    router emits no cluster-heterogeneity RiskFlag."""
     request = _build_request([
         _block_request("1", "Land A", 10.0, n=60, p=30, k=30),
         _block_request("2", "Land B", 10.0, n=180, p=90, k=90),
@@ -263,10 +277,14 @@ def test_build_endpoint_emits_heterogeneity_risk_flag_when_cluster_breaches_thre
         f for f in response.artifact["risk_flags"]
         if "Cluster" in f["message"]
     ]
-    assert len(cluster_flags) == 1
-    msg = cluster_flags[0]["message"]
-    assert "Wilding" in msg
-    assert "Land A" in msg and "Land B" in msg and "Land C" in msg
+    # Auto-split prevents a heterogeneous cluster from surviving — no
+    # warning needed because the split itself was the action.
+    assert cluster_flags == []
+    # Per-block snapshots cover all three blocks (the three were split
+    # across two clusters of {1} + {2,3} or similar — every block is
+    # represented).
+    snapshot_blocks = {s["block_name"] for s in response.artifact["soil_snapshots"]}
+    assert {"Land A", "Land B", "Land C"}.issubset(snapshot_blocks)
 
 
 # ============================================================

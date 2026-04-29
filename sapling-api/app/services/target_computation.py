@@ -75,7 +75,7 @@ class TargetComputationResult:
 
 def compute_season_targets(
     crop: str,
-    yield_target: float,
+    yield_target: Optional[float],
     soil_values: dict[str, float],
     catalog: SoilCatalog,
     rate_table_context: Optional[dict] = None,
@@ -85,12 +85,19 @@ def compute_season_targets(
     block_pop_per_ha: Optional[float] = None,
     harvest_mode: Optional[str] = None,
     tree_age: Optional[int] = None,
+    block_name: Optional[str] = None,
 ) -> TargetComputationResult:
     """Compute per-nutrient season targets with full provenance.
 
     Args:
         crop: canonical crop name (post migration-070)
-        yield_target: expected yield in the crop's yield unit (t/ha usually)
+        yield_target: expected yield in the crop's yield unit (t/ha usually).
+            When None or 0, falls back to `crop_requirements.default_yield`
+            for the crop and emits an Assumption row. The default is the
+            cultivar's full-bearing potential — combined with `tree_age`
+            and `perennial_age_factors`, this gives the right rates for
+            young / non-bearing blocks without forcing the agronomist
+            to enter "mature potential" manually.
         soil_values: lab results dict {parameter: value}
         catalog: SoilCatalog with all reference tables
         rate_table_context: dict of axis filters for rate-table lookup
@@ -124,9 +131,56 @@ def compute_season_targets(
     Returns:
         TargetComputationResult with typed provenance for each nutrient.
     """
+    from app.services.soil_engine import normalise_soil_values
+    # Lab files often use unit-suffixed parameter keys ("K (mg/kg)"); the
+    # downstream catalog tables use canonical keys ("K"). Normalise once
+    # here so every consumer reading via soil_values.get(canonical) works.
+    soil_values = normalise_soil_values(soil_values)
+    assumptions: list[Assumption] = []
+
+    # Default-yield fallback. When the caller didn't supply a yield
+    # target (typical for young / non-bearing perennials, blocks with no
+    # historical yield, or fields-master rows imported with a blank
+    # cell), use the crop's full-bearing potential from
+    # crop_requirements.default_yield. The perennial_age_factors
+    # bracket then scales N/P/K down to the right establishment
+    # fraction, so a 2-year-old block gets year-2 rates without anyone
+    # doing the math.
+    effective_yield, used_default = _resolve_yield_target(
+        crop=crop,
+        supplied=yield_target,
+        crop_rows=catalog.crop_rows,
+    )
+    if used_default:
+        crop_row = next(
+            (r for r in catalog.crop_rows if r.get("crop") == crop), None,
+        )
+        unit = (crop_row or {}).get("yield_unit") or "t/ha"
+        block_label = block_name or "the block"
+        age_note = (
+            f" The {tree_age}-year tree-age bracket then scales N/P/K via "
+            "perennial_age_factors so the rates land at the right "
+            "establishment fraction — set tree_age on the block to control "
+            "this."
+            if tree_age is not None
+            else " Override on the field detail page if your stand performs "
+            "differently."
+        )
+        assumptions.append(
+            Assumption(
+                field="yield_target",
+                assumed_value=f"{effective_yield} {unit}",
+                override_guidance=(
+                    f"Yield target wasn't supplied for {block_label}. Used "
+                    f"the SA full-bearing potential of {effective_yield} "
+                    f"{unit} for {crop} from crop_requirements." + age_note
+                ),
+            )
+        )
+
     raw_results = calculate_nutrient_targets(
         crop_name=crop,
-        yield_target=yield_target,
+        yield_target=effective_yield,
         soil_values=soil_values,
         crop_rows=catalog.crop_rows,
         sufficiency_rows=catalog.sufficiency_rows,
@@ -139,10 +193,15 @@ def compute_season_targets(
         crop_calc_flags_rows=catalog.crop_calc_flags_rows,
     )
 
+    # Forward the resolved yield to the removal-subtraction path too —
+    # otherwise a missing yield_target would skip removal even when the
+    # default-yield fallback supplied a sensible figure.
+    if expected_yield_harvested in (None, 0, 0.0) and used_default:
+        expected_yield_harvested = effective_yield
+
     targets: dict[str, float] = {}
     sources: dict[str, SourceCitation] = {}
     calc_paths: dict[str, str] = {}
-    assumptions: list[Assumption] = []
     tiers_used: list[int] = []
     unadjusted_nutrients: list[str] = []
 
@@ -707,3 +766,50 @@ def _assess_n_mineralisation(soil_values: dict) -> Optional[Assumption]:
         ),
         tier=Tier.SA_INDUSTRY_BODY,
     )
+
+
+def _resolve_yield_target(
+    *, crop: str, supplied: Optional[float], crop_rows: list[dict],
+) -> tuple[float, bool]:
+    """Resolve an effective yield_target for the engine.
+
+    Returns (effective_yield, used_default).
+
+    A `supplied` value of None or 0 triggers the fallback to
+    `crop_requirements.default_yield`. Negative values are treated as
+    missing too. When neither is available, returns 0.0 — the engine's
+    heuristic path collapses to zero macros and the Ca/Mg ratio path
+    still runs from soil base saturation alone, so the programme isn't
+    blocked.
+
+    The default is the crop's full-bearing potential. For perennial
+    blocks where tree_age is set, perennial_age_factors then scales
+    N/P/K to the right establishment fraction. For annuals or mature
+    perennials the default acts as a sensible "what would a reference
+    block here yield?" anchor.
+    """
+    try:
+        supplied_f = float(supplied) if supplied is not None else 0.0
+    except (TypeError, ValueError):
+        supplied_f = 0.0
+    if supplied_f > 0:
+        return supplied_f, False
+    crop_row = next(
+        (r for r in (crop_rows or []) if r.get("crop") == crop), None,
+    )
+    if crop_row is None:
+        # Try parent_crop hop — citrus variants share Citrus's default.
+        for r in crop_rows or []:
+            if r.get("crop") == crop and r.get("parent_crop"):
+                parent = r["parent_crop"]
+                crop_row = next(
+                    (p for p in crop_rows if p.get("crop") == parent),
+                    None,
+                )
+                break
+    default = (crop_row or {}).get("default_yield")
+    try:
+        default_f = float(default) if default is not None else 0.0
+    except (TypeError, ValueError):
+        default_f = 0.0
+    return default_f, default_f > 0

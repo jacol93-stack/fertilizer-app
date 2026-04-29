@@ -10,6 +10,7 @@ import { LeafDetailView } from "@/components/leaf-detail-view";
 import type { Field } from "@/lib/season-constants";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { SelectionToolbar } from "@/components/ui/selection-toolbar";
 import { DocumentTray, type TrayDoc, type TrayBlock } from "@/components/client-portal/document-tray";
 import {
   Sheet,
@@ -28,7 +29,15 @@ import {
   ExternalLink,
   X,
   LinkIcon,
+  FileBarChart,
+  Leaf as LeafIcon,
+  Layers,
+  Download,
+  Lock,
 } from "lucide-react";
+import { listProgrammes, downloadProgrammePdf } from "@/lib/programmes-v2";
+import type { ProgrammeListItem } from "@/lib/types/programme-artifact";
+import { listSoilReports, downloadSoilReportPdf, type SoilReportListItem } from "@/lib/soil-reports";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -95,12 +104,19 @@ function DocumentsPage() {
   const [leafAnalyses, setLeafAnalyses] = useState<LeafAnalysis[]>([]);
   const [deletedSoil, setDeletedSoil] = useState<SoilAnalysis[]>([]);
   const [deletedLeaf, setDeletedLeaf] = useState<LeafAnalysis[]>([]);
+  // Sapling-generated documents (separate sub-headings from uploaded
+  // lab analyses). Programmes come from programme_artifacts; soil
+  // reports from soil_reports — both rendered live as PDFs on demand.
+  const [programmes, setProgrammes] = useState<ProgrammeListItem[]>([]);
+  const [soilReports, setSoilReports] = useState<SoilReportListItem[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [farmFields, setFarmFields] = useState<Record<string, Field[]>>({});
   const [loading, setLoading] = useState(true);
 
-  // UI state
-  const [activeTab, setActiveTab] = useState<"soil" | "leaf">("soil");
+  // UI state — active sub-heading. Four kinds of docs sit on this page;
+  // the user toggles between them via the tab bar.
+  type DocTab = "programmes" | "soil_reports" | "soil" | "leaf";
+  const [activeTab, setActiveTab] = useState<DocTab>("soil");
   const [filter, setFilter] = useState<"all" | "unlinked" | "deleted">(initialFilter || "all");
   const [view, setView] = useState<"table" | "tray">(initialFilter === "unlinked" ? "tray" : "table");
   const [yearFilter, setYearFilter] = useState<string>("all");
@@ -108,6 +124,26 @@ function DocumentsPage() {
   const [sheetData, setSheetData] = useState<Record<string, unknown> | null>(null);
   const [sheetLoading, setSheetLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Bulk-select state — scoped to whichever tab + filter is active so
+  // switching tabs / filters resets the selection (otherwise the user
+  // would see stale ids selected across an unrelated list).
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelected = (id: string) =>
+    setSelectedIds((p) => {
+      const n = new Set(p);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+
+  // Reset selection when tab / filter changes — different rows on screen.
+  useEffect(() => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, [activeTab, filter, yearFilter]);
 
   // Lookup maps
   const farmMap = new Map(farms.map((f) => [f.id, f.name]));
@@ -127,11 +163,13 @@ function DocumentsPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [allClients, farmsData, soilData, leafData] = await Promise.all([
+      const [allClients, farmsData, soilData, leafData, progData, srData] = await Promise.all([
         api.getAll<{ id: string; name: string }>("/api/clients"),
         api.get<Farm[]>(`/api/clients/${clientId}/farms`),
         api.getAll<SoilAnalysis>(`/api/soil?client_id=${clientId}`).catch(() => [] as SoilAnalysis[]),
         api.getAll<LeafAnalysis>(`/api/leaf?client_id=${clientId}`).catch(() => [] as LeafAnalysis[]),
+        listProgrammes({ clientId }).catch(() => [] as ProgrammeListItem[]),
+        listSoilReports({ clientId }).catch(() => [] as SoilReportListItem[]),
       ]);
 
       const c = allClients.find((cl) => cl.id === clientId);
@@ -139,6 +177,8 @@ function DocumentsPage() {
       setFarms(farmsData);
       setSoilAnalyses(soilData);
       setLeafAnalyses(leafData);
+      setProgrammes(progData);
+      setSoilReports(srData);
 
       // Fetch fields per farm
       const fieldResults: Record<string, Field[]> = {};
@@ -203,6 +243,98 @@ function DocumentsPage() {
     } finally {
       setDeletingId(null);
     }
+  }
+
+  async function handleBulkDelete() {
+    const ids = Array.from(selectedIds);
+    let ok = 0;
+    let failed = 0;
+    for (const id of ids) {
+      try {
+        await api.post(`/api/${activeTab}/${id}/delete`, {});
+        ok++;
+      } catch {
+        failed++;
+      }
+    }
+    if (failed === 0) {
+      toast.success(`Deleted ${ok} ${activeTab} ${ok === 1 ? "analysis" : "analyses"}`);
+    } else {
+      toast.warning(`${ok} deleted · ${failed} failed`);
+    }
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+  }
+
+  // ── Bulk link to a chosen field ─────────────────────────────────────
+  // For when the user uploaded analyses before creating blocks: select
+  // the unlinked rows + pick a target block, OR ask the system to
+  // match-by-name across the client's blocks.
+  const [bulkLinkOpen, setBulkLinkOpen] = useState(false);
+  const [bulkLinkBusy, setBulkLinkBusy] = useState(false);
+
+  async function handleBulkLinkToField(fieldId: string) {
+    setBulkLinkBusy(true);
+    const ids = Array.from(selectedIds);
+    let ok = 0;
+    let failed = 0;
+    for (const id of ids) {
+      try {
+        await api.post(`/api/${activeTab}/${id}/link-field`, { field_id: fieldId });
+        ok++;
+      } catch {
+        failed++;
+      }
+    }
+    if (failed === 0) toast.success(`Linked ${ok} ${activeTab} analyses`);
+    else toast.warning(`${ok} linked · ${failed} failed`);
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+    setBulkLinkOpen(false);
+    setBulkLinkBusy(false);
+    fetchData();
+  }
+
+  async function handleBulkLinkByName() {
+    setBulkLinkBusy(true);
+    const ids = Array.from(selectedIds);
+    let ok = 0;
+    let unmatched = 0;
+    let failed = 0;
+    for (const id of ids) {
+      const analysis = (activeTab === "soil" ? soilAnalyses : leafAnalyses)
+        .find((a) => a.id === id);
+      const labelParts: string[] = [];
+      if (activeTab === "soil") {
+        const s = analysis as SoilAnalysis | undefined;
+        if (s?.field) labelParts.push(s.field);
+      }
+      const blockLabel = labelParts.find(Boolean)?.trim().toLowerCase();
+      if (!blockLabel) { unmatched++; continue; }
+      const match = allFields.find(
+        (f) => f.name.trim().toLowerCase() === blockLabel,
+      );
+      if (!match) { unmatched++; continue; }
+      try {
+        await api.post(`/api/${activeTab}/${id}/link-field`, { field_id: match.id });
+        ok++;
+      } catch {
+        failed++;
+      }
+    }
+    if (unmatched === 0 && failed === 0) {
+      toast.success(`Linked ${ok} analyses by block name`);
+    } else {
+      toast.warning(
+        `${ok} linked${unmatched > 0 ? ` · ${unmatched} no-match` : ""}${failed > 0 ? ` · ${failed} failed` : ""}`,
+      );
+    }
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+    setBulkLinkOpen(false);
+    setBulkLinkBusy(false);
+    fetchData();
+    await fetchData();
   }
 
   async function handleRestore(type: "soil" | "leaf", id: string) {
@@ -326,28 +458,40 @@ function DocumentsPage() {
             Documents — {clientName}
           </h1>
           <p className="text-sm text-muted-foreground">
+            {programmes.length} programme{programmes.length !== 1 ? "s" : ""} ·{" "}
+            {soilReports.length} soil report{soilReports.length !== 1 ? "s" : ""} ·{" "}
             {soilAnalyses.length} soil · {leafAnalyses.length} leaf analyses
           </p>
         </div>
 
-        {/* Tab bar: Soil | Leaf */}
-        <div className="mb-4 flex gap-1 rounded-lg bg-muted p-1">
-          {(["soil", "leaf"] as const).map((tab) => {
-            const count = tab === "soil" ? soilAnalyses.length : leafAnalyses.length;
+        {/* Tab bar: Programmes | Soil Reports | Soil Analyses | Leaf Analyses
+            Sapling-generated documents on the left (Programmes, Soil Reports);
+            uploaded lab analyses on the right (Soil, Leaf). */}
+        <div className="mb-4 flex flex-wrap gap-1 rounded-lg bg-muted p-1">
+          {(
+            [
+              { key: "programmes", label: "Programmes", icon: Layers, count: programmes.length },
+              { key: "soil_reports", label: "Soil Reports", icon: FileBarChart, count: soilReports.length },
+              { key: "soil", label: "Soil Analyses", icon: FileText, count: soilAnalyses.length },
+              { key: "leaf", label: "Leaf Analyses", icon: LeafIcon, count: leafAnalyses.length },
+            ] as const
+          ).map((tab) => {
+            const Icon = tab.icon;
             return (
               <button
-                key={tab}
-                onClick={() => { setActiveTab(tab); setFilter("all"); }}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                  activeTab === tab
+                key={tab.key}
+                onClick={() => { setActiveTab(tab.key); setFilter("all"); }}
+                className={`flex min-w-[140px] flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  activeTab === tab.key
                     ? "bg-white text-[var(--sapling-dark)] shadow-sm"
                     : "text-[var(--sapling-medium-grey)] hover:text-[var(--sapling-dark)]"
                 }`}
               >
-                {tab === "soil" ? "Soil Analyses" : "Leaf Analyses"}
-                {count > 0 && (
+                <Icon className="size-3.5" />
+                {tab.label}
+                {tab.count > 0 && (
                   <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums">
-                    {count}
+                    {tab.count}
                   </span>
                 )}
               </button>
@@ -355,6 +499,20 @@ function DocumentsPage() {
           })}
         </div>
 
+        {/* Sapling-generated docs render their own tables — short-circuit
+            here so we skip the analysis-specific filter chips, year picker,
+            and bulk-select toolbar that don't apply. */}
+        {(activeTab === "programmes" || activeTab === "soil_reports") && (
+          <GeneratedDocsTable
+            kind={activeTab}
+            clientId={clientId}
+            programmes={programmes}
+            soilReports={soilReports}
+          />
+        )}
+        {(activeTab === "programmes" || activeTab === "soil_reports") ? null : <></>}
+        {(activeTab !== "programmes" && activeTab !== "soil_reports") && (
+        <>
         {/* Filter chips */}
         <div className="mb-4 flex gap-2">
           {(["all", "unlinked", ...(isAdmin ? ["deleted" as const] : [])] as const).map((f) => {
@@ -387,24 +545,56 @@ function DocumentsPage() {
           })}
         </div>
 
-        {/* View toggle + year filter */}
+        {/* View toggle + year filter + bulk-select toolbar */}
         <div className="mb-4 flex items-center justify-between gap-3">
-          {availableYears.length > 1 ? (
-            <select
-              value={yearFilter}
-              onChange={(e) => setYearFilter(e.target.value)}
-              className="rounded-md border bg-white px-3 py-1.5 text-xs font-medium text-[var(--sapling-dark)]"
-            >
-              <option value="all">All years</option>
-              {availableYears.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <span />
-          )}
+          <div className="flex items-center gap-2">
+            {availableYears.length > 1 ? (
+              <select
+                value={yearFilter}
+                onChange={(e) => setYearFilter(e.target.value)}
+                className="rounded-md border bg-white px-3 py-1.5 text-xs font-medium text-[var(--sapling-dark)]"
+              >
+                <option value="all">All years</option>
+                {availableYears.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            {view === "table" && filter !== "deleted" && (
+              <SelectionToolbar
+                selectionMode={selectionMode}
+                onToggleMode={(next) => {
+                  setSelectionMode(next);
+                  if (!next) setSelectedIds(new Set());
+                }}
+                totalCount={displayList.length}
+                selectedCount={selectedIds.size}
+                onSelectAll={(all) => {
+                  if (all) setSelectedIds(new Set(displayList.map((a) => a.id)));
+                  else setSelectedIds(new Set());
+                }}
+                onDelete={handleBulkDelete}
+                itemLabel={
+                  activeTab === "soil"
+                    ? { singular: "soil analysis", plural: "soil analyses" }
+                    : { singular: "leaf analysis", plural: "leaf analyses" }
+                }
+              />
+            )}
+            {selectionMode && filter === "unlinked" && selectedIds.size > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setBulkLinkOpen(true)}
+                className="h-8 text-xs"
+              >
+                <LinkIcon className="size-3.5" />
+                Link {selectedIds.size}…
+              </Button>
+            )}
+          </div>
           <div className="inline-flex gap-1 rounded-md border bg-white p-0.5">
             {(["table", "tray"] as const).map((v) => (
               <button
@@ -475,6 +665,7 @@ function DocumentsPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left text-muted-foreground">
+                      {selectionMode && <th className="pb-2 pr-2 font-medium w-6"></th>}
                       <th className="pb-2 pr-4 font-medium">Crop</th>
                       <th className="pb-2 pr-4 font-medium">Cultivar</th>
                       <th className="pb-2 pr-4 font-medium">Farm / Field</th>
@@ -491,17 +682,36 @@ function DocumentsPage() {
                         : (a as LeafAnalysis).sample_date;
                       const isDeleted = filter === "deleted";
                       const isUnlinked = !a.field_id;
+                      const isSelected = selectionMode && selectedIds.has(a.id);
 
                       return (
                         <tr
                           key={a.id}
-                          onClick={() => !isDeleted && openDetail(activeTab, a.id)}
+                          onClick={() => {
+                            if (selectionMode) toggleSelected(a.id);
+                            else if (!isDeleted) openDetail(activeTab, a.id);
+                          }}
                           className={`border-b last:border-0 ${
                             isDeleted
                               ? "opacity-60"
                               : "cursor-pointer hover:bg-gray-50"
-                          } ${isUnlinked && !isDeleted ? "bg-amber-50/30" : ""}`}
+                          } ${isUnlinked && !isDeleted ? "bg-amber-50/30" : ""} ${
+                            isSelected ? "bg-orange-50/60" : ""
+                          }`}
                         >
+                          {selectionMode && (
+                            <td className="py-2.5 pr-2">
+                              <span
+                                className={`flex size-3.5 items-center justify-center rounded border-2 ${
+                                  isSelected
+                                    ? "border-[var(--sapling-orange)] bg-[var(--sapling-orange)]"
+                                    : "border-gray-300 bg-white"
+                                }`}
+                              >
+                                {isSelected && <span className="text-[8px] leading-none text-white">✓</span>}
+                              </span>
+                            </td>
+                          )}
                           <td className="py-2.5 pr-4 font-medium text-[var(--sapling-dark)]">
                             {a.crop || "-"}
                           </td>
@@ -600,6 +810,8 @@ function DocumentsPage() {
           </CardContent>
         </Card>
         )}
+        </>
+        )}
       </div>
 
       {/* ── Detail Sheet ───────────────────────────────────────── */}
@@ -641,6 +853,308 @@ function DocumentsPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {bulkLinkOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={() => !bulkLinkBusy && setBulkLinkOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-lg bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="border-b px-5 py-4">
+              <h3 className="text-base font-semibold text-[var(--sapling-dark)]">
+                Link {selectedIds.size} {activeTab} {selectedIds.size === 1 ? "analysis" : "analyses"}
+              </h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Pick a target block, or have the system match each
+                analysis to a block by the lab&apos;s block name.
+              </p>
+            </div>
+            <div className="space-y-3 px-5 py-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                  Match by block name (lab → existing blocks)
+                </label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={bulkLinkBusy}
+                  onClick={handleBulkLinkByName}
+                  className="w-full justify-start text-xs"
+                >
+                  Match by name
+                </Button>
+              </div>
+              <div className="border-t pt-3">
+                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                  Or link all to one block
+                </label>
+                <select
+                  className="w-full rounded-md border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sapling-orange)]"
+                  defaultValue=""
+                  disabled={bulkLinkBusy}
+                  onChange={(e) => {
+                    if (e.target.value) handleBulkLinkToField(e.target.value);
+                  }}
+                >
+                  <option value="">Pick a block…</option>
+                  {allFields.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.farmName ? `${f.farmName} / ` : ""}{f.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t px-5 py-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setBulkLinkOpen(false)}
+                disabled={bulkLinkBusy}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
+  );
+}
+
+// ============================================================
+// GeneratedDocsTable — sub-heading view for Sapling-generated PDFs
+// ============================================================
+// Renders programmes OR soil reports as a flat list with a Download
+// PDF button per row. Both lists share a similar shape (id, title,
+// state, generated_at, narrative_locked) so we use one component with
+// a `kind` discriminator.
+
+function GeneratedDocsTable({
+  kind,
+  clientId,
+  programmes,
+  soilReports,
+}: {
+  kind: "programmes" | "soil_reports";
+  clientId: string;
+  programmes: ProgrammeListItem[];
+  soilReports: SoilReportListItem[];
+}) {
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  async function handleDownload(id: string) {
+    setDownloadingId(id);
+    try {
+      if (kind === "programmes") {
+        await downloadProgrammePdf(id);
+      } else {
+        await downloadSoilReportPdf(id);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`Download failed: ${msg}`);
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
+  if (kind === "programmes") {
+    if (programmes.length === 0) {
+      return (
+        <Card>
+          <CardContent className="p-6 text-center text-sm text-muted-foreground">
+            No programmes for this client yet.{" "}
+            <Link
+              href={`/season-manager/new?client_id=${clientId}`}
+              className="text-[var(--sapling-orange)] hover:underline"
+            >
+              Build a programme →
+            </Link>
+          </CardContent>
+        </Card>
+      );
+    }
+    return (
+      <Card>
+        <CardContent className="p-0">
+          <table className="w-full text-sm">
+            <thead className="border-b bg-muted/30 text-left">
+              <tr>
+                <th className="px-3 py-2 font-medium">Programme</th>
+                <th className="px-3 py-2 font-medium">Crop</th>
+                <th className="px-3 py-2 font-medium">Planting</th>
+                <th className="px-3 py-2 font-medium">State</th>
+                <th className="px-3 py-2 font-medium">Created</th>
+                <th className="px-3 py-2 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {programmes.map((p) => (
+                <tr key={p.id} className="border-b last:border-0">
+                  <td className="px-3 py-2 font-medium">
+                    <Link
+                      href={`/season-manager/artifact/${p.id}`}
+                      className="hover:text-[var(--sapling-orange)] hover:underline"
+                    >
+                      {p.farm_name || "—"}
+                    </Link>
+                  </td>
+                  <td className="px-3 py-2">{p.crop || "—"}</td>
+                  <td className="px-3 py-2">{p.planting_date || "—"}</td>
+                  <td className="px-3 py-2">
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                        p.state === "draft"
+                          ? "bg-slate-200 text-slate-800"
+                          : p.state === "approved" || p.state === "activated"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-stone-200 text-stone-700"
+                      }`}
+                    >
+                      {p.state}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">
+                    {new Date(p.created_at).toLocaleDateString(undefined, {
+                      year: "numeric", month: "short", day: "numeric",
+                    })}
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => handleDownload(p.id)}
+                        disabled={downloadingId === p.id}
+                      >
+                        {downloadingId === p.id ? (
+                          <Loader2 className="size-3 animate-spin" />
+                        ) : (
+                          <Download className="size-3" />
+                        )}
+                        PDF
+                      </Button>
+                      <Link
+                        href={`/season-manager/artifact/${p.id}`}
+                        className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-muted"
+                      >
+                        Open <ExternalLink className="size-3" />
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // soil_reports
+  if (soilReports.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center text-sm text-muted-foreground">
+          No soil reports for this client yet.{" "}
+          <Link
+            href={`/clients/${clientId}/soil-reports/new`}
+            className="text-[var(--sapling-orange)] hover:underline"
+          >
+            Generate one →
+          </Link>
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <table className="w-full text-sm">
+          <thead className="border-b bg-muted/30 text-left">
+            <tr>
+              <th className="px-3 py-2 font-medium">Title</th>
+              <th className="px-3 py-2 font-medium">Scope</th>
+              <th className="px-3 py-2 font-medium">Coverage</th>
+              <th className="px-3 py-2 font-medium">State</th>
+              <th className="px-3 py-2 font-medium">Created</th>
+              <th className="px-3 py-2 font-medium text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {soilReports.map((r) => (
+              <tr key={r.id} className="border-b last:border-0">
+                <td className="px-3 py-2 font-medium">
+                  <Link
+                    href={`/clients/${clientId}/soil-reports/${r.id}`}
+                    className="hover:text-[var(--sapling-orange)] hover:underline"
+                  >
+                    {r.title || r.farm_name || "—"}
+                  </Link>
+                </td>
+                <td className="px-3 py-2 capitalize text-xs">
+                  {r.scope_kind.replace(/_/g, " ")}
+                </td>
+                <td className="px-3 py-2 text-xs">
+                  {r.block_count} block{r.block_count !== 1 ? "s" : ""} · {r.analysis_count} analys
+                  {r.analysis_count === 1 ? "is" : "es"}
+                </td>
+                <td className="px-3 py-2">
+                  <span
+                    className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                      r.state === "draft"
+                        ? "bg-slate-200 text-slate-800"
+                        : r.state === "approved"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-stone-200 text-stone-700"
+                    }`}
+                  >
+                    {r.state}
+                  </span>
+                  {r.narrative_locked && (
+                    <span className="ml-1 inline-flex items-center gap-0.5 rounded bg-slate-200 px-1.5 py-0.5 text-[9px] font-bold uppercase text-slate-700">
+                      <Lock className="size-2.5" />
+                      AI
+                    </span>
+                  )}
+                </td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">
+                  {new Date(r.created_at).toLocaleDateString(undefined, {
+                    year: "numeric", month: "short", day: "numeric",
+                  })}
+                </td>
+                <td className="px-3 py-2 text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={() => handleDownload(r.id)}
+                      disabled={downloadingId === r.id}
+                    >
+                      {downloadingId === r.id ? (
+                        <Loader2 className="size-3 animate-spin" />
+                      ) : (
+                        <Download className="size-3" />
+                      )}
+                      PDF
+                    </Button>
+                    <Link
+                      href={`/clients/${clientId}/soil-reports/${r.id}`}
+                      className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-muted"
+                    >
+                      Open <ExternalLink className="size-3" />
+                    </Link>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </CardContent>
+    </Card>
   );
 }

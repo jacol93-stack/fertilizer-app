@@ -270,7 +270,7 @@ function ApplicationForm({
           >
             <option value="broadcast">Broadcast</option>
             <option value="band">Banded</option>
-            <option value="side_dress">Side-dress</option>
+            <option value="side_dress">Banded ring</option>
             <option value="fertigation">Fertigation</option>
             <option value="foliar">Foliar</option>
           </select>

@@ -65,6 +65,7 @@ export interface BlockInfo {
   nutrient_explanations?: NutrientExplanation[];
   corrective_targets?: CorrectiveTarget[];
   missing_corrective_data?: string[];
+  corrective_assumptions?: string[];
   /** Set when this block has no soil analysis but the user attached it
    * to a group on the cluster step. Triggers the read-only "passenger"
    * presentation: stages copied from the group's mate, no editable
@@ -494,6 +495,7 @@ export function ScheduleReview({
                     <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
                       c.type === "lime" ? "bg-amber-200 text-amber-800" :
                       c.type === "gypsum" ? "bg-blue-200 text-blue-800" :
+                      c.type === "sulphur" ? "bg-yellow-200 text-yellow-800" :
                       "bg-green-200 text-green-800"
                     }`}>
                       {c.type === "organic_matter" ? "Org C" : c.type}
@@ -524,13 +526,28 @@ export function ScheduleReview({
               </div>
             )}
 
-            {/* Missing corrective data banner */}
-            {bi.missing_corrective_data && bi.missing_corrective_data.length > 0 && (
+            {/* Missing corrective data banner — only when there's genuinely
+                no plan to show. When the engine produced corrective targets
+                with assumptions, the soft note (below) carries the message
+                instead. */}
+            {bi.missing_corrective_data && bi.missing_corrective_data.length > 0
+              && (!bi.corrective_targets || bi.corrective_targets.length === 0) && (
               <div className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
                 <p className="text-xs text-amber-800">
                   <span className="font-medium">Soil correction plan unavailable</span> — missing{" "}
                   <strong>{bi.missing_corrective_data.join(", ")}</strong> from soil analysis.
                   These values are needed to calculate corrective fertilizer rates and timelines.
+                </p>
+              </div>
+            )}
+
+            {/* Corrective-plan assumptions — soft note when the plan was
+                produced with defaults filled in for missing inputs. Keeps
+                the upsell visible while flagging what's assumed. */}
+            {bi.corrective_assumptions && bi.corrective_assumptions.length > 0 && (
+              <div className="mx-4 mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <p className="text-[11px] text-slate-700">
+                  <span className="font-medium">Sized with assumption</span> — {bi.corrective_assumptions.join(" ")}
                 </p>
               </div>
             )}

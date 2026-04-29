@@ -72,9 +72,14 @@
   <ol class="contents__list">
     {% for entry in contents_entries %}
     <li class="contents__row">
-      <span class="contents__num">{{ "%02d"|format(loop.index) }}</span>
-      <span class="contents__title">{{ entry.title }}</span>
-      <span class="contents__page">p. {{ "%02d"|format(entry.page) }}</span>
+      {# The anchor link drives WeasyPrint's `target-counter(attr(href), page)`
+         in style.css — page numbers come from the actual rendered position
+         of each section, so the TOC stays correct regardless of report
+         length, Opus prose expansion, or section reordering. #}
+      <a class="contents__link" href="#{{ entry.anchor }}">
+        <span class="contents__num">{{ "%02d"|format(loop.index) }}</span>
+        <span class="contents__title">{{ entry.title }}</span>
+      </a>
     </li>
     {% endfor %}
   </ol>
@@ -83,7 +88,7 @@
 {# ============================================================
    SECTION 01 — BACKGROUND
    ============================================================ #}
-<section class="section">
+<section class="section" id="section-background">
   {% include "_page_header.html" %}
   <span class="section__label">Section 01</span>
   <h2 class="section__title">Background.</h2>
@@ -100,109 +105,340 @@
 </section>
 
 {# ============================================================
-   SECTION 02 — READING OF THE SOIL
+   SECTION 02 — SOIL REPORT
+   Per-block parameter reading + range chart, full ratio table (every
+   relevant ratio for the crop, including the ones in good shape), and
+   loudest-signal callouts. Uses structured nutrient_status +
+   factor_findings data the orchestrator persists onto each
+   SoilSnapshot. Cluster aggregates and dataless blocks are filtered
+   out server-side.
    ============================================================ #}
 {% if soil_snapshots %}
-<section class="section">
+<section class="section" id="section-soil">
   {% include "_page_header.html" %}
-  <span class="section__label">Section 02</span>
-  <h2 class="section__title">Reading of the Soil.</h2>
-  <p class="section__intro">{{ soil_intro }}</p>
+  <div class="section-cover">
+    <span class="section__label">Section 02</span>
+    <h2 class="section__title">Soil Report.</h2>
+    <p class="section__intro">{{ soil_intro }}</p>
+  </div>
 
   {% for snap in soil_snapshots %}
-  {% if soil_snapshots|length > 1 %}
-  <h3 class="subsection">{{ snap.block_name }} ({{ "%.2f"|format(snap.block_area_ha) }} ha)</h3>
-  {% endif %}
-  {% if snap.sample_label %}
-  <p class="sample-meta">Sample: {{ snap.sample_label }}</p>
-  {% endif %}
+  <div class="soil-block">
+    <div class="soil-block__header">
+      <h3 class="subsection soil-block__title">
+        {{ snap.block_name }}
+        <span class="soil-block__meta">{{ "%.2f"|format(snap.block_area_ha) }} ha</span>
+      </h3>
+      {% if snap.sample_label %}
+      <p class="sample-meta">{{ snap.sample_label }}</p>
+      {% endif %}
+    </div>
 
-  {% if snap.headline_signals %}
-  <h3 class="subsection">The loudest signals</h3>
-  {% for sig in snap.headline_signals %}
-  <div class="signal">
-    <p class="signal__body">{{ sig }}</p>
+    {% if snap.nutrient_rows %}
+    <h4 class="soil-block__subhead">Nutrients vs ideal</h4>
+    <table class="soil-table">
+      <thead>
+        <tr>
+          <th>Parameter</th>
+          <th>Reading</th>
+          <th>Optimal range</th>
+          <th>Status</th>
+          <th class="soil-table__bar-col">Position vs ideal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in snap.nutrient_rows %}
+        <tr>
+          <td class="soil-table__name">{{ row.label }}</td>
+          <td class="mono">{{ row.value_display }}{% if row.unit %} {{ row.unit }}{% endif %}</td>
+          <td class="mono soil-table__optimal">{{ row.optimal_display }}{% if row.unit %} {{ row.unit }}{% endif %}</td>
+          <td>
+            <span class="status status--{{ row.status }}">{{ row.status_label }}</span>
+          </td>
+          <td>
+            <div class="range-bar">
+              <div class="range-bar__optimal"
+                   style="left: {{ "%.1f"|format(row.bar_optimal_left_pct) }}%;
+                          width: {{ "%.1f"|format(row.bar_optimal_width_pct) }}%;"></div>
+              <div class="range-bar__marker range-bar__marker--{{ row.status }}"
+                   style="left: {{ "%.1f"|format(row.bar_value_pct) }}%;"></div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    {% if snap.ratio_rows %}
+    <h4 class="soil-block__subhead">Ratios &amp; balance checks</h4>
+    <table class="soil-table soil-table--ratios">
+      <thead>
+        <tr>
+          <th>Ratio</th>
+          <th>Reading</th>
+          <th>Target</th>
+          <th>Status</th>
+          <th class="soil-table__bar-col">Position vs ideal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in snap.ratio_rows %}
+        <tr>
+          <td class="soil-table__name">{{ row.label }}</td>
+          <td class="mono">{{ row.value_display }}</td>
+          <td class="mono soil-table__optimal">{{ row.target_display }}</td>
+          <td>
+            <span class="status status--{{ row.severity }}">{{ row.severity_label }}</span>
+          </td>
+          <td>
+            <div class="range-bar">
+              <div class="range-bar__optimal"
+                   style="left: {{ "%.1f"|format(row.bar_optimal_left_pct) }}%;
+                          width: {{ "%.1f"|format(row.bar_optimal_width_pct) }}%;"></div>
+              <div class="range-bar__marker range-bar__marker--{{ row.severity if row.severity in ['low', 'high', 'ok'] else 'high' if row.severity in ['warn', 'critical'] else 'ok' }}"
+                   style="left: {{ "%.1f"|format(row.bar_value_pct) }}%;"></div>
+            </div>
+          </td>
+        </tr>
+        {% if row.message or row.recommended_action %}
+        <tr class="soil-table__note-row">
+          <td></td>
+          <td colspan="4" class="soil-table__note">
+            {{ row.message }}
+            {% if row.recommended_action %}
+            <span class="soil-table__action">{{ row.recommended_action }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    {% if snap.headline_signals %}
+    <h4 class="soil-block__subhead">The loudest signals</h4>
+    {% for sig in snap.headline_signals %}
+    <div class="signal">
+      <p class="signal__body">{{ sig }}</p>
+    </div>
+    {% endfor %}
+    {% endif %}
   </div>
-  {% endfor %}
-  {% endif %}
   {% endfor %}
 </section>
 {% endif %}
 
 {# ============================================================
-   SECTION 03 — APPLICATIONS
+   SECTION 03 — PRE-SEASON ACTIONS
+   Lime / gypsum / organic-matter corrections that need time to react
+   before the in-season programme starts. Pulled from
+   pre_season_recommendations on the artifact. Drops out entirely when
+   the engine produced no recommendations.
    ============================================================ #}
-{% if blends_by_block %}
-<section class="section">
+{% if pre_season_recommendations %}
+<section class="section" id="section-pre-season">
   {% include "_page_header.html" %}
   <span class="section__label">Section 03</span>
-  <h2 class="section__title">Applications.</h2>
+  <h2 class="section__title">Pre-Season Actions.</h2>
+  <p class="section__intro">Corrective amendments that need to be on the ground before the in-season programme begins. Rates are per-block — each block gets the rate its soil chemistry calls for, even when grouped with other blocks for the in-season programme. Lime / gypsum / dolomite spreaders apply per-area, so per-block precision is operationally easy.</p>
 
-  {% for block_id, block_blends in blends_by_block.items() %}
-  {% if blends_by_block|length > 1 %}
-  <h3 class="subsection">{{ block_names_by_id[block_id] }}</h3>
-  {% endif %}
-  {% for blend in block_blends %}
-    <div class="app-block">
-      <div class="app-strip">
-        <span class="app-strip__title">{{ blend.method_label|upper }} · {{ blend.stage_name }}</span>
-        <span class="app-strip__day">Stage {{ blend.stage_number }}</span>
-        <span class="app-strip__date">{{ blend.dates_label }}</span>
-      </div>
-
-      <table class="data-table">
+  {% set last_letter = namespace(value=None) %}
+  {% for r in pre_season_recommendations %}
+    {% if r.group_letter != last_letter.value %}
+      {% if last_letter.value is not none %}
+        </tbody></table>
+      {% endif %}
+      <h3 class="subsection preseason-group__heading">
+        Group {{ r.group_letter }}
+        <span class="preseason-group__members">All blocks: {{ r.group_member_summary }}</span>
+      </h3>
+      <table class="data-table preseason-table">
         <thead>
           <tr>
-            <th>Product</th>
-            <th>Rate / ha</th>
-            {% if blend.is_liquid %}<th>Stream</th>{% endif %}
+            <th>Block</th>
+            <th>Material</th>
+            <th>Rate</th>
+            <th>Apply by</th>
+            <th>Reaction</th>
           </tr>
         </thead>
         <tbody>
-          {% for part in blend.raw_products %}
-          <tr>
-            <td>{{ part.display_label }}</td>
-            <td class="mono">{{ part.rate_per_stage_per_ha or part.rate_per_event_per_ha or "—" }}</td>
-            {% if blend.is_liquid %}
-            <td class="mono">{% if part.stream %}Part {{ part.stream }}{% else %}—{% endif %}</td>
-            {% endif %}
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-
-      {% if blend.applications|length > 1 %}
-      <div class="schedule">
-        <span class="schedule__label">Application schedule</span>
-        <table class="schedule__table">
-          <thead>
-            <tr><th>#</th><th>Date</th><th>Week</th><th>Of stage</th></tr>
-          </thead>
-          <tbody>
-            {% for app in blend.applications %}
-            <tr>
-              <td>{{ loop.index }}</td>
-              <td>{{ app.date_formatted }}</td>
-              <td>{{ app.week_from_planting }}</td>
-              <td>{{ loop.index }} of {{ blend.applications|length }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% endif %}
-
-      {% if blend.nutrients_delivered %}
-      <p class="nut-summary">
-        Delivered per ha:
-        {% for nut, val in blend.nutrients_delivered %}
-        <span class="nut-summary__nut">{{ nut|nutrient_pretty|safe }} {{ "%.1f"|format(val) }}</span>{% if not loop.last %} · {% endif %}
-        {% endfor %}
-        kg
-      </p>
-      {% endif %}
-    </div>
+      {% set last_letter.value = r.group_letter %}
+    {% endif %}
+    <tr class="preseason-table__data">
+      <td class="preseason-table__block">{{ r.block_name }}</td>
+      <td>{{ r.material }}</td>
+      <td class="mono">{{ r.target_rate_per_ha }}</td>
+      <td class="mono">{{ r.apply_by or "—" }}</td>
+      <td class="mono">{% if r.reaction_time_months %}~{{ r.reaction_time_months }} mo{% else %}—{% endif %}</td>
+    </tr>
+    <tr class="preseason-table__why-row">
+      <td colspan="5" class="preseason-table__why">
+        {{ r.reason }}
+        {% if r.expected_status_at_planting %}<span class="preseason-table__expected">{{ r.expected_status_at_planting }}</span>{% endif %}
+      </td>
+    </tr>
   {% endfor %}
+  {% if last_letter.value is not none %}
+    </tbody></table>
+  {% endif %}
+</section>
+{% endif %}
+
+{# ============================================================
+   SECTION 04 — APPLICATION WALKTHROUGH
+   Layout: per group, then calendar order within the group. Each
+   single-pass day is a `walk-card`. A paired day (two concurrent
+   passes) is a `walk-day--split` container with both cards inside +
+   a "two parallel passes — here's why" header so the farmer reads it
+   as one day's split work, not two unrelated cards.
+   ============================================================ #}
+{% if walkthrough.groups %}
+<section class="section" id="section-walkthrough">
+  {% include "_page_header.html" %}
+  <div class="section-cover">
+    <span class="section__label">Section 04</span>
+    <h2 class="section__title">Application Walkthrough.</h2>
+    <p class="section__intro">{{ walkthrough.intro }}</p>
+  </div>
+
+  {% if walkthrough.calendar_strip %}
+  <div class="calendar-strip">
+    {% for entry in walkthrough.calendar_strip %}
+    <div class="calendar-strip__cell">
+      <span class="calendar-strip__month">{{ entry.month }}</span>
+      <span class="calendar-strip__count">{{ entry.count }} application{% if entry.count != 1 %}s{% endif %}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% for group in walkthrough.groups %}
+  <div class="group-block">
+    <header class="group-block__header">
+      <span class="group-block__letter">{{ group.letter }}</span>
+      <div class="group-block__title-block">
+        <h3 class="group-block__title">Group {{ group.letter }}</h3>
+        <p class="group-block__meta">
+          {{ group.block_count }} block{% if group.block_count != 1 %}s{% endif %} ·
+          {{ "%.1f"|format(group.total_area_ha) }} ha ·
+          {{ group.application_count }} application{% if group.application_count != 1 %}s{% endif %}
+        </p>
+        <p class="group-block__members">{{ group.members|join(' · ') }}</p>
+      </div>
+    </header>
+
+    {% for day in group.days %}
+      {% if day.is_split %}
+      <div class="walk-day walk-day--split">
+        <header class="walk-day__header">
+          <span class="walk-day__date">{{ day.date_full }}</span>
+          <span class="walk-day__split-tag">{{ day.applications|length }} parallel passes</span>
+        </header>
+        {% if day.split_reason %}
+        <p class="walk-day__split-reason">{{ day.split_reason }}</p>
+        {% endif %}
+        <div class="walk-day__passes">
+          {% for app in day.applications %}
+          <article class="walk-card walk-card--in-split">
+            <header class="walk-card__header">
+              <span class="walk-card__number">{{ app.number }}</span>
+              <span class="walk-card__pass-label">{{ app.pass_label }}</span>
+              <span class="walk-card__method">{{ app.method_label|upper }}</span>
+            </header>
+            <p class="walk-card__action">{{ app.action_headline }}</p>
+            <dl class="walk-card__facts">
+              <div class="walk-card__fact">
+                <dt>How</dt>
+                <dd>{{ app.method_placement }}</dd>
+              </div>
+              {% if app.total_kg %}
+              <div class="walk-card__fact">
+                <dt>Total this pass</dt>
+                <dd class="mono">{{ "{:,.0f}".format(app.total_kg).replace(",", " ") }} kg ({{ "%.1f"|format(app.area_ha) }} ha &times; {{ "%.0f"|format(app.rate_per_ha_kg) }} kg/ha)</dd>
+              </div>
+              {% endif %}
+            </dl>
+            {% if app.nutrient_chips %}
+            <div class="walk-card__delivery">
+              <span class="walk-card__delivery-label">Per ha this pass delivers</span>
+              <div class="walk-card__chips">
+                {% for chip in app.nutrient_chips %}
+                <span class="nutrient-chip">
+                  <span class="nutrient-chip__label">{{ chip.label|safe }}</span>
+                  <span class="nutrient-chip__value">{{ chip.value }}</span>
+                </span>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+            {% if app.why_brief %}
+            <p class="walk-card__why">
+              <span class="walk-card__why-label">Why this pass</span>
+              <span class="walk-card__why-body">{{ app.why_brief }}</span>
+            </p>
+            {% endif %}
+          </article>
+          {% endfor %}
+        </div>
+      </div>
+      {% else %}
+      {% set app = day.applications[0] %}
+      <article class="walk-card">
+        <header class="walk-card__header">
+          <span class="walk-card__number">{{ app.number }}</span>
+          <div class="walk-card__date-block">
+            <span class="walk-card__date">{{ app.date_full }}</span>
+            {% if app.week_from_planting is not none %}
+            <span class="walk-card__week">{% if walkthrough.is_perennial %}Week {{ app.week_from_planting }} of season{% else %}Week {{ app.week_from_planting }} from planting{% endif %}</span>
+            {% endif %}
+          </div>
+          <span class="walk-card__method">{{ app.method_label|upper }}</span>
+        </header>
+        <p class="walk-card__action">{{ app.action_headline }}</p>
+        <dl class="walk-card__facts">
+          <div class="walk-card__fact">
+            <dt>How</dt>
+            <dd>{{ app.method_placement }}</dd>
+          </div>
+          {% if app.total_kg %}
+          <div class="walk-card__fact">
+            <dt>Total this pass</dt>
+            <dd class="mono">{{ "{:,.0f}".format(app.total_kg).replace(",", " ") }} kg of fertilizer ({{ "%.1f"|format(app.area_ha) }} ha &times; {{ "%.0f"|format(app.rate_per_ha_kg) }} kg/ha)</dd>
+          </div>
+          {% endif %}
+          {% if app.stage_name %}
+          <div class="walk-card__fact">
+            <dt>Stage</dt>
+            <dd>{{ app.stage_name|capitalize }}{% if app.stage_explanation %} <span class="walk-card__hint">— {{ app.stage_explanation }}</span>{% endif %}</dd>
+          </div>
+          {% endif %}
+        </dl>
+        {% if app.why_brief %}
+        <p class="walk-card__why">
+          <span class="walk-card__why-label">Why this one</span>
+          <span class="walk-card__why-body">{{ app.why_brief }}</span>
+        </p>
+        {% endif %}
+        {% if app.nutrient_chips %}
+        <div class="walk-card__delivery">
+          <span class="walk-card__delivery-label">Per hectare this pass delivers</span>
+          <div class="walk-card__chips">
+            {% for chip in app.nutrient_chips %}
+            <span class="nutrient-chip">
+              <span class="nutrient-chip__label">{{ chip.label|safe }}</span>
+              <span class="nutrient-chip__value">{{ chip.value }}</span>
+            </span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </article>
+      {% endif %}
+    {% endfor %}
+  </div>
   {% endfor %}
 </section>
 {% endif %}
@@ -211,21 +447,33 @@
    SECTION 04 — FOLIAR SPRAYS
    ============================================================ #}
 {% if foliar_events %}
-<section class="section">
+<section class="section" id="section-foliar">
   {% include "_page_header.html" %}
-  <span class="section__label">Section 04</span>
+  <span class="section__label">Section 05</span>
   <h2 class="section__title">Foliar Sprays.</h2>
   <p class="section__intro">Targeted foliar applications addressing soil-availability gaps and stage-peak demand windows.</p>
 
+  {% for group in foliar_events %}
+  <h3 class="subsection foliar-group__heading">
+    Group {{ group.letter }}
+    <span class="foliar-group__count">{{ group.event_count }} foliar event{% if group.event_count != 1 %}s{% endif %}</span>
+  </h3>
   <table class="data-table foliar-table">
     <thead>
-      <tr><th>#</th><th>Week</th><th>Stage</th><th>Analysis</th><th>Rate</th><th>Reason</th></tr>
+      <tr>
+        <th>Week</th>
+        <th>Block</th>
+        <th>Stage</th>
+        <th>Analysis</th>
+        <th>Rate</th>
+        <th>Reason</th>
+      </tr>
     </thead>
     <tbody>
-      {% for f in foliar_events %}
+      {% for f in group.events %}
       <tr>
-        <td class="mono">#{{ f.event_number }}</td>
         <td class="mono">{{ f.week }}</td>
+        <td>{{ f.block_name }}</td>
         <td>{{ f.stage_name }}</td>
         <td>{{ f.analysis }}</td>
         <td class="mono">{{ f.rate_per_ha }}</td>
@@ -234,6 +482,7 @@
       {% endfor %}
     </tbody>
   </table>
+  {% endfor %}
 </section>
 {% endif %}
 
@@ -241,22 +490,20 @@
    SECTION 05 — NUTRIENT BALANCE
    ============================================================ #}
 {% if nutrient_balance %}
-<section class="section">
+<section class="section" id="section-totals">
   {% include "_page_header.html" %}
-  <span class="section__label">Section 05</span>
-  <h2 class="section__title">Nutrient Balance.</h2>
-  <p class="section__intro">Per hectare, applied this season against the expected harvest removal.</p>
+  <span class="section__label">Section 06</span>
+  <h2 class="section__title">Season Totals.</h2>
+  <p class="section__intro">Total applied this season per hectare, averaged across blocks. Drives shopping list and shed planning.</p>
   <table class="data-table">
     <thead>
-      <tr><th>Nutrient</th><th>Applied</th><th>Removed</th><th>Net</th></tr>
+      <tr><th>Nutrient</th><th>Applied per ha</th></tr>
     </thead>
     <tbody>
       {% for row in nutrient_balance %}
       <tr>
         <td>{{ row.label }}</td>
         <td class="mono">{{ row.applied }}</td>
-        <td class="mono">{{ row.removed }}</td>
-        <td>{{ row.net }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -264,37 +511,16 @@
 </section>
 {% endif %}
 
-{# ============================================================
-   SECTION 06 — RATIOS
-   ============================================================ #}
-{% if ratios_rows %}
-<section class="section">
-  {% include "_page_header.html" %}
-  <span class="section__label">Section 06</span>
-  <h2 class="section__title">Ratios &mdash; Where You Are and Where We're Heading.</h2>
-  <table class="data-table">
-    <thead>
-      <tr><th>Ratio / Saturation</th><th>Current</th><th>Target</th><th>Status</th></tr>
-    </thead>
-    <tbody>
-      {% for row in ratios_rows %}
-      <tr>
-        <td>{{ row.label }}</td>
-        <td class="mono">{{ row.current }}</td>
-        <td class="mono">{{ row.target }}</td>
-        <td>{% if row.status %}<span class="status status--{{ row.status_class }}">{{ row.status }}</span>{% endif %}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</section>
-{% endif %}
+{# Ratios are now part of Section 02 (Soil Report) — full per-block
+   table with bounds, status, and range bars. The standalone
+   "Ratios — Where You Are and Where We're Heading" section was
+   dropped to remove the duplication. #}
 
 {# ============================================================
    SECTION 07 — YEAR 2 AND BEYOND (if perennial)
    ============================================================ #}
 {% if year_outlook_cards %}
-<section class="section">
+<section class="section" id="section-outlook">
   {% include "_page_header.html" %}
   <span class="section__label">Section 07</span>
   <h2 class="section__title">Year 2 and Beyond.</h2>
@@ -320,39 +546,26 @@
 {# ============================================================
    SECTION 08 — ITEMS WE'RE CARRYING
    ============================================================ #}
-{% if outstanding_items or risk_flags or assumptions %}
-<section class="section">
+{% if carrying_items %}
+<section class="section" id="section-items">
   {% include "_page_header.html" %}
   <span class="section__label">Section 08</span>
   <h2 class="section__title">Items We're Carrying Into The Season.</h2>
-  <p class="section__intro">For transparency — open questions and watchpoints across the programme.</p>
+  <p class="section__intro">Open questions, watchpoints, and defaults — grouped by when they need attention. Replaces the old split between "risk flags", "open items", and "assumptions"; one severity-banded list with cross-bucket duplicates removed.</p>
 
-  {% if risk_flags %}
-  <h3 class="subsection">Risk flags</h3>
+  {% for band in carrying_bands %}
+  <h3 class="subsection">{{ band.title }}</h3>
+  <p class="subsection__hint">{{ band.description }}</p>
   <ol class="numbered-list">
-    {% for f in risk_flags %}
-    <li><strong>{{ f.severity_label }}.</strong> {{ f.message }}</li>
+    {% for it in band['items'] %}
+    <li>
+      <strong>{{ it.title }}.</strong>
+      {{ it.body }}
+      {% if it.action %}<em>{{ it.action }}</em>{% endif %}
+    </li>
     {% endfor %}
   </ol>
-  {% endif %}
-
-  {% if outstanding_items %}
-  <h3 class="subsection">Open items</h3>
-  <ol class="numbered-list">
-    {% for o in outstanding_items %}
-    <li><strong>{{ o.item }}.</strong> {{ o.why_it_matters }}{% if o.impact_if_skipped %} <em>Impact if skipped: {{ o.impact_if_skipped }}</em>{% endif %}</li>
-    {% endfor %}
-  </ol>
-  {% endif %}
-
-  {% if assumptions %}
-  <h3 class="subsection">Assumptions</h3>
-  <ol class="numbered-list">
-    {% for a in assumptions %}
-    <li><strong>{{ a.field }}.</strong> {{ a.assumed_value }}{% if a.override_guidance %} <em>{{ a.override_guidance }}</em>{% endif %}</li>
-    {% endfor %}
-  </ol>
-  {% endif %}
+  {% endfor %}
 
   <div class="end-marker">End of Programme</div>
   {% if header.ref_number %}

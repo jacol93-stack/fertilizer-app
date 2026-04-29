@@ -215,6 +215,13 @@ export const api = {
     return res.blob();
   },
 
+  getBlob: async (path: string): Promise<Blob> => {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_URL}${normalizePath(path)}`, { headers });
+    if (!res.ok) throw new Error(`Download failed (${res.status})`);
+    return res.blob();
+  },
+
   postPdf: async (path: string, body: unknown): Promise<Blob> => {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_URL}${normalizePath(path)}`, {

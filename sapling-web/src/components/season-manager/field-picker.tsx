@@ -506,7 +506,8 @@ function FieldRowCard({
                       <option value="">No analysis linked</option>
                       {analyses.map((a) => (
                         <option key={a.id} value={a.id}>
-                          {a.lab_name ? `${a.lab_name} · ` : ""}{new Date(a.created_at).toLocaleDateString()}
+                          {a.lab_name ? `${a.lab_name} · ` : ""}
+                          {new Date(a.analysis_date || a.created_at).toLocaleDateString()}
                           {a.crop ? ` · ${a.crop}` : ""}
                         </option>
                       ))}

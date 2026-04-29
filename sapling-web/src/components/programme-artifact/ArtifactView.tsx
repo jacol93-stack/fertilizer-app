@@ -263,9 +263,9 @@ function PreSeasonSection({
                     {p.effective_n_kg_per_ha > 0 &&
                       ` N ${p.effective_n_kg_per_ha}`}
                     {p.effective_p2o5_kg_per_ha > 0 &&
-                      ` · P₂O₅ ${p.effective_p2o5_kg_per_ha}`}
+                      ` · P ${p.effective_p2o5_kg_per_ha}`}
                     {p.effective_k2o_kg_per_ha > 0 &&
-                      ` · K₂O ${p.effective_k2o_kg_per_ha}`}
+                      ` · K ${p.effective_k2o_kg_per_ha}`}
                     {p.effective_ca_kg_per_ha > 0 &&
                       ` · Ca ${p.effective_ca_kg_per_ha}`}
                     {p.effective_mg_kg_per_ha > 0 &&

@@ -48,8 +48,10 @@ The programme serves the following objectives:
 
 | Product | Rate / ha | Stream |
 |---|---:|:---:|
-| N 2.1%, P₂O₅ 1.0%, K₂O 1.6%, Ca 2.2%, Mg 1.0%, S 0.7% source | 500 kg | — |
-| N 11.0%, P₂O₅ 51.0% source | 4.1 kg | — |
+| N 2.1%, P 1.0%, K 1.6%, Ca 2.2%, Mg 1.0%, S 0.7% source | 500 kg | — |
+| K 60.0% source | 37 kg | — |
+| N 11.0%, P 51.0% source | 4.1 kg | — |
+| P 10.0%, Ca 18.0%, S 11.0% source | 8.2 kg | — |
 
 **Application schedule:**
 
@@ -58,16 +60,14 @@ The programme serves the following objectives:
 | 1 | 15 Jul 2026 | 3 | 1 of 2 |
 | 2 | 15 Aug 2026 | 7 | 2 of 2 |
 
-Delivered per ha: **P2O5** 7.1 kg
+Delivered per ha: **N** 11.0 · **P2O5** 7.9 · **K2O** 30.1 · **Ca** 12.5 · **Mg** 5.0 · **S** 4.4 kg
 
 **Stage 1 — establishment · Fertigation (drip)** (Weeks 3-7, 2 events)
 *15 Jul – 15 Aug 2026*
 
 | Product | Rate / ha | Stream |
 |---|---:|:---:|
-| N 13.0%, K₂O 46.0% source | 60 kg | Part B |
-| N 15.5%, Ca 19.0% source | 66 kg | Part A |
-| Mg 10.0%, S 13.0% source | 23 kg | Part B |
+| N 15.5%, Ca 19.0% source | 116 kg | Part A |
 
 **Application schedule:**
 
@@ -76,16 +76,16 @@ Delivered per ha: **P2O5** 7.1 kg
 | 1 | 15 Jul 2026 | 3 | 1 of 2 |
 | 2 | 15 Aug 2026 | 7 | 2 of 2 |
 
-Delivered per ha: **N** 18.0 · **K2O** 27.8 · **S** 3.0 kg
+Delivered per ha: **N** 18.0 · **Ca** 22.1 kg
 
 **Stage 2 — vegetative · Fertigation (drip)** (Weeks 11-16, 2 events)
 *15 Sep – 15 Oct 2026*
 
 | Product | Rate / ha | Stream |
 |---|---:|:---:|
-| N 13.0%, K₂O 46.0% source | 80 kg | Part B |
+| N 13.0%, K 46.0% source | 80 kg | Part B |
 | N 15.5%, Ca 19.0% source | 126 kg | Part A |
-| N 11.0%, P₂O₅ 51.0% source | 14 kg | Part B |
+| N 11.0%, P 51.0% source | 14 kg | Part B |
 | Mg 10.0%, S 13.0% source | 29 kg | Part B |
 
 **Application schedule:**
@@ -95,19 +95,19 @@ Delivered per ha: **N** 18.0 · **K2O** 27.8 · **S** 3.0 kg
 | 1 | 15 Sep 2026 | 11 | 1 of 2 |
 | 2 | 15 Oct 2026 | 16 | 2 of 2 |
 
-Delivered per ha: **N** 31.5 · **P2O5** 7.0 · **K2O** 37.0 · **S** 3.8 kg
+Delivered per ha: **N** 31.5 · **P2O5** 7.0 · **K2O** 37.0 · **Ca** 24.0 · **Mg** 2.9 · **S** 3.8 kg
 
 **Stage 3 — reproductive · Fertigation (drip)** (Week 20, 1 event)
 *15 Nov 2026*
 
 | Product | Rate / ha | Stream |
 |---|---:|:---:|
-| N 13.0%, K₂O 46.0% source | 161 kg | Part B |
+| N 13.0%, K 46.0% source | 161 kg | Part B |
 | N 15.5%, Ca 19.0% source | 136 kg | Part A |
-| N 11.0%, P₂O₅ 51.0% source | 16 kg | Part B |
+| N 11.0%, P 51.0% source | 16 kg | Part B |
 | Mg 10.0%, S 13.0% source | 35 kg | Part B |
 
-Delivered per ha: **N** 43.8 · **P2O5** 8.4 · **K2O** 74.0 · **S** 4.5 kg
+Delivered per ha: **N** 43.8 · **P2O5** 8.4 · **K2O** 74.0 · **Ca** 25.8 · **Mg** 3.5 · **S** 4.5 kg
 
 **Foliar sprays**
 
@@ -182,7 +182,5 @@ This is a perennial citrus (valencia) programme, so Year 1 is the establishment 
 
 ### Outstanding items
 
-- **Application-month coverage gap** — Stage 4 'fill' (Jan–Mar) has no allowed application month inside its window. Nutrients for this stage were not delivered. Consider adding a month within this window.
-- **Application-month coverage gap** — Stage 5 'maturation' (Mar–May) has no allowed application month inside its window. Nutrients for this stage were not delivered. Consider adding a month within this window.
 - **Irrigation water test (EC, pH, Ca, Mg, Na, HCO₃, Cl)** — Required before first Part A injection. Dolomite-country water can produce scale when calcium-stream stock is injected. Borehole water EC + bicarb level affect drip-line pH. — *Impact if skipped: Risk of emitter blockage from CaCO₃ precipitate*
 - **Mid-season leaf tissue analysis at tillering and at bulb-init/flowering** — Two natural decision points where the programme can still be steered. Catches deficiencies the soil test missed and validates actual uptake against plan. — *Impact if skipped: Mid-season corrections become reactive, not anticipatory*

@@ -125,7 +125,12 @@ def test_consolidate_produces_blends_per_stage():
 def test_consolidate_produces_fertigation_concentrates():
     targets = {"N": 100, "P2O5": 40, "K2O": 80, "Ca": 60, "S": 20}
     splits = split_season_targets("Garlic", targets, stage_count=5)
-    avail = MethodAvailability(has_drip=True)
+    # Drip-only — explicit `has_granular_spreader=False` so the basal
+    # P/K/Ca/S routing rule doesn't divert to dry (Pydantic default for
+    # has_granular_spreader is True; without overriding, the test
+    # implicitly has both drip + dry which was masking the routing
+    # rule's basal-dry behaviour).
+    avail = MethodAvailability(has_drip=True, has_granular_spreader=False)
     assignments = select_methods(splits, avail)
 
     blends = consolidate_blends(
@@ -230,7 +235,8 @@ def test_events_and_dates_populated_from_schedule():
     """When StageSchedule provided, blend events + weeks labels populate."""
     targets = {"N": 100, "K2O": 80}
     splits = split_season_targets("Garlic", targets, stage_count=5)
-    avail = MethodAvailability(has_drip=True)
+    # Drip-only (see comment on test_consolidate_produces_fertigation_concentrates).
+    avail = MethodAvailability(has_drip=True, has_granular_spreader=False)
     assignments = select_methods(splits, avail)
 
     schedule = [

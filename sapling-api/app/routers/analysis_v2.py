@@ -46,7 +46,9 @@ class AnalysisBlockRequest(BaseModel):
     block_area_ha: float = Field(..., gt=0)
     soil_parameters: dict[str, float] = Field(default_factory=dict)
     leaf_values: Optional[dict[str, float]] = None
-    yield_target_per_ha: Optional[float] = Field(None, gt=0)
+    # Optional — engine falls back to crop_requirements.default_yield
+    # (full-bearing potential) when missing/0 and emits an Assumption.
+    yield_target_per_ha: Optional[float] = Field(None, ge=0)
     # Perennial only — drives age + density scaling in target_computation
     tree_age: Optional[int] = Field(None, ge=0, le=200)
     pop_per_ha: Optional[float] = Field(None, gt=0)

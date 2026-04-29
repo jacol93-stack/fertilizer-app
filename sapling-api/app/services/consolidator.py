@@ -704,9 +704,30 @@ def _build_blend_parts(
     events_count: int,
     method_kind: MethodKind,
 ) -> tuple[list[BlendPart], dict[str, float]]:
-    """Build BlendParts + compute delivered-nutrients."""
+    """Build BlendParts + compute delivered-nutrients.
+
+    `delivered` reflects EVERY nutrient any selected material actually
+    contributes — not just the ones in nutrient_targets. Important for
+    organic carriers (manure compost, chicken litter) and compound
+    products (DAP, MAP) which deliver several nutrients alongside the
+    one targeted: previously only the targeted nutrient(s) were counted,
+    so dry-broadcast passes that used compost as a Ca/P carrier silently
+    dropped the N+K+Mg+S contributions from season totals and from the
+    "delivered this pass" labels on the artifact + PDF.
+    """
     parts: list[BlendPart] = []
+
+    # All nutrients any material in the catalog can carry. Every value
+    # in this list maps to a material column via _material_pct_for.
+    _ALL_TRACKED_NUTRIENTS = (
+        "N", "P2O5", "K2O", "Ca", "Mg", "S",
+        "Fe", "B", "Mn", "Zn", "Mo", "Cu",
+    )
     delivered: dict[str, float] = {k: 0.0 for k in nutrient_targets}
+    # Seed every tracked nutrient so the iteration below picks up
+    # contributions even from nutrients not in the original target set.
+    for nut in _ALL_TRACKED_NUTRIENTS:
+        delivered.setdefault(nut, 0.0)
 
     for material, rate_kg_ha in selected:
         per_event = rate_kg_ha / events_count if events_count else rate_kg_ha
@@ -726,13 +747,15 @@ def _build_blend_parts(
             batch_total=_fmt_kg(batch_total),
         ))
 
-        # Accumulate delivered nutrients
+        # Accumulate delivered nutrients across ALL tracked nutrients.
         for nut in delivered:
             pct = _material_pct_for(material, nut)
             delivered[nut] += rate_kg_ha * pct
 
-    # Round delivered for display
-    delivered = {k: round(v, 1) for k, v in delivered.items()}
+    # Drop nutrients that ended up at zero (no material contributed) so
+    # the artifact / PDF doesn't show a wall of "0.0 kg" entries for
+    # micros that nothing in this blend touches.
+    delivered = {k: round(v, 1) for k, v in delivered.items() if v > 0}
     return parts, delivered
 
 
@@ -813,9 +836,15 @@ def _is_fertigation(method_kind: MethodKind) -> bool:
 
 
 def _analysis_label(material: dict) -> str:
-    """Build the 'N 17.1%, Ca 24.4%' style label Clivia doc uses."""
+    """Build the 'N 17.1%, P 51.8%' style label.
+
+    Follows SA grower convention: P and K labels carry the oxide-form
+    percentage (the value in `material["p"]` is P₂O₅ %, value in
+    `material["k"]` is K₂O %). The renderer's parser knows this and
+    treats `P x%` as P₂O₅ when computing combined formulas.
+    """
     parts = []
-    for code, col in [("N", "n"), ("P₂O₅", "p"), ("K₂O", "k"),
+    for code, col in [("N", "n"), ("P", "p"), ("K", "k"),
                        ("Ca", "ca"), ("Mg", "mg"), ("S", "s")]:
         v = material.get(col)
         if v and float(v) > 0.5:

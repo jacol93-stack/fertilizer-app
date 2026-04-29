@@ -7,9 +7,61 @@ from pydantic import BaseModel, Field
 
 from app.auth import CurrentUser, get_current_user, require_admin
 from app.pagination import Page, PageParams, apply_page
+from app.services.crop_canonicaliser import (
+    CanonicaliseResult,
+    canonicalise_crop,
+)
 from app.supabase_client import get_supabase_admin, run_sb
 
 router = APIRouter(tags=["Clients"])
+
+
+def _load_canonical_crop_names(sb) -> list[str]:
+    """One catalog read per request — caller passes the result through
+    every canonicalise_crop() call to avoid repeating the query."""
+    rows = run_sb(
+        lambda: sb.table("crop_requirements").select("crop").execute()
+    ).data or []
+    return sorted({r["crop"] for r in rows if r.get("crop")})
+
+
+def _resolve_crop_or_raise(
+    sb,
+    *,
+    raw: Optional[str],
+    default_variant: Optional[str] = None,
+    field_path: str = "crop",
+) -> Optional[str]:
+    """Single-field write helper. Returns the canonical name (or the
+    original input when nothing was supplied), and raises HTTP 400 on
+    ambiguity / no-match — single-field writes shouldn't silently store
+    a name the engine can't match downstream."""
+    if not raw:
+        return raw
+    catalog = _load_canonical_crop_names(sb)
+    result = canonicalise_crop(
+        raw, catalog_crops=catalog, default_variant=default_variant,
+    )
+    if result.canonical:
+        return result.canonical
+    if result.matched_via == "ambiguous":
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "ambiguous_crop",
+                "message": result.warning,
+                "field": field_path,
+                "candidates": list(result.candidates),
+            },
+        )
+    raise HTTPException(
+        status_code=400,
+        detail={
+            "error": "unknown_crop",
+            "message": result.warning,
+            "field": field_path,
+        },
+    )
 
 
 # ── Pydantic models ──────────────────────────────────────────────────────────
@@ -212,9 +264,15 @@ def list_clients(
     field_counts: dict[str, int] = {}
     farm_to_client: dict[str, str] = {}
     if client_ids:
+        # Filter out soft-deleted farms/fields so the card-view count
+        # tracks the detail-view count. Without the deleted_at filter
+        # a deleted-but-not-yet-purged farm shows up in the aggregate
+        # and the agronomist sees "2 farms" while the detail page only
+        # lists one — which is exactly what just happened with the
+        # MFB Trust Laborie test.
         farm_rows = run_sb(lambda: sb.table("farms").select(
             "id,client_id"
-        ).in_("client_id", client_ids).execute()).data or []
+        ).in_("client_id", client_ids).is_("deleted_at", "null").execute()).data or []
         for fr in farm_rows:
             cid = fr["client_id"]
             farm_counts[cid] = farm_counts.get(cid, 0) + 1
@@ -222,7 +280,7 @@ def list_clients(
         if farm_to_client:
             field_rows = run_sb(lambda: sb.table("fields").select(
                 "farm_id"
-            ).in_("farm_id", list(farm_to_client.keys())).execute()).data or []
+            ).in_("farm_id", list(farm_to_client.keys())).is_("deleted_at", "null").execute()).data or []
             for fd in field_rows:
                 cid = farm_to_client.get(fd["farm_id"])
                 if cid:
@@ -238,6 +296,8 @@ def list_clients(
 @router.post("/", status_code=201)
 def create_client(body: ClientCreate, user: CurrentUser = Depends(get_current_user)):
     """Create a client. Agents own the client; admins can assign any agent_id."""
+    from postgrest.exceptions import APIError as PostgrestAPIError
+
     sb = get_supabase_admin()
     data = body.model_dump(exclude_none=True)
 
@@ -246,7 +306,19 @@ def create_client(body: ClientCreate, user: CurrentUser = Depends(get_current_us
     elif "agent_id" not in data:
         data["agent_id"] = user.id
 
-    result = sb.table("clients").insert(data).execute()
+    try:
+        result = sb.table("clients").insert(data).execute()
+    except PostgrestAPIError as e:
+        # 23505 = Postgres unique-constraint violation. The (agent_id, name)
+        # pair has a uniqueness rule so two clients on the same account
+        # can't share a name. Translate to a clean 409 instead of leaking
+        # a generic 500 — the agronomist sees the actual reason.
+        if getattr(e, "code", None) == "23505":
+            raise HTTPException(
+                status_code=409,
+                detail=f"A client named '{data.get('name')}' already exists on your account.",
+            )
+        raise
     if not result.data:
         raise HTTPException(status_code=500, detail="Failed to create client")
 
@@ -273,16 +345,85 @@ def update_client(client_id: str, body: ClientUpdate, user: CurrentUser = Depend
     return result.data[0]
 
 
+# Tables with field_id + deleted_at — soft-delete cascades to all of
+# them when a parent field/farm/client is deleted. Order doesn't
+# matter for soft-delete (no FK enforcement), but we keep the list
+# alphabetical for diff readability.
+_FIELD_CHILD_TABLES = (
+    "blends",
+    "field_applications",
+    "field_crop_history",
+    "field_events",
+    "leaf_analyses",
+    "soil_analyses",
+    "yield_records",
+)
+
+
+def _cascade_soft_delete_fields(sb, *, field_ids: list[str], user_id: str) -> None:
+    """Stamp deleted_at on all child rows of the given field_ids across
+    every dependent table. Only updates rows that aren't already
+    soft-deleted to keep audit semantics clean (we don't re-stamp an
+    older deletion)."""
+    if not field_ids:
+        return
+    from datetime import datetime, timezone
+    payload = {
+        "deleted_at": datetime.now(timezone.utc).isoformat(),
+        "deleted_by": user_id,
+    }
+    for tbl in _FIELD_CHILD_TABLES:
+        sb.table(tbl).update(payload).in_(
+            "field_id", field_ids,
+        ).is_("deleted_at", "null").execute()
+
+
+def _cascade_soft_delete_farm(sb, *, farm_id: str, user_id: str) -> None:
+    """Soft-delete every active field under the farm + all of their
+    children. Caller has already (or will) soft-delete the farm row
+    itself."""
+    from datetime import datetime, timezone
+    fields_resp = sb.table("fields").select("id").eq(
+        "farm_id", farm_id,
+    ).is_("deleted_at", "null").execute()
+    field_ids = [r["id"] for r in (fields_resp.data or []) if r.get("id")]
+    if field_ids:
+        sb.table("fields").update({
+            "deleted_at": datetime.now(timezone.utc).isoformat(),
+            "deleted_by": user_id,
+        }).in_("id", field_ids).execute()
+        _cascade_soft_delete_fields(sb, field_ids=field_ids, user_id=user_id)
+
+
 @router.delete("/{client_id}", status_code=200)
 def delete_client(client_id: str, user: CurrentUser = Depends(get_current_user)):
-    """Soft-delete a client."""
+    """Soft-delete a client and cascade to every farm + field + analysis
+    record under it. Re-using the same client name later won't conflict
+    because the unique index on (agent_id, name) is partial — see
+    migration 091_partial_unique_for_soft_delete."""
     from datetime import datetime, timezone
     sb = get_supabase_admin()
     _check_client_access(sb, client_id, user)
-    sb.table("clients").update({
+
+    # Cascade through farms → fields → field-children. We keep the
+    # client deletion as the LAST step so any failure mid-cascade
+    # leaves the client visible (callers can retry).
+    farms_resp = sb.table("farms").select("id").eq(
+        "client_id", client_id,
+    ).is_("deleted_at", "null").execute()
+    for farm in (farms_resp.data or []):
+        _cascade_soft_delete_farm(sb, farm_id=farm["id"], user_id=user.id)
+
+    deletion_stamp = {
         "deleted_at": datetime.now(timezone.utc).isoformat(),
         "deleted_by": user.id,
-    }).eq("id", client_id).execute()
+    }
+    if farms_resp.data:
+        sb.table("farms").update(deletion_stamp).eq(
+            "client_id", client_id,
+        ).is_("deleted_at", "null").execute()
+
+    sb.table("clients").update(deletion_stamp).eq("id", client_id).execute()
     _audit(sb, user, "soft_delete", "clients", client_id)
     return {"detail": "Client deleted"}
 
@@ -304,13 +445,26 @@ def list_farms(client_id: str, user: CurrentUser = Depends(get_current_user)):
 @router.post("/{client_id}/farms", status_code=201)
 def create_farm(client_id: str, body: FarmCreate, user: CurrentUser = Depends(get_current_user)):
     """Add a farm to a client."""
+    from postgrest.exceptions import APIError as PostgrestAPIError
+
     sb = get_supabase_admin()
     _check_client_access(sb, client_id, user)
 
     data = body.model_dump(exclude_none=True)
     data["client_id"] = client_id
 
-    result = sb.table("farms").insert(data).execute()
+    try:
+        result = sb.table("farms").insert(data).execute()
+    except PostgrestAPIError as e:
+        # 23505 = unique violation on (client_id, name). Migration 091
+        # made this index partial on deleted_at IS NULL, so this only
+        # fires when a *currently active* farm has the same name.
+        if getattr(e, "code", None) == "23505":
+            raise HTTPException(
+                status_code=409,
+                detail=f"A farm named '{data.get('name')}' already exists on this client.",
+            )
+        raise
     if not result.data:
         raise HTTPException(status_code=500, detail="Failed to create farm")
 
@@ -339,10 +493,15 @@ def update_farm(farm_id: str, body: FarmUpdate, user: CurrentUser = Depends(get_
 
 @router.delete("/farms/{farm_id}", status_code=200)
 def delete_farm(farm_id: str, user: CurrentUser = Depends(get_current_user)):
-    """Soft-delete a farm. Admins can hard-delete via the admin endpoint."""
+    """Soft-delete a farm and cascade to every field + analysis under
+    it. The unique index on (client_id, name) is partial-indexed on
+    deleted_at IS NULL (migration 091), so re-creating a farm with the
+    same name after deletion succeeds cleanly. Admins can hard-delete
+    via the admin endpoint if they need the row gone permanently."""
     from datetime import datetime, timezone
     sb = get_supabase_admin()
     _check_farm_access(sb, farm_id, user)
+    _cascade_soft_delete_farm(sb, farm_id=farm_id, user_id=user.id)
     sb.table("farms").update({
         "deleted_at": datetime.now(timezone.utc).isoformat(),
         "deleted_by": user.id,
@@ -354,14 +513,92 @@ def delete_farm(farm_id: str, user: CurrentUser = Depends(get_current_user)):
 # ── Field endpoints ───────────────────────────────────────────────────────────
 
 
+_CORE_SOIL_KEYS = ("K", "Ca", "Mg", "P (Bray-1)", "P (Citric acid)")
+
+
+def _compute_field_health(field: dict, analysis: dict | None) -> dict:
+    """Per-field data-completeness summary.
+
+    The engine has implicit input contracts that fail silently when a
+    soft-required field is missing — this surface puts those failures
+    on the field card so the agronomist can fix at the source rather
+    than discovering them after a programme build.
+
+    Tier breakdown:
+      * critical — missing data the engine *needs* (size, crop, soil link).
+        Programme can't build correctly until resolved.
+      * warning  — missing data that triggers an Assumption fallback
+        (tree_age on a perennial, yield_target, irrigation_type, etc.).
+        Programme builds but on weakened reasoning.
+      * info     — optional data that improves quality (full micros,
+        cultivar, GPS).
+    """
+    from app.services.soil_engine import normalise_soil_values
+
+    critical: list[str] = []
+    warnings: list[str] = []
+
+    # ── Engine-critical inputs ────────────────────────────────────
+    if not field.get("size_ha"):
+        critical.append("size")
+    if not field.get("crop"):
+        critical.append("crop")
+    if not field.get("latest_analysis_id"):
+        critical.append("soil_analysis")
+
+    # ── Engine-soft inputs (programme builds, but with assumptions) ──
+    crop_type = (field.get("crop_type") or "").lower()
+    if crop_type == "perennial" and field.get("tree_age") in (None, ""):
+        warnings.append("tree_age")
+    if crop_type == "annual" and not field.get("planting_date"):
+        warnings.append("planting_date")
+    if not field.get("yield_target"):
+        warnings.append("yield_target")
+    if not field.get("irrigation_type"):
+        warnings.append("irrigation_type")
+    if not (field.get("accepted_methods") or []):
+        warnings.append("accepted_methods")
+    if crop_type == "perennial" and not field.get("pop_per_ha"):
+        warnings.append("pop_per_ha")
+
+    # Soil-content quality: even with a linked analysis, an empty or
+    # macros-only soil_values dict means the engine reasons on far less
+    # than it could. We only inspect this when an analysis IS linked —
+    # absence of the link is already a critical above.
+    if analysis:
+        soil_values = normalise_soil_values(analysis.get("soil_values") or {})
+        if "pH (KCl)" not in soil_values and "pH (H2O)" not in soil_values:
+            warnings.append("soil_pH_missing")
+        if "CEC" not in soil_values:
+            warnings.append("soil_CEC_missing")
+        # At least one of the core macro keys must be present for the
+        # engine to do soil-state target adjustment on N/P/K.
+        if not any(k in soil_values for k in _CORE_SOIL_KEYS):
+            critical.append("soil_macros_missing")
+
+    if critical:
+        level = "critical"
+    elif warnings:
+        level = "warn"
+    else:
+        level = "ok"
+    return {"level": level, "critical": critical, "warnings": warnings}
+
+
 @router.get("/farms/{farm_id}/fields")
 def list_fields(farm_id: str, user: CurrentUser = Depends(get_current_user)):
     """List fields for a farm.
 
-    Each field is enriched with `latest_analysis_composite` — a tiny
-    summary of how the linked soil analysis was composed. Callers (e.g.
-    the field card) use this to render a "N samples" badge without
-    having to fire a second round-trip per field.
+    Each field is enriched with:
+      * `latest_analysis_composite` — composition summary of the linked
+        soil analysis (single / composite, replicate count) so the
+        field card can render a "N samples" badge without a second
+        round-trip per field.
+      * `latest_analysis_date` — the actual sample date of the linked
+        soil analysis, for the per-block data-inventory display.
+      * `health` — `{level, critical[], warnings[]}` breakdown of
+        which engine-relevant inputs are missing or weak. Drives the
+        field-card health pill.
     """
     sb = get_supabase_admin()
     _check_farm_access(sb, farm_id, user)
@@ -371,12 +608,14 @@ def list_fields(farm_id: str, user: CurrentUser = Depends(get_current_user)):
     fields_data = result.data or []
 
     analysis_ids = [f["latest_analysis_id"] for f in fields_data if f.get("latest_analysis_id")]
+    analyses_by_id: dict[str, dict] = {}
     composites: dict[str, dict] = {}
     if analysis_ids:
         analyses = run_sb(lambda: sb.table("soil_analyses").select(
-            "id, composition_method, replicate_count"
+            "id, composition_method, replicate_count, soil_values, analysis_date, lab_name"
         ).in_("id", analysis_ids).execute())
         for a in (analyses.data or []):
+            analyses_by_id[a["id"]] = a
             composites[a["id"]] = {
                 "composition_method": a.get("composition_method") or "single",
                 "replicate_count": a.get("replicate_count") or 1,
@@ -384,7 +623,11 @@ def list_fields(farm_id: str, user: CurrentUser = Depends(get_current_user)):
 
     for f in fields_data:
         aid = f.get("latest_analysis_id")
+        analysis = analyses_by_id.get(aid) if aid else None
         f["latest_analysis_composite"] = composites.get(aid) if aid else None
+        f["latest_analysis_date"] = (analysis or {}).get("analysis_date")
+        f["latest_analysis_lab"] = (analysis or {}).get("lab_name")
+        f["health"] = _compute_field_health(f, analysis)
 
     return fields_data
 
@@ -395,12 +638,22 @@ def create_field(farm_id: str, body: FieldCreate, user: CurrentUser = Depends(ge
     sb = get_supabase_admin()
     _check_farm_access(sb, farm_id, user)
 
-    # Check for duplicate field name on this farm
-    existing = sb.table("fields").select("id").eq("farm_id", farm_id).eq("name", body.name).execute()
+    # Check for duplicate field name on this farm. Only ACTIVE fields
+    # block the name — soft-deleted ones are free for reuse since the
+    # partial unique index is filtered on deleted_at IS NULL (migration
+    # 091).
+    existing = sb.table("fields").select("id").eq(
+        "farm_id", farm_id,
+    ).eq("name", body.name).is_("deleted_at", "null").execute()
     if existing.data:
         raise HTTPException(status_code=409, detail=f"A field named '{body.name}' already exists on this farm")
 
     data = body.model_dump(exclude_none=True)
+    if data.get("crop"):
+        # Source of truth is crop_requirements.crop. Reject ambiguous /
+        # unknown crops at the boundary so downstream catalog joins
+        # don't silently return zero rows ("no methods for this crop").
+        data["crop"] = _resolve_crop_or_raise(sb, raw=data["crop"])
     data["farm_id"] = farm_id
 
     result = sb.table("fields").insert(data).execute()
@@ -414,11 +667,38 @@ def create_field(farm_id: str, body: FieldCreate, user: CurrentUser = Depends(ge
 
 @router.get("/fields/{field_id}")
 def get_field(field_id: str, user: CurrentUser = Depends(get_current_user)):
-    """Get a single field by ID."""
+    """Get a single field by ID, enriched with `health` (data
+    completeness summary) + `latest_analysis_date` so the field
+    detail page can show the same inventory tile + health pill the
+    list view shows. Mirrors the per-row enrichment in
+    `list_fields`."""
     sb = get_supabase_admin()
     field = _check_field_access(sb, field_id, user)
-    # Strip nested join data
-    field.pop("farms", None)
+    # Strip nested join data — frontend doesn't need the embedded farm
+    farm_data = field.pop("farms", None)
+
+    analysis: dict | None = None
+    aid = field.get("latest_analysis_id")
+    if aid:
+        a_resp = run_sb(lambda: sb.table("soil_analyses").select(
+            "id, composition_method, replicate_count, soil_values, analysis_date, lab_name"
+        ).eq("id", aid).limit(1).execute())
+        if a_resp.data:
+            analysis = a_resp.data[0]
+            field["latest_analysis_composite"] = {
+                "composition_method": analysis.get("composition_method") or "single",
+                "replicate_count": analysis.get("replicate_count") or 1,
+            }
+            field["latest_analysis_date"] = analysis.get("analysis_date")
+            field["latest_analysis_lab"] = analysis.get("lab_name")
+    field["health"] = _compute_field_health(field, analysis)
+
+    # Restore the nested farm join so callers that depend on it (the
+    # block detail page header reads farms.name + farms.region) keep
+    # working — we only stripped it temporarily so it didn't bleed
+    # into the health calc.
+    if farm_data is not None:
+        field["farms"] = farm_data
     return field
 
 
@@ -431,6 +711,9 @@ def update_field(field_id: str, body: FieldUpdate, user: CurrentUser = Depends(g
     updates = body.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
+
+    if "crop" in updates and updates["crop"]:
+        updates["crop"] = _resolve_crop_or_raise(sb, raw=updates["crop"])
 
     result = sb.table("fields").update(updates).eq("id", field_id).execute()
     if not result.data:
@@ -561,7 +844,9 @@ class BulkFieldRow(BaseModel):
     planting_date: Optional[str] = Field(None, max_length=20)
     tree_age: Optional[int] = Field(None, ge=0, le=200)
     pop_per_ha: Optional[int] = Field(None, gt=0, le=1_000_000)
-    yield_target: Optional[float] = Field(None, gt=0, le=1_000_000)
+    # 0 / blank = "use crop_requirements.default_yield". Common for young
+    # / non-bearing perennials and new plantings.
+    yield_target: Optional[float] = Field(None, ge=0, le=1_000_000)
     yield_unit: Optional[str] = Field(None, max_length=50)
     irrigation_type: Optional[str] = Field(None, pattern=r"^(drip|pivot|micro|flood|none)$")
     fertigation_capable: Optional[bool] = None
@@ -582,6 +867,11 @@ class BulkFieldsResult(BaseModel):
     updated: int
     skipped: int
     fields: list[dict]
+    # Per-row warnings — populated when the canonicaliser auto-resolves
+    # a free-text crop name (e.g. 'macadamia' → 'Macadamia',
+    # 'navel' → 'Citrus (Navel)') or flags an ambiguous parent that the
+    # row was skipped on.
+    crop_warnings: list[dict] = Field(default_factory=list)
 
 
 @router.post("/farms/{farm_id}/fields/bulk", response_model=BulkFieldsResult, status_code=201)
@@ -611,6 +901,10 @@ def bulk_create_fields(
     created: list[dict] = []
     updated: list[dict] = []
     skipped: list[dict] = []
+    crop_warnings: list[dict] = []
+
+    # Load the canonical crop list once for the whole batch.
+    catalog_crops = _load_canonical_crop_names(sb)
 
     for row in body.rows:
         norm_name = row.name.strip().lower()
@@ -619,6 +913,43 @@ def bulk_create_fields(
         payload = row.model_dump(exclude_none=True, exclude={"key"})
         if "crop_type" in payload and payload["crop_type"]:
             payload["crop_type"] = payload["crop_type"].lower()
+
+        # Canonicalise crop. We collect warnings rather than 400-ing the
+        # whole batch — agronomists are mid-import + want to see which
+        # rows need attention. Ambiguous parents (e.g. "citrus" without
+        # a variant) skip the row and surface in `crop_warnings`.
+        if payload.get("crop"):
+            cres: CanonicaliseResult = canonicalise_crop(
+                payload["crop"], catalog_crops=catalog_crops,
+            )
+            if cres.canonical:
+                if cres.canonical != payload["crop"] and cres.matched_via != "exact":
+                    crop_warnings.append({
+                        "row_key": row.key,
+                        "block_name": row.name,
+                        "raw_crop": payload["crop"],
+                        "resolved_to": cres.canonical,
+                        "matched_via": cres.matched_via,
+                    })
+                payload["crop"] = cres.canonical
+            else:
+                crop_warnings.append({
+                    "row_key": row.key,
+                    "block_name": row.name,
+                    "raw_crop": payload["crop"],
+                    "resolved_to": None,
+                    "matched_via": cres.matched_via,
+                    "candidates": list(cres.candidates),
+                    "warning": cres.warning,
+                })
+                # Skip rows we couldn't resolve — better than storing a
+                # name that the engine will silently fail on later.
+                skipped.append({
+                    "name": row.name,
+                    "skipped_reason": "unresolved_crop",
+                    "raw_crop": payload["crop"],
+                })
+                continue
 
         if match:
             if body.on_conflict == "update":
@@ -643,6 +974,7 @@ def bulk_create_fields(
         updated=len(updated),
         skipped=len(skipped),
         fields=created + updated + skipped,
+        crop_warnings=crop_warnings,
     )
 
 
@@ -758,12 +1090,77 @@ def bulk_create_yields(
     )
 
 
+# ── Bulk-import xlsx templates ──────────────────────────────────────────────
+
+_XLSX_MEDIA_TYPE = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
+
+
+@router.get("/templates/fields")
+def download_fields_template(user: CurrentUser = Depends(get_current_user)):
+    """Empty fields-master xlsx with one example row, dropdowns for
+    crop_type / irrigation / fertigation, and an Instructions sheet.
+    User opens in Excel, fills rows, saves as CSV, uploads via the
+    bulk import page."""
+    from fastapi.responses import Response
+
+    from app.services.import_templates import build_fields_template_xlsx
+
+    payload = build_fields_template_xlsx()
+    return Response(
+        content=payload,
+        media_type=_XLSX_MEDIA_TYPE,
+        headers={
+            "Content-Disposition": (
+                'attachment; filename="sapling-fields-template.xlsx"'
+            ),
+        },
+    )
+
+
+@router.get("/farms/{farm_id}/templates/yields")
+def download_yields_template(
+    farm_id: str, user: CurrentUser = Depends(get_current_user),
+):
+    """Yields-records xlsx pre-populated with one row per existing
+    field on the farm. The user fills in season + yield + unit per
+    row and saves as CSV before uploading."""
+    from fastapi.responses import Response
+
+    from app.services.import_templates import build_yields_template_xlsx
+
+    sb = get_supabase_admin()
+    _check_farm_access(sb, farm_id, user)
+    fields_resp = run_sb(
+        lambda: sb.table("fields").select("name").eq(
+            "farm_id", farm_id,
+        ).is_("deleted_at", "null").order("name").execute()
+    )
+    field_names = [f["name"] for f in (fields_resp.data or []) if f.get("name")]
+    payload = build_yields_template_xlsx(field_names)
+    return Response(
+        content=payload,
+        media_type=_XLSX_MEDIA_TYPE,
+        headers={
+            "Content-Disposition": (
+                'attachment; filename="sapling-yields-template.xlsx"'
+            ),
+        },
+    )
+
+
 @router.delete("/fields/{field_id}", status_code=200)
 def delete_field(field_id: str, user: CurrentUser = Depends(get_current_user)):
-    """Soft-delete a field. Admins can hard-delete via admin endpoint."""
+    """Soft-delete a field and cascade to every soil/leaf analysis,
+    yield record, blend, application, etc. tied to it. Re-creating a
+    field with the same name on the same farm later succeeds because
+    the (farm_id, name) unique index is partial on deleted_at IS NULL
+    (migration 091). Admins can hard-delete via admin endpoint."""
     from datetime import datetime, timezone
     sb = get_supabase_admin()
     _check_field_access(sb, field_id, user)
+    _cascade_soft_delete_fields(sb, field_ids=[field_id], user_id=user.id)
     sb.table("fields").update({
         "deleted_at": datetime.now(timezone.utc).isoformat(),
         "deleted_by": user.id,

@@ -185,18 +185,11 @@ def test_k_flows_through_mac_november_since_not_blocked():
 # Stage-miss outstanding flags
 # ============================================================
 
-def test_stage_missed_entirely_emits_outstanding():
-    """If allowed months skip stage 2 entirely, outstanding item fires."""
-    splits, schedule = _mac_4stage_schedule()
-    result = allocate_to_months(
-        crop="Macadamia",
-        stage_splits=splits,
-        stage_schedule=schedule,
-        allowed_months=[8, 3],  # stage 1 + stage 4 only; 2+3 missed
-        planting_date=date(2026, 7, 1),
-    )
-    msgs = " ".join(result.outstanding_messages)
-    assert "Pre-flowering" in msgs or "stage 2" in msgs.lower() or "Nut set" in msgs
+# Tests for `uncovered_stage_messages` were removed when the warning
+# itself was removed. Per agronomist-owned-timing policy the engine no
+# longer barks when a stage window has no allowed application month
+# inside it — adjacent passes carry that stage's nutrients in practice
+# and the warning was just noise on every report.
 
 
 # ============================================================

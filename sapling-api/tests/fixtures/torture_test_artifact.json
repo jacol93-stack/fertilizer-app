@@ -1,0 +1,2031 @@
+{
+  "header": {
+    "artifact_version": "1.0.0",
+    "programme_id": null,
+    "client_name": "Torture Test — Variable-Length AI Prose",
+    "farm_name": "Synthetic Adversarial Fixture",
+    "location": "Levubu, Limpopo",
+    "prepared_for": "Renderer robustness regression",
+    "prepared_by": "Sapling Fertilizer",
+    "prepared_date": "2026-04-25",
+    "ref_number": "TORTURE-2026",
+    "state": "draft",
+    "replan_reason": "first_pass",
+    "crop": "Macadamia",
+    "variant_key": {
+      "canonical_crop": "Macadamia",
+      "parent_crop": null,
+      "cultivar": null,
+      "region": null,
+      "cycle": null
+    },
+    "season": "2026/27",
+    "planting_date": "2026-03-01",
+    "expected_harvest_date": "2027-02-28",
+    "data_completeness": {
+      "level": "standard",
+      "has_crop_area_yield": true,
+      "has_ph_and_texture": true,
+      "has_full_soil_analysis": true,
+      "soil_analysis_age_months": null,
+      "has_leaf_analysis": false,
+      "leaf_analysis_age_months": null,
+      "has_yield_history": false,
+      "yield_history_seasons": 0,
+      "has_method_availability": true
+    },
+    "method_availability": {
+      "has_drip": true,
+      "has_pivot": false,
+      "has_sprinkler": true,
+      "has_foliar_sprayer": true,
+      "has_granular_spreader": true,
+      "has_fertigation_injectors": true,
+      "has_seed_treatment": true
+    }
+  },
+  "soil_snapshots": [
+    {
+      "block_id": "torture-blok-01",
+      "block_name": "Torture Blok 1",
+      "block_area_ha": 5.0,
+      "lab_name": "Reference (synthetic)",
+      "lab_method": "Mehlich-3",
+      "sample_date": "2026-03-01",
+      "sample_id": "TORTURE-torture-blok-01",
+      "sample_depth_cm": 15.0,
+      "parameters": {
+        "pH (H2O)": 5.8,
+        "Organic C (%)": 2.5,
+        "P (Bray-1)": 22.0,
+        "K": 145.0,
+        "Ca": 980.0,
+        "Mg": 185.0,
+        "Na_base_sat_pct": 1.0,
+        "S": 12.0,
+        "Zn": 3.0,
+        "B": 0.35,
+        "Mn": 180.0,
+        "Fe": 95.0,
+        "Cu": 6.5,
+        "Al": 0.0,
+        "CEC": 10.2,
+        "Acid_sat_pct": 0.0
+      },
+      "computed_ratios": {
+        "P:Zn": 7.3,
+        "Ca:B": 2800.0,
+        "soil_ESP_pct": 1.0
+      },
+      "factor_findings": [
+        {
+          "kind": "antagonism",
+          "severity": "warn",
+          "parameter": "Ca:B",
+          "value": 2800.0,
+          "threshold": 1000.0,
+          "message": "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.",
+          "recommended_action": "Apply foliar B at critical stages (pre-bloom, fruit set)",
+          "source_id": "SHORROCKS_1997",
+          "source_section": "Plant & Soil 193:121-148",
+          "tier": 3
+        },
+        {
+          "kind": "balance",
+          "severity": "warn",
+          "parameter": "pH (KCl)",
+          "value": 4.8,
+          "threshold": 5.0,
+          "message": "pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion limited.",
+          "recommended_action": "Lime application (calcitic or dolomitic per Mg status). Size against pH deficit + buffer factor; pre-season for reaction time.",
+          "source_id": "FERTASA_5_1",
+          "source_section": "FERTASA Soil Fertility Handbook §5.1 — Liming and pH management",
+          "tier": 1
+        }
+      ],
+      "nutrient_status": [],
+      "headline_signals": [
+        "Soil Ca:B = 2800 exceeds the 1000:1 ceiling — Ca-induced B deficiency is likely at flowering, with downstream impacts on pollen viability, kernel set, and the eventual nut-fill window. Recommend foliar B at pre-bloom + 50%-bloom + 4 wk later, with a soil-Ca audit at the next sampling pass to verify the antagonism is the dominant driver here and not a parallel B deficiency masked by limited soil-test sensitivity."
+      ]
+    },
+    {
+      "block_id": "torture-blok-02",
+      "block_name": "Torture Blok 2",
+      "block_area_ha": 5.0,
+      "lab_name": "Reference (synthetic)",
+      "lab_method": "Mehlich-3",
+      "sample_date": "2026-03-01",
+      "sample_id": "TORTURE-torture-blok-02",
+      "sample_depth_cm": 15.0,
+      "parameters": {
+        "pH (H2O)": 5.8,
+        "Organic C (%)": 2.5,
+        "P (Bray-1)": 22.0,
+        "K": 145.0,
+        "Ca": 980.0,
+        "Mg": 185.0,
+        "Na_base_sat_pct": 1.0,
+        "S": 12.0,
+        "Zn": 3.0,
+        "B": 0.35,
+        "Mn": 180.0,
+        "Fe": 95.0,
+        "Cu": 6.5,
+        "Al": 0.0,
+        "CEC": 10.2,
+        "Acid_sat_pct": 0.0
+      },
+      "computed_ratios": {
+        "P:Zn": 7.3,
+        "Ca:B": 2800.0,
+        "soil_ESP_pct": 1.0
+      },
+      "factor_findings": [
+        {
+          "kind": "antagonism",
+          "severity": "warn",
+          "parameter": "Ca:B",
+          "value": 2800.0,
+          "threshold": 1000.0,
+          "message": "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.",
+          "recommended_action": "Apply foliar B at critical stages (pre-bloom, fruit set)",
+          "source_id": "SHORROCKS_1997",
+          "source_section": "Plant & Soil 193:121-148",
+          "tier": 3
+        },
+        {
+          "kind": "balance",
+          "severity": "warn",
+          "parameter": "pH (KCl)",
+          "value": 4.8,
+          "threshold": 5.0,
+          "message": "pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion limited.",
+          "recommended_action": "Lime application (calcitic or dolomitic per Mg status). Size against pH deficit + buffer factor; pre-season for reaction time.",
+          "source_id": "FERTASA_5_1",
+          "source_section": "FERTASA Soil Fertility Handbook §5.1 — Liming and pH management",
+          "tier": 1
+        }
+      ],
+      "nutrient_status": [],
+      "headline_signals": [
+        "Soil Ca:B = 2800 exceeds the 1000:1 ceiling — Ca-induced B deficiency is likely at flowering, with downstream impacts on pollen viability, kernel set, and the eventual nut-fill window. Recommend foliar B at pre-bloom + 50%-bloom + 4 wk later, with a soil-Ca audit at the next sampling pass to verify the antagonism is the dominant driver here and not a parallel B deficiency masked by limited soil-test sensitivity."
+      ]
+    },
+    {
+      "block_id": "torture-blok-03",
+      "block_name": "Torture Blok 3",
+      "block_area_ha": 5.0,
+      "lab_name": "Reference (synthetic)",
+      "lab_method": "Mehlich-3",
+      "sample_date": "2026-03-01",
+      "sample_id": "TORTURE-torture-blok-03",
+      "sample_depth_cm": 15.0,
+      "parameters": {
+        "pH (H2O)": 5.8,
+        "Organic C (%)": 2.5,
+        "P (Bray-1)": 22.0,
+        "K": 145.0,
+        "Ca": 980.0,
+        "Mg": 185.0,
+        "Na_base_sat_pct": 1.0,
+        "S": 12.0,
+        "Zn": 3.0,
+        "B": 0.35,
+        "Mn": 180.0,
+        "Fe": 95.0,
+        "Cu": 6.5,
+        "Al": 0.0,
+        "CEC": 10.2,
+        "Acid_sat_pct": 0.0
+      },
+      "computed_ratios": {
+        "P:Zn": 7.3,
+        "Ca:B": 2800.0,
+        "soil_ESP_pct": 1.0
+      },
+      "factor_findings": [
+        {
+          "kind": "antagonism",
+          "severity": "warn",
+          "parameter": "Ca:B",
+          "value": 2800.0,
+          "threshold": 1000.0,
+          "message": "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.",
+          "recommended_action": "Apply foliar B at critical stages (pre-bloom, fruit set)",
+          "source_id": "SHORROCKS_1997",
+          "source_section": "Plant & Soil 193:121-148",
+          "tier": 3
+        },
+        {
+          "kind": "balance",
+          "severity": "warn",
+          "parameter": "pH (KCl)",
+          "value": 4.8,
+          "threshold": 5.0,
+          "message": "pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion limited.",
+          "recommended_action": "Lime application (calcitic or dolomitic per Mg status). Size against pH deficit + buffer factor; pre-season for reaction time.",
+          "source_id": "FERTASA_5_1",
+          "source_section": "FERTASA Soil Fertility Handbook §5.1 — Liming and pH management",
+          "tier": 1
+        }
+      ],
+      "nutrient_status": [],
+      "headline_signals": [
+        "Soil Ca:B = 2800 exceeds the 1000:1 ceiling — Ca-induced B deficiency is likely at flowering, with downstream impacts on pollen viability, kernel set, and the eventual nut-fill window. Recommend foliar B at pre-bloom + 50%-bloom + 4 wk later, with a soil-Ca audit at the next sampling pass to verify the antagonism is the dominant driver here and not a parallel B deficiency masked by limited soil-test sensitivity."
+      ]
+    },
+    {
+      "block_id": "torture-blok-04",
+      "block_name": "Torture Blok 4",
+      "block_area_ha": 5.0,
+      "lab_name": "Reference (synthetic)",
+      "lab_method": "Mehlich-3",
+      "sample_date": "2026-03-01",
+      "sample_id": "TORTURE-torture-blok-04",
+      "sample_depth_cm": 15.0,
+      "parameters": {
+        "pH (H2O)": 5.8,
+        "Organic C (%)": 2.5,
+        "P (Bray-1)": 22.0,
+        "K": 145.0,
+        "Ca": 980.0,
+        "Mg": 185.0,
+        "Na_base_sat_pct": 1.0,
+        "S": 12.0,
+        "Zn": 3.0,
+        "B": 0.35,
+        "Mn": 180.0,
+        "Fe": 95.0,
+        "Cu": 6.5,
+        "Al": 0.0,
+        "CEC": 10.2,
+        "Acid_sat_pct": 0.0
+      },
+      "computed_ratios": {
+        "P:Zn": 7.3,
+        "Ca:B": 2800.0,
+        "soil_ESP_pct": 1.0
+      },
+      "factor_findings": [
+        {
+          "kind": "antagonism",
+          "severity": "warn",
+          "parameter": "Ca:B",
+          "value": 2800.0,
+          "threshold": 1000.0,
+          "message": "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.",
+          "recommended_action": "Apply foliar B at critical stages (pre-bloom, fruit set)",
+          "source_id": "SHORROCKS_1997",
+          "source_section": "Plant & Soil 193:121-148",
+          "tier": 3
+        },
+        {
+          "kind": "balance",
+          "severity": "warn",
+          "parameter": "pH (KCl)",
+          "value": 4.8,
+          "threshold": 5.0,
+          "message": "pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion limited.",
+          "recommended_action": "Lime application (calcitic or dolomitic per Mg status). Size against pH deficit + buffer factor; pre-season for reaction time.",
+          "source_id": "FERTASA_5_1",
+          "source_section": "FERTASA Soil Fertility Handbook §5.1 — Liming and pH management",
+          "tier": 1
+        }
+      ],
+      "nutrient_status": [],
+      "headline_signals": [
+        "Soil Ca:B = 2800 exceeds the 1000:1 ceiling — Ca-induced B deficiency is likely at flowering, with downstream impacts on pollen viability, kernel set, and the eventual nut-fill window. Recommend foliar B at pre-bloom + 50%-bloom + 4 wk later, with a soil-Ca audit at the next sampling pass to verify the antagonism is the dominant driver here and not a parallel B deficiency masked by limited soil-test sensitivity."
+      ]
+    },
+    {
+      "block_id": "torture-blok-05",
+      "block_name": "Torture Blok 5",
+      "block_area_ha": 5.0,
+      "lab_name": "Reference (synthetic)",
+      "lab_method": "Mehlich-3",
+      "sample_date": "2026-03-01",
+      "sample_id": "TORTURE-torture-blok-05",
+      "sample_depth_cm": 15.0,
+      "parameters": {
+        "pH (H2O)": 5.8,
+        "Organic C (%)": 2.5,
+        "P (Bray-1)": 22.0,
+        "K": 145.0,
+        "Ca": 980.0,
+        "Mg": 185.0,
+        "Na_base_sat_pct": 1.0,
+        "S": 12.0,
+        "Zn": 3.0,
+        "B": 0.35,
+        "Mn": 180.0,
+        "Fe": 95.0,
+        "Cu": 6.5,
+        "Al": 0.0,
+        "CEC": 10.2,
+        "Acid_sat_pct": 0.0
+      },
+      "computed_ratios": {
+        "P:Zn": 7.3,
+        "Ca:B": 2800.0,
+        "soil_ESP_pct": 1.0
+      },
+      "factor_findings": [
+        {
+          "kind": "antagonism",
+          "severity": "warn",
+          "parameter": "Ca:B",
+          "value": 2800.0,
+          "threshold": 1000.0,
+          "message": "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.",
+          "recommended_action": "Apply foliar B at critical stages (pre-bloom, fruit set)",
+          "source_id": "SHORROCKS_1997",
+          "source_section": "Plant & Soil 193:121-148",
+          "tier": 3
+        },
+        {
+          "kind": "balance",
+          "severity": "warn",
+          "parameter": "pH (KCl)",
+          "value": 4.8,
+          "threshold": 5.0,
+          "message": "pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion limited.",
+          "recommended_action": "Lime application (calcitic or dolomitic per Mg status). Size against pH deficit + buffer factor; pre-season for reaction time.",
+          "source_id": "FERTASA_5_1",
+          "source_section": "FERTASA Soil Fertility Handbook §5.1 — Liming and pH management",
+          "tier": 1
+        }
+      ],
+      "nutrient_status": [],
+      "headline_signals": [
+        "Soil Ca:B = 2800 exceeds the 1000:1 ceiling — Ca-induced B deficiency is likely at flowering, with downstream impacts on pollen viability, kernel set, and the eventual nut-fill window. Recommend foliar B at pre-bloom + 50%-bloom + 4 wk later, with a soil-Ca audit at the next sampling pass to verify the antagonism is the dominant driver here and not a parallel B deficiency masked by limited soil-test sensitivity."
+      ]
+    },
+    {
+      "block_id": "torture-blok-06",
+      "block_name": "Torture Blok 6",
+      "block_area_ha": 5.0,
+      "lab_name": "Reference (synthetic)",
+      "lab_method": "Mehlich-3",
+      "sample_date": "2026-03-01",
+      "sample_id": "TORTURE-torture-blok-06",
+      "sample_depth_cm": 15.0,
+      "parameters": {
+        "pH (H2O)": 5.8,
+        "Organic C (%)": 2.5,
+        "P (Bray-1)": 22.0,
+        "K": 145.0,
+        "Ca": 980.0,
+        "Mg": 185.0,
+        "Na_base_sat_pct": 1.0,
+        "S": 12.0,
+        "Zn": 3.0,
+        "B": 0.35,
+        "Mn": 180.0,
+        "Fe": 95.0,
+        "Cu": 6.5,
+        "Al": 0.0,
+        "CEC": 10.2,
+        "Acid_sat_pct": 0.0
+      },
+      "computed_ratios": {
+        "P:Zn": 7.3,
+        "Ca:B": 2800.0,
+        "soil_ESP_pct": 1.0
+      },
+      "factor_findings": [
+        {
+          "kind": "antagonism",
+          "severity": "warn",
+          "parameter": "Ca:B",
+          "value": 2800.0,
+          "threshold": 1000.0,
+          "message": "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.",
+          "recommended_action": "Apply foliar B at critical stages (pre-bloom, fruit set)",
+          "source_id": "SHORROCKS_1997",
+          "source_section": "Plant & Soil 193:121-148",
+          "tier": 3
+        },
+        {
+          "kind": "balance",
+          "severity": "warn",
+          "parameter": "pH (KCl)",
+          "value": 4.8,
+          "threshold": 5.0,
+          "message": "pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion limited.",
+          "recommended_action": "Lime application (calcitic or dolomitic per Mg status). Size against pH deficit + buffer factor; pre-season for reaction time.",
+          "source_id": "FERTASA_5_1",
+          "source_section": "FERTASA Soil Fertility Handbook §5.1 — Liming and pH management",
+          "tier": 1
+        }
+      ],
+      "nutrient_status": [],
+      "headline_signals": [
+        "Soil Ca:B = 2800 exceeds the 1000:1 ceiling — Ca-induced B deficiency is likely at flowering, with downstream impacts on pollen viability, kernel set, and the eventual nut-fill window. Recommend foliar B at pre-bloom + 50%-bloom + 4 wk later, with a soil-Ca audit at the next sampling pass to verify the antagonism is the dominant driver here and not a parallel B deficiency masked by limited soil-test sensitivity."
+      ]
+    },
+    {
+      "block_id": "torture-blok-07",
+      "block_name": "Torture Blok 7",
+      "block_area_ha": 5.0,
+      "lab_name": "Reference (synthetic)",
+      "lab_method": "Mehlich-3",
+      "sample_date": "2026-03-01",
+      "sample_id": "TORTURE-torture-blok-07",
+      "sample_depth_cm": 15.0,
+      "parameters": {
+        "pH (H2O)": 5.8,
+        "Organic C (%)": 2.5,
+        "P (Bray-1)": 22.0,
+        "K": 145.0,
+        "Ca": 980.0,
+        "Mg": 185.0,
+        "Na_base_sat_pct": 1.0,
+        "S": 12.0,
+        "Zn": 3.0,
+        "B": 0.35,
+        "Mn": 180.0,
+        "Fe": 95.0,
+        "Cu": 6.5,
+        "Al": 0.0,
+        "CEC": 10.2,
+        "Acid_sat_pct": 0.0
+      },
+      "computed_ratios": {
+        "P:Zn": 7.3,
+        "Ca:B": 2800.0,
+        "soil_ESP_pct": 1.0
+      },
+      "factor_findings": [
+        {
+          "kind": "antagonism",
+          "severity": "warn",
+          "parameter": "Ca:B",
+          "value": 2800.0,
+          "threshold": 1000.0,
+          "message": "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.",
+          "recommended_action": "Apply foliar B at critical stages (pre-bloom, fruit set)",
+          "source_id": "SHORROCKS_1997",
+          "source_section": "Plant & Soil 193:121-148",
+          "tier": 3
+        },
+        {
+          "kind": "balance",
+          "severity": "warn",
+          "parameter": "pH (KCl)",
+          "value": 4.8,
+          "threshold": 5.0,
+          "message": "pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion limited.",
+          "recommended_action": "Lime application (calcitic or dolomitic per Mg status). Size against pH deficit + buffer factor; pre-season for reaction time.",
+          "source_id": "FERTASA_5_1",
+          "source_section": "FERTASA Soil Fertility Handbook §5.1 — Liming and pH management",
+          "tier": 1
+        }
+      ],
+      "nutrient_status": [],
+      "headline_signals": [
+        "Soil Ca:B = 2800 exceeds the 1000:1 ceiling — Ca-induced B deficiency is likely at flowering, with downstream impacts on pollen viability, kernel set, and the eventual nut-fill window. Recommend foliar B at pre-bloom + 50%-bloom + 4 wk later, with a soil-Ca audit at the next sampling pass to verify the antagonism is the dominant driver here and not a parallel B deficiency masked by limited soil-test sensitivity."
+      ]
+    },
+    {
+      "block_id": "torture-blok-08",
+      "block_name": "Torture Blok 8",
+      "block_area_ha": 5.0,
+      "lab_name": "Reference (synthetic)",
+      "lab_method": "Mehlich-3",
+      "sample_date": "2026-03-01",
+      "sample_id": "TORTURE-torture-blok-08",
+      "sample_depth_cm": 15.0,
+      "parameters": {
+        "pH (H2O)": 5.8,
+        "Organic C (%)": 2.5,
+        "P (Bray-1)": 22.0,
+        "K": 145.0,
+        "Ca": 980.0,
+        "Mg": 185.0,
+        "Na_base_sat_pct": 1.0,
+        "S": 12.0,
+        "Zn": 3.0,
+        "B": 0.35,
+        "Mn": 180.0,
+        "Fe": 95.0,
+        "Cu": 6.5,
+        "Al": 0.0,
+        "CEC": 10.2,
+        "Acid_sat_pct": 0.0
+      },
+      "computed_ratios": {
+        "P:Zn": 7.3,
+        "Ca:B": 2800.0,
+        "soil_ESP_pct": 1.0
+      },
+      "factor_findings": [
+        {
+          "kind": "antagonism",
+          "severity": "warn",
+          "parameter": "Ca:B",
+          "value": 2800.0,
+          "threshold": 1000.0,
+          "message": "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.",
+          "recommended_action": "Apply foliar B at critical stages (pre-bloom, fruit set)",
+          "source_id": "SHORROCKS_1997",
+          "source_section": "Plant & Soil 193:121-148",
+          "tier": 3
+        },
+        {
+          "kind": "balance",
+          "severity": "warn",
+          "parameter": "pH (KCl)",
+          "value": 4.8,
+          "threshold": 5.0,
+          "message": "pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion limited.",
+          "recommended_action": "Lime application (calcitic or dolomitic per Mg status). Size against pH deficit + buffer factor; pre-season for reaction time.",
+          "source_id": "FERTASA_5_1",
+          "source_section": "FERTASA Soil Fertility Handbook §5.1 — Liming and pH management",
+          "tier": 1
+        }
+      ],
+      "nutrient_status": [],
+      "headline_signals": [
+        "Soil Ca:B = 2800 exceeds the 1000:1 ceiling — Ca-induced B deficiency is likely at flowering, with downstream impacts on pollen viability, kernel set, and the eventual nut-fill window. Recommend foliar B at pre-bloom + 50%-bloom + 4 wk later, with a soil-Ca audit at the next sampling pass to verify the antagonism is the dominant driver here and not a parallel B deficiency masked by limited soil-test sensitivity."
+      ]
+    },
+    {
+      "block_id": "torture-blok-09",
+      "block_name": "Torture Blok 9",
+      "block_area_ha": 5.0,
+      "lab_name": "Reference (synthetic)",
+      "lab_method": "Mehlich-3",
+      "sample_date": "2026-03-01",
+      "sample_id": "TORTURE-torture-blok-09",
+      "sample_depth_cm": 15.0,
+      "parameters": {
+        "pH (H2O)": 5.8,
+        "Organic C (%)": 2.5,
+        "P (Bray-1)": 22.0,
+        "K": 145.0,
+        "Ca": 980.0,
+        "Mg": 185.0,
+        "Na_base_sat_pct": 1.0,
+        "S": 12.0,
+        "Zn": 3.0,
+        "B": 0.35,
+        "Mn": 180.0,
+        "Fe": 95.0,
+        "Cu": 6.5,
+        "Al": 0.0,
+        "CEC": 10.2,
+        "Acid_sat_pct": 0.0
+      },
+      "computed_ratios": {
+        "P:Zn": 7.3,
+        "Ca:B": 2800.0,
+        "soil_ESP_pct": 1.0
+      },
+      "factor_findings": [
+        {
+          "kind": "antagonism",
+          "severity": "warn",
+          "parameter": "Ca:B",
+          "value": 2800.0,
+          "threshold": 1000.0,
+          "message": "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.",
+          "recommended_action": "Apply foliar B at critical stages (pre-bloom, fruit set)",
+          "source_id": "SHORROCKS_1997",
+          "source_section": "Plant & Soil 193:121-148",
+          "tier": 3
+        },
+        {
+          "kind": "balance",
+          "severity": "warn",
+          "parameter": "pH (KCl)",
+          "value": 4.8,
+          "threshold": 5.0,
+          "message": "pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion limited.",
+          "recommended_action": "Lime application (calcitic or dolomitic per Mg status). Size against pH deficit + buffer factor; pre-season for reaction time.",
+          "source_id": "FERTASA_5_1",
+          "source_section": "FERTASA Soil Fertility Handbook §5.1 — Liming and pH management",
+          "tier": 1
+        }
+      ],
+      "nutrient_status": [],
+      "headline_signals": [
+        "Soil Ca:B = 2800 exceeds the 1000:1 ceiling — Ca-induced B deficiency is likely at flowering, with downstream impacts on pollen viability, kernel set, and the eventual nut-fill window. Recommend foliar B at pre-bloom + 50%-bloom + 4 wk later, with a soil-Ca audit at the next sampling pass to verify the antagonism is the dominant driver here and not a parallel B deficiency masked by limited soil-test sensitivity."
+      ]
+    },
+    {
+      "block_id": "torture-blok-10",
+      "block_name": "Torture Blok 10",
+      "block_area_ha": 5.0,
+      "lab_name": "Reference (synthetic)",
+      "lab_method": "Mehlich-3",
+      "sample_date": "2026-03-01",
+      "sample_id": "TORTURE-torture-blok-10",
+      "sample_depth_cm": 15.0,
+      "parameters": {
+        "pH (H2O)": 5.8,
+        "Organic C (%)": 2.5,
+        "P (Bray-1)": 22.0,
+        "K": 145.0,
+        "Ca": 980.0,
+        "Mg": 185.0,
+        "Na_base_sat_pct": 1.0,
+        "S": 12.0,
+        "Zn": 3.0,
+        "B": 0.35,
+        "Mn": 180.0,
+        "Fe": 95.0,
+        "Cu": 6.5,
+        "Al": 0.0,
+        "CEC": 10.2,
+        "Acid_sat_pct": 0.0
+      },
+      "computed_ratios": {
+        "P:Zn": 7.3,
+        "Ca:B": 2800.0,
+        "soil_ESP_pct": 1.0
+      },
+      "factor_findings": [
+        {
+          "kind": "antagonism",
+          "severity": "warn",
+          "parameter": "Ca:B",
+          "value": 2800.0,
+          "threshold": 1000.0,
+          "message": "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.",
+          "recommended_action": "Apply foliar B at critical stages (pre-bloom, fruit set)",
+          "source_id": "SHORROCKS_1997",
+          "source_section": "Plant & Soil 193:121-148",
+          "tier": 3
+        },
+        {
+          "kind": "balance",
+          "severity": "warn",
+          "parameter": "pH (KCl)",
+          "value": 4.8,
+          "threshold": 5.0,
+          "message": "pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion limited.",
+          "recommended_action": "Lime application (calcitic or dolomitic per Mg status). Size against pH deficit + buffer factor; pre-season for reaction time.",
+          "source_id": "FERTASA_5_1",
+          "source_section": "FERTASA Soil Fertility Handbook §5.1 — Liming and pH management",
+          "tier": 1
+        }
+      ],
+      "nutrient_status": [],
+      "headline_signals": [
+        "Soil Ca:B = 2800 exceeds the 1000:1 ceiling — Ca-induced B deficiency is likely at flowering, with downstream impacts on pollen viability, kernel set, and the eventual nut-fill window. Recommend foliar B at pre-bloom + 50%-bloom + 4 wk later, with a soil-Ca audit at the next sampling pass to verify the antagonism is the dominant driver here and not a parallel B deficiency masked by limited soil-test sensitivity."
+      ]
+    },
+    {
+      "block_id": "torture-blok-11",
+      "block_name": "Torture Blok 11",
+      "block_area_ha": 5.0,
+      "lab_name": "Reference (synthetic)",
+      "lab_method": "Mehlich-3",
+      "sample_date": "2026-03-01",
+      "sample_id": "TORTURE-torture-blok-11",
+      "sample_depth_cm": 15.0,
+      "parameters": {
+        "pH (H2O)": 5.8,
+        "Organic C (%)": 2.5,
+        "P (Bray-1)": 22.0,
+        "K": 145.0,
+        "Ca": 980.0,
+        "Mg": 185.0,
+        "Na_base_sat_pct": 1.0,
+        "S": 12.0,
+        "Zn": 3.0,
+        "B": 0.35,
+        "Mn": 180.0,
+        "Fe": 95.0,
+        "Cu": 6.5,
+        "Al": 0.0,
+        "CEC": 10.2,
+        "Acid_sat_pct": 0.0
+      },
+      "computed_ratios": {
+        "P:Zn": 7.3,
+        "Ca:B": 2800.0,
+        "soil_ESP_pct": 1.0
+      },
+      "factor_findings": [
+        {
+          "kind": "antagonism",
+          "severity": "warn",
+          "parameter": "Ca:B",
+          "value": 2800.0,
+          "threshold": 1000.0,
+          "message": "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.",
+          "recommended_action": "Apply foliar B at critical stages (pre-bloom, fruit set)",
+          "source_id": "SHORROCKS_1997",
+          "source_section": "Plant & Soil 193:121-148",
+          "tier": 3
+        },
+        {
+          "kind": "balance",
+          "severity": "warn",
+          "parameter": "pH (KCl)",
+          "value": 4.8,
+          "threshold": 5.0,
+          "message": "pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion limited.",
+          "recommended_action": "Lime application (calcitic or dolomitic per Mg status). Size against pH deficit + buffer factor; pre-season for reaction time.",
+          "source_id": "FERTASA_5_1",
+          "source_section": "FERTASA Soil Fertility Handbook §5.1 — Liming and pH management",
+          "tier": 1
+        }
+      ],
+      "nutrient_status": [],
+      "headline_signals": [
+        "Soil Ca:B = 2800 exceeds the 1000:1 ceiling — Ca-induced B deficiency is likely at flowering, with downstream impacts on pollen viability, kernel set, and the eventual nut-fill window. Recommend foliar B at pre-bloom + 50%-bloom + 4 wk later, with a soil-Ca audit at the next sampling pass to verify the antagonism is the dominant driver here and not a parallel B deficiency masked by limited soil-test sensitivity."
+      ]
+    },
+    {
+      "block_id": "torture-blok-12",
+      "block_name": "Torture Blok 12",
+      "block_area_ha": 5.0,
+      "lab_name": "Reference (synthetic)",
+      "lab_method": "Mehlich-3",
+      "sample_date": "2026-03-01",
+      "sample_id": "TORTURE-torture-blok-12",
+      "sample_depth_cm": 15.0,
+      "parameters": {
+        "pH (H2O)": 5.8,
+        "Organic C (%)": 2.5,
+        "P (Bray-1)": 22.0,
+        "K": 145.0,
+        "Ca": 980.0,
+        "Mg": 185.0,
+        "Na_base_sat_pct": 1.0,
+        "S": 12.0,
+        "Zn": 3.0,
+        "B": 0.35,
+        "Mn": 180.0,
+        "Fe": 95.0,
+        "Cu": 6.5,
+        "Al": 0.0,
+        "CEC": 10.2,
+        "Acid_sat_pct": 0.0
+      },
+      "computed_ratios": {
+        "P:Zn": 7.3,
+        "Ca:B": 2800.0,
+        "soil_ESP_pct": 1.0
+      },
+      "factor_findings": [
+        {
+          "kind": "antagonism",
+          "severity": "warn",
+          "parameter": "Ca:B",
+          "value": 2800.0,
+          "threshold": 1000.0,
+          "message": "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.",
+          "recommended_action": "Apply foliar B at critical stages (pre-bloom, fruit set)",
+          "source_id": "SHORROCKS_1997",
+          "source_section": "Plant & Soil 193:121-148",
+          "tier": 3
+        },
+        {
+          "kind": "balance",
+          "severity": "warn",
+          "parameter": "pH (KCl)",
+          "value": 4.8,
+          "threshold": 5.0,
+          "message": "pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion limited.",
+          "recommended_action": "Lime application (calcitic or dolomitic per Mg status). Size against pH deficit + buffer factor; pre-season for reaction time.",
+          "source_id": "FERTASA_5_1",
+          "source_section": "FERTASA Soil Fertility Handbook §5.1 — Liming and pH management",
+          "tier": 1
+        }
+      ],
+      "nutrient_status": [],
+      "headline_signals": [
+        "Soil Ca:B = 2800 exceeds the 1000:1 ceiling — Ca-induced B deficiency is likely at flowering, with downstream impacts on pollen viability, kernel set, and the eventual nut-fill window. Recommend foliar B at pre-bloom + 50%-bloom + 4 wk later, with a soil-Ca audit at the next sampling pass to verify the antagonism is the dominant driver here and not a parallel B deficiency masked by limited soil-test sensitivity."
+      ]
+    },
+    {
+      "block_id": "cluster_A",
+      "block_name": "Torture Blok 1, Torture Blok 2, Torture Blok 3, Torture Blok 4, Torture Blok 5, Torture Blok 6, Torture Blok 7, Torture Blok 8, Torture Blok 9, Torture Blok 10, Torture Blok 11, Torture Blok 12",
+      "block_area_ha": 60.0,
+      "lab_name": "Cluster aggregate",
+      "lab_method": "Mehlich-3",
+      "sample_date": "2026-03-01",
+      "sample_id": "TORTURE-CLUSTER-A",
+      "sample_depth_cm": 15.0,
+      "parameters": {
+        "pH (H2O)": 5.8,
+        "Organic C (%)": 2.5,
+        "P (Bray-1)": 22.0,
+        "K": 145.0,
+        "Ca": 980.0,
+        "Mg": 185.0,
+        "Na_base_sat_pct": 1.0,
+        "S": 12.0,
+        "Zn": 3.0,
+        "B": 0.35,
+        "Mn": 180.0,
+        "Fe": 95.0,
+        "Cu": 6.5,
+        "Al": 0.0,
+        "CEC": 10.2,
+        "Acid_sat_pct": 0.0
+      },
+      "computed_ratios": {
+        "P:Zn": 7.3,
+        "Ca:B": 2800.0,
+        "soil_ESP_pct": 1.0
+      },
+      "factor_findings": [
+        {
+          "kind": "antagonism",
+          "severity": "warn",
+          "parameter": "Ca:B",
+          "value": 2800.0,
+          "threshold": 1000.0,
+          "message": "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.",
+          "recommended_action": "Apply foliar B at critical stages (pre-bloom, fruit set)",
+          "source_id": "SHORROCKS_1997",
+          "source_section": "Plant & Soil 193:121-148",
+          "tier": 3
+        },
+        {
+          "kind": "balance",
+          "severity": "warn",
+          "parameter": "pH (KCl)",
+          "value": 4.8,
+          "threshold": 5.0,
+          "message": "pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion limited.",
+          "recommended_action": "Lime application (calcitic or dolomitic per Mg status). Size against pH deficit + buffer factor; pre-season for reaction time.",
+          "source_id": "FERTASA_5_1",
+          "source_section": "FERTASA Soil Fertility Handbook §5.1 — Liming and pH management",
+          "tier": 1
+        }
+      ],
+      "nutrient_status": [],
+      "headline_signals": []
+    }
+  ],
+  "pre_season_inputs": [],
+  "pre_season_recommendations": [
+    {
+      "block_id": "torture-blok-01",
+      "material": "Calcitic Lime",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-01.Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-01.Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-01.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-01",
+      "material": "Dolomitic Lime",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #2 for torture-blok-01.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-01",
+      "material": "Gypsum",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #3 for torture-blok-01.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-01",
+      "material": "Compost",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #4 for torture-blok-01.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-01",
+      "material": "Kieserite",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #5 for torture-blok-01.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-01",
+      "material": "Rock Phosphate",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #6 for torture-blok-01.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-01",
+      "material": "Borax",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #7 for torture-blok-01.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-01",
+      "material": "Zinc Sulphate",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #8 for torture-blok-01.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-01",
+      "material": "Magnesium Sulphate",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #9 for torture-blok-01.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-05",
+      "material": "Calcitic Lime",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-05.Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-05.Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-05.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-05",
+      "material": "Dolomitic Lime",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #2 for torture-blok-05.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-05",
+      "material": "Gypsum",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #3 for torture-blok-05.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-05",
+      "material": "Compost",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #4 for torture-blok-05.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-05",
+      "material": "Kieserite",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #5 for torture-blok-05.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-05",
+      "material": "Rock Phosphate",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #6 for torture-blok-05.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-05",
+      "material": "Borax",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #7 for torture-blok-05.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-05",
+      "material": "Zinc Sulphate",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #8 for torture-blok-05.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-06",
+      "material": "Calcitic Lime",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-06.Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-06.Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-06.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-07",
+      "material": "Calcitic Lime",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-07.Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-07.Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-07.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-08",
+      "material": "Calcitic Lime",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-08.Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-08.Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-08.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-09",
+      "material": "Calcitic Lime",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-09.Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-09.Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-09.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-10",
+      "material": "Calcitic Lime",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-10.Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-10.Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-10.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-11",
+      "material": "Calcitic Lime",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-11.Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-11.Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-11.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
+      "block_id": "torture-blok-12",
+      "material": "Calcitic Lime",
+      "target_rate_per_ha": "1 500-2 500 kg/ha",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-12.Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-12.Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion is limited; downstream effects on stage-2 N uptake; recommendation #1 for torture-blok-12.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity. Target reaction window: ~4 months before planting.",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Synthetic torture fixture",
+        "note": null,
+        "tier": 6
+      }
+    }
+  ],
+  "stage_schedules": [
+    {
+      "block_id": "cluster_A",
+      "planting_date": "2026-03-01",
+      "harvest_date": "2027-02-28",
+      "cadence": "per-application",
+      "stages": []
+    }
+  ],
+  "blends": [
+    {
+      "block_id": "cluster_A",
+      "stage_number": 1,
+      "stage_name": "establishment",
+      "applications": [
+        {
+          "event_index": 13,
+          "event_date": "2026-03-15",
+          "week_from_planting": 3,
+          "event_of_stage_index": 1,
+          "total_events_in_stage": 1
+        }
+      ],
+      "method": {
+        "kind": "dry_broadcast",
+        "incorporate": false,
+        "placement_depth_cm": null
+      },
+      "raw_products": [
+        {
+          "product": "Compost",
+          "analysis": "N 2.1%, P 1.0%, K 1.6%",
+          "stream": null,
+          "rate_per_event_per_ha": "250 kg",
+          "rate_per_stage_per_ha": "250 kg",
+          "batch_total": "15000 kg",
+          "source": null
+        }
+      ],
+      "concentrates": [],
+      "nutrients_delivered": {
+        "P2O5": 10.5,
+        "K2O": 31.7,
+        "S": 4.7,
+        "N": 11.7,
+        "Ca": 11.0,
+        "Mg": 5.0
+      },
+      "sources": [
+        {
+          "source_id": "IMPLEMENTER_CONVENTION",
+          "section": "Greedy material-cover algorithm v1 (Phase 2 module 8)",
+          "note": null,
+          "tier": 6
+        }
+      ],
+      "confidence": null,
+      "events": 1,
+      "weeks": "Week 3",
+      "dates_label": "15 Mar 2026"
+    },
+    {
+      "block_id": "cluster_A",
+      "stage_number": 2,
+      "stage_name": "veg I",
+      "applications": [
+        {
+          "event_index": 25,
+          "event_date": "2026-04-01",
+          "week_from_planting": 5,
+          "event_of_stage_index": 1,
+          "total_events_in_stage": 1
+        }
+      ],
+      "method": {
+        "kind": "dry_broadcast",
+        "incorporate": false,
+        "placement_depth_cm": null
+      },
+      "raw_products": [
+        {
+          "product": "Compost",
+          "analysis": "N 2.1%, P 1.0%, K 1.6%",
+          "stream": null,
+          "rate_per_event_per_ha": "250 kg",
+          "rate_per_stage_per_ha": "250 kg",
+          "batch_total": "15000 kg",
+          "source": null
+        }
+      ],
+      "concentrates": [],
+      "nutrients_delivered": {
+        "P2O5": 10.5,
+        "K2O": 31.7,
+        "S": 4.7,
+        "N": 11.7,
+        "Ca": 11.0,
+        "Mg": 5.0
+      },
+      "sources": [
+        {
+          "source_id": "IMPLEMENTER_CONVENTION",
+          "section": "Greedy material-cover algorithm v1 (Phase 2 module 8)",
+          "note": null,
+          "tier": 6
+        }
+      ],
+      "confidence": null,
+      "events": 1,
+      "weeks": "Week 5",
+      "dates_label": "1 Apr 2026"
+    },
+    {
+      "block_id": "cluster_A",
+      "stage_number": 3,
+      "stage_name": "split-pass-1",
+      "applications": [
+        {
+          "event_index": 39,
+          "event_date": "2026-05-01",
+          "week_from_planting": 9,
+          "event_of_stage_index": 1,
+          "total_events_in_stage": 1
+        }
+      ],
+      "method": {
+        "kind": "dry_broadcast",
+        "incorporate": false,
+        "placement_depth_cm": null
+      },
+      "raw_products": [
+        {
+          "product": "Compost",
+          "analysis": "N 2.1%, P 1.0%, K 1.6%",
+          "stream": null,
+          "rate_per_event_per_ha": "250 kg",
+          "rate_per_stage_per_ha": "250 kg",
+          "batch_total": "15000 kg",
+          "source": null
+        }
+      ],
+      "concentrates": [],
+      "nutrients_delivered": {
+        "P2O5": 10.5,
+        "K2O": 31.7,
+        "S": 4.7,
+        "N": 11.7,
+        "Ca": 11.0,
+        "Mg": 5.0
+      },
+      "sources": [
+        {
+          "source_id": "IMPLEMENTER_CONVENTION",
+          "section": "Greedy material-cover algorithm v1 (Phase 2 module 8)",
+          "note": null,
+          "tier": 6
+        }
+      ],
+      "confidence": null,
+      "events": 1,
+      "weeks": "Week 9",
+      "dates_label": "1 May 2026"
+    },
+    {
+      "block_id": "cluster_A",
+      "stage_number": 4,
+      "stage_name": "split-pass-2",
+      "applications": [
+        {
+          "event_index": 49,
+          "event_date": "2026-05-01",
+          "week_from_planting": 9,
+          "event_of_stage_index": 1,
+          "total_events_in_stage": 1
+        }
+      ],
+      "method": {
+        "kind": "liquid_drip",
+        "concentrate_strength_g_per_l": null,
+        "ec_target_ms_per_cm": null,
+        "ph_target": null,
+        "part_a_required": false,
+        "part_b_required": false
+      },
+      "raw_products": [
+        {
+          "product": "Compost",
+          "analysis": "N 2.1%, P 1.0%, K 1.6%",
+          "stream": null,
+          "rate_per_event_per_ha": "250 kg",
+          "rate_per_stage_per_ha": "250 kg",
+          "batch_total": "15000 kg",
+          "source": null
+        }
+      ],
+      "concentrates": [],
+      "nutrients_delivered": {
+        "P2O5": 10.5,
+        "K2O": 31.7,
+        "S": 4.7,
+        "N": 11.7,
+        "Ca": 11.0,
+        "Mg": 5.0
+      },
+      "sources": [
+        {
+          "source_id": "IMPLEMENTER_CONVENTION",
+          "section": "Greedy material-cover algorithm v1 (Phase 2 module 8)",
+          "note": null,
+          "tier": 6
+        }
+      ],
+      "confidence": null,
+      "events": 1,
+      "weeks": "Week 9",
+      "dates_label": "1 May 2026"
+    },
+    {
+      "block_id": "cluster_A",
+      "stage_number": 5,
+      "stage_name": "split-pass-3",
+      "applications": [
+        {
+          "event_index": 59,
+          "event_date": "2026-05-01",
+          "week_from_planting": 9,
+          "event_of_stage_index": 1,
+          "total_events_in_stage": 1
+        }
+      ],
+      "method": {
+        "kind": "dry_broadcast",
+        "incorporate": false,
+        "placement_depth_cm": null
+      },
+      "raw_products": [
+        {
+          "product": "Compost",
+          "analysis": "N 2.1%, P 1.0%, K 1.6%",
+          "stream": null,
+          "rate_per_event_per_ha": "250 kg",
+          "rate_per_stage_per_ha": "250 kg",
+          "batch_total": "15000 kg",
+          "source": null
+        }
+      ],
+      "concentrates": [],
+      "nutrients_delivered": {
+        "P2O5": 10.5,
+        "K2O": 31.7,
+        "S": 4.7,
+        "N": 11.7,
+        "Ca": 11.0,
+        "Mg": 5.0
+      },
+      "sources": [
+        {
+          "source_id": "IMPLEMENTER_CONVENTION",
+          "section": "Greedy material-cover algorithm v1 (Phase 2 module 8)",
+          "note": null,
+          "tier": 6
+        }
+      ],
+      "confidence": null,
+      "events": 1,
+      "weeks": "Week 9",
+      "dates_label": "1 May 2026"
+    },
+    {
+      "block_id": "cluster_A",
+      "stage_number": 6,
+      "stage_name": "split-pass-4",
+      "applications": [
+        {
+          "event_index": 69,
+          "event_date": "2026-05-01",
+          "week_from_planting": 9,
+          "event_of_stage_index": 1,
+          "total_events_in_stage": 1
+        }
+      ],
+      "method": {
+        "kind": "liquid_drip",
+        "concentrate_strength_g_per_l": null,
+        "ec_target_ms_per_cm": null,
+        "ph_target": null,
+        "part_a_required": false,
+        "part_b_required": false
+      },
+      "raw_products": [
+        {
+          "product": "Compost",
+          "analysis": "N 2.1%, P 1.0%, K 1.6%",
+          "stream": null,
+          "rate_per_event_per_ha": "250 kg",
+          "rate_per_stage_per_ha": "250 kg",
+          "batch_total": "15000 kg",
+          "source": null
+        }
+      ],
+      "concentrates": [],
+      "nutrients_delivered": {
+        "P2O5": 10.5,
+        "K2O": 31.7,
+        "S": 4.7,
+        "N": 11.7,
+        "Ca": 11.0,
+        "Mg": 5.0
+      },
+      "sources": [
+        {
+          "source_id": "IMPLEMENTER_CONVENTION",
+          "section": "Greedy material-cover algorithm v1 (Phase 2 module 8)",
+          "note": null,
+          "tier": 6
+        }
+      ],
+      "confidence": null,
+      "events": 1,
+      "weeks": "Week 9",
+      "dates_label": "1 May 2026"
+    },
+    {
+      "block_id": "cluster_A",
+      "stage_number": 7,
+      "stage_name": "veg III",
+      "applications": [
+        {
+          "event_index": 83,
+          "event_date": "2026-06-01",
+          "week_from_planting": 13,
+          "event_of_stage_index": 1,
+          "total_events_in_stage": 1
+        }
+      ],
+      "method": {
+        "kind": "dry_broadcast",
+        "incorporate": false,
+        "placement_depth_cm": null
+      },
+      "raw_products": [
+        {
+          "product": "Compost",
+          "analysis": "N 2.1%, P 1.0%, K 1.6%",
+          "stream": null,
+          "rate_per_event_per_ha": "250 kg",
+          "rate_per_stage_per_ha": "250 kg",
+          "batch_total": "15000 kg",
+          "source": null
+        }
+      ],
+      "concentrates": [],
+      "nutrients_delivered": {
+        "P2O5": 10.5,
+        "K2O": 31.7,
+        "S": 4.7,
+        "N": 11.7,
+        "Ca": 11.0,
+        "Mg": 5.0
+      },
+      "sources": [
+        {
+          "source_id": "IMPLEMENTER_CONVENTION",
+          "section": "Greedy material-cover algorithm v1 (Phase 2 module 8)",
+          "note": null,
+          "tier": 6
+        }
+      ],
+      "confidence": null,
+      "events": 1,
+      "weeks": "Week 13",
+      "dates_label": "1 Jun 2026"
+    },
+    {
+      "block_id": "cluster_A",
+      "stage_number": 8,
+      "stage_name": "bloom",
+      "applications": [
+        {
+          "event_index": 97,
+          "event_date": "2026-07-01",
+          "week_from_planting": 17,
+          "event_of_stage_index": 1,
+          "total_events_in_stage": 1
+        }
+      ],
+      "method": {
+        "kind": "dry_broadcast",
+        "incorporate": false,
+        "placement_depth_cm": null
+      },
+      "raw_products": [
+        {
+          "product": "Compost",
+          "analysis": "N 2.1%, P 1.0%, K 1.6%",
+          "stream": null,
+          "rate_per_event_per_ha": "250 kg",
+          "rate_per_stage_per_ha": "250 kg",
+          "batch_total": "15000 kg",
+          "source": null
+        }
+      ],
+      "concentrates": [],
+      "nutrients_delivered": {
+        "P2O5": 10.5,
+        "K2O": 31.7,
+        "S": 4.7,
+        "N": 11.7,
+        "Ca": 11.0,
+        "Mg": 5.0
+      },
+      "sources": [
+        {
+          "source_id": "IMPLEMENTER_CONVENTION",
+          "section": "Greedy material-cover algorithm v1 (Phase 2 module 8)",
+          "note": null,
+          "tier": 6
+        }
+      ],
+      "confidence": null,
+      "events": 1,
+      "weeks": "Week 17",
+      "dates_label": "1 Jul 2026"
+    },
+    {
+      "block_id": "cluster_A",
+      "stage_number": 9,
+      "stage_name": "fruit set",
+      "applications": [
+        {
+          "event_index": 112,
+          "event_date": "2026-08-01",
+          "week_from_planting": 22,
+          "event_of_stage_index": 1,
+          "total_events_in_stage": 1
+        }
+      ],
+      "method": {
+        "kind": "dry_broadcast",
+        "incorporate": false,
+        "placement_depth_cm": null
+      },
+      "raw_products": [
+        {
+          "product": "Compost",
+          "analysis": "N 2.1%, P 1.0%, K 1.6%",
+          "stream": null,
+          "rate_per_event_per_ha": "250 kg",
+          "rate_per_stage_per_ha": "250 kg",
+          "batch_total": "15000 kg",
+          "source": null
+        }
+      ],
+      "concentrates": [],
+      "nutrients_delivered": {
+        "P2O5": 10.5,
+        "K2O": 31.7,
+        "S": 4.7,
+        "N": 11.7,
+        "Ca": 11.0,
+        "Mg": 5.0
+      },
+      "sources": [
+        {
+          "source_id": "IMPLEMENTER_CONVENTION",
+          "section": "Greedy material-cover algorithm v1 (Phase 2 module 8)",
+          "note": null,
+          "tier": 6
+        }
+      ],
+      "confidence": null,
+      "events": 1,
+      "weeks": "Week 22",
+      "dates_label": "1 Aug 2026"
+    }
+  ],
+  "foliar_events": [
+    {
+      "block_id": "torture-blok-01",
+      "event_number": 1,
+      "week": 6,
+      "spray_date": "2026-04-12",
+      "stage_name": "Vegetative I",
+      "product": "Solubor",
+      "analysis": "20.5% B",
+      "rate_per_ha": "1.5 kg",
+      "total_for_block": "7.5 kg",
+      "trigger_reason": "Soil Ca:B = 2800 exceeds the 1000:1 ceiling and is the dominant antagonism here. Pre-bloom B foliar is the standard SA citrus intervention; the timing is keyed off the cumulative degree-days since bud-break and not the calendar week. We apply at 50% bloom and again 28 days later to cover pollen viability and the early fruit-set window. This is exactly the kind of long, detailed rationale Opus will produce when given freedom to explain the why. Soil Ca:B = 2800 exceeds the 1000:1 ceiling and is the dominant antagonism here. Pre-bloom B foliar is the standard SA citrus intervention; the timing is keyed off the cumulative degree-days since bud-break and not the calendar week. We apply at 50% bloom and again 28 days later to cover pollen viability and the early fruit-set window. This is exactly the kind of long, detailed rationale Opus will produce when given freedom to explain the why. Soil Ca:B = 2800 exceeds the 1000:1 ceiling and is the dominant antagonism here. Pre-bloom B foliar is the standard SA citrus intervention; the timing is keyed off the cumulative degree-days since bud-break and not the calendar week. We apply at 50% bloom and again 28 days later to cover pollen viability and the early fruit-set window. This is exactly the kind of long, detailed rationale Opus will produce when given freedom to explain the why. Soil Ca:B = 2800 exceeds the 1000:1 ceiling and is the dominant antagonism here. Pre-bloom B foliar is the standard SA citrus intervention; the timing is keyed off the cumulative degree-days since bud-break and not the calendar week. We apply at 50% bloom and again 28 days later to cover pollen viability and the early fruit-set window. This is exactly the kind of long, detailed rationale Opus will produce when given freedom to explain the why.",
+      "trigger_kind": "soil_availability_gap",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Torture fixture",
+        "note": null,
+        "tier": 3
+      },
+      "confidence": null
+    },
+    {
+      "block_id": "torture-blok-02",
+      "event_number": 2,
+      "week": 7,
+      "spray_date": "2026-04-13",
+      "stage_name": "Vegetative I",
+      "product": "Solubor",
+      "analysis": "20.5% B",
+      "rate_per_ha": "1.5 kg",
+      "total_for_block": "7.5 kg",
+      "trigger_reason": "Soil Ca:B antagonism.",
+      "trigger_kind": "soil_availability_gap",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Torture fixture",
+        "note": null,
+        "tier": 3
+      },
+      "confidence": null
+    },
+    {
+      "block_id": "torture-blok-03",
+      "event_number": 3,
+      "week": 8,
+      "spray_date": "2026-04-14",
+      "stage_name": "Vegetative I",
+      "product": "Solubor",
+      "analysis": "20.5% B",
+      "rate_per_ha": "1.5 kg",
+      "total_for_block": "7.5 kg",
+      "trigger_reason": "Soil Ca:B antagonism.",
+      "trigger_kind": "soil_availability_gap",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Torture fixture",
+        "note": null,
+        "tier": 3
+      },
+      "confidence": null
+    },
+    {
+      "block_id": "torture-blok-04",
+      "event_number": 4,
+      "week": 9,
+      "spray_date": "2026-04-15",
+      "stage_name": "Bloom",
+      "product": "Solubor",
+      "analysis": "20.5% B",
+      "rate_per_ha": "1.5 kg",
+      "total_for_block": "7.5 kg",
+      "trigger_reason": "Soil Ca:B antagonism.",
+      "trigger_kind": "soil_availability_gap",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Torture fixture",
+        "note": null,
+        "tier": 3
+      },
+      "confidence": null
+    },
+    {
+      "block_id": "torture-blok-05",
+      "event_number": 5,
+      "week": 10,
+      "spray_date": "2026-04-16",
+      "stage_name": "Bloom",
+      "product": "Solubor",
+      "analysis": "20.5% B",
+      "rate_per_ha": "1.5 kg",
+      "total_for_block": "7.5 kg",
+      "trigger_reason": "Soil Ca:B antagonism.",
+      "trigger_kind": "soil_availability_gap",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Torture fixture",
+        "note": null,
+        "tier": 3
+      },
+      "confidence": null
+    }
+  ],
+  "block_totals": {
+    "cluster_A": {
+      "N": 145.0,
+      "P2O5": 86.0,
+      "K2O": 173.0,
+      "Ca": 176.0,
+      "S": 67.0
+    },
+    "torture-blok-01": {
+      "N": 145.0,
+      "P2O5": 86.0
+    },
+    "torture-blok-02": {
+      "N": 145.0,
+      "P2O5": 86.0
+    },
+    "torture-blok-03": {
+      "N": 145.0,
+      "P2O5": 86.0
+    },
+    "torture-blok-04": {
+      "N": 145.0,
+      "P2O5": 86.0
+    },
+    "torture-blok-05": {
+      "N": 145.0,
+      "P2O5": 86.0
+    },
+    "torture-blok-06": {
+      "N": 145.0,
+      "P2O5": 86.0
+    },
+    "torture-blok-07": {
+      "N": 145.0,
+      "P2O5": 86.0
+    },
+    "torture-blok-08": {
+      "N": 145.0,
+      "P2O5": 86.0
+    },
+    "torture-blok-09": {
+      "N": 145.0,
+      "P2O5": 86.0
+    },
+    "torture-blok-10": {
+      "N": 145.0,
+      "P2O5": 86.0
+    },
+    "torture-blok-11": {
+      "N": 145.0,
+      "P2O5": 86.0
+    },
+    "torture-blok-12": {
+      "N": 145.0,
+      "P2O5": 86.0
+    }
+  },
+  "risk_flags": [
+    {
+      "message": "Soil Ca:B = 2800 exceeds the 1000:1 ceiling and is the dominant antagonism here. Pre-bloom B foliar is the standard SA citrus intervention; the timing is keyed off the cumulative degree-days since bud-break and not the calendar week. We apply at 50% bloom and again 28 days later to cover pollen viability and the early fruit-set window. This is exactly the kind of long, detailed rationale Opus will produce when given freedom to explain the why. Soil Ca:B = 2800 exceeds the 1000:1 ceiling and is the dominant antagonism here. Pre-bloom B foliar is the standard SA citrus intervention; the timing is keyed off the cumulative degree-days since bud-break and not the calendar week. We apply at 50% bloom and again 28 days later to cover pollen viability and the early fruit-set window. This is exactly the kind of long, detailed rationale Opus will produce when given freedom to explain the why. Soil Ca:B = 2800 exceeds the 1000:1 ceiling and is the dominant antagonism here. Pre-bloom B foliar is the standard SA citrus intervention; the timing is keyed off the cumulative degree-days since bud-break and not the calendar week. We apply at 50% bloom and again 28 days later to cover pollen viability and the early fruit-set window. This is exactly the kind of long, detailed rationale Opus will produce when given freedom to explain the why. Soil Ca:B = 2800 exceeds the 1000:1 ceiling and is the dominant antagonism here. Pre-bloom B foliar is the standard SA citrus intervention; the timing is keyed off the cumulative degree-days since bud-break and not the calendar week. We apply at 50% bloom and again 28 days later to cover pollen viability and the early fruit-set window. This is exactly the kind of long, detailed rationale Opus will produce when given freedom to explain the why.",
+      "severity": "warn",
+      "source": null
+    },
+    {
+      "message": "Short risk.",
+      "severity": "info",
+      "source": null
+    }
+  ],
+  "assumptions": [
+    {
+      "field": "long-prose-stress",
+      "assumed_value": "This is a deliberately long assumption block engineered to stress the prose-wrapping path through the renderer. It contains a Pneumonoultramicroscopicsilicovolcanoconiosis-class long word, ratio strings like Ca:Mg:K = 65:15:5 that should not break across lines, and chemical names — 2-(2,4-dichlorophenoxy)acetic acid, hexafluorosilicate — that exceed normal column widths. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. This is a deliberately long assumption block engineered to stress the prose-wrapping path through the renderer. It contains a Pneumonoultramicroscopicsilicovolcanoconiosis-class long word, ratio strings like Ca:Mg:K = 65:15:5 that should not break across lines, and chemical names — 2-(2,4-dichlorophenoxy)acetic acid, hexafluorosilicate — that exceed normal column widths. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. This is a deliberately long assumption block engineered to stress the prose-wrapping path through the renderer. It contains a Pneumonoultramicroscopicsilicovolcanoconiosis-class long word, ratio strings like Ca:Mg:K = 65:15:5 that should not break across lines, and chemical names — 2-(2,4-dichlorophenoxy)acetic acid, hexafluorosilicate — that exceed normal column widths. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. This is a deliberately long assumption block engineered to stress the prose-wrapping path through the renderer. It contains a Pneumonoultramicroscopicsilicovolcanoconiosis-class long word, ratio strings like Ca:Mg:K = 65:15:5 that should not break across lines, and chemical names — 2-(2,4-dichlorophenoxy)acetic acid, hexafluorosilicate — that exceed normal column widths. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. This is a deliberately long assumption block engineered to stress the prose-wrapping path through the renderer. It contains a Pneumonoultramicroscopicsilicovolcanoconiosis-class long word, ratio strings like Ca:Mg:K = 65:15:5 that should not break across lines, and chemical names — 2-(2,4-dichlorophenoxy)acetic acid, hexafluorosilicate — that exceed normal column widths. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. This is a deliberately long assumption block engineered to stress the prose-wrapping path through the renderer. It contains a Pneumonoultramicroscopicsilicovolcanoconiosis-class long word, ratio strings like Ca:Mg:K = 65:15:5 that should not break across lines, and chemical names — 2-(2,4-dichlorophenoxy)acetic acid, hexafluorosilicate — that exceed normal column widths. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. This is a deliberately long assumption block engineered to stress the prose-wrapping path through the renderer. It contains a Pneumonoultramicroscopicsilicovolcanoconiosis-class long word, ratio strings like Ca:Mg:K = 65:15:5 that should not break across lines, and chemical names — 2-(2,4-dichlorophenoxy)acetic acid, hexafluorosilicate — that exceed normal column widths. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+      "override_guidance": null,
+      "source": null,
+      "tier": 6
+    },
+    {
+      "field": "minimal",
+      "assumed_value": "Short.",
+      "override_guidance": null,
+      "source": null,
+      "tier": 6
+    }
+  ],
+  "outstanding_items": [
+    {
+      "item": "Pneumonoultramicroscopicsilicovolcanoconiosis-test",
+      "why_it_matters": "This is a deliberately long assumption block engineered to stress the prose-wrapping path through the renderer. It contains a Pneumonoultramicroscopicsilicovolcanoconiosis-class long word, ratio strings like Ca:Mg:K = 65:15:5 that should not break across lines, and chemical names — 2-(2,4-dichlorophenoxy)acetic acid, hexafluorosilicate — that exceed normal column widths. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. This is a deliberately long assumption block engineered to stress the prose-wrapping path through the renderer. It contains a Pneumonoultramicroscopicsilicovolcanoconiosis-class long word, ratio strings like Ca:Mg:K = 65:15:5 that should not break across lines, and chemical names — 2-(2,4-dichlorophenoxy)acetic acid, hexafluorosilicate — that exceed normal column widths. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. This is a deliberately long assumption block engineered to stress the prose-wrapping path through the renderer. It contains a Pneumonoultramicroscopicsilicovolcanoconiosis-class long word, ratio strings like Ca:Mg:K = 65:15:5 that should not break across lines, and chemical names — 2-(2,4-dichlorophenoxy)acetic acid, hexafluorosilicate — that exceed normal column widths. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. This is a deliberately long assumption block engineered to stress the prose-wrapping path through the renderer. It contains a Pneumonoultramicroscopicsilicovolcanoconiosis-class long word, ratio strings like Ca:Mg:K = 65:15:5 that should not break across lines, and chemical names — 2-(2,4-dichlorophenoxy)acetic acid, hexafluorosilicate — that exceed normal column widths. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. This is a deliberately long assumption block engineered to stress the prose-wrapping path through the renderer. It contains a Pneumonoultramicroscopicsilicovolcanoconiosis-class long word, ratio strings like Ca:Mg:K = 65:15:5 that should not break across lines, and chemical names — 2-(2,4-dichlorophenoxy)acetic acid, hexafluorosilicate — that exceed normal column widths. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. This is a deliberately long assumption block engineered to stress the prose-wrapping path through the renderer. It contains a Pneumonoultramicroscopicsilicovolcanoconiosis-class long word, ratio strings like Ca:Mg:K = 65:15:5 that should not break across lines, and chemical names — 2-(2,4-dichlorophenoxy)acetic acid, hexafluorosilicate — that exceed normal column widths. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. This is a deliberately long assumption block engineered to stress the prose-wrapping path through the renderer. It contains a Pneumonoultramicroscopicsilicovolcanoconiosis-class long word, ratio strings like Ca:Mg:K = 65:15:5 that should not break across lines, and chemical names — 2-(2,4-dichlorophenoxy)acetic acid, hexafluorosilicate — that exceed normal column widths. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+      "impact_if_skipped": "Renderer overflows the column."
+    }
+  ],
+  "shopping_list": [
+    {
+      "category": "dry_blend",
+      "product": "Manure Compost",
+      "analysis": "N 2.1%, P 1.0%, K 1.6%, Ca 2.2%, Mg 1.0%, S 0.7%",
+      "total_per_block": {
+        "mac-levubu-ref": 2500.0
+      },
+      "total_overall": 2500.0,
+      "unit": "kg"
+    },
+    {
+      "category": "dry_blend",
+      "product": "KCl",
+      "analysis": "K 60.0%",
+      "total_per_block": {
+        "mac-levubu-ref": 170.0
+      },
+      "total_overall": 170.0,
+      "unit": "kg"
+    },
+    {
+      "category": "dry_blend",
+      "product": "MAP",
+      "analysis": "N 11.0%, P 51.0%",
+      "total_per_block": {
+        "mac-levubu-ref": 54.0
+      },
+      "total_overall": 54.0,
+      "unit": "kg"
+    },
+    {
+      "category": "dry_blend",
+      "product": "SOP",
+      "analysis": "K 50.0%, S 18.0%",
+      "total_per_block": {
+        "mac-levubu-ref": 33.0
+      },
+      "total_overall": 33.0,
+      "unit": "kg"
+    },
+    {
+      "category": "drip",
+      "product": "Calcium Nitrate",
+      "analysis": "N 15.5%, Ca 19.0%",
+      "total_per_block": {
+        "mac-levubu-ref": 1649.0
+      },
+      "total_overall": 1649.0,
+      "unit": "kg"
+    },
+    {
+      "category": "drip",
+      "product": "Potassium Nitrate",
+      "analysis": "N 13.0%, K 46.0%",
+      "total_per_block": {
+        "mac-levubu-ref": 2402.0
+      },
+      "total_overall": 2402.0,
+      "unit": "kg"
+    },
+    {
+      "category": "drip",
+      "product": "MAP",
+      "analysis": "N 11.0%, P 51.0%",
+      "total_per_block": {
+        "mac-levubu-ref": 441.0
+      },
+      "total_overall": 441.0,
+      "unit": "kg"
+    },
+    {
+      "category": "drip",
+      "product": "SOP",
+      "analysis": "K 50.0%, S 18.0%",
+      "total_per_block": {
+        "mac-levubu-ref": 458.0
+      },
+      "total_overall": 458.0,
+      "unit": "kg"
+    },
+    {
+      "category": "foliar",
+      "product": "Solubor",
+      "analysis": "20.5% B",
+      "total_per_block": {
+        "mac-levubu-ref": 7.6
+      },
+      "total_overall": 7.6,
+      "unit": "kg"
+    },
+    {
+      "category": "foliar",
+      "product": "Zinc Sulphate",
+      "analysis": "36% Zn",
+      "total_per_block": {
+        "mac-levubu-ref": 0.5
+      },
+      "total_overall": 0.5,
+      "unit": "% spray"
+    }
+  ],
+  "sources_audit": [],
+  "overall_confidence": null,
+  "decision_trace": [],
+  "created_at": "2026-04-28T22:59:15.500313",
+  "updated_at": "2026-04-28T22:59:15.500315",
+  "render_hint": null
+}

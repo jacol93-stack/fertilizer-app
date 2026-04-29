@@ -270,6 +270,8 @@ def calculate_all_corrections(
             nutrient_explanations: [{nutrient, base_req, final_target, notes}],
         }
     """
+    from app.services.soil_engine import normalise_soil_values
+    soil_values = normalise_soil_values(soil_values)
     corrections = []
 
     lime = calculate_lime_requirement(soil_values, classifications, crop)
@@ -343,37 +345,34 @@ def calculate_corrective_targets(
 
     Returns:
         {
-            "corrective_items": [
-                {
-                    "nutrient": "P",
-                    "current_mg_kg": 12,
-                    "optimal_range": "20-40",
-                    "target_mg_kg": 30,
-                    "direction": "build-up" | "draw-down",
-                    "gap_mg_kg": 18,
-                    "annual_corrective_kg_ha": 15,
-                    "estimated_seasons": 4,
-                    "note": "P: 12 → 30 mg/kg — ~4 seasons at 15 kg/ha above maintenance"
-                },
-                ...
-            ],
-            "missing_data": ["CEC", "Clay"]  # empty list if all present
+            "corrective_items": [...],
+            "missing_data": [],
+            "assumptions": ["CEC assumed medium (no value reported); refine once measured"],
         }
+
+    Gating policy: only inputs that are *actually used by the calc* gate the
+    output. CEC drives the build-up-factor category; when missing, fall back
+    to the medium band and surface an Assumption so the agronomist sees what
+    was assumed. Clay isn't read by this function at all (it's used only by
+    the lime/gypsum sizing helpers, which already default to 20 % internally),
+    so we no longer report it here. Pre-season is a revenue lever — gypsum /
+    lime + manure pellet sales — and a hard block on missing texture data
+    silently kills the upsell on the majority of SA labs that don't report
+    clay.
     """
+    from app.services.soil_engine import normalise_soil_values
+    soil_values = normalise_soil_values(soil_values)
     cec_val = soil_values.get("CEC")
-    clay_val = soil_values.get("Clay")
 
-    # Check for missing data
-    missing = []
+    assumptions: list[str] = []
     if cec_val is None or cec_val == "":
-        missing.append("CEC")
-    if clay_val is None or clay_val == "":
-        missing.append("Clay")
-
-    if missing:
-        return {"corrective_items": [], "missing_data": missing}
-
-    cec = float(cec_val)
+        cec = 10.0  # medium-band midpoint — sandy/medium/clay split is 6/15
+        assumptions.append(
+            "CEC assumed medium-textured (no value on soil report); refine "
+            "build-up rates once CEC is measured."
+        )
+    else:
+        cec = float(cec_val)
     cec_cat = _cec_category(cec)
 
     # Build nutrient target lookup
@@ -475,4 +474,4 @@ def calculate_corrective_targets(
                 "note": f"{nut}: {current:.0f} → {target:.0f} mg/kg — ~{seasons} season{'s' if seasons != 1 else ''} at reduced application",
             })
 
-    return {"corrective_items": items, "missing_data": []}
+    return {"corrective_items": items, "missing_data": [], "assumptions": assumptions}

@@ -297,21 +297,28 @@ def allocate_to_months(
                 walls_applied=ev["walls"],
             ))
 
-    # Check: stages with no events at all (farmer missed the window entirely)
-    covered_stages = {a.stage_number for a in applications}
-    for split in stage_splits:
-        if split.stage_number in covered_stages:
-            continue
-        # Stage got no application → flag as outstanding
-        window = window_by_num.get(split.stage_number)
-        window_str = ""
-        if window:
-            window_str = f" ({window.date_start.strftime('%b')}–{window.date_end.strftime('%b')})"
-        outstanding_messages.append(
-            f"Stage {split.stage_number} '{split.stage_name}'{window_str} has no "
-            f"allowed application month inside its window. Nutrients for this "
-            f"stage were not delivered. Consider adding a month within this window."
-        )
+    # Check: stages with no events at all.
+    #
+    # Strict containment first — applications with `event_date` inside
+    # the stage's day-window. Then a calendar-month overlap pass — if
+    # any application landed in a month the stage's window spans, count
+    # the stage as covered too. Why both: the stage windows are built
+    # by even-splitting planting_date → harvest_date into N day-ranges
+    # (~36 days each for a 5-stage 180-day perennial), which DON'T align
+    # to calendar-month boundaries — Stage 1 might be "Mar 1 – Apr 5"
+    # while the flag string strftimes it as "(Mar-Apr)". Without the
+    # calendar-month relaxation, a user who picks April for early-season
+    # nutrition gets a false-alarm "Stage 1 (Mar-Apr) not delivered"
+    # because Apr 15 falls in Stage 2's day-window. The user's mental
+    # model is calendar-month, so we honour that.
+    # NOTE: previously emitted "Stage X has no allowed application month
+    # inside its window" warnings here. Per agronomist-owned-timing
+    # policy (see project_application_timing_and_blend_count memory),
+    # the agronomist picks months via the UI and the engine should not
+    # bark when a stage window doesn't contain a chosen month — adjacent
+    # passes carry that stage's nutrients in practice. Removed entirely
+    # rather than gated on a flag because the warning was never useful
+    # and added noise to the report.
 
     # Sort applications by date for downstream ordering stability
     applications.sort(key=lambda a: a.event_date)

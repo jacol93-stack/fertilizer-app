@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { SelectionToolbar } from "@/components/ui/selection-toolbar";
 import {
   AlertCircle, ArrowLeft, Calendar, FlaskConical, Leaf, MapPin, Plus, Printer, Sprout, TrendingUp, Wrench,
 } from "lucide-react";
@@ -98,6 +99,62 @@ export default function FieldDashboardPage() {
   const [events, setEvents] = useState<FieldEventRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [openForm, setOpenForm] = useState<null | "application" | "yield" | "event">(null);
+
+  // Bulk-select state — one set per data type. Only one type's
+  // selection mode is active at a time so the UI stays simple.
+  const [activeSelect, setActiveSelect] = useState<null | "soil" | "leaf" | "yield" | "application" | "event">(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelectId = (id: string) =>
+    setSelectedIds((p) => {
+      const n = new Set(p);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+
+  const setSelectionMode = (kind: typeof activeSelect) => {
+    setActiveSelect(kind);
+    setSelectedIds(new Set());
+  };
+
+  const bulkDeleteSelected = async (
+    kind: NonNullable<typeof activeSelect>,
+  ) => {
+    const ids = Array.from(selectedIds);
+    // soil + leaf use POST /{id}/delete (soft-delete RPC pattern);
+    // yields/applications/events use DELETE /{path}/{id}.
+    const endpoints: Record<
+      NonNullable<typeof activeSelect>,
+      { method: "POST" | "DELETE"; path: (id: string) => string }
+    > = {
+      soil:        { method: "POST",   path: (id) => `/api/soil/${id}/delete` },
+      leaf:        { method: "POST",   path: (id) => `/api/leaf/${id}/delete` },
+      yield:       { method: "DELETE", path: (id) => `/api/clients/yields/${id}` },
+      application: { method: "DELETE", path: (id) => `/api/clients/applications/${id}` },
+      event:       { method: "DELETE", path: (id) => `/api/clients/events/${id}` },
+    };
+    let ok = 0;
+    let failed = 0;
+    const cfg = endpoints[kind];
+    for (const id of ids) {
+      try {
+        if (cfg.method === "POST") await api.post(cfg.path(id), {});
+        else await api.delete(cfg.path(id));
+        ok++;
+      } catch {
+        failed++;
+      }
+    }
+    if (failed === 0) {
+      toast.success(`Deleted ${ok} ${kind}${ok === 1 ? "" : "s"}`);
+    } else {
+      toast.warning(`${ok} deleted · ${failed} failed`);
+    }
+    setSelectedIds(new Set());
+    setActiveSelect(null);
+    await reload();
+  };
 
   const reload = async () => {
     const [soil, leaf, ys, apps, evts] = await Promise.all([
@@ -328,6 +385,18 @@ export default function FieldDashboardPage() {
           </div>
         </div>
 
+        {/* Data inventory band — at-a-glance "what we know about this
+            block, and from when". Drives the agronomist to upload
+            the missing pieces before building a programme. */}
+        <DataInventoryBand
+          field={field}
+          soilAnalyses={soilAnalyses}
+          leafAnalyses={leafAnalyses}
+          yields={yields}
+          applications={applications}
+          events={events}
+        />
+
         {/* Quick log toolbar — feeds the historical-analysis pipeline */}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-white px-3 py-2">
           <div className="text-xs text-muted-foreground">
@@ -537,23 +606,59 @@ export default function FieldDashboardPage() {
             title={`Soil analyses (${soilAnalyses.length})`}
             empty="No soil analyses on file."
             rows={soilAnalyses.map((s) => ({
+              id: s.id,
               date: s.analysis_date || s.created_at?.slice(0, 10) || "",
               primary: s.lab_name || "Lab",
               secondary: s.crop ?? "",
               href: undefined,
             }))}
             icon={<FlaskConical className="size-3.5" />}
+            selectionMode={activeSelect === "soil"}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelectId}
+            toolbar={
+              <SelectionToolbar
+                selectionMode={activeSelect === "soil"}
+                onToggleMode={(next) => setSelectionMode(next ? "soil" : null)}
+                totalCount={soilAnalyses.length}
+                selectedCount={activeSelect === "soil" ? selectedIds.size : 0}
+                onSelectAll={(all) => {
+                  if (all) setSelectedIds(new Set(soilAnalyses.map((s) => s.id)));
+                  else setSelectedIds(new Set());
+                }}
+                onDelete={() => bulkDeleteSelected("soil")}
+                itemLabel={{ singular: "soil analysis", plural: "soil analyses" }}
+              />
+            }
           />
           <HistoryList
             title={`Leaf analyses (${leafAnalyses.length})`}
             empty="No leaf analyses on file."
             rows={leafAnalyses.map((l) => ({
+              id: l.id,
               date: l.sample_date || l.created_at?.slice(0, 10) || "",
               primary: l.lab_name || "Lab",
               secondary: l.crop ?? "",
               href: undefined,
             }))}
             icon={<Leaf className="size-3.5" />}
+            selectionMode={activeSelect === "leaf"}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelectId}
+            toolbar={
+              <SelectionToolbar
+                selectionMode={activeSelect === "leaf"}
+                onToggleMode={(next) => setSelectionMode(next ? "leaf" : null)}
+                totalCount={leafAnalyses.length}
+                selectedCount={activeSelect === "leaf" ? selectedIds.size : 0}
+                onSelectAll={(all) => {
+                  if (all) setSelectedIds(new Set(leafAnalyses.map((l) => l.id)));
+                  else setSelectedIds(new Set());
+                }}
+                onDelete={() => bulkDeleteSelected("leaf")}
+                itemLabel={{ singular: "leaf analysis", plural: "leaf analyses" }}
+              />
+            }
           />
         </div>
 
@@ -729,11 +834,156 @@ function YieldBars({ yields, benchmark }: YieldBarsProps) {
   );
 }
 
+interface HistoryListRow {
+  /** Stable identifier for selection / delete dispatch. */
+  id: string;
+  date: string;
+  primary: string;
+  secondary: string;
+  href?: string;
+}
+
+
+// ── Data inventory band ────────────────────────────────────────────
+//
+// Compact "what we know about this block + when" strip. Six tiles —
+// data completeness, soil, leaf, yield, applications, events — each
+// showing count + most-recent date. Tiles missing data render in a
+// muted / amber style so the agronomist sees the gap immediately.
+
+function DataInventoryBand({
+  field,
+  soilAnalyses,
+  leafAnalyses,
+  yields,
+  applications,
+  events,
+}: {
+  field: Field;
+  soilAnalyses: SoilAnalysis[];
+  leafAnalyses: LeafAnalysis[];
+  yields: YieldRecord[];
+  applications: FieldApplicationRow[];
+  events: FieldEventRow[];
+}) {
+  const latestSoil = soilAnalyses
+    .map((s) => s.analysis_date || s.created_at?.slice(0, 10))
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+  const latestLeaf = leafAnalyses
+    .map((l) => l.sample_date || l.created_at?.slice(0, 10))
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+  const latestYield = yields
+    .map((y) => y.season)
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+  const latestApp = applications
+    .map((a) => (a as { applied_at?: string; created_at?: string }).applied_at || (a as { created_at?: string }).created_at?.slice(0, 10))
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+  const latestEvt = events
+    .map((e) => (e as { event_date?: string; created_at?: string }).event_date || (e as { created_at?: string }).created_at?.slice(0, 10))
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+
+  const completenessLabel = (() => {
+    if (!field.health) return { label: "Unknown", tone: "muted" } as const;
+    if (field.health.level === "critical") return { label: `Missing: ${field.health.critical.length}`, tone: "danger" } as const;
+    if (field.health.level === "warn") return { label: `Assumes: ${field.health.warnings.length}`, tone: "warn" } as const;
+    return { label: "Ready", tone: "ok" } as const;
+  })();
+
+  return (
+    <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg border bg-white p-3 sm:grid-cols-3 lg:grid-cols-6">
+      <InventoryTile
+        label="Completeness"
+        value={completenessLabel.label}
+        sub={field.health
+          ? (field.health.level === "ok"
+            ? "All inputs present"
+            : (field.health.level === "critical"
+              ? field.health.critical.slice(0, 3).join(", ")
+              : field.health.warnings.slice(0, 2).join(", ")))
+          : "—"}
+        tone={completenessLabel.tone}
+      />
+      <InventoryTile
+        label="Soil"
+        value={soilAnalyses.length === 0 ? "None" : `${soilAnalyses.length} on file`}
+        sub={latestSoil ? `Latest ${latestSoil}` : "Upload one to plan"}
+        tone={soilAnalyses.length === 0 ? "danger" : "ok"}
+      />
+      <InventoryTile
+        label="Leaf"
+        value={leafAnalyses.length === 0 ? "None" : `${leafAnalyses.length} on file`}
+        sub={latestLeaf ? `Latest ${latestLeaf}` : "Optional"}
+        tone={leafAnalyses.length === 0 ? "muted" : "ok"}
+      />
+      <InventoryTile
+        label="Yield"
+        value={yields.length === 0 ? "None" : `${yields.length} season${yields.length === 1 ? "" : "s"}`}
+        sub={latestYield ? `Latest ${latestYield}` : "Optional"}
+        tone={yields.length === 0 ? "muted" : "ok"}
+      />
+      <InventoryTile
+        label="Applications"
+        value={applications.length === 0 ? "None" : `${applications.length} logged`}
+        sub={latestApp ? `Latest ${latestApp}` : "Log as you apply"}
+        tone={applications.length === 0 ? "muted" : "ok"}
+      />
+      <InventoryTile
+        label="Events"
+        value={events.length === 0 ? "None" : `${events.length} logged`}
+        sub={latestEvt ? `Latest ${latestEvt}` : "Optional"}
+        tone={events.length === 0 ? "muted" : "ok"}
+      />
+    </div>
+  );
+}
+
+function InventoryTile({
+  label, value, sub, tone,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  tone: "ok" | "warn" | "danger" | "muted";
+}) {
+  const palette = {
+    ok:     { bg: "bg-emerald-50/50", border: "border-emerald-200", value: "text-emerald-900", sub: "text-emerald-700/80" },
+    warn:   { bg: "bg-amber-50/60",   border: "border-amber-200",   value: "text-amber-900",   sub: "text-amber-700/80"  },
+    danger: { bg: "bg-red-50/60",     border: "border-red-200",     value: "text-red-900",     sub: "text-red-700/80"    },
+    muted:  { bg: "bg-gray-50",       border: "border-gray-200",    value: "text-gray-700",    sub: "text-gray-500"      },
+  }[tone];
+  return (
+    <div className={`rounded-md border ${palette.border} ${palette.bg} px-2.5 py-2`}>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <p className={`mt-0.5 text-sm font-semibold ${palette.value}`}>{value}</p>
+      <p className={`text-[10px] ${palette.sub}`}>{sub}</p>
+    </div>
+  );
+}
+
 interface HistoryListProps {
   title: string;
   empty: string;
-  rows: Array<{ date: string; primary: string; secondary: string; href?: string }>;
+  rows: HistoryListRow[];
   icon: React.ReactNode;
+  /** Bulk-select state. When `selectionMode` is true the row click
+   * toggles `selectedIds` instead of navigating. The toolbar is
+   * rendered alongside the title. */
+  selectionMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  toolbar?: React.ReactNode;
 }
 
 function InsightCard({ insight }: { insight: Insight }) {
@@ -767,27 +1017,53 @@ function InsightCard({ insight }: { insight: Insight }) {
   );
 }
 
-function HistoryList({ title, empty, rows, icon }: HistoryListProps) {
+function HistoryList({
+  title, empty, rows, icon, selectionMode, selectedIds, onToggleSelect, toolbar,
+}: HistoryListProps) {
   return (
     <Card>
       <CardContent className="py-4">
-        <h2 className="mb-3 text-sm font-semibold text-[var(--sapling-dark)]">{title}</h2>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-[var(--sapling-dark)]">{title}</h2>
+          {toolbar}
+        </div>
         {rows.length === 0 ? (
           <p className="py-3 text-center text-xs text-muted-foreground">{empty}</p>
         ) : (
           <ul className="space-y-1">
-            {rows.map((r, i) => (
-              <li key={i} className="flex items-center justify-between rounded-md border px-2.5 py-1.5 text-xs">
-                <span className="flex items-center gap-1.5 text-muted-foreground">
-                  {icon}
-                  <span className="tabular-nums">{r.date}</span>
-                </span>
-                <span className="ml-2 flex-1 truncate text-[var(--sapling-dark)]">
-                  {r.primary}
-                  {r.secondary && <span className="ml-1 text-muted-foreground">· {r.secondary}</span>}
-                </span>
-              </li>
-            ))}
+            {rows.map((r) => {
+              const isSelected = selectionMode && selectedIds?.has(r.id);
+              const baseClass = `flex items-center justify-between rounded-md border px-2.5 py-1.5 text-xs ${
+                isSelected ? "border-[var(--sapling-orange)] bg-orange-50/40" : ""
+              }`;
+              return (
+                <li
+                  key={r.id}
+                  onClick={selectionMode && onToggleSelect ? () => onToggleSelect(r.id) : undefined}
+                  className={`${baseClass} ${selectionMode ? "cursor-pointer" : ""}`}
+                >
+                  {selectionMode && (
+                    <span
+                      className={`mr-2 flex size-3.5 items-center justify-center rounded border-2 ${
+                        isSelected
+                          ? "border-[var(--sapling-orange)] bg-[var(--sapling-orange)]"
+                          : "border-gray-300 bg-white"
+                      }`}
+                    >
+                      {isSelected && <span className="text-[8px] leading-none text-white">✓</span>}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    {icon}
+                    <span className="tabular-nums">{r.date}</span>
+                  </span>
+                  <span className="ml-2 flex-1 truncate text-[var(--sapling-dark)]">
+                    {r.primary}
+                    {r.secondary && <span className="ml-1 text-muted-foreground">· {r.secondary}</span>}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </CardContent>

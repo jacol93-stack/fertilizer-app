@@ -376,6 +376,13 @@ export function FieldEditor({ open, onClose, field, farmId, crops, analyses, exi
                     <div className="space-y-1.5">
                       <Label>Yield Target</Label>
                       <Input type="number" value={form.yieldTarget} onChange={(e) => updateForm(activeIdx, { yieldTarget: e.target.value })} placeholder="0" />
+                      {(!form.yieldTarget || parseFloat(form.yieldTarget) === 0) && (
+                        <p className="text-[11px] text-muted-foreground">
+                          Leave blank or 0 — engine uses the SA full-bearing
+                          potential for this crop. Tree age then scales rates
+                          for young / non-bearing blocks.
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-1.5">
                       <Label>Unit</Label>

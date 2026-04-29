@@ -35,7 +35,12 @@ export const METHOD_LABELS: Record<string, string> = {
   // collapse onto this set via methodKindForBlendGroups in the wizard.
   broadcast: "Broadcast",
   band: "Banded",
-  side_dress: "Side-dress",
+  // "Banded ring" rather than "Side-dress": for tree crops this is the
+  // ring around the drip line; for row crops it's the band beside the
+  // active row. Same engine concept (`side_dress` enum) — agronomists
+  // recognise "banded ring" in both contexts; "side-dress" reads as
+  // row-crop-only and confused users on perennials.
+  side_dress: "Banded ring",
   fertigation: "Fertigation",
   foliar: "Foliar",
   seed_treat: "Seed treat",
@@ -46,7 +51,7 @@ export const METHOD_LABELS: Record<string, string> = {
   topdress: "Top-dressing",
   drip: "Drip / fertigation",
   dry_blend: "Dry blend / broadcast",
-  dry_side_dress: "Dry side-dressing",
+  dry_side_dress: "Banded ring (dry)",
   liquid_drip: "Liquid · drip",
   liquid_pivot: "Liquid · pivot",
   liquid_sprinkler: "Liquid · sprinkler",
@@ -125,6 +130,22 @@ export interface Field {
     composition_method: string;
     replicate_count: number;
   } | null;
+  /** Sample date of the linked soil analysis (YYYY-MM-DD), surfaced
+   * by /clients/farms/{id}/fields so cards can show data age without
+   * a second round-trip per field. */
+  latest_analysis_date?: string | null;
+  /** Lab name on the linked soil analysis. May read "Unknown (lab name
+   * not specified in report)" when the AI extractor couldn't read the
+   * lab heading. */
+  latest_analysis_lab?: string | null;
+  /** Per-field data-completeness summary. `level` drives the health
+   * pill colour (ok / warn / critical). The string lists are the
+   * specific keys the user can fix to lift the level. */
+  health?: {
+    level: "ok" | "warn" | "critical";
+    critical: string[];
+    warnings: string[];
+  };
   gps_lat: number | null;
   gps_lng: number | null;
   created_at?: string;

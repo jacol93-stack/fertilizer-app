@@ -77,6 +77,21 @@
         "Ca:B": 2600.0,
         "soil_ESP_pct": 2.5
       },
+      "factor_findings": [
+        {
+          "kind": "antagonism",
+          "severity": "warn",
+          "parameter": "Ca:B",
+          "value": 2600.0,
+          "threshold": 1000.0,
+          "message": "Soil Ca:B = 2600 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.",
+          "recommended_action": "Apply foliar B at critical stages (pre-bloom, fruit set)",
+          "source_id": "SHORROCKS_1997",
+          "source_section": "Plant & Soil 193:121-148",
+          "tier": 3
+        }
+      ],
+      "nutrient_status": [],
       "headline_signals": [
         "Soil Ca:B = 2600 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering."
       ]
@@ -178,7 +193,7 @@
       "raw_products": [
         {
           "product": "Manure Compost",
-          "analysis": "N 2.1%, P₂O₅ 1.0%, K₂O 1.6%, Ca 2.2%, Mg 1.0%, S 0.7%",
+          "analysis": "N 2.1%, P 1.0%, K 1.6%, Ca 2.2%, Mg 1.0%, S 0.7%",
           "stream": null,
           "rate_per_event_per_ha": "250 kg",
           "rate_per_stage_per_ha": "500 kg",
@@ -186,18 +201,41 @@
           "source": null
         },
         {
+          "product": "KCl",
+          "analysis": "K 60.0%",
+          "stream": null,
+          "rate_per_event_per_ha": "18 kg",
+          "rate_per_stage_per_ha": "37 kg",
+          "batch_total": "369 kg",
+          "source": null
+        },
+        {
           "product": "MAP",
-          "analysis": "N 11.0%, P₂O₅ 51.0%",
+          "analysis": "N 11.0%, P 51.0%",
           "stream": null,
           "rate_per_event_per_ha": "2.1 kg",
           "rate_per_stage_per_ha": "4.1 kg",
           "batch_total": "41 kg",
           "source": null
+        },
+        {
+          "product": "SSP",
+          "analysis": "P 10.0%, Ca 18.0%, S 11.0%",
+          "stream": null,
+          "rate_per_event_per_ha": "4.1 kg",
+          "rate_per_stage_per_ha": "8.2 kg",
+          "batch_total": "82 kg",
+          "source": null
         }
       ],
       "concentrates": [],
       "nutrients_delivered": {
-        "P2O5": 7.1
+        "P2O5": 7.9,
+        "K2O": 30.1,
+        "S": 4.4,
+        "N": 11.0,
+        "Ca": 12.5,
+        "Mg": 5.0
       },
       "sources": [
         {
@@ -248,30 +286,12 @@
       },
       "raw_products": [
         {
-          "product": "Potassium Nitrate",
-          "analysis": "N 13.0%, K₂O 46.0%",
-          "stream": "B",
-          "rate_per_event_per_ha": "30 kg",
-          "rate_per_stage_per_ha": "60 kg",
-          "batch_total": "603 kg",
-          "source": null
-        },
-        {
           "product": "Calcium Nitrate",
           "analysis": "N 15.5%, Ca 19.0%",
           "stream": "A",
-          "rate_per_event_per_ha": "33 kg",
-          "rate_per_stage_per_ha": "66 kg",
-          "batch_total": "655 kg",
-          "source": null
-        },
-        {
-          "product": "Magnesium Sulphate",
-          "analysis": "Mg 10.0%, S 13.0%",
-          "stream": "B",
-          "rate_per_event_per_ha": "12 kg",
-          "rate_per_stage_per_ha": "23 kg",
-          "batch_total": "231 kg",
+          "rate_per_event_per_ha": "58 kg",
+          "rate_per_stage_per_ha": "116 kg",
+          "batch_total": "1161 kg",
           "source": null
         }
       ],
@@ -279,26 +299,16 @@
         {
           "name": "Part A (Calcium stream)",
           "contains": "Calcium Nitrate",
-          "dry_weight_or_liquid": "655 kg dry salts",
+          "dry_weight_or_liquid": "1161 kg dry salts",
           "strength_g_per_l": 300.0,
-          "volume_l": 2183.0,
+          "volume_l": 3870.0,
           "per_event_dose_l": null,
           "injection_notes": "Inject via dedicated stock-tank line (never mix with Part B)"
-        },
-        {
-          "name": "Part B (Sulphate + phosphate stream)",
-          "contains": "Potassium Nitrate + Magnesium Sulphate",
-          "dry_weight_or_liquid": "834 kg dry salts",
-          "strength_g_per_l": 100.0,
-          "volume_l": 8340.0,
-          "per_event_dose_l": null,
-          "injection_notes": "Inject via second stock-tank line, parallel or sequential"
         }
       ],
       "nutrients_delivered": {
         "N": 18.0,
-        "K2O": 27.8,
-        "S": 3.0
+        "Ca": 22.1
       },
       "sources": [
         {
@@ -350,7 +360,7 @@
       "raw_products": [
         {
           "product": "Potassium Nitrate",
-          "analysis": "N 13.0%, K₂O 46.0%",
+          "analysis": "N 13.0%, K 46.0%",
           "stream": "B",
           "rate_per_event_per_ha": "40 kg",
           "rate_per_stage_per_ha": "80 kg",
@@ -368,7 +378,7 @@
         },
         {
           "product": "MAP",
-          "analysis": "N 11.0%, P₂O₅ 51.0%",
+          "analysis": "N 11.0%, P 51.0%",
           "stream": "B",
           "rate_per_event_per_ha": "6.9 kg",
           "rate_per_stage_per_ha": "14 kg",
@@ -409,7 +419,9 @@
         "N": 31.5,
         "P2O5": 7.0,
         "K2O": 37.0,
-        "S": 3.8
+        "S": 3.8,
+        "Ca": 24.0,
+        "Mg": 2.9
       },
       "sources": [
         {
@@ -454,7 +466,7 @@
       "raw_products": [
         {
           "product": "Potassium Nitrate",
-          "analysis": "N 13.0%, K₂O 46.0%",
+          "analysis": "N 13.0%, K 46.0%",
           "stream": "B",
           "rate_per_event_per_ha": "161 kg",
           "rate_per_stage_per_ha": "161 kg",
@@ -472,7 +484,7 @@
         },
         {
           "product": "MAP",
-          "analysis": "N 11.0%, P₂O₅ 51.0%",
+          "analysis": "N 11.0%, P 51.0%",
           "stream": "B",
           "rate_per_event_per_ha": "16 kg",
           "rate_per_stage_per_ha": "16 kg",
@@ -513,7 +525,9 @@
         "N": 43.8,
         "P2O5": 8.4,
         "K2O": 74.0,
-        "S": 4.5
+        "S": 4.5,
+        "Ca": 25.8,
+        "Mg": 3.5
       },
       "sources": [
         {
@@ -616,16 +630,6 @@
   "assumptions": [],
   "outstanding_items": [
     {
-      "item": "Application-month coverage gap",
-      "why_it_matters": "Stage 4 'fill' (Jan–Mar) has no allowed application month inside its window. Nutrients for this stage were not delivered. Consider adding a month within this window.",
-      "impact_if_skipped": null
-    },
-    {
-      "item": "Application-month coverage gap",
-      "why_it_matters": "Stage 5 'maturation' (Mar–May) has no allowed application month inside its window. Nutrients for this stage were not delivered. Consider adding a month within this window.",
-      "impact_if_skipped": null
-    },
-    {
       "item": "Irrigation water test (EC, pH, Ca, Mg, Na, HCO₃, Cl)",
       "why_it_matters": "Required before first Part A injection. Dolomite-country water can produce scale when calcium-stream stock is injected. Borehole water EC + bicarb level affect drip-line pH.",
       "impact_if_skipped": "Risk of emitter blockage from CaCO₃ precipitate"
@@ -640,7 +644,7 @@
     {
       "category": "dry_blend",
       "product": "Manure Compost",
-      "analysis": "N 2.1%, P₂O₅ 1.0%, K₂O 1.6%, Ca 2.2%, Mg 1.0%, S 0.7%",
+      "analysis": "N 2.1%, P 1.0%, K 1.6%, Ca 2.2%, Mg 1.0%, S 0.7%",
       "total_per_block": {
         "citrus-svr-ref": 5000.0
       },
@@ -649,8 +653,18 @@
     },
     {
       "category": "dry_blend",
+      "product": "KCl",
+      "analysis": "K 60.0%",
+      "total_per_block": {
+        "citrus-svr-ref": 369.0
+      },
+      "total_overall": 369.0,
+      "unit": "kg"
+    },
+    {
+      "category": "dry_blend",
       "product": "MAP",
-      "analysis": "N 11.0%, P₂O₅ 51.0%",
+      "analysis": "N 11.0%, P 51.0%",
       "total_per_block": {
         "citrus-svr-ref": 41.0
       },
@@ -658,13 +672,13 @@
       "unit": "kg"
     },
     {
-      "category": "drip",
-      "product": "Potassium Nitrate",
-      "analysis": "N 13.0%, K₂O 46.0%",
+      "category": "dry_blend",
+      "product": "SSP",
+      "analysis": "P 10.0%, Ca 18.0%, S 11.0%",
       "total_per_block": {
-        "citrus-svr-ref": 3016.0
+        "citrus-svr-ref": 82.0
       },
-      "total_overall": 3016.0,
+      "total_overall": 82.0,
       "unit": "kg"
     },
     {
@@ -672,9 +686,29 @@
       "product": "Calcium Nitrate",
       "analysis": "N 15.5%, Ca 19.0%",
       "total_per_block": {
-        "citrus-svr-ref": 3276.0
+        "citrus-svr-ref": 3782.0
       },
-      "total_overall": 3276.0,
+      "total_overall": 3782.0,
+      "unit": "kg"
+    },
+    {
+      "category": "drip",
+      "product": "Potassium Nitrate",
+      "analysis": "N 13.0%, K 46.0%",
+      "total_per_block": {
+        "citrus-svr-ref": 2413.0
+      },
+      "total_overall": 2413.0,
+      "unit": "kg"
+    },
+    {
+      "category": "drip",
+      "product": "MAP",
+      "analysis": "N 11.0%, P 51.0%",
+      "total_per_block": {
+        "citrus-svr-ref": 302.0
+      },
+      "total_overall": 302.0,
       "unit": "kg"
     },
     {
@@ -682,19 +716,9 @@
       "product": "Magnesium Sulphate",
       "analysis": "Mg 10.0%, S 13.0%",
       "total_per_block": {
-        "citrus-svr-ref": 865.0
+        "citrus-svr-ref": 634.0
       },
-      "total_overall": 865.0,
-      "unit": "kg"
-    },
-    {
-      "category": "drip",
-      "product": "MAP",
-      "analysis": "N 11.0%, P₂O₅ 51.0%",
-      "total_per_block": {
-        "citrus-svr-ref": 302.0
-      },
-      "total_overall": 302.0,
+      "total_overall": 634.0,
       "unit": "kg"
     },
     {
@@ -738,7 +762,7 @@
     "Orchestrator: produced artifact with 1 blocks, 0 recommendations, 3 foliar events, 1 risk flags",
     "Orchestrator: BlendValidator — 4 blends validated, 0 warnings/errors surfaced"
   ],
-  "created_at": "2026-04-26T22:56:50.431662",
-  "updated_at": "2026-04-26T22:56:50.431662",
+  "created_at": "2026-04-29T11:16:12.391117",
+  "updated_at": "2026-04-29T11:16:12.391122",
   "render_hint": null
 }

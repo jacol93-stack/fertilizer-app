@@ -1,50 +1,38 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+/**
+ * Wizard Step 3 — agronomist's review of the engine's programme before
+ * approving the artifact. Same visual language as the saved-artifact
+ * view (`GroupBlendTimeline.tsx`): per-group timeline, A1/A2/A3 codes
+ * within Group A, B1/B2 within Group B, etc., one-line "why this
+ * blend" briefs, nutrient chips per row.
+ *
+ * This step is admin-shaped — it shows raw-material audit (collapsed)
+ * for QA, which the client-facing artifact view does NOT.
+ */
+
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { MONTH_NAMES, methodLabel, seasonOrderIndex } from "@/lib/season-constants";
 
 const SEASON_ANCHOR = new Date().getMonth() + 1;
 
-/** Strip any "cluster_" prefix the engine emits (e.g. cluster_A → A)
- * so the badge / header read as plain group letters. */
-function groupLetter(groupId: string): string {
-  return groupId.replace(/^cluster_/i, "");
-}
-
-/** Singleton groups (one block, no cluster letter) get a positional
- * letter computed from index — "Group B / C / …" reads cleaner than
- * "Group Blok N5 — Young Beaumont/A4" which duplicates the block name
- * already shown in the subtitle. */
-function groupLetterAt(group: BlendGroupData, idx: number): string {
-  if (group.group.startsWith("cluster_")) return groupLetter(group.group);
-  return String.fromCharCode("A".charCodeAt(0) + idx);
-}
+// ── Types ───────────────────────────────────────────────────────────
 
 export interface ApplicationBlendData {
   stage_name: string;
-  /** First month the recipe is applied in this stage. */
   month: number;
   method: string;
   sa_notation: string;
-  /** Rate per individual event (kg/ha). Multiply by events_count for the
-   * per-stage total. Estimated — actual product rate depends on the
-   * blend formulation chosen at quote time. */
   rate_kg_ha: number;
   events_count: number;
   dates_label?: string;
   cost_per_ton?: number;
   exact?: boolean;
-  /** Nutrients the engine targets to deliver per HA per event (kg).
-   * Includes macros (N, P2O5, K2O, Ca, Mg, S) and micros (Zn, B, Mn,
-   * Fe, Cu, Mo) when present. Drives the formula display. */
   nutrients_per_ha?: Record<string, number>;
-  /** Raw materials chosen by the LP. Admin-only audit data — agronomist
-   * UI shows only the formula + nutrients. Materials available at
-   * production may be different from these (months apart). */
   recipe?: Array<{ material: string; type: string; kg: number; pct: number; cost: number }>;
   is_foliar?: boolean;
-  /** Fertigation only — total stock-tank volume (Part A + Part B
-   * combined) across the stage. Drives the L/event display. */
   concentrate_volume_l?: number;
 }
 
@@ -61,139 +49,426 @@ interface BlendGroupsProps {
   isAdmin: boolean;
 }
 
+// ── Constants ───────────────────────────────────────────────────────
+
+const NPK_KEYS = ["N", "P2O5", "K2O"] as const;
+const SECONDARY_KEYS = ["Ca", "Mg", "S"] as const;
+const MICRO_KEYS = ["Zn", "B", "Mn", "Fe", "Cu", "Mo"] as const;
+
+// User-facing labels follow SA grower convention: ratios read as
+// N : P : K with the implicit understanding that P / K are oxide forms
+// (P₂O₅, K₂O). Engine internals keep the explicit `P2O5` / `K2O` keys
+// to preserve chemistry; this map is the display boundary.
+const NUTRIENT_LABEL: Record<string, string> = {
+  N: "N", P2O5: "P", K2O: "K",
+  Ca: "Ca", Mg: "Mg", S: "S",
+  Zn: "Zn", B: "B", Mn: "Mn", Fe: "Fe", Cu: "Cu", Mo: "Mo",
+};
+
+const METHOD_CHIP_CLASS: Record<string, string> = {
+  broadcast:   "bg-amber-100 text-amber-900",
+  band:        "bg-orange-100 text-orange-900",
+  side_dress:  "bg-yellow-100 text-yellow-900",
+  fertigation: "bg-blue-100 text-blue-900",
+  foliar:      "bg-violet-100 text-violet-900",
+  soil_basal:  "bg-emerald-100 text-emerald-900",
+  seed_treat:  "bg-rose-100 text-rose-900",
+  drench:      "bg-cyan-100 text-cyan-900",
+};
+
+// Each method's agronomic role — used by the split-explanation helper
+// so we can say "broadcast for soil correction; side-dress for timed N"
+// rather than "broadcast vs side-dress" (jargon).
+const METHOD_ROLE: Record<string, string> = {
+  broadcast:   "soil correction (slow build-up)",
+  band:        "root-zone placement",
+  side_dress:  "timed availability",
+  fertigation: "soluble delivery during irrigation",
+  foliar:      "leaf-direct correction",
+  soil_basal:  "pre-plant base",
+  seed_treat:  "seed-coat protection",
+  drench:      "root-zone drench",
+};
+
+// ── Number formatting ───────────────────────────────────────────────
+
+function fmtNumber(n: number, dp = 1): string {
+  if (n === 0) return "0";
+  if (n >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  if (Math.abs(n) >= 100) return n.toFixed(0);
+  return n.toFixed(dp);
+}
+
+function fmtMicro(kg_per_ha: number): string {
+  if (kg_per_ha < 1) return `${(kg_per_ha * 1000).toFixed(0)} g/ha`;
+  return `${kg_per_ha.toFixed(2)} kg/ha`;
+}
+
+// ── Group lettering ─────────────────────────────────────────────────
+
+function groupLetter(groupId: string): string {
+  return groupId.replace(/^cluster_/i, "");
+}
+
+function groupLetterAt(group: BlendGroupData, idx: number): string {
+  if (group.group.startsWith("cluster_")) return groupLetter(group.group);
+  return String.fromCharCode("A".charCodeAt(0) + idx);
+}
+
+// ── Brief synthesis ─────────────────────────────────────────────────
+
+/** Human-friendly headline of which nutrients dominate. Returns up to
+ *  the top 2 macro nutrients by kg/ha so the brief reads naturally. */
+function dominantNutrients(nutrients: Record<string, number>): string[] {
+  const entries = Object.entries(nutrients)
+    .filter(([k, v]) => v > 0 && (NPK_KEYS as readonly string[]).concat(SECONDARY_KEYS as readonly string[]).includes(k))
+    .sort((a, b) => b[1] - a[1]);
+  return entries.slice(0, 2).map(([k]) => NUTRIENT_LABEL[k] ?? k);
+}
+
+function brief(app: ApplicationBlendData): string {
+  if (app.is_foliar) {
+    return `Foliar correction during ${app.stage_name || "this stage"} — finalised at quote time.`;
+  }
+  const top = dominantNutrients(app.nutrients_per_ha || {});
+  const stage = app.stage_name || `Stage ${app.month}`;
+  const method = methodLabel(app.method).toLowerCase();
+  const role = METHOD_ROLE[app.method] ?? "";
+  const eventsClause = app.events_count > 1 ? ` Split into ${app.events_count} events.` : "";
+  const roleClause = role ? ` — ${role}` : "";
+  if (top.length === 0) {
+    return `${stage} window via ${method}${roleClause}.${eventsClause}`;
+  }
+  if (top.length === 1) {
+    return `${stage} window targets ${top[0]}; applied as ${method}${roleClause}.${eventsClause}`;
+  }
+  return `${stage} window targets ${top.join(" + ")}; applied as ${method}${roleClause}.${eventsClause}`;
+}
+
+// ── Split-window detection + explanation ────────────────────────────
+
+interface StageBucket {
+  stageKey: string;
+  stage_name: string;
+  month: number;
+  apps: ApplicationBlendData[];
+}
+
+function bucketByStage(applications: ApplicationBlendData[]): StageBucket[] {
+  const map = new Map<string, StageBucket>();
+  for (const app of applications) {
+    const key = `${app.stage_name || "(unnamed)"}|${app.month}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        stageKey: key,
+        stage_name: app.stage_name || "Untitled stage",
+        month: app.month,
+        apps: [],
+      });
+    }
+    map.get(key)!.apps.push(app);
+  }
+  return Array.from(map.values()).sort(
+    (a, b) =>
+      seasonOrderIndex(a.month, SEASON_ANCHOR) - seasonOrderIndex(b.month, SEASON_ANCHOR),
+  );
+}
+
+/** When a stage produces multiple blends, explain WHY in one line.
+ *
+ * Three split flavours:
+ *   1. Same method × different blends → bag-incompatibility (e.g. urea
+ *      + lime → NH₃ loss). The consolidator never merges these so a
+ *      same-method pair survives only when chemistry forced it.
+ *   2. Different methods → parallel passes; each method serves the
+ *      nutrient class it does best (broadcast for soil-corrective Ca,
+ *      side-dress for timed N).
+ *   3. Foliar + soil → foliar is a leaf-direct supplement layered on
+ *      top of the soil programme; never replaces it.
+ */
+function explainSplit(apps: ApplicationBlendData[]): string {
+  if (apps.length < 2) return "";
+  const methods = new Set(apps.map((a) => a.method));
+  const hasFoliar = apps.some((a) => a.is_foliar);
+  const hasSoil = apps.some((a) => !a.is_foliar);
+
+  if (hasFoliar && hasSoil) {
+    return "Foliar layered on top of the soil pass — leaf-direct supplement, not a replacement.";
+  }
+
+  if (methods.size === 1) {
+    return "Products can't share a bag (e.g. urea + lime/SSP → NH₃ loss). Kept as separate batches.";
+  }
+
+  // Different methods — describe what each method's blend is doing.
+  const parts: string[] = [];
+  for (const a of apps) {
+    const top = dominantNutrients(a.nutrients_per_ha || {});
+    const role = METHOD_ROLE[a.method] ?? methodLabel(a.method).toLowerCase();
+    const headline = top.length > 0 ? top.join(" + ") : "supporting nutrients";
+    parts.push(`${methodLabel(a.method)} for ${headline} (${role})`);
+  }
+  return `Parallel passes — ${parts.join("; ")}.`;
+}
+
+// ── Components ──────────────────────────────────────────────────────
+
 export function BlendGroups({ blendGroups, isAdmin }: BlendGroupsProps) {
   if (blendGroups.length === 0) {
     return (
       <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-        No blend groups generated
+        No programmes generated yet.
       </div>
     );
   }
-
-  const totalWindows = blendGroups.reduce((n, g) => n + g.applications.length, 0);
   const totalEvents = blendGroups.reduce(
     (n, g) => n + g.applications.reduce((m, a) => m + (a.events_count || 1), 0),
     0,
   );
-
+  const totalApps = blendGroups.reduce((n, g) => n + g.applications.length, 0);
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-semibold text-[var(--sapling-dark)]">Optimized Blends</h3>
+      <header>
+        <h3 className="text-lg font-semibold text-[var(--sapling-dark)]">
+          Programme · {blendGroups.length} group{blendGroups.length !== 1 ? "s" : ""}
+        </h3>
         <p className="text-sm text-muted-foreground">
-          {totalWindows} application window{totalWindows !== 1 ? "s" : ""} across {blendGroups.length} group{blendGroups.length !== 1 ? "s" : ""}
-          {totalEvents > totalWindows && <> &middot; {totalEvents} events total</>} —
-          each stage-method combination gets its own blend.
+          {totalApps} application{totalApps !== 1 ? "s" : ""}
+          {totalEvents > totalApps && ` · ${totalEvents} events scheduled`} —
+          review the schedule below before approving.
         </p>
-      </div>
-
-      {blendGroups.map((group, idx) => {
-        const letter = groupLetterAt(group, idx);
-        const groupEvents = group.applications.reduce((m, a) => m + (a.events_count || 1), 0);
-        const groupTotalKg = group.applications.reduce(
-          (s, a) => s + (a.is_foliar ? 0 : a.rate_kg_ha * (a.events_count || 1) * group.total_area_ha),
-          0,
-        );
-        return (
-          <Card key={group.group} className="overflow-hidden">
-            <CardHeader className="pb-3">
-              <div className="flex items-start gap-3">
-                <span className="flex size-8 items-center justify-center rounded-full bg-[var(--sapling-orange)] text-sm font-bold text-white">
-                  {letter}
-                </span>
-                <div className="flex-1">
-                  <CardTitle className="text-base">
-                    Group {letter} — {group.applications.length} application window{group.applications.length !== 1 ? "s" : ""}
-                    {groupEvents > group.applications.length && (
-                      <span className="ml-2 text-xs font-normal text-muted-foreground">
-                        ({groupEvents} events)
-                      </span>
-                    )}
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    {group.crops.join(", ")} &middot; {group.block_names.join(", ")} &middot; {group.total_area_ha} ha
-                  </p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {(() => {
-                // Group applications by stage so paired passes (e.g.
-                // establishment with both a heavy basal Broadcast and a
-                // soluble Foliar starter) cluster visually instead of
-                // looking like two unrelated "Mar · establishment"
-                // cards. Within a stage, sort by method for stable ordering.
-                const byStage = new Map<string, ApplicationBlendData[]>();
-                for (const app of group.applications) {
-                  const key = `${app.stage_name || "(unnamed)"}|${app.month}`;
-                  if (!byStage.has(key)) byStage.set(key, []);
-                  byStage.get(key)!.push(app);
-                }
-                const stageEntries = Array.from(byStage.entries()).sort(
-                  ([keyA], [keyB]) => {
-                    const monthA = parseInt(keyA.split("|")[1], 10);
-                    const monthB = parseInt(keyB.split("|")[1], 10);
-                    return seasonOrderIndex(monthA, SEASON_ANCHOR) - seasonOrderIndex(monthB, SEASON_ANCHOR);
-                  },
-                );
-                return stageEntries.map(([stageKey, apps]) => {
-                  const isPaired = apps.length > 1;
-                  const headerApp = apps[0];
-                  // When the paired passes all use the SAME method, the
-                  // engine kept them separate because of a real chemistry
-                  // conflict (e.g. urea + lime/SSP — NH₃ loss). The
-                  // within-stage merger collapses everything else, so
-                  // anything left as same-method is a genuine block.
-                  // Different methods → parallel agronomic strategies
-                  // (heavy basal Broadcast + Fertigation starter).
-                  const sameMethodSplit = isPaired && apps.every((a) => a.method === apps[0].method);
-                  const reasonText = sameMethodSplit
-                    ? `${apps.length} passes — kept separate because the products can't share a bag (urea-with-lime or urea-with-SSP would release NH₃).`
-                    : `${apps.length} parallel passes via different methods.`;
-                  return (
-                    <div
-                      key={stageKey}
-                      className={`rounded-lg border ${isPaired ? "border-[var(--sapling-orange)]/30 bg-orange-50/30" : ""}`}
-                    >
-                      {isPaired && (
-                        <div className="border-b px-3 py-1.5 text-[11px] font-medium text-[var(--sapling-orange)]">
-                          {sameMethodSplit ? "Split batches" : "Paired application"} — {MONTH_NAMES[headerApp.month]} · {headerApp.stage_name || "Untitled stage"}
-                          <span className="ml-2 font-normal text-muted-foreground">
-                            {reasonText}
-                          </span>
-                        </div>
-                      )}
-                      {apps.map((app, i) => renderApplicationRow(
-                        app, i, isPaired, isAdmin, group.total_area_ha,
-                        sameMethodSplit ? `Batch ${i + 1} of ${apps.length}` : undefined,
-                      ))}
-                    </div>
-                  );
-                });
-              })()}
-
-              {/* Per-group season totals — nutrients delivered + product
-                  mass. Programme builder is agronomy-scoped (no cost). */}
-              <GroupSeasonTotals group={group} />
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2 text-xs">
-                <span className="text-muted-foreground">
-                  Estimated product total:
-                  {" "}{fmtNumber(groupTotalKg, 0)} kg
-                  {" "}across {group.applications.filter((a) => !a.is_foliar).length} application window{group.applications.filter((a) => !a.is_foliar).length !== 1 ? "s" : ""}
-                  {" "}— actual rate depends on the formulation chosen at quote time.
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
+      </header>
+      {blendGroups.map((group, idx) => (
+        <GroupCard
+          key={group.group}
+          group={group}
+          letter={groupLetterAt(group, idx)}
+          isAdmin={isAdmin}
+        />
+      ))}
     </div>
   );
 }
 
-/** Season-total nutrient roll-up per group — sum of (nutrient kg/ha ×
- * events × area_ha) across all applications. The agronomist's "what
- * goes on this farm in total" view. */
+function GroupCard({
+  group,
+  letter,
+  isAdmin,
+}: {
+  group: BlendGroupData;
+  letter: string;
+  isAdmin: boolean;
+}) {
+  const buckets = bucketByStage(group.applications);
+  // Number applications A1, A2, … in season order, regardless of how
+  // they cluster into split-windows (paired blends still get
+  // sequential codes — the connector visual makes the pairing obvious).
+  let counter = 0;
+  const numbered: Array<{ code: string; app: ApplicationBlendData }> = [];
+  for (const bucket of buckets) {
+    for (const app of bucket.apps) {
+      counter += 1;
+      numbered.push({ code: `${letter}${counter}`, app });
+    }
+  }
+  const codeOf = new Map<ApplicationBlendData, string>(
+    numbered.map(({ code, app }) => [app, code]),
+  );
+  const groupTotalKg = group.applications.reduce(
+    (s, a) => s + (a.is_foliar ? 0 : a.rate_kg_ha * (a.events_count || 1) * group.total_area_ha),
+    0,
+  );
+  return (
+    <Card>
+      <CardContent className="p-5">
+        <header className="mb-4 flex flex-wrap items-baseline justify-between gap-2 border-b pb-3">
+          <div className="flex items-baseline gap-3">
+            <span className="flex size-9 items-center justify-center rounded-full bg-[var(--sapling-orange)] text-base font-bold text-white">
+              {letter}
+            </span>
+            <div>
+              <h4 className="text-base font-semibold text-foreground">
+                Group {letter}
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                {group.crops.join(", ")}
+                {group.block_names.length > 0 && ` · ${group.block_names.join(", ")}`}
+                {group.total_area_ha > 0 && ` · ${group.total_area_ha} ha`}
+              </p>
+            </div>
+          </div>
+          <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+            {group.applications.length} application{group.applications.length !== 1 ? "s" : ""}
+          </span>
+        </header>
+
+        <ol className="space-y-3">
+          {buckets.map((bucket) => (
+            <StageEntry
+              key={bucket.stageKey}
+              bucket={bucket}
+              codeOf={codeOf}
+              area_ha={group.total_area_ha}
+            />
+          ))}
+        </ol>
+
+        <GroupSeasonTotals group={group} />
+
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Estimated product total: <span className="font-medium tabular-nums">{fmtNumber(groupTotalKg, 0)} kg</span>{" "}
+          across {group.applications.filter((a) => !a.is_foliar).length} soil application
+          {group.applications.filter((a) => !a.is_foliar).length !== 1 ? "s" : ""} —
+          actual rate depends on the formulation chosen at quote time.
+        </p>
+
+        {isAdmin && group.applications.some((a) => a.recipe && a.recipe.length > 0) && (
+          <AdminAuditFold group={group} codeOf={codeOf} />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function StageEntry({
+  bucket,
+  codeOf,
+  area_ha,
+}: {
+  bucket: StageBucket;
+  codeOf: Map<ApplicationBlendData, string>;
+  area_ha: number;
+}) {
+  const split = bucket.apps.length > 1;
+  const reason = split ? explainSplit(bucket.apps) : "";
+  return (
+    <li className={split ? "rounded-lg border-l-4 border-[var(--sapling-orange)]/50 bg-orange-50/30 p-3" : ""}>
+      {split && (
+        <div className="mb-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--sapling-orange)]">
+            Split window — {MONTH_NAMES[bucket.month]} · {bucket.stage_name}
+          </p>
+          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+            {reason}
+          </p>
+        </div>
+      )}
+      <div className={split ? "space-y-2" : ""}>
+        {bucket.apps.map((app) => (
+          <ApplicationRow
+            key={codeOf.get(app)!}
+            code={codeOf.get(app)!}
+            app={app}
+            area_ha={area_ha}
+            inSplit={split}
+          />
+        ))}
+      </div>
+    </li>
+  );
+}
+
+function ApplicationRow({
+  code,
+  app,
+  area_ha,
+  inSplit,
+}: {
+  code: string;
+  app: ApplicationBlendData;
+  area_ha: number;
+  inSplit: boolean;
+}) {
+  const nutrients = app.nutrients_per_ha || {};
+  const totalKg = app.rate_kg_ha * (app.events_count || 1) * (area_ha || 0);
+  const macros = [...NPK_KEYS, ...SECONDARY_KEYS]
+    .map((k) => [k, nutrients[k]] as const)
+    .filter(([, v]) => v && v > 0);
+  const micros = MICRO_KEYS
+    .map((k) => [k, nutrients[k]] as const)
+    .filter(([, v]) => v && v > 0);
+  const methodChip = (
+    <span
+      className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
+        app.is_foliar
+          ? "bg-violet-100 text-violet-800"
+          : METHOD_CHIP_CLASS[app.method] || "bg-gray-100 text-gray-700"
+      }`}
+    >
+      {methodLabel(app.method)}
+    </span>
+  );
+  return (
+    <div className={`grid grid-cols-[auto_1fr] items-start gap-3 ${inSplit ? "rounded-md bg-white p-2.5" : "py-2"}`}>
+      <span className="rounded-md bg-[var(--sapling-orange)] px-2 py-1 text-xs font-bold text-white">
+        {code}
+      </span>
+      <div className="min-w-0 space-y-1.5">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          {!inSplit && (
+            <span className="text-sm font-semibold text-foreground">
+              {MONTH_NAMES[app.month]} · {app.stage_name || "Untitled stage"}
+            </span>
+          )}
+          {methodChip}
+          <span className="ml-auto text-right text-sm font-semibold tabular-nums text-foreground">
+            {app.is_foliar
+              ? "—"
+              : app.method === "fertigation" && app.concentrate_volume_l
+                ? `${fmtNumber(app.concentrate_volume_l / (app.events_count || 1) / Math.max(area_ha, 1), 0)} L/ha`
+                : app.rate_kg_ha
+                  ? `${fmtNumber(app.rate_kg_ha, 0)} kg/ha`
+                  : "—"}
+            {app.events_count > 1 && (
+              <span className="ml-1 text-[10px] font-normal text-muted-foreground">/event</span>
+            )}
+          </span>
+        </div>
+        {!app.is_foliar && macros.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {macros.map(([k, v]) => (
+              <span
+                key={k}
+                className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] tabular-nums"
+              >
+                <span className="font-semibold">{NUTRIENT_LABEL[k] ?? k}</span>
+                <span className="ml-1">{fmtNumber(v as number)}</span>
+              </span>
+            ))}
+            {micros.map(([k, v]) => (
+              <span
+                key={k}
+                className="rounded bg-violet-50 px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-violet-900"
+              >
+                <span className="font-semibold">{NUTRIENT_LABEL[k] ?? k}</span>
+                <span className="ml-1">{fmtMicro(v as number)}</span>
+              </span>
+            ))}
+          </div>
+        )}
+        <p className="text-[11px] leading-snug text-muted-foreground">
+          {brief(app)}
+        </p>
+        <p className="text-[11px] text-muted-foreground/80">
+          {app.events_count > 1 && (
+            <>
+              {app.events_count} events
+              {app.dates_label && ` · ${app.dates_label}`}
+              {!app.is_foliar && totalKg > 0 && ` · ${fmtNumber(totalKg, 0)} kg total this stage`}
+            </>
+          )}
+          {app.events_count <= 1 && !app.is_foliar && totalKg > 0 && (
+            <>{fmtNumber(totalKg, 0)} kg total ({area_ha} ha)</>
+          )}
+          {app.exact === false && (
+            <span className="ml-2 text-amber-600">· estimated</span>
+          )}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function GroupSeasonTotals({ group }: { group: BlendGroupData }) {
   const totals: Record<string, number> = {};
   for (const app of group.applications) {
@@ -201,7 +476,7 @@ function GroupSeasonTotals({ group }: { group: BlendGroupData }) {
     const events = app.events_count || 1;
     const area = group.total_area_ha || 0;
     for (const [k, v] of Object.entries(app.nutrients_per_ha || {})) {
-      totals[k] = (totals[k] || 0) + (v * events * area);
+      totals[k] = (totals[k] || 0) + v * events * area;
     }
   }
   const macroEntries = [...NPK_KEYS, ...SECONDARY_KEYS]
@@ -212,8 +487,8 @@ function GroupSeasonTotals({ group }: { group: BlendGroupData }) {
     .map((k) => ({ key: k, kg: totals[k] }));
   if (macroEntries.length === 0 && microEntries.length === 0) return null;
   return (
-    <div className="rounded-lg border bg-orange-50/30 px-3 py-2">
-      <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-[var(--sapling-orange)]">
+    <div className="mt-4 rounded-lg border bg-orange-50/40 px-3 py-2">
+      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--sapling-orange)]">
         Season totals (this group, all blocks)
       </p>
       <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 text-xs sm:grid-cols-6">
@@ -229,7 +504,8 @@ function GroupSeasonTotals({ group }: { group: BlendGroupData }) {
           <span className="font-medium uppercase tracking-wider">micros total:</span>
           {microEntries.map((e) => (
             <span key={e.key}>
-              {NUTRIENT_LABEL[e.key]} {e.kg < 1 ? `${(e.kg * 1000).toFixed(0)} g` : `${e.kg.toFixed(2)} kg`}
+              {NUTRIENT_LABEL[e.key]}{" "}
+              {e.kg < 1 ? `${(e.kg * 1000).toFixed(0)} g` : `${e.kg.toFixed(2)} kg`}
             </span>
           ))}
         </div>
@@ -238,257 +514,59 @@ function GroupSeasonTotals({ group }: { group: BlendGroupData }) {
   );
 }
 
-// ── SA notation helpers ─────────────────────────────────────────────
-
-/** Macros that participate in the X:Y:Z (W) ratio. */
-const NPK_KEYS = ["N", "P2O5", "K2O"] as const;
-/** Secondaries shown as appended "Ca x.x%" tokens. */
-const SECONDARY_KEYS = ["Ca", "Mg", "S"] as const;
-/** Micros — surfaced separately in the nutrients table when present
- * (g/ha or kg/ha depending on size). */
-const MICRO_KEYS = ["Zn", "B", "Mn", "Fe", "Cu", "Mo"] as const;
-/** Pretty-print names with subscripts. */
-const NUTRIENT_LABEL: Record<string, string> = {
-  N: "N", P2O5: "P₂O₅", K2O: "K₂O",
-  Ca: "Ca", Mg: "Mg", S: "S",
-  Zn: "Zn", B: "B", Mn: "Mn", Fe: "Fe", Cu: "Cu", Mo: "Mo",
-};
-
-/** Compute SA notation "X:Y:Z (W) + Ca x.x% + Mg y.y% + S z.z%" from
- * the per-event nutrient kg/ha and the total product mass kg/ha. The
- * (W) is the actual NPK-percent of the formulated product; X:Y:Z is
- * the integer ratio scaled so the largest of the three is 15
- * (matches SA grower convention — e.g. 15:1:5 rather than 15.2:0.8:5.0). */
-function computeSANotation(nutrients: Record<string, number>, totalMassKgPerHa: number): string {
-  if (!totalMassKgPerHa || totalMassKgPerHa <= 0) return "";
-  const n = nutrients.N || 0;
-  const p = nutrients.P2O5 || 0;
-  const k = nutrients.K2O || 0;
-  const totalNPK = n + p + k;
-  if (totalNPK <= 0) return "";
-
-  const nPct = (n / totalMassKgPerHa) * 100;
-  const pPct = (p / totalMassKgPerHa) * 100;
-  const kPct = (k / totalMassKgPerHa) * 100;
-  const sumPct = nPct + pPct + kPct;
-  const peak = Math.max(nPct, pPct, kPct);
-  const scale = peak > 0 ? 15 / peak : 0;
-  const r = (v: number) => Math.max(0, Math.round(v * scale));
-  const s = `${r(nPct)}:${r(pPct)}:${r(kPct)} (${sumPct.toFixed(0)})`;
-
-  const tail: string[] = [];
-  for (const key of SECONDARY_KEYS) {
-    const v = nutrients[key];
-    if (v && v > 0) {
-      const pct = (v / totalMassKgPerHa) * 100;
-      if (pct >= 0.1) tail.push(`${NUTRIENT_LABEL[key]} ${pct.toFixed(1)}%`);
-    }
-  }
-  return tail.length > 0 ? `${s} + ${tail.join(" + ")}` : s;
-}
-
-function microsForRow(nutrients: Record<string, number>): Array<{ key: string; kg_per_ha: number }> {
-  return MICRO_KEYS
-    .filter((k) => nutrients[k] && nutrients[k] > 0)
-    .map((k) => ({ key: k, kg_per_ha: nutrients[k] }));
-}
-
-function fmtNumber(n: number, dp = 1): string {
-  if (n === 0) return "0";
-  if (n >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
-  return n.toFixed(dp);
-}
-
-/** Format a micro nutrient — g/ha when small, kg/ha otherwise. */
-function fmtMicro(kg_per_ha: number): string {
-  if (kg_per_ha < 1) return `${(kg_per_ha * 1000).toFixed(0)} g/ha`;
-  return `${kg_per_ha.toFixed(2)} kg/ha`;
-}
-
-const METHOD_CHIP_CLASS: Record<string, string> = {
-  broadcast:   "bg-amber-100 text-amber-900",
-  band:        "bg-orange-100 text-orange-900",
-  side_dress:  "bg-yellow-100 text-yellow-900",
-  fertigation: "bg-blue-100 text-blue-900",
-  foliar:      "bg-violet-100 text-violet-900",
-  soil_basal:  "bg-emerald-100 text-emerald-900",
-  seed_treat:  "bg-rose-100 text-rose-900",
-  drench:      "bg-cyan-100 text-cyan-900",
-};
-
-/** One application row. Surfaces formula + rate + per-application total
- * + macros table. Raw materials hidden (not the deliverable at this stage —
- * actual products chosen at quote time). */
-function renderApplicationRow(
-  app: ApplicationBlendData,
-  i: number,
-  isPaired: boolean,
-  isAdmin: boolean,
-  area_ha: number,
-  batchLabel?: string,
-) {
-  const nutrients = app.nutrients_per_ha || {};
-  const formula = computeSANotation(nutrients, app.rate_kg_ha) || app.sa_notation || "(no formula)";
-  const totalKgPerApp = app.rate_kg_ha * (app.events_count || 1) * (area_ha || 0);
-  const micros = microsForRow(nutrients);
-
-  const methodChip = (
-    <span
-      className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
-        app.is_foliar
-          ? "bg-violet-100 text-violet-800"
-          : METHOD_CHIP_CLASS[app.method] || "bg-gray-100 text-gray-700"
-      }`}
-    >
-      {methodLabel(app.method)}
-    </span>
-  );
-
+function AdminAuditFold({
+  group,
+  codeOf,
+}: {
+  group: BlendGroupData;
+  codeOf: Map<ApplicationBlendData, string>;
+}) {
+  const [open, setOpen] = useState(false);
+  const withRecipes = group.applications.filter((a) => a.recipe && a.recipe.length > 0);
+  if (withRecipes.length === 0) return null;
   return (
-    <div
-      key={i}
-      className={`${i > 0 ? "border-t" : ""} ${app.is_foliar ? "bg-violet-50/30" : "bg-white"}`}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-3 px-3 py-2">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            {!isPaired && (
-              <span className="text-sm font-medium text-[var(--sapling-dark)]">
-                {MONTH_NAMES[app.month]} &middot; {app.stage_name || "Untitled stage"}
-              </span>
-            )}
-            {methodChip}
-            {batchLabel && (
-              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                · {batchLabel}
-              </span>
-            )}
-          </div>
-          {!app.is_foliar && (
-            <p className="mt-1 font-mono text-xs text-[var(--sapling-dark)]">
-              {formula}
-            </p>
-          )}
-          {app.is_foliar && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              Foliar — product specified at quote time.
-            </p>
-          )}
-          {!app.is_foliar && app.events_count > 1 && (
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {app.events_count} events{app.dates_label ? <> &middot; {app.dates_label}</> : null}
-            </p>
-          )}
-        </div>
-        <div className="text-right">
-          {app.is_foliar ? (
-            <span className="inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-800">
-              configure separately
-            </span>
-          ) : (
-            <>
-              {app.method === "fertigation" && app.concentrate_volume_l ? (
-                <>
-                  <p className="text-sm font-bold text-[var(--sapling-dark)]">
-                    {fmtNumber(app.concentrate_volume_l / (app.events_count || 1) / (area_ha || 1), 0)} L/ha
-                    {app.events_count > 1 && (
-                      <span className="text-xs font-normal text-muted-foreground"> /event</span>
-                    )}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {fmtNumber(app.rate_kg_ha, 1)} kg/ha solute /event
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {fmtNumber(app.concentrate_volume_l, 0)} L stock-tank total
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm font-bold text-[var(--sapling-dark)]">
-                    {app.rate_kg_ha ? `${fmtNumber(app.rate_kg_ha, 0)} kg/ha` : "—"}
-                    {app.events_count > 1 && (
-                      <span className="text-xs font-normal text-muted-foreground"> /event</span>
-                    )}
-                  </p>
-                  {totalKgPerApp > 0 && (
-                    <p className="text-[11px] text-muted-foreground">
-                      {fmtNumber(totalKgPerApp)} kg total
-                    </p>
-                  )}
-                </>
-              )}
-              {app.exact === false && (
-                <p className="text-[10px] text-amber-600">Estimated rate</p>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Per-event nutrient table — the actual deliverable. Hidden for
-          foliar (which is configured separately) and when nutrient data
-          isn't carried (e.g. legacy artifacts). */}
-      {!app.is_foliar && Object.keys(nutrients).length > 0 && (
-        <div className="border-t bg-gray-50/50 px-3 py-2">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Nutrients delivered per ha · per event
-          </p>
-          <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 text-xs sm:grid-cols-6">
-            {[...NPK_KEYS, ...SECONDARY_KEYS].map((key) => {
-              const val = nutrients[key];
-              if (!val || val <= 0) return null;
-              return (
-                <div key={key} className="flex items-baseline justify-between">
-                  <span className="text-muted-foreground">{NUTRIENT_LABEL[key]}</span>
-                  <span className="font-medium tabular-nums">{fmtNumber(val)} kg</span>
-                </div>
-              );
-            })}
-          </div>
-          {micros.length > 0 && (
-            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 border-t pt-1 text-[11px] text-muted-foreground">
-              <span className="font-medium uppercase tracking-wider">micros:</span>
-              {micros.map((m) => (
-                <span key={m.key}>
-                  {NUTRIENT_LABEL[m.key]} {fmtMicro(m.kg_per_ha)}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Admin-only audit drawer — raw materials the LP picked. NOT
-          shown to agronomists; actual products at production may be
-          different (months apart). */}
-      {app.recipe && app.recipe.length > 0 && isAdmin && !app.is_foliar && (
-        <details className="border-t bg-gray-50">
-          <summary className="cursor-pointer px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground">
-            Audit · raw materials picked by LP (admin)
-          </summary>
-          <div className="overflow-x-auto border-t">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b bg-white text-left">
-                  <th className="px-2 py-1.5 font-medium">Material</th>
-                  <th className="px-2 py-1.5 font-medium">Type</th>
-                  <th className="px-2 py-1.5 text-right font-medium">kg</th>
-                  <th className="px-2 py-1.5 text-right font-medium">%</th>
-                </tr>
-              </thead>
-              <tbody>
-                {app.recipe.map((r, ri) => (
-                  <tr key={ri} className="border-b last:border-0">
-                    <td className="px-2 py-1">{r.material}</td>
-                    <td className="px-2 py-1 text-muted-foreground">{r.type}</td>
-                    <td className="px-2 py-1 text-right tabular-nums">{r.kg.toFixed(1)}</td>
-                    <td className="px-2 py-1 text-right tabular-nums">{r.pct.toFixed(1)}</td>
+    <div className="mt-4 rounded-lg border bg-gray-50/60">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground"
+      >
+        {open ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+        Admin audit · raw materials picked by LP
+        <span className="ml-auto text-[10px] font-normal normal-case text-muted-foreground">
+          actual products may change at quote time
+        </span>
+      </button>
+      {open && (
+        <div className="space-y-2 border-t bg-white px-3 py-2">
+          {withRecipes.map((app) => (
+            <div key={codeOf.get(app)!}>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {codeOf.get(app)!} · {methodLabel(app.method)}
+              </p>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <th className="py-1 pr-3 font-medium">Material</th>
+                    <th className="py-1 pr-3 font-medium">Type</th>
+                    <th className="py-1 pr-3 text-right font-medium">kg</th>
+                    <th className="py-1 pr-3 text-right font-medium">%</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </details>
+                </thead>
+                <tbody>
+                  {app.recipe!.map((r, ri) => (
+                    <tr key={ri} className="border-b border-border/30 last:border-0">
+                      <td className="py-1 pr-3">{r.material}</td>
+                      <td className="py-1 pr-3 text-muted-foreground">{r.type}</td>
+                      <td className="py-1 pr-3 text-right tabular-nums">{r.kg.toFixed(1)}</td>
+                      <td className="py-1 pr-3 text-right tabular-nums">{r.pct.toFixed(1)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

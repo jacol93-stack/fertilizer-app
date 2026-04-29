@@ -37,12 +37,16 @@ export function classifyLevel(nutrient: string, cvPct: number | null): Heterogen
 }
 
 /** Per-block view used by the recompute helper. block_id keys back into
- * cluster assignments; targets is the same dict the backend clusters on. */
+ * cluster assignments; targets is the same dict the backend clusters on.
+ * accepted_methods carries the field's stored capability (broadcast,
+ * fertigation, foliar) so the cluster board can compute the per-group
+ * method intersection without an extra fetch. */
 export interface BlockTargets {
   block_id: string;
   block_name: string;
   block_area_ha: number;
   targets: Record<string, number>;
+  accepted_methods?: string[];
 }
 
 /** Recompute clusters from a fresh assignment map. Mirrors the backend's

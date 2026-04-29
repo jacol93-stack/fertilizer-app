@@ -11,6 +11,7 @@ import {
   Printer,
   ShieldCheck,
   Download,
+  FileCheck,
 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
@@ -18,13 +19,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { ArtifactView } from "@/components/programme-artifact/ArtifactView";
+import { NarrativePanel } from "@/components/programme-artifact/NarrativePanel";
 import { SeasonTracker } from "@/components/season-tracker/SeasonTracker";
 import {
   archiveProgramme,
   downloadProgrammePdf,
+  generateProgrammeNarrative,
   getProgramme,
+  getProgrammeNarrative,
   transitionProgrammeState,
 } from "@/lib/programmes-v2";
+import { useEffectiveAdmin } from "@/lib/use-effective-role";
 import type {
   BuildProgrammeResponse,
   ProgrammeState,
@@ -35,10 +40,21 @@ import { ProgrammeState as State } from "@/lib/types/programme-artifact";
 export default function ProgrammeArtifactPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const isAdmin = useEffectiveAdmin();
   const [data, setData] = useState<BuildProgrammeResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [transitioning, setTransitioning] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  // Tracks whether persisted Opus prose is on this artifact. Used to
+  // surface an AI label on the Download button so the user knows
+  // their click will produce the AI-prose PDF, not the engine-
+  // baseline one.
+  const [hasOpusProse, setHasOpusProse] = useState(false);
+  const [narrativeLocked, setNarrativeLocked] = useState(false);
+  // Auto-generate state for non-admin flow.
+  const [autoGenAttempted, setAutoGenAttempted] = useState(false);
+  const [autoGenerating, setAutoGenerating] = useState(false);
+  const [narrativeRefresh, setNarrativeRefresh] = useState(0);
 
   async function handleDownloadPdf() {
     if (!data) return;
@@ -71,6 +87,73 @@ export default function ProgrammeArtifactPage() {
       ignore = true;
     };
   }, [params.id]);
+
+  // Narrative state — refetched whenever the NarrativePanel reports a
+  // regenerate or a lock change. Drives the Download button indicator.
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const n = await getProgrammeNarrative(params.id);
+        if (ignore) return;
+        const present = !!(
+          n.narrative_overrides &&
+          Object.keys(n.narrative_overrides).length > 0
+        );
+        setHasOpusProse(present);
+        setNarrativeLocked(!!n.narrative_locked_at);
+      } catch {
+        // Silent — the panel itself surfaces narrative errors. The
+        // Download indicator just stays in its no-prose state.
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, [params.id, narrativeRefresh]);
+
+  // Non-admin auto-generate. Same flow as the soil report page: every
+  // client-facing programme view auto-fires Opus on first visit when
+  // the artifact is still in draft and no narrative exists yet. The
+  // Download CTA below lights up as soon as the prose lands. Admins
+  // keep the manual Generate / Regenerate panel for debugging.
+  useEffect(() => {
+    if (loading || isAdmin || autoGenAttempted) return;
+    if (!data) return;
+    if (hasOpusProse) return; // already have one
+    if (data.state !== "draft") return; // won't accept a generate
+    setAutoGenAttempted(true);
+    (async () => {
+      setAutoGenerating(true);
+      try {
+        const res = await generateProgrammeNarrative(params.id);
+        // Apply hasOpusProse SYNCHRONOUSLY from the generate response.
+        // Previously we only bumped narrativeRefresh and let the async
+        // narrative-fetch effect update hasOpusProse — that left a
+        // brief window where autoGenerating=false AND hasOpusProse=false,
+        // which the DownloadHero rendered as the "engine baseline"
+        // state. The flicker was the hero card swapping between
+        // "Generating…" → "engine baseline" → "Programme ready" in
+        // ~50-200 ms. Setting hasOpusProse directly from the response
+        // closes that window.
+        const present = !!(
+          res.narrative_overrides &&
+          Object.keys(res.narrative_overrides).length > 0
+        );
+        setHasOpusProse(present);
+        setNarrativeLocked(!!res.narrative_locked_at);
+        // Still bump refresh so other effects (e.g. NarrativePanel for
+        // admins) re-fetch the persisted state.
+        setNarrativeRefresh((n) => n + 1);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        toast.error(`AI narrative failed: ${msg}`);
+      } finally {
+        setAutoGenerating(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, isAdmin, autoGenAttempted, data, hasOpusProse, params.id]);
 
   const onTransition = async (newState: ProgrammeState, notes?: string) => {
     setTransitioning(true);
@@ -148,7 +231,11 @@ export default function ProgrammeArtifactPage() {
               size="sm"
               onClick={handleDownloadPdf}
               disabled={downloadingPdf}
-              title="Download the Sapling-branded styled PDF"
+              title={
+                hasOpusProse
+                  ? `Download the Sapling-branded styled PDF — includes Opus AI narrative${narrativeLocked ? " (locked)" : ""}`
+                  : "Download the Sapling-branded styled PDF — engine baseline prose"
+              }
             >
               {downloadingPdf ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -156,6 +243,14 @@ export default function ProgrammeArtifactPage() {
                 <Download className="h-4 w-4" />
               )}
               Download PDF
+              {hasOpusProse && (
+                <span
+                  className="ml-1 inline-flex items-center rounded bg-white/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
+                  aria-label={narrativeLocked ? "AI narrative locked" : "AI narrative included"}
+                >
+                  AI
+                </span>
+              )}
             </Button>
             <Button
               variant="outline"
@@ -180,12 +275,125 @@ export default function ProgrammeArtifactPage() {
           disabled={transitioning}
           onApprove={(notes) => onTransition(State.APPROVED, notes)}
         />
+        {/* Prominent download CTA — visible to every user the moment
+            the AI report is ready. Hidden on print. */}
+        <ProgrammeDownloadHero
+          generating={autoGenerating}
+          hasOpusProse={hasOpusProse}
+          downloadingPdf={downloadingPdf}
+          onDownload={handleDownloadPdf}
+        />
+        {/* NarrativePanel is admin-only — non-admins get the Opus
+            version automatically and never see the verdict / audit /
+            regenerate controls. */}
+        {isAdmin && (
+          <NarrativePanel
+            artifactId={params.id}
+            state={data.state as ProgrammeState}
+            onNarrativeChange={() => setNarrativeRefresh((n) => n + 1)}
+          />
+        )}
         <ArtifactView artifact={data.artifact} />
         <SeasonTracker artifactId={data.id} artifact={data.artifact} />
       </div>
     </AppShell>
   );
 }
+
+function ProgrammeDownloadHero({
+  generating,
+  hasOpusProse,
+  downloadingPdf,
+  onDownload,
+}: {
+  generating: boolean;
+  hasOpusProse: boolean;
+  downloadingPdf: boolean;
+  onDownload: () => void;
+}) {
+  if (generating) {
+    return (
+      <Card className="border-l-4 border-l-[var(--sapling-orange)] bg-orange-50/40 print:hidden">
+        <CardContent className="flex items-center gap-4 p-5">
+          <Loader2 className="size-6 animate-spin text-[var(--sapling-orange)]" />
+          <div className="flex-1">
+            <div className="text-base font-semibold text-[var(--sapling-dark)]">
+              Generating AI programme…
+            </div>
+            <div className="mt-0.5 text-sm text-muted-foreground">
+              Opus is reading the artifact and writing the agronomist
+              narrative. Usually 30-60 seconds.
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  if (hasOpusProse) {
+    return (
+      <Card className="border-l-4 border-l-green-600 bg-green-50/40 print:hidden">
+        <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-100">
+              <FileCheck className="size-5 text-green-700" />
+            </div>
+            <div>
+              <div className="text-base font-semibold text-[var(--sapling-dark)]">
+                Programme ready
+              </div>
+              <div className="mt-0.5 text-sm text-muted-foreground">
+                Fertilizer programme — Sapling-branded PDF, ready to download.
+              </div>
+            </div>
+          </div>
+          <Button
+            variant="default"
+            size="lg"
+            onClick={onDownload}
+            disabled={downloadingPdf}
+            className="bg-[var(--sapling-orange)] text-white hover:bg-[var(--sapling-orange)]/90"
+          >
+            {downloadingPdf ? (
+              <Loader2 className="size-5 animate-spin" />
+            ) : (
+              <Download className="size-5" />
+            )}
+            Download PDF
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <Card className="border-l-4 border-l-slate-300 bg-slate-50/60 print:hidden">
+      <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
+        <div>
+          <div className="text-base font-semibold text-[var(--sapling-dark)]">
+            Engine baseline ready
+          </div>
+          <div className="mt-0.5 text-sm text-muted-foreground">
+            Programme without AI narrative — download as-is.
+          </div>
+        </div>
+        <Button
+          variant="default"
+          size="lg"
+          onClick={onDownload}
+          disabled={downloadingPdf}
+          className="bg-[var(--sapling-orange)] text-white hover:bg-[var(--sapling-orange)]/90"
+        >
+          {downloadingPdf ? (
+            <Loader2 className="size-5 animate-spin" />
+          ) : (
+            <Download className="size-5" />
+          )}
+          Download PDF
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 
 function ReviewPanel({
   state,

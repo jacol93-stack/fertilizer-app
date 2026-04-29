@@ -7,6 +7,31 @@
 # macOS junk
 .DS_Store
 
+# QA screenshots accumulated at the repo root from playwright/manual
+# review sessions. Not part of the codebase — keep them local.
+/*.png
+
+# Research bulk: large PDFs + OCR text files for SAAGA, SAMAC, citrus,
+# misc. Numerical findings get seeded into migrations with citations;
+# the raw research artifacts stay local-only (size + rights).
+sapling-api/data/saaga/
+sapling-api/data/samac/
+sapling-api/data/citrus/
+sapling-api/data/misc/
+sapling-api/data/fertasa_handbook/images_ocr/
+
+# Seed scratch — fake_reports are local fixtures for ad-hoc validation,
+# not committed seeds.
+sapling-api/seeds/fake_reports/
+
+# Smoke-rendered PDFs are regeneratable; the JSON fixtures are the
+# committed source of truth.
+sapling-api/tests/fixtures/soil_report_smoke.pdf
+sapling-api/tests/fixtures/soil_report_e2e.pdf
+sapling-api/tests/fixtures/torture_test.pdf
+sapling-api/tests/fixtures/toc_check_mac.pdf
+sapling-api/tests/fixtures/final_check_mac.pdf
+
 # FERTASA scraper — holds authenticated session; never commit
 sapling-api/data/fertasa_handbook/session_cookie.txt
 sapling-api/data/fertasa_handbook/maize_pdf_pages/

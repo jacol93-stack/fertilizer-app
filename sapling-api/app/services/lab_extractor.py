@@ -13,6 +13,12 @@ from app.supabase_client import get_supabase_admin
 
 logger = logging.getLogger(__name__)
 
+# Sonnet 4.6 — current canonical ID. Lab extraction is structured
+# schema output from a known-shape document, so Sonnet is the right
+# tier (Opus is overkill for ~R0.65 saved per upload). Adaptive
+# thinking + effort=high handle multi-page / hand-annotated reports.
+_LAB_EXTRACTOR_MODEL = "claude-sonnet-4-6"
+
 # Anthropic transient errors to retry on. APIError is the parent;
 # RateLimitError + APIConnectionError + InternalServerError are the
 # specific subclasses we expect from network blips or load.
@@ -45,6 +51,146 @@ LEAF_PARAMS = [
 
 # Backwards-compat alias — older callers and templates reference EXPECTED_PARAMS.
 EXPECTED_PARAMS = SOIL_PARAMS
+
+
+def _spreadsheet_to_text(file_bytes: bytes, content_type: str) -> str:
+    """Render an xlsx / xls / csv as a tab-separated text block for the
+    AI. We deliberately don't try to clean / pre-parse the file — labs
+    use wildly different column orders, parameter names, units, and
+    sometimes mix soil + leaf in the same workbook. Surfacing the raw
+    grid (with sheet names) lets Sonnet do the mapping holistically.
+
+    Hard caps to prevent runaway costs from messy multi-sheet workbooks:
+      * Per-cell text truncated at 200 chars (long formula text cells).
+      * Per-sheet row cap of 500 — labs almost never exceed 100 samples
+        per report; anything past 500 is almost certainly noise.
+      * Total output capped at 60,000 characters (~15k tokens). If the
+        file exceeds this, we raise — caller surfaces a clear error so
+        the user trims the workbook rather than silently burning $2 on
+        an oversized prompt.
+    """
+    from io import BytesIO, StringIO
+
+    if content_type in ("text/csv", "text/plain") or content_type.startswith("text/"):
+        # CSVs may use comma or semicolon delimiters in SA labs; let
+        # the model figure it out — we just hand it the raw text.
+        try:
+            text = file_bytes.decode("utf-8", errors="replace")
+        except Exception:
+            text = file_bytes.decode("latin-1", errors="replace")
+        if len(text) > _MAX_TEXT_CHARS:
+            raise ValueError(
+                f"CSV is too large ({len(text):,} chars). Lab CSVs typically "
+                f"fit in ≤ {_MAX_TEXT_CHARS:,} chars. Trim to a single "
+                f"analysis sheet and re-upload."
+            )
+        return text
+
+    # xlsx is OOXML; xls is the legacy Excel 97-2003 binary format.
+    # Try openpyxl first (handles .xlsx/.xlsm); fall back to xlrd for
+    # .xls. Many SA labs still email old-format reports — we want both
+    # to "just work" without forcing the user to convert.
+    sheet_iter = _iter_sheet_rows_xlsx(file_bytes)
+    if sheet_iter is None:
+        sheet_iter = _iter_sheet_rows_xls(file_bytes)
+    if sheet_iter is None:
+        raise ValueError(
+            "Couldn't read this file as a spreadsheet. Save it as .xlsx "
+            "in Excel (File → Save As → Excel Workbook) or upload the "
+            "lab's PDF instead."
+        )
+
+    out = StringIO()
+    total_chars = 0
+    for sheet_name, rows in sheet_iter:
+        header = f"--- Sheet: {sheet_name} ---\n"
+        out.write(header)
+        total_chars += len(header)
+        rows_written = 0
+        for row in rows:
+            if rows_written >= _MAX_ROWS_PER_SHEET:
+                msg = (
+                    f"[truncated — sheet '{sheet_name}' exceeded "
+                    f"{_MAX_ROWS_PER_SHEET} rows]\n"
+                )
+                out.write(msg)
+                total_chars += len(msg)
+                break
+            cells = []
+            for v in row:
+                if v is None:
+                    cells.append("")
+                    continue
+                cell = (
+                    v.isoformat() if hasattr(v, "isoformat") else str(v)
+                )
+                if len(cell) > _MAX_CELL_CHARS:
+                    cell = cell[:_MAX_CELL_CHARS] + "…"
+                cells.append(cell)
+            # Skip fully-blank rows so the AI doesn't waste tokens on
+            # padding inside the workbook.
+            if not any(c.strip() for c in cells):
+                continue
+            line = "\t".join(cells) + "\n"
+            out.write(line)
+            total_chars += len(line)
+            rows_written += 1
+            if total_chars > _MAX_TEXT_CHARS:
+                raise ValueError(
+                    f"Spreadsheet is too large for lab extraction "
+                    f"({total_chars:,}+ chars). Likely cause: multi-sheet "
+                    f"workbook with non-lab data (formulas, summaries, raw "
+                    f"data dumps). Save just the analysis sheet as its own "
+                    f"file and re-upload, or upload the lab's PDF instead."
+                )
+        out.write("\n")
+        total_chars += 1
+    return out.getvalue()
+
+
+def _iter_sheet_rows_xlsx(file_bytes: bytes):
+    """Yield (sheet_name, row_iter) for an .xlsx workbook, or None if
+    the file isn't OOXML. Returns a generator-of-generators — caller
+    handles size caps."""
+    from io import BytesIO
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(BytesIO(file_bytes), data_only=True, read_only=True)
+    except Exception:
+        return None
+    return (
+        (sheet_name, wb[sheet_name].iter_rows(values_only=True))
+        for sheet_name in wb.sheetnames
+    )
+
+
+def _iter_sheet_rows_xls(file_bytes: bytes):
+    """Yield (sheet_name, row_iter) for a legacy .xls workbook, or None
+    if xlrd can't read it. xlrd's row API is index-based; we wrap it as
+    a generator of tuples to match openpyxl's shape."""
+    try:
+        import xlrd
+        wb = xlrd.open_workbook(file_contents=file_bytes)
+    except Exception:
+        return None
+
+    def _rows(ws):
+        for r in range(ws.nrows):
+            yield tuple(ws.cell_value(r, c) for c in range(ws.ncols))
+
+    return (
+        (wb.sheet_by_index(i).name, _rows(wb.sheet_by_index(i)))
+        for i in range(wb.nsheets)
+    )
+
+
+# Hard caps — guard against runaway costs from messy lab xlsx files.
+# 60k chars ≈ 15k tokens at typical English/numeric mix; well under
+# Sonnet's context but big enough for a 100-block lab report with all
+# 28 SOIL_PARAMS columns.
+_MAX_TEXT_CHARS = 60_000
+_MAX_ROWS_PER_SHEET = 500
+_MAX_CELL_CHARS = 200
 
 
 def _build_extraction_prompt(
@@ -132,10 +278,13 @@ def extract_from_document(
     content_type: str,
     lab_name_hint: str | None = None,
     mode: str = "soil",
+    user_id: str | None = None,
 ) -> dict[str, Any]:
     """Extract soil or leaf analysis values from a lab report PDF or image.
 
-    `mode` selects soil vs leaf parameter set. Returns dict with keys:
+    `mode` selects soil vs leaf parameter set. `user_id` is needed for
+    the failure-path ai_usage logger (the success path's logger lives
+    in the route and passes user.id). Returns dict with keys:
     lab_name, analysis_date, samples, ai_usage.
     """
     settings = get_settings()
@@ -152,7 +301,27 @@ def extract_from_document(
 
     prompt = _build_extraction_prompt(lab_template, mode=mode)
 
-    # Build the message content based on file type
+    # Build the message content based on file type. Spreadsheets
+    # (xlsx / xls / csv) get converted to a tabular text representation
+    # server-side and sent as text input — Claude's vision API doesn't
+    # natively read spreadsheet binaries. Lab xlsx exports have wildly
+    # variable column orders + parameter names + units across labs, so
+    # the AI path handles the mapping the same way it does for PDFs.
+    spreadsheet_types = (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+        "text/csv",
+        "text/plain",
+    )
+    is_spreadsheet = (
+        content_type in spreadsheet_types
+        or content_type.startswith("text/")
+    )
+
+    media_type: str | None = None
+    source_type: str | None = None
+    source_key: str | None = None
+    spreadsheet_text: str | None = None
     if content_type == "application/pdf":
         media_type = "application/pdf"
         source_type = "base64"
@@ -161,10 +330,16 @@ def extract_from_document(
         media_type = content_type
         source_type = "base64"
         source_key = "data"
+    elif is_spreadsheet:
+        spreadsheet_text = _spreadsheet_to_text(file_bytes, content_type)
     else:
         raise ValueError(f"Unsupported file type: {content_type}")
 
-    b64_data = base64.standard_b64encode(file_bytes).decode("utf-8")
+    b64_data = (
+        base64.standard_b64encode(file_bytes).decode("utf-8")
+        if not is_spreadsheet
+        else ""
+    )
 
     # One retry on transient API errors with a short backoff. Lab uploads
     # are user-blocking; a single retry covers the common load-spike +
@@ -173,25 +348,48 @@ def extract_from_document(
     last_err: Exception | None = None
     for attempt in range(2):
         try:
-            message = client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=8000,
-                messages=[
+            if is_spreadsheet:
+                content_blocks: list[dict[str, Any]] = [
                     {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "document" if content_type == "application/pdf" else "image",
-                                "source": {
-                                    "type": source_type,
-                                    "media_type": media_type,
-                                    source_key: b64_data,
-                                },
-                            },
-                            {"type": "text", "text": prompt},
-                        ],
-                    }
-                ],
+                        "type": "text",
+                        "text": (
+                            "The following is a lab report exported as a "
+                            "spreadsheet (xlsx / csv). Treat each sheet's "
+                            "rows as samples and the columns as parameters "
+                            "in whatever order the lab used. Header rows + "
+                            "unit rows + banner rows above the data table "
+                            "are common — skip them. Decimal values may use "
+                            "comma or period.\n\n"
+                            f"=== SPREADSHEET CONTENT ===\n{spreadsheet_text}"
+                        ),
+                    },
+                    {"type": "text", "text": prompt},
+                ]
+            else:
+                content_blocks = [
+                    {
+                        "type": "document" if content_type == "application/pdf" else "image",
+                        "source": {
+                            "type": source_type,
+                            "media_type": media_type,
+                            source_key: b64_data,
+                        },
+                    },
+                    {"type": "text", "text": prompt},
+                ]
+            message = client.messages.create(
+                model=_LAB_EXTRACTOR_MODEL,
+                # 12k accommodates ~100-sample reports with 28 SOIL_PARAMS
+                # each (each value pair ≈ 30 chars JSON). Hard ceiling
+                # without adaptive thinking is 12000 × $15/M = $0.18,
+                # still well within budget.
+                max_tokens=12000,
+                messages=[{"role": "user", "content": content_blocks}],
+                # Lab extraction is structured value copying, not
+                # reasoning — adaptive thinking just eats output tokens
+                # before the JSON is emitted. effort=high gives careful
+                # extraction without the thinking-budget tax.
+                output_config={"effort": "high"},
             )
             break
         except _RETRYABLE_ERRORS as exc:
@@ -211,7 +409,44 @@ def extract_from_document(
     cost_usd = round((input_tokens * 3 + output_tokens * 15) / 1_000_000, 6)
 
     # Parse the response
-    response_text = message.content[0].text.strip()
+    # Adaptive thinking puts ThinkingBlock(s) before the TextBlock(s)
+    # in message.content. We need only the assistant's actual text
+    # reply — iterate and concatenate `text`-typed blocks.
+    response_text = "".join(
+        getattr(block, "text", "") or ""
+        for block in (message.content or [])
+        if getattr(block, "type", None) == "text"
+    ).strip()
+    if not response_text:
+        # No text block at all (truncated mid-thinking, etc.). Log the
+        # cost we already paid and surface a clear error rather than
+        # crashing on an empty parse.
+        try:
+            if user_id:
+                sb = get_supabase_admin()
+                sb.table("ai_usage").insert({
+                    "user_id": user_id,
+                    "operation": "extract_lab",
+                    "model": _LAB_EXTRACTOR_MODEL,
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "cost_usd": cost_usd,
+                    "metadata": {
+                        "status": "no_text_block",
+                        "stop_reason": getattr(message, "stop_reason", None),
+                        "block_types": [
+                            getattr(b, "type", None) for b in (message.content or [])
+                        ],
+                    },
+                }).execute()
+        except Exception:
+            logger.exception("ai_usage no-text-block log failed")
+        raise ValueError(
+            f"AI returned no text content "
+            f"(stop_reason={getattr(message, 'stop_reason', None)!r}). "
+            f"Likely cause: max_tokens reached during the thinking phase. "
+            f"Try a smaller / cleaner file, or split the report."
+        )
     # Strip markdown code fences if present (```json ... ``` or ``` ... ```)
     if response_text.startswith("```"):
         # Remove opening fence line (```json or ```)
@@ -227,7 +462,34 @@ def extract_from_document(
     try:
         extracted = json.loads(response_text)
     except json.JSONDecodeError:
-        raise ValueError(f"Failed to parse extraction result from AI: {response_text[:200]}")
+        # Log the usage we already incurred — without this, a parse
+        # failure on a $2 call leaves no trail in ai_usage and the cost
+        # is invisible. The route's own ai_usage logger only fires on
+        # success; this is the failure-path bookkeeper.
+        try:
+            if user_id:
+                sb = get_supabase_admin()
+                sb.table("ai_usage").insert({
+                    "user_id": user_id,
+                    "operation": "extract_lab",
+                    "model": _LAB_EXTRACTOR_MODEL,
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "cost_usd": cost_usd,
+                    "metadata": {
+                        "status": "json_parse_failed",
+                        "response_excerpt": response_text[:500],
+                        "stop_reason": getattr(message, "stop_reason", None),
+                    },
+                }).execute()
+        except Exception:
+            logger.exception("ai_usage failure-path log failed")
+        raise ValueError(
+            f"Failed to parse extraction result from AI "
+            f"(stop_reason={getattr(message, 'stop_reason', None)!r}, "
+            f"in={input_tokens} out={output_tokens} tokens, "
+            f"~${cost_usd}): {response_text[:200]}"
+        )
 
     # If we got a lab name, try to find/create template — keep
     # soil/leaf templates separate via department.
@@ -265,7 +527,7 @@ def extract_from_document(
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "cost_usd": cost_usd,
-            "model": "claude-sonnet-4-20250514",
+            "model": _LAB_EXTRACTOR_MODEL,
         },
         "samples": samples,
         # Keep backward-compatible single "values" for single-sample reports

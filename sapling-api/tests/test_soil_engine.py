@@ -18,11 +18,13 @@ from __future__ import annotations
 import pytest
 
 from app.services.soil_engine import (
+    _canonicalise_param_name,
     adjust_targets_for_ratios,
     calculate_nutrient_targets,
     classify_soil_value,
     evaluate_ratios,
     get_adjustment_factor,
+    normalise_soil_values,
 )
 
 
@@ -343,3 +345,99 @@ class TestAdjustTargetsForRatios:
         ratios = evaluate_ratios(soil, ratio_rows)
         adjusted = adjust_targets_for_ratios(targets, ratios, soil, ratio_rows)
         assert all(t["Final_Target_kg_ha"] >= 0 for t in adjusted)
+
+
+# ── normalise_soil_values ──────────────────────────────────────────────────
+
+
+class TestNormaliseSoilValues:
+    """Lab files often label columns with units ("K (mg/kg)") but the engine's
+    reference tables are unit-free ("K"). normalise_soil_values bridges the
+    two, idempotently."""
+
+    def test_strips_mg_per_kg_suffix(self):
+        out = normalise_soil_values({"K (mg/kg)": 263, "Ca (mg/kg)": 944})
+        assert out == {"K": 263, "Ca": 944}
+
+    def test_strips_cmol_kg_suffix(self):
+        out = normalise_soil_values({"CEC (cmol/kg)": 6.94})
+        assert out == {"CEC": 6.94}
+
+    def test_preserves_method_qualifier_inside_parens(self):
+        out = normalise_soil_values({"P (Bray-1) (mg/kg)": 61, "pH (KCl)": 5.29})
+        # (Bray-1) and (KCl) stay — they're qualifiers not units
+        assert out == {"P (Bray-1)": 61, "pH (KCl)": 5.29}
+
+    def test_strips_percent_marker(self):
+        out = normalise_soil_values({"Acid Saturation (%)": 0.0, "K Saturation (%)": 9.7})
+        assert out == {"Acid Saturation": 0.0, "K Saturation": 9.7}
+
+    def test_already_canonical_passthrough(self):
+        out = normalise_soil_values({"K": 263, "Ca": 944, "P (Bray-1)": 61})
+        assert out == {"K": 263, "Ca": 944, "P (Bray-1)": 61}
+
+    def test_idempotent(self):
+        once = normalise_soil_values({"K (mg/kg)": 263})
+        twice = normalise_soil_values(once)
+        assert once == twice
+
+    def test_canonical_wins_on_collision(self):
+        # Both forms in the same dict — canonical takes precedence
+        out = normalise_soil_values({"K (mg/kg)": 100, "K": 263})
+        assert out["K"] == 263
+
+    def test_handles_none_or_empty(self):
+        assert normalise_soil_values(None) == {}
+        assert normalise_soil_values({}) == {}
+
+    def test_canonicalise_helper(self):
+        assert _canonicalise_param_name("K (mg/kg)") == "K"
+        assert _canonicalise_param_name("Bulk Density (g/ml)") == "Bulk Density"
+        assert _canonicalise_param_name("pH (KCl)") == "pH (KCl)"
+        assert _canonicalise_param_name("P (Bray-1) (mg/kg)") == "P (Bray-1)"
+
+
+class TestEngineHandlesUnitSuffixedKeys:
+    """Anton-style data: lab keys carry units. Engine should classify,
+    compute targets, and evaluate ratios identically to canonical-key
+    inputs."""
+
+    def test_classify_via_calculate_nutrient_targets_with_unit_keys(
+        self, sufficiency_rows, adjustment_rows, param_map_rows, crop_rows
+    ):
+        canonical = {"N (total)": 20, "P (Bray-1)": 30, "K": 200, "Ca": 800, "Mg": 150, "S": 12}
+        unit_suffixed = {
+            "N (total) (mg/kg)": 20,
+            "P (Bray-1) (mg/kg)": 30,
+            "K (mg/kg)": 200,
+            "Ca (mg/kg)": 800,
+            "Mg (mg/kg)": 150,
+            "S (mg/kg)": 12,
+        }
+        canon_t = calculate_nutrient_targets(
+            "Macadamia", 5, canonical, crop_rows,
+            sufficiency_rows, adjustment_rows, param_map_rows,
+        )
+        unit_t = calculate_nutrient_targets(
+            "Macadamia", 5, unit_suffixed, crop_rows,
+            sufficiency_rows, adjustment_rows, param_map_rows,
+        )
+        # Same classifications driven by same soil values via different keys
+        canon_by_nut = {t["Nutrient"]: t for t in canon_t}
+        unit_by_nut = {t["Nutrient"]: t for t in unit_t}
+        for nut in canon_by_nut:
+            if nut not in unit_by_nut:
+                continue
+            assert canon_by_nut[nut].get("Classification") == unit_by_nut[nut].get("Classification"), (
+                f"{nut} classification differs: canonical={canon_by_nut[nut].get('Classification')} "
+                f"unit-suffixed={unit_by_nut[nut].get('Classification')}"
+            )
+
+    def test_evaluate_ratios_with_unit_keys(self, ratio_rows):
+        unit_keyed = {
+            "Ca (mg/kg)": 1000, "Mg (mg/kg)": 200, "K (mg/kg)": 250,
+        }
+        canonical = {"Ca": 1000, "Mg": 200, "K": 250}
+        rs_unit = evaluate_ratios(unit_keyed, ratio_rows)
+        rs_canon = evaluate_ratios(canonical, ratio_rows)
+        assert len(rs_unit) == len(rs_canon)

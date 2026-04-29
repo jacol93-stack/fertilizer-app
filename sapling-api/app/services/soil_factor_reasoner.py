@@ -111,6 +111,37 @@ AL_SAT_SOURCE = ("IMPLEMENTER_CONVENTION", "FERTASA 5.1 qualitative Al discussio
 # Acid-tolerant crops (per crop_calc_flags.skip_cation_ratio_path)
 ACID_TOLERANT_CROPS = {"Blueberry", "Raspberry", "Blackberry", "Honeybush", "Rooibos"}
 
+
+# ------------------------------------------------------------
+# Crop pH optima — used by the pre-season pH findings (low → lime,
+# high → elemental sulphur). Targets are pH (KCl); H2O readings get
+# +1 added by callers before comparison. Default band 5.0–6.5 covers
+# most macadamia / citrus / avo / mango / grape / vegetable agronomy
+# in SA. Acid-loving crops drop the lower bound. Brassicas + lucerne
+# push the upper bound up.
+#
+# These are bands, not single values — so a soil at pH 6.0 is fine
+# for everything, but pH 4.0 fires "too low" for everyone except
+# the acid-tolerant set, and pH 7.5 fires "too high" for everyone.
+# Crop-specific overrides come from `crop_requirements.ph_min /
+# ph_max` when the row is populated; this dict is the fallback.
+# ------------------------------------------------------------
+DEFAULT_PH_OPTIMAL_LOW = 5.0
+DEFAULT_PH_OPTIMAL_HIGH = 6.5
+ACID_TOLERANT_PH_OPTIMAL_LOW = 4.0
+ACID_TOLERANT_PH_OPTIMAL_HIGH = 5.5
+PH_LOW_CRITICAL_OFFSET = 0.5  # pH at or below (low - 0.5) is critical
+PH_HIGH_CRITICAL_OFFSET = 0.5  # pH at or above (high + 0.5) is critical
+PH_SOURCE = ("FERTASA_5_1", "FERTASA Soil Fertility Handbook §5.1 — Liming and pH management", 1)
+
+# Ca:Mg target band — gypsum-only path (raise Ca without lifting pH)
+# fires when ratio is below 3:1 AND pH is already in the OK band. The
+# 3:1 lower bound is the cation-balance convention from FERTASA 5.2.2;
+# values below it indicate Ca shortage relative to Mg even when total
+# bases look fine.
+CA_MG_LOW_THRESHOLD = 3.0
+CA_MG_SOURCE = ("FERTASA_5_2_2", "FERTASA §5.2.2 — Cation balance / base saturation", 1)
+
 # ------------------------------------------------------------
 # N-fertilizer soil acidification (IFA World Fertilizer Use Manual
 # 1992 Table 1 — "Soil acidification by nitrogen fertilizers").
@@ -300,23 +331,46 @@ def compute_lime_needed_for_n(
 
 def compute_soil_esp_pct(soil_values: dict) -> Optional[float]:
     """Soil Exchangeable Sodium Percentage. Preferred path: read from
-    base-saturation Na %. Fallback: Na (cmol/kg) / CEC × 100.
+    a lab-reported base-saturation Na %. Fallback: convert Na from
+    mg/kg to cmol_c/kg, divide by CEC, × 100.
 
     Returns None when neither path is resolvable.
+
+    Bug history: the previous implementation dropped straight to
+    `na / cec * 100` without unit conversion, treating Na (mg/kg) as
+    if it were cmol_c/kg. That over-stated ESP by ~230× — a routine
+    1.6 % ESP soil rendered as 374 %, then triggered a critical
+    sodicity alert and a spurious gypsum recommendation. After
+    `normalise_soil_values` strips unit suffixes from lab keys, the
+    `Na Saturation` key from SA labs is now also recognised as a
+    direct ESP source, short-circuiting the fallback entirely.
     """
-    # Some labs report Na base-sat % directly
-    for key in ("Na_base_sat_pct", "Na base sat %", "ESP"):
+    # SA labs commonly report Na saturation % directly. After
+    # normalise_soil_values, "Na Saturation (%)" reads as "Na Saturation".
+    for key in (
+        "Na_base_sat_pct", "Na base sat %", "Na Saturation",
+        "Na base sat", "ESP",
+    ):
         val = soil_values.get(key)
         if val is not None:
             try:
-                return float(val)
+                return round(float(val), 1)
             except (ValueError, TypeError):
                 pass
     na = _sv(soil_values, "Na")
     cec = _sv(soil_values, "CEC", "T Value", "T-value")
     if na is None or cec is None or cec <= 0:
         return None
-    return round(na / cec * 100.0, 1)
+    # Unit ambiguity: SA labs report Na in mg/kg (typical 5-500 range);
+    # FERTASA test data uses cmol_c/kg (typical 0.05-10 range). After
+    # normalise_soil_values strips the unit suffix we can't read the
+    # original key, so fall back to a magnitude heuristic. The two
+    # ranges don't overlap meaningfully — anything > 20 is mg/kg
+    # because 20 cmol_c/kg of Na would be a deserted-saltpan reading
+    # nobody plants on. Anything ≤ 20 is cmol_c/kg.
+    # Na atomic mass 22.99, charge +1 → 1 cmol_c/kg ≈ 229.9 mg/kg.
+    na_cmol = na / 229.9 if na > 20 else na
+    return round(na_cmol / cec * 100.0, 1)
 
 
 def _mg_per_l_to_meq_per_l(mg_per_l: float, ion: str) -> Optional[float]:
@@ -413,6 +467,8 @@ def reason_soil_factors(
     Returns:
         SoilFactorReport with findings + computed metrics.
     """
+    from app.services.soil_engine import normalise_soil_values
+    soil_values = normalise_soil_values(soil_values)
     report = SoilFactorReport()
     is_acid_tolerant = crop in ACID_TOLERANT_CROPS
     if crop_calc_flags and crop_calc_flags.get("skip_cation_ratio_path"):
@@ -671,6 +727,111 @@ def reason_soil_factors(
                 source_id="USSL_1954",
                 source_section="USDA Ag Handbook 60",
                 tier=3,
+            ))
+
+    # ----- pH out-of-band findings -----
+    # Three pre-season actions fire from pH alone, independent of Al
+    # saturation:
+    #   (a) pH below crop optimal → lime (calcitic / dolomitic).
+    #       Pre-season module already had a lime path keyed on Al
+    #       saturation; adding pH-low here means a soil with pH 4.4
+    #       and zero measured Al still gets a lime recommendation.
+    #   (b) pH above crop optimal → elemental sulphur (acidifier).
+    #       Previously had no path at all — alkaline soils for non-
+    #       acid-loving crops just got assumptions baked into the
+    #       programme without a pre-season correction.
+    #   (c) Adequate pH but Ca:Mg below target → gypsum
+    #       (calcium without pH lift). Distinct from the SAR-driven
+    #       gypsum path because it fires on cation imbalance even
+    #       when sodium isn't the issue.
+    ph_kcl = _sv(soil_values, "pH (KCl)", "pH KCl", "pH_KCl")
+    ph_h2o = _sv(soil_values, "pH (H2O)", "pH H2O", "pH_H2O", "pH water")
+    # Convert H2O to KCl when only H2O is reported (KCl ≈ H2O − 1).
+    effective_ph = ph_kcl if ph_kcl is not None else (
+        ph_h2o - 1.0 if ph_h2o is not None else None
+    )
+    if effective_ph is not None and not is_acid_tolerant:
+        ph_low = DEFAULT_PH_OPTIMAL_LOW
+        ph_high = DEFAULT_PH_OPTIMAL_HIGH
+        if effective_ph < ph_low:
+            severity = "critical" if effective_ph <= ph_low - PH_LOW_CRITICAL_OFFSET else "warn"
+            report.findings.append(SoilFactorFinding(
+                kind="balance",
+                severity=severity,
+                parameter="pH (KCl)",
+                value=effective_ph,
+                threshold=ph_low,
+                message=(
+                    f"pH (KCl) {effective_ph:.2f} below crop-optimal band "
+                    f"({ph_low:.1f}–{ph_high:.1f}). Acidic soil restricts "
+                    f"Ca / Mg / P availability; root expansion limited."
+                ),
+                recommended_action=(
+                    "Lime application (calcitic or dolomitic per Mg status). "
+                    "Size against pH deficit + buffer factor; pre-season for "
+                    "reaction time."
+                ),
+                trigger_kind=None,
+                source_id=PH_SOURCE[0],
+                source_section=PH_SOURCE[1],
+                tier=PH_SOURCE[2],
+            ))
+        elif effective_ph > ph_high:
+            severity = "critical" if effective_ph >= ph_high + PH_HIGH_CRITICAL_OFFSET else "warn"
+            report.findings.append(SoilFactorFinding(
+                kind="balance",
+                severity=severity,
+                parameter="pH (KCl)_high",
+                value=effective_ph,
+                threshold=ph_high,
+                message=(
+                    f"pH (KCl) {effective_ph:.2f} above crop-optimal band "
+                    f"({ph_low:.1f}–{ph_high:.1f}). Alkaline soil locks "
+                    f"Zn / Fe / Mn / B / P availability."
+                ),
+                recommended_action=(
+                    "Elemental sulphur application to lower pH. Size against "
+                    "pH excess + soil buffer; pre-season for reaction time. "
+                    "Consider acidifying N sources (ammonium sulphate) for "
+                    "ongoing maintenance."
+                ),
+                trigger_kind=None,
+                source_id=PH_SOURCE[0],
+                source_section=PH_SOURCE[1],
+                tier=PH_SOURCE[2],
+            ))
+
+    # ----- Ca:Mg cation balance (gypsum-only path) -----
+    # When Ca:Mg is below the cation-balance target AND pH is already
+    # in band, the agronomic action is gypsum (calcium without pH
+    # lift), NOT lime. Lime would over-shoot pH while fixing Ca.
+    ca_mg_ratio = report.computed.get("Ca:Mg")
+    if ca_mg_ratio is not None and ca_mg_ratio < CA_MG_LOW_THRESHOLD:
+        ph_in_band = (
+            effective_ph is not None
+            and DEFAULT_PH_OPTIMAL_LOW <= effective_ph <= DEFAULT_PH_OPTIMAL_HIGH
+        )
+        if ph_in_band:
+            report.findings.append(SoilFactorFinding(
+                kind="balance",
+                severity="warn",
+                parameter="Ca:Mg",
+                value=ca_mg_ratio,
+                threshold=CA_MG_LOW_THRESHOLD,
+                message=(
+                    f"Ca:Mg {ca_mg_ratio:.2f}:1 below the {CA_MG_LOW_THRESHOLD:.0f}:1 "
+                    f"cation-balance target with pH already in band. Lime would "
+                    f"over-shoot pH; gypsum corrects Ca shortage without lifting pH."
+                ),
+                recommended_action=(
+                    "Gypsum application sized against the Ca shortfall. Pre-"
+                    "season placement gives the cation complex time to settle "
+                    "before peak demand."
+                ),
+                trigger_kind=None,
+                source_id=CA_MG_SOURCE[0],
+                source_section=CA_MG_SOURCE[1],
+                tier=CA_MG_SOURCE[2],
             ))
 
     # Irrigation water quality findings (when water_values supplied)

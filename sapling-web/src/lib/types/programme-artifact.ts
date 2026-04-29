@@ -500,6 +500,12 @@ export interface BuildProgrammeRequest {
   stage_count?: number;
   blocks: BlockRequest[];
   method_availability: MethodAvailability;
+  /** Per-cluster method override — cluster_id → MethodAvailability.
+   * Set on the cluster board when the user wants to scope a group's
+   * methods (e.g. "drip-only on Group A"). Engine uses each cluster's
+   * override for that group's blends, falls back to method_availability
+   * for clusters not listed here. */
+  method_availability_per_cluster?: Record<string, MethodAvailability>;
   high_al_soil?: boolean | null;
   wet_summer_between_apply_and_plant?: boolean;
   has_gypsum_in_plan?: boolean;

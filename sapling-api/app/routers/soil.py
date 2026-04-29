@@ -124,8 +124,19 @@ class SoilAnalysisCreate(BaseModel):
     field_area_ha: float | None = Field(None, gt=0, le=100_000)
     pop_per_ha: int | None = Field(None, gt=0, le=1_000_000)
     lab_name: str | None = Field(None, max_length=200)
-    analysis_date: str | None = Field(None, max_length=20)
+    # Required so every persisted analysis has a real sample date the
+    # historical view can sort by + duplicate detection can key on.
+    # The UI defaults to today when the agronomist has no specific date.
+    analysis_date: str = Field(..., min_length=1, max_length=20)
     soil_values: dict | None = None
+    # Per-parameter unit override from the manual entry form. Keys are
+    # the same labels the user typed in `soil_values`. The
+    # canonicaliser uses this when it can't deduce the unit from the
+    # label alone (e.g. user typed plain "K" and selected "cmol_c/kg"
+    # from a dropdown). The label parser still wins when the user
+    # typed a unit-suffixed label like "K (mg/kg)" without using the
+    # dropdown.
+    soil_value_units: dict[str, str] | None = None
     nutrient_targets: list[dict] | None = None
     ratio_results: list[dict] | None = None
     classifications: dict | None = None
@@ -333,6 +344,17 @@ def _audit(sb, user: CurrentUser, action: str, table: str, record_id: str | None
 
 
 # ── Classification ────────────────────────────────────────────────────────────
+
+
+@router.get("/canonical-parameters")
+def list_canonical_soil_parameters():
+    """List every canonical soil parameter the engine recognises with
+    its accepted input units. The manual-entry form populates its
+    parameter + unit dropdowns from this — keeps the UI in lockstep
+    with the canonicaliser registry without hard-coding the list in
+    the frontend."""
+    from app.services.soil_canonicaliser import list_canonical_parameters
+    return {"parameters": list_canonical_parameters()}
 
 
 @router.post("/classify", response_model=ClassifyResponse)
@@ -585,18 +607,54 @@ async def extract_lab_report(
     import hashlib
 
     allowed_types = {
-        "application/pdf", "image/jpeg", "image/png", "image/webp", "image/gif",
+        "application/pdf",
+        "image/jpeg", "image/png", "image/webp", "image/gif",
+        # Spreadsheet exports — lab xlsx files have wildly variable
+        # column orders + parameter names, so the AI extractor handles
+        # them the same way it does PDFs.
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+        "text/csv",
     }
-    if file.content_type not in allowed_types:
-        raise HTTPException(400, f"Unsupported file type: {file.content_type}. Upload a PDF or image.")
+    # Browsers occasionally send blank or weird MIME types for xlsx
+    # (especially when the file is dragged from Finder). Fall back to
+    # the file extension so the user-blocking upload doesn't fail on
+    # MIME-detection quirks.
+    is_allowed = file.content_type in allowed_types
+    if not is_allowed and file.filename:
+        lower = file.filename.lower()
+        if lower.endswith((".xlsx", ".xls", ".csv")):
+            is_allowed = True
+    if not is_allowed:
+        raise HTTPException(
+            400,
+            f"Unsupported file type: {file.content_type}. "
+            f"Upload a PDF, image, xlsx, or CSV.",
+        )
 
     # 50 MB limit
     contents = await file.read()
     if len(contents) > 50 * 1024 * 1024:
         raise HTTPException(400, "File too large. Maximum 50 MB.")
 
+    # Normalise content type from filename when the browser sent
+    # something generic (Finder-dragged xlsx → application/octet-stream).
+    effective_content_type = file.content_type
+    if file.filename:
+        lower = file.filename.lower()
+        if lower.endswith(".xlsx"):
+            effective_content_type = (
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        elif lower.endswith(".xls"):
+            effective_content_type = "application/vnd.ms-excel"
+        elif lower.endswith(".csv"):
+            effective_content_type = "text/csv"
+
     try:
-        result = extract_from_document(contents, file.content_type, lab_name_hint)
+        result = extract_from_document(
+            contents, effective_content_type, lab_name_hint, user_id=user.id,
+        )
     except ValueError as e:
         raise HTTPException(400, str(e))
     except Exception as e:
@@ -706,6 +764,23 @@ def create_soil_analysis(body: SoilAnalysisCreate, user: CurrentUser = Depends(g
     # that don't match the JSONB layout we actually store.
     data.pop("component_samples", None)
     data["agent_id"] = user.id
+
+    # Canonicalise soil_values before any downstream consumer touches
+    # them. This is the single boundary where unit / label / magnitude
+    # validation happens. The engine reads canonical form only;
+    # `raw_values` retains the verbatim caller input for audit.
+    if data.get("soil_values"):
+        from app.services.soil_canonicaliser import canonicalise_soil_values
+        canonical = canonicalise_soil_values(
+            data["soil_values"],
+            source="api_direct",
+            explicit_units=data.get("soil_value_units"),
+        )
+        data["raw_values"] = canonical.raw
+        data["soil_values"] = canonical.values
+    # Drop the units field — it's only used for canonicalisation, not
+    # persisted on the row (the unit is captured in raw_values metadata).
+    data.pop("soil_value_units", None)
 
     composite = _build_composite_fields(body.component_samples)
     if composite is not None:
@@ -848,7 +923,9 @@ class BatchSaveRequest(BaseModel):
     client_id: str
     farm_id: str | None = None
     lab_name: str | None = Field(None, max_length=200)
-    analysis_date: str | None = Field(None, max_length=20)
+    # Required: shared across every item in the batch (one bulk upload =
+    # one sample date). The bulk-import UI blocks commit when this is empty.
+    analysis_date: str = Field(..., min_length=1, max_length=20)
     source_document_url: str | None = Field(None, max_length=500)
     items: list[BatchAnalysisItem] = Field(..., min_length=1)
     conflict_resolution: ConflictResolution | None = None
@@ -934,19 +1011,57 @@ def batch_save_analyses(body: BatchSaveRequest, user: CurrentUser = Depends(get_
         except Exception:
             return ""
 
+    from app.services.soil_engine import normalise_soil_values
+
     saved = []
     for item in body.items:
-        # Resolve field name and farm from field record
+        # Resolve field name and farm from field record. Also pull the
+        # field's crop / cultivar / yield_target / pop_per_ha so the
+        # bulk-imported analysis can compute nutrient_targets at insert
+        # time. Lab files don't carry these, but the field record does;
+        # without this, every bulk-imported analysis stores
+        # nutrient_targets=[] which breaks downstream programme builds
+        # that expect them.
         field_name = item.field_name or ""
         field_farm_id = body.farm_id
+        field_crop = item.crop
+        field_cultivar = item.cultivar
+        field_yield_target = item.yield_target
+        field_yield_unit = item.yield_unit
+        field_pop_per_ha = None
+        field_tree_age = None
         if item.field_id:
             try:
-                fld = sb.table("fields").select("name, farm_id").eq("id", item.field_id).execute()
+                fld = sb.table("fields").select(
+                    "name, farm_id, crop, cultivar, yield_target, yield_unit, pop_per_ha, tree_age"
+                ).eq("id", item.field_id).execute()
                 if fld.data:
+                    row = fld.data[0]
                     if not field_name:
-                        field_name = fld.data[0].get("name", "")
-                    if fld.data[0].get("farm_id"):
-                        field_farm_id = fld.data[0]["farm_id"]
+                        field_name = row.get("name", "")
+                    if row.get("farm_id"):
+                        field_farm_id = row["farm_id"]
+                    if not field_crop and row.get("crop"):
+                        field_crop = row["crop"]
+                    if not field_cultivar and row.get("cultivar"):
+                        field_cultivar = row["cultivar"]
+                    if not field_yield_target and row.get("yield_target"):
+                        try:
+                            field_yield_target = float(row["yield_target"])
+                        except (TypeError, ValueError):
+                            pass
+                    if not field_yield_unit and row.get("yield_unit"):
+                        field_yield_unit = row["yield_unit"]
+                    if row.get("pop_per_ha"):
+                        try:
+                            field_pop_per_ha = int(row["pop_per_ha"])
+                        except (TypeError, ValueError):
+                            pass
+                    if row.get("tree_age") is not None:
+                        try:
+                            field_tree_age = int(row["tree_age"])
+                        except (TypeError, ValueError):
+                            pass
             except Exception:
                 pass
 
@@ -954,27 +1069,36 @@ def batch_save_analyses(body: BatchSaveRequest, user: CurrentUser = Depends(get_
 
         # ── LEAF analysis → leaf_analyses table ──
         if item.analysis_type == "leaf":
-            # Classify leaf values
+            # Canonicalise lab values before classifying. Lab leaf
+            # extracts often use the same unit-suffix convention as
+            # soil ("N (%)", "Zn (mg/kg)"); same registry handles both.
+            from app.services.soil_canonicaliser import canonicalise_soil_values
+            canonical_leaf = canonicalise_soil_values(
+                {k: v for k, v in item.soil_values.items() if v is not None},
+                source="leaf_bulk_import",
+            )
+            # Classify against canonical form
             leaf_classifications = {}
             try:
                 from app.services.leaf_engine import classify_leaf_values
-                leaf_result = classify_leaf_values(item.crop, {
-                    k: v for k, v in item.soil_values.items() if v is not None
-                })
+                leaf_result = classify_leaf_values(item.crop, canonical_leaf.values)
                 leaf_classifications = leaf_result.get("classifications", {})
             except Exception:
                 pass
 
+            # leaf_analyses has no cultivar column — the leaf schema only
+            # tracks crop + sample_part. Cultivar is silently dropped when
+            # the batch routes a row to the leaf table.
             leaf_data = {
                 "agent_id": user.id,
                 "client_id": body.client_id,
                 "farm_id": field_farm_id,
                 "field_id": item.field_id,
                 "crop": item.crop or "",
-                "cultivar": item.cultivar,
                 "lab_name": body.lab_name,
                 "sample_date": body.analysis_date,
-                "values": {k: v for k, v in item.soil_values.items() if v is not None},
+                "values": canonical_leaf.values,
+                "raw_values": canonical_leaf.raw,
                 "classifications": leaf_classifications,
                 **({"source_document_url": body.source_document_url} if body.source_document_url else {}),
             }
@@ -990,13 +1114,24 @@ def batch_save_analyses(body: BatchSaveRequest, user: CurrentUser = Depends(get_
         # downstream classifier, ratios, and nutrient-target calc all
         # operate on the composite values.
         composite = _build_composite_fields(item.component_samples)
-        effective_values = composite["soil_values"] if composite else item.soil_values
+        raw_values_in = composite["soil_values"] if composite else item.soil_values
+        # The bulk-import path is the dominant ingest. Canonicalise here
+        # so every downstream consumer (classifier, ratios, targets) AND
+        # the persisted row sees canonical-unit values keyed by the same
+        # strings `soil_sufficiency.parameter` uses. The verbatim caller
+        # input goes to `raw_values` for audit / reprocessing.
+        from app.services.soil_canonicaliser import canonicalise_soil_values
+        canonical = canonicalise_soil_values(
+            raw_values_in or {}, source="bulk_import",
+        )
+        canonical_raw = canonical.raw
+        effective_values = canonical.values
 
         # Get crop-specific overrides
         crop_overrides = None
-        if item.crop:
+        if field_crop:
             try:
-                ovr = sb.table("crop_sufficiency_overrides").select("*").eq("crop", item.crop).execute()
+                ovr = sb.table("crop_sufficiency_overrides").select("*").eq("crop", field_crop).execute()
                 crop_overrides = ovr.data or None
             except Exception:
                 pass
@@ -1012,14 +1147,20 @@ def batch_save_analyses(body: BatchSaveRequest, user: CurrentUser = Depends(get_
         # Evaluate ratios
         ratios = evaluate_ratios(effective_values, ratio_rows)
 
-        # Calculate nutrient targets if crop + yield provided
+        # Calculate nutrient targets — uses crop / yield from the field
+        # record when the bulk-import row didn't carry them (lab files
+        # don't). Without this, every bulk-imported analysis would have
+        # nutrient_targets=[] and the programme builder would fall back
+        # to on-the-fly recomputation. We still want the persisted row
+        # to be self-sufficient so quick-analysis, historical comparison,
+        # and direct /api/soil/{id} consumers see complete data.
         nutrient_targets = None
-        if item.crop and item.yield_target:
+        if field_crop and field_yield_target:
             crop_rows = sb.table("crop_requirements").select("*").execute().data or []
-            item_rate_tables = [r for r in rate_table_rows_all if r.get("crop") == item.crop]
-            item_calc_flags = _crop_calc_flags(sb, item.crop)
+            item_rate_tables = [r for r in rate_table_rows_all if r.get("crop") == field_crop]
+            item_calc_flags = _crop_calc_flags(sb, field_crop)
             targets = calculate_nutrient_targets(
-                item.crop, item.yield_target, effective_values,
+                field_crop, field_yield_target, effective_values,
                 crop_rows, sufficiency, adjustment_rows, param_map_rows,
                 crop_overrides,
                 rate_table_rows=item_rate_tables,
@@ -1045,13 +1186,14 @@ def batch_save_analyses(body: BatchSaveRequest, user: CurrentUser = Depends(get_
             "customer": customer_name,
             "farm": item_farm_name,
             "field": field_name,
-            "crop": item.crop,
-            "cultivar": item.cultivar,
-            "yield_target": item.yield_target,
-            "yield_unit": item.yield_unit,
+            "crop": field_crop,
+            "cultivar": field_cultivar,
+            "yield_target": field_yield_target,
+            "yield_unit": field_yield_unit,
             "lab_name": body.lab_name,
             "analysis_date": body.analysis_date,
             "soil_values": effective_values,
+            "raw_values": canonical_raw,
             "classifications": classifications,
             "ratio_results": [dict(r) for r in ratios],
             "nutrient_targets": nutrient_targets,
@@ -1285,15 +1427,28 @@ def list_soil_analyses(
     client_id: Optional[str] = Query(None, description="Filter by client ID"),
     farm_id: Optional[str] = Query(None, description="Filter by farm ID"),
     field_id: Optional[str] = Query(None, description="Filter by field ID"),
+    include_deleted: bool = Query(False, description="Admin-only: include soft-deleted rows (Trash view)"),
     user: CurrentUser = Depends(get_current_user),
 ):
-    """List soil analyses. Agents see their own; admins see all."""
+    """List soil analyses. Agents see their own; admins see all.
+
+    Soft-deleted rows are hidden by default for both agents and admins
+    so the regular listing matches the rest of the app's soft-delete
+    semantics. Admins can pass `include_deleted=true` to surface the
+    Trash view (rejected for non-admins).
+    """
     sb = get_supabase_admin()
 
     query = sb.table("soil_analyses").select("*", count="exact")
 
+    # Default: hide soft-deleted. Admin Trash view is the only way to see them.
+    if include_deleted and user.role != "admin":
+        raise HTTPException(403, "Only admins can list soft-deleted analyses")
+    if not include_deleted:
+        query = query.is_("deleted_at", "null")
+
     if user.role != "admin":
-        query = query.eq("agent_id", user.id).eq("status", "saved").is_("deleted_at", "null")
+        query = query.eq("agent_id", user.id).eq("status", "saved")
 
     if search:
         query = query.or_(

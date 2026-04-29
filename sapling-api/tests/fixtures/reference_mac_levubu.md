@@ -24,6 +24,7 @@ Soil analysis for **Reference Block A4 (Levubu)** (5.00 ha) was reviewed against
 
 **What the soil is flagging:**
 - Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.
+- pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion limited.
 
 ---
 
@@ -48,8 +49,10 @@ The programme serves the following objectives:
 
 | Product | Rate / ha | Stream |
 |---|---:|:---:|
-| N 2.1%, P₂O₅ 1.0%, K₂O 1.6%, Ca 2.2%, Mg 1.0%, S 0.7% source | 500 kg | — |
-| N 11.0%, P₂O₅ 51.0% source | 11 kg | — |
+| N 2.1%, P 1.0%, K 1.6%, Ca 2.2%, Mg 1.0%, S 0.7% source | 500 kg | — |
+| K 60.0% source | 34 kg | — |
+| N 11.0%, P 51.0% source | 11 kg | — |
+| K 50.0%, S 18.0% source | 6.7 kg | — |
 
 **Application schedule:**
 
@@ -58,16 +61,14 @@ The programme serves the following objectives:
 | 1 | 15 Mar 2026 | 3 | 1 of 2 |
 | 2 | 15 Apr 2026 | 7 | 2 of 2 |
 
-Delivered per ha: **P2O5** 10.5 kg
+Delivered per ha: **N** 11.7 · **P2O5** 10.5 · **K2O** 31.7 · **Ca** 11.0 · **Mg** 5.0 · **S** 4.7 kg
 
 **Stage 1 — establishment · Fertigation (drip)** (Weeks 3-7, 2 events)
 *15 Mar – 15 Apr 2026*
 
 | Product | Rate / ha | Stream |
 |---|---:|:---:|
-| N 13.0%, K₂O 46.0% source | 57 kg | Part B |
-| N 15.5%, Ca 19.0% source | 46 kg | Part A |
-| K₂O 50.0%, S 18.0% source | 18 kg | Part B |
+| N 15.5%, Ca 19.0% source | 94 kg | Part A |
 
 **Application schedule:**
 
@@ -76,17 +77,17 @@ Delivered per ha: **P2O5** 10.5 kg
 | 1 | 15 Mar 2026 | 3 | 1 of 2 |
 | 2 | 15 Apr 2026 | 7 | 2 of 2 |
 
-Delivered per ha: **N** 14.5 · **K2O** 35.2 · **S** 3.3 kg
+Delivered per ha: **N** 14.5 · **Ca** 17.8 kg
 
 **Stage 2 — vegetative · Fertigation (drip)** (Weeks 11-20, 3 events)
 *15 May – 15 Jul 2026*
 
 | Product | Rate / ha | Stream |
 |---|---:|:---:|
-| N 13.0%, K₂O 46.0% source | 85 kg | Part B |
-| N 11.0%, P₂O₅ 51.0% source | 29 kg | Part B |
+| N 13.0%, K 46.0% source | 85 kg | Part B |
+| N 11.0%, P 51.0% source | 29 kg | Part B |
 | N 15.5%, Ca 19.0% source | 95 kg | Part A |
-| K₂O 50.0%, S 18.0% source | 31 kg | Part B |
+| K 50.0%, S 18.0% source | 31 kg | Part B |
 
 **Application schedule:**
 
@@ -96,17 +97,17 @@ Delivered per ha: **N** 14.5 · **K2O** 35.2 · **S** 3.3 kg
 | 2 | 15 Jun 2026 | 16 | 2 of 3 |
 | 3 | 15 Jul 2026 | 20 | 3 of 3 |
 
-Delivered per ha: **N** 29.0 · **P2O5** 15.0 · **K2O** 54.3 · **S** 5.5 kg
+Delivered per ha: **N** 29.0 · **P2O5** 15.0 · **K2O** 54.3 · **Ca** 18.1 · **S** 5.5 kg
 
 **Stage 3 — reproductive · Fertigation (drip)** (Weeks 24-29, 2 events)
 *15 Aug – 15 Sep 2026*
 
 | Product | Rate / ha | Stream |
 |---|---:|:---:|
-| N 13.0%, K₂O 46.0% source | 226 kg | Part B |
-| N 11.0%, P₂O₅ 51.0% source | 35 kg | Part B |
+| N 13.0%, K 46.0% source | 226 kg | Part B |
+| N 11.0%, P 51.0% source | 35 kg | Part B |
 | N 15.5%, Ca 19.0% source | 66 kg | Part A |
-| K₂O 50.0%, S 18.0% source | 37 kg | Part B |
+| K 50.0%, S 18.0% source | 37 kg | Part B |
 
 **Application schedule:**
 
@@ -115,19 +116,19 @@ Delivered per ha: **N** 29.0 · **P2O5** 15.0 · **K2O** 54.3 · **S** 5.5 kg
 | 1 | 15 Aug 2026 | 24 | 1 of 2 |
 | 2 | 15 Sep 2026 | 29 | 2 of 2 |
 
-Delivered per ha: **N** 43.5 · **P2O5** 18.0 · **K2O** 122.3 · **S** 6.6 kg
+Delivered per ha: **N** 43.5 · **P2O5** 18.0 · **K2O** 122.3 · **Ca** 12.5 · **S** 6.6 kg
 
 **Stage 4 — fill · Fertigation (drip)** (Week 33, 1 event)
 *15 Oct 2026*
 
 | Product | Rate / ha | Stream |
 |---|---:|:---:|
-| N 13.0%, K₂O 46.0% source | 170 kg | Part B |
-| N 11.0%, P₂O₅ 51.0% source | 24 kg | Part B |
+| N 13.0%, K 46.0% source | 170 kg | Part B |
+| N 11.0%, P 51.0% source | 24 kg | Part B |
 | N 15.5%, Ca 19.0% source | 75 kg | Part A |
-| K₂O 50.0%, S 18.0% source | 24 kg | Part B |
+| K 50.0%, S 18.0% source | 24 kg | Part B |
 
-Delivered per ha: **N** 36.2 · **P2O5** 12.0 · **K2O** 90.2 · **S** 4.4 kg
+Delivered per ha: **N** 36.2 · **P2O5** 12.0 · **K2O** 90.2 · **Ca** 14.2 · **S** 4.4 kg
 
 **Foliar sprays**
 
@@ -187,6 +188,7 @@ This is a perennial macadamia programme, so Year 1 is the establishment or maint
 **Three-year targets to track:**
 
 - **Soil organic matter** lifting toward 2 % (or higher for orchards). Measurable on next year's soil test.
+- **Soil pH** moving toward the crop's preferred band. This is a multi-season lift; year-on-year re-test tracks progress.
 - **Phosphorus** building from Low toward Optimal on soil test.
 - **Boron** in the crop-optimal band (varies by crop; typical 1.0–2.5 mg/kg).
 
@@ -198,10 +200,12 @@ This is a perennial macadamia programme, so Year 1 is the establishment or maint
 
 ### Risk flags
 
+- **[WARN]** Acidic pH but no time to lime (gap -1.8 months, lime needs 3-6). Ca / Mg / P availability will run below capacity this season; lean on foliar Ca + Mg at critical stages and avoid acidifying N sources.
 - **[WARN]** Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering. — Action: Apply foliar B at critical stages (pre-bloom, fruit set)
+- **[WARN]** pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion limited. — Action: Lime application (calcitic or dolomitic per Mg status). Size against pH deficit + buffer factor; pre-season for reaction time.
 
 ### Outstanding items
 
-- **Application-month coverage gap** — Stage 5 'maturation' (Dec–Feb) has no allowed application month inside its window. Nutrients for this stage were not delivered. Consider adding a month within this window.
+- **Lime application — too late this season for full reaction** — Soil acidity / Al saturation needs lime to correct. Lime requires 3-6 months to react fully. Build-to-plant gap is only -1.8 months — insufficient for this season. Schedule lime for post-harvest of this crop to set up the next season. — *Impact if skipped: Acidity / Al stress persists into the following season; early-growth and P availability will under-perform*
 - **Irrigation water test (EC, pH, Ca, Mg, Na, HCO₃, Cl)** — Required before first Part A injection. Dolomite-country water can produce scale when calcium-stream stock is injected. Borehole water EC + bicarb level affect drip-line pH. — *Impact if skipped: Risk of emitter blockage from CaCO₃ precipitate*
 - **Mid-season leaf tissue analysis at tillering and at bulb-init/flowering** — Two natural decision points where the programme can still be steered. Catches deficiencies the soil test missed and validates actual uptake against plan. — *Impact if skipped: Mid-season corrections become reactive, not anticipatory*

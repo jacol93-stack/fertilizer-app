@@ -16,6 +16,11 @@ that the greedy algorithm can miss:
     concentrations vs per-material solubility_20c
   * Missing-source diagnostic: targeted nutrients with no material
     supplying them (delegates to liquid_optimizer's missing_sources path)
+  * Per-event rate ceilings: blend total kg/ha (dry) or L/ha (liquid /
+    foliar) per pass against operationally-sane maxima from the
+    application_rate_limits table. Fires watch-severity warnings only —
+    the engine still produces the blend, but the agronomist sees when
+    a recipe overshoots a single-pass ceiling.
 
 Operates post-consolidator: input = list[Blend], output = list of
 BlendValidationResult + updated Blend objects with warnings attached.
@@ -28,6 +33,7 @@ refinement when the engine grows that input.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -38,6 +44,78 @@ from app.models import Assumption, Blend, RiskFlag, SourceCitation, Tier
 # Known dry-granule incompatibility pairs (Tier 3 standard agronomy)
 # Applied when both products are in the same dry blend.
 # ============================================================
+
+# ============================================================
+# Per-event rate ceilings (loaded from application_rate_limits)
+# ============================================================
+# Hardcoded fallback — used when the DB lookup fails. Values match
+# migration 093's seed so behaviour is consistent in either path.
+
+_FALLBACK_RATE_CEILINGS: dict[str, dict[str, float]] = {
+    "dry_broadcast":     {"max_kg_per_ha": 1500.0},
+    "dry_side_dress":    {"max_kg_per_ha":  600.0},
+    "dry_band":          {"max_kg_per_ha":  600.0},
+    "dry_basal":         {"max_kg_per_ha": 1500.0},
+    "liquid_fertigation": {"max_litres_per_ha": 500.0},
+    "liquid_drip":        {"max_litres_per_ha": 500.0},
+    "liquid_drench":      {"max_litres_per_ha": 800.0},
+    "foliar":             {"max_litres_per_ha": 800.0},
+    "foliar_spray":       {"max_litres_per_ha": 800.0},
+}
+
+
+def _load_rate_ceilings() -> dict[str, dict[str, float]]:
+    """Load per-method-kind rate ceilings from the DB. Falls back to
+    the hardcoded defaults when the table is unavailable (dev / tests
+    without DB). Result keyed by method_kind lowercase."""
+    try:
+        from app.supabase_client import get_supabase_admin
+        sb = get_supabase_admin()
+        rows = sb.table("application_rate_limits").select(
+            "method_kind, max_kg_per_ha, max_litres_per_ha",
+        ).execute()
+        if not rows.data:
+            return dict(_FALLBACK_RATE_CEILINGS)
+        out: dict[str, dict[str, float]] = {}
+        for r in rows.data:
+            kind = (r.get("method_kind") or "").strip().lower()
+            if not kind:
+                continue
+            entry: dict[str, float] = {}
+            kg = r.get("max_kg_per_ha")
+            litres = r.get("max_litres_per_ha")
+            if kg is not None:
+                entry["max_kg_per_ha"] = float(kg)
+            if litres is not None:
+                entry["max_litres_per_ha"] = float(litres)
+            if entry:
+                out[kind] = entry
+        return out or dict(_FALLBACK_RATE_CEILINGS)
+    except Exception:
+        return dict(_FALLBACK_RATE_CEILINGS)
+
+
+# Numeric parse for rate strings like "42 kg", "1 500 kg", "12.5 L".
+_RATE_NUMERIC_RX = re.compile(r"([\d]+(?:[.,\s]\d+)*)")
+
+
+def _parse_rate_numeric(rate_str: str | None) -> Optional[float]:
+    """Parse a rate string ('42 kg', '1 500 kg', '12.5 L') to a float.
+    Returns None on unparseable input. Whitespace / comma thousand-
+    separators are normalised; unit is ignored — caller knows context.
+    """
+    if not rate_str:
+        return None
+    s = str(rate_str).strip()
+    m = _RATE_NUMERIC_RX.search(s)
+    if not m:
+        return None
+    num = m.group(1).replace(" ", "").replace(",", "")
+    try:
+        return float(num)
+    except (ValueError, TypeError):
+        return None
+
 
 DRY_GRANULE_INCOMPAT: list[tuple[str, str, str]] = [
     # (product_a_pattern, product_b_pattern, reason)
@@ -103,6 +181,7 @@ def validate_blends(
 
     mat_by_name = {m.get("material", "").strip().lower(): m
                    for m in available_materials}
+    rate_ceilings = _load_rate_ceilings()
 
     for blend in blends:
         result = BlendValidationResult(
@@ -155,7 +234,11 @@ def validate_blends(
                 f"— targets won't be met for these nutrients"
             )
 
-        # 6. Note tier of blend composition
+        # 7. Per-event rate ceiling (operational sanity)
+        rate_warnings = _check_rate_ceiling(blend, rate_ceilings)
+        result.warnings.extend(rate_warnings)
+
+        # 8. Note tier of blend composition
         result.notes.append(
             f"Blend composition tier 6 (greedy material-cover); "
             f"MILP cost-optimisation not yet applied"
@@ -268,6 +351,70 @@ def _check_compat_rules_pairs(
                     f"{rule.get('reason', 'see materials_compatibility table')}"
                 )
     return warnings
+
+
+def _check_rate_ceiling(
+    blend: Blend,
+    ceilings: dict[str, dict[str, float]],
+) -> list[str]:
+    """Compare blend per-event total against operational ceiling for
+    its method_kind. Dry blends use kg/ha (sum of part rates per event);
+    liquid + foliar use L/ha (sum of concentrate per_event_dose_l, or
+    fall back to summed part rates with a unit-tagged log). Returns a
+    list of warning strings — empty when within ceilings."""
+    try:
+        method_kind = (blend.method.kind.value or "").lower()
+    except Exception:
+        return []
+    ceiling = ceilings.get(method_kind)
+    if not ceiling:
+        return []
+
+    is_liquid_kind = method_kind.startswith(("liquid_", "foliar"))
+
+    if is_liquid_kind:
+        # Liquid + foliar — sum concentrate per-event volumes when
+        # available. Foliar blends often skip the Concentrate model and
+        # carry tank-mix products directly on raw_products with rate
+        # in L; fall back to summing part rates when concentrates are
+        # empty.
+        litres_per_event = 0.0
+        if blend.concentrates:
+            for c in blend.concentrates:
+                v = c.per_event_dose_l
+                if v is not None:
+                    try:
+                        litres_per_event += float(v)
+                    except (TypeError, ValueError):
+                        continue
+        if litres_per_event <= 0:
+            for part in blend.raw_products:
+                v = _parse_rate_numeric(part.rate_per_event_per_ha)
+                if v is not None:
+                    litres_per_event += v
+        max_l = ceiling.get("max_litres_per_ha")
+        if max_l and litres_per_event > max_l:
+            return [
+                f"Per-event volume {litres_per_event:.0f} L/ha exceeds "
+                f"the {method_kind} ceiling of {max_l:.0f} L/ha — split "
+                f"across multiple passes or reduce concentrate strength."
+            ]
+        return []
+
+    # Dry path
+    kg_per_event = 0.0
+    for part in blend.raw_products:
+        v = _parse_rate_numeric(part.rate_per_event_per_ha)
+        if v is not None:
+            kg_per_event += v
+    max_kg = ceiling.get("max_kg_per_ha")
+    if max_kg and kg_per_event > max_kg:
+        return [
+            f"Per-event mass {kg_per_event:.0f} kg/ha exceeds the "
+            f"{method_kind} ceiling of {max_kg:.0f} kg/ha — split "
+            f"across multiple passes or revisit organic-carrier rate."
+        ]
+    return []
 
 
 def _find_missing_sources(blend: Blend, mat_by_name: dict) -> list[str]:

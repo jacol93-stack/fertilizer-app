@@ -232,6 +232,13 @@ function SeasonBuilderPage() {
 
   // v2 ProgrammeArtifact id, set when buildProgramme() succeeds at step 2→3.
   const [artifactId, setArtifactId] = useState<string | null>(null);
+  // Total unique blend recipes the engine produced. Distinct from
+  // `blendGroupsData.length` which counts cluster GROUPS (not blends).
+  // A 1-group programme can have multiple blends when the engine
+  // routes different stages through different methods. Stored so the
+  // Review summary text reflects the real engine output instead of
+  // the legacy "1 blend" placeholder.
+  const [blendCount, setBlendCount] = useState<number>(0);
 
   // Schedule data (from v2 preview-schedule)
   const [blockInfoData, setBlockInfoData] = useState<BlockInfo[]>([]);
@@ -252,6 +259,21 @@ function SeasonBuilderPage() {
   // Schedule step's threshold dropdown is admin-only — non-admins
   // always run on this default.
   const [clusterMargin, setClusterMargin] = useState<number>(0.25);
+
+  // User-driven group count (the "Number of groups" picker). null means
+  // "use the threshold path" (legacy / admin); a number means "produce
+  // exactly this many groups via agglomerative clustering". The wizard
+  // initialises this from the auto-cluster preview's group count so the
+  // user starts on the algorithm's recommendation and steps from there.
+  const [targetClusters, setTargetClusters] = useState<number | null>(null);
+
+  // Per-cluster method overrides set on the cluster board. cluster_id →
+  // list of method names the user kept enabled for this group's blends.
+  // Empty / missing key means "use the full intersection of member
+  // blocks' accepted_methods" (default behaviour). Sent to the build as
+  // method_availability_per_cluster.
+  const [methodOverridesByCluster, setMethodOverridesByCluster] =
+    useState<Record<string, string[]>>({});
 
   // Pull the admin-set default once on mount. Failure is tolerated —
   // we fall back to the 0.25 baked default.
@@ -472,7 +494,16 @@ function SeasonBuilderPage() {
   // Step 1→2: Resolve growth stages, accepted methods, nutrient targets
   // and corrections per block via the v2 preview-schedule endpoint.
   // Stateless — no DB writes.
-  const handleAdvanceToSchedule = async () => {
+  //
+  // The optional `overrides` arg lets callers (e.g. the cluster-board's
+  // group-count picker) pass values directly without waiting for React
+  // state to commit. Without this, calling `setTargetClusters(k)` then
+  // immediately calling this function reads the stale closure value
+  // and the preview-schedule call ends up with the previous k.
+  const handleAdvanceToSchedule = async (overrides?: {
+    targetClustersOverride?: number | null;
+    clusterAssignmentsOverride?: Record<string, string>;
+  }) => {
     if (!clientId) {
       toast.error("Please select a client");
       return;
@@ -498,9 +529,16 @@ function SeasonBuilderPage() {
         tree_age: b.tree_age ?? null,
         pop_per_ha: b.pop_per_ha ?? null,
       }));
+      const effectiveTargetClusters =
+        overrides && "targetClustersOverride" in overrides
+          ? overrides.targetClustersOverride ?? null
+          : targetClusters;
+      const effectiveAssignments =
+        overrides?.clusterAssignmentsOverride ?? clusterAssignments;
       const preview = await previewSchedule(previewBlocks, {
         clusterMargin,
-        clusterAssignments,
+        clusterAssignments: effectiveAssignments,
+        targetClusters: effectiveTargetClusters,
       });
       setBlockInfoData(preview.block_info as unknown as BlockInfo[]);
       setUnplanableBlocks(preview.unplanable_blocks || []);
@@ -517,6 +555,13 @@ function SeasonBuilderPage() {
           block_name: String(bi.block_name),
           block_area_ha: Number(bi.block_area_ha) || 1,
           targets: t,
+          // Methods come from the field record (preview-schedule
+          // resolved the field.accepted_methods → crop fallback →
+          // irrigation-derived defaults chain). The cluster board
+          // uses these to compute the per-group intersection.
+          accepted_methods: Array.isArray(bi.accepted_methods)
+            ? (bi.accepted_methods as string[])
+            : [],
         });
       }
       setBlockTargets(targets);
@@ -600,30 +645,19 @@ function SeasonBuilderPage() {
         };
       }
 
+      // Methods come from the field record (block-level) and the
+      // user's per-cluster override on the cluster board. Step 2's
+      // per-pass method picker is no longer the source — its picks
+      // are not propagated to the engine. Aggregating here just
+      // builds the GLOBAL availability across all blocks; the per-
+      // cluster override (sent below) carries the per-group choice.
       const allAcceptedMethods = blockInfoData.flatMap((bi) => bi.accepted_methods || []);
       const fertigationCapableBlocks = blockInfoData.filter(
         (bi) => bi.fertigation_capable === true,
       ).length;
-      const fieldMethodAvailability = deriveMethodAvailability(
+      const methodAvailability = deriveMethodAvailability(
         allAcceptedMethods, fertigationCapableBlocks,
       );
-      // The agronomist's schedule picks override field-level capability:
-      // if they only chose Broadcast windows on the Schedule step, the
-      // engine should not route nutrients through Fertigation just
-      // because injectors exist on the farm. Filter the field-derived
-      // availability down to the union of methods the user picked.
-      const userMethodKinds = new Set(userApplications.map((a) => a.method));
-      const methodAvailability = userMethodKinds.size > 0
-        ? {
-          ...fieldMethodAvailability,
-          has_drip: fieldMethodAvailability.has_drip && userMethodKinds.has("fertigation"),
-          has_pivot: fieldMethodAvailability.has_pivot && userMethodKinds.has("fertigation"),
-          has_sprinkler: fieldMethodAvailability.has_sprinkler && userMethodKinds.has("fertigation"),
-          has_fertigation_injectors: fieldMethodAvailability.has_fertigation_injectors && userMethodKinds.has("fertigation"),
-          has_foliar_sprayer: fieldMethodAvailability.has_foliar_sprayer && userMethodKinds.has("foliar"),
-          has_granular_spreader: fieldMethodAvailability.has_granular_spreader && userMethodKinds.has("broadcast"),
-        }
-        : fieldMethodAvailability;
 
       const namedBlocks = blocks.filter((b) => b.crop && b.name);
       const { request, skippedBlocks } = wizardStateToBuildRequest({
@@ -647,6 +681,7 @@ function SeasonBuilderPage() {
         soilValuesByAnalysisId,
         soilMetaByAnalysisId,
         methodAvailability,
+        methodOverridesByCluster,
         clusterMargin,
         clusterAssignments,
         applicationMonths: userApplications.map((a) => a.month),
@@ -654,7 +689,9 @@ function SeasonBuilderPage() {
 
       const response = await buildProgramme(request);
       setArtifactId(response.id);
-      setBlendGroupsData(artifactToBlendGroups(response.artifact as ProgrammeArtifact, blocks, clusterAssignments));
+      const builtArtifact = response.artifact as ProgrammeArtifact;
+      setBlendGroupsData(artifactToBlendGroups(builtArtifact, blocks, clusterAssignments));
+      setBlendCount((builtArtifact.blends || []).length);
 
       if (skippedBlocks.length > 0) {
         toast.warning(
@@ -911,14 +948,27 @@ function SeasonBuilderPage() {
                       })}
                     assignments={clusterAssignments}
                     onAssignmentsChange={setClusterAssignments}
-                    margin={clusterMargin}
-                    onMarginChange={async (m) => {
-                      setClusterMargin(m);
-                      await handleAdvanceToSchedule();
+                    targetClusters={targetClusters}
+                    onTargetClustersChange={async (k) => {
+                      setTargetClusters(k);
+                      // Re-fire preview-schedule with the new group count.
+                      // Manual assignments are dropped — the user picked
+                      // a fresh number; the algorithm should reseed.
+                      // Pass the new values directly so we don't depend
+                      // on React state being committed before the call.
+                      setClusterAssignments({});
+                      // Reset method overrides too — fresh groupings
+                      // get fresh intersections.
+                      setMethodOverridesByCluster({});
+                      await handleAdvanceToSchedule({
+                        targetClustersOverride: k,
+                        clusterAssignmentsOverride: {},
+                      });
                     }}
                     busy={saving}
                     knownClusterIds={clusters.map((c) => c.cluster_id)}
-                    showMarginControl={isAdmin}
+                    methodOverridesByCluster={methodOverridesByCluster}
+                    onMethodOverridesChange={setMethodOverridesByCluster}
                   />
                 )}
 
@@ -988,12 +1038,32 @@ function SeasonBuilderPage() {
                     <tbody>
                       {blocks.filter((b) => b.crop && b.name).map((b, i) => {
                         const bi = blockInfoData.find((x) => x.block_name === b.name);
+                        // Engine returns oxide form (P2O5, K2O); the Review
+                        // shows elemental kg/ha so the agronomist's shopping
+                        // list matches what's printed on a bag of urea / DAP
+                        // / MOP. Convert on read using the same factors
+                        // target_computation uses (P×2.291, K×1.205).
+                        const OXIDE_TO_ELEMENT: Record<string, { from: string; factor: number }> = {
+                          P: { from: "P2O5", factor: 1 / 2.291 },
+                          K: { from: "K2O", factor: 1 / 1.205 },
+                        };
                         const target = (nutrient: string) => {
-                          const t = bi?.nutrient_targets?.find((nt) => {
+                          const direct = bi?.nutrient_targets?.find((nt) => {
                             const n = (nt.Nutrient || nt.nutrient || "").toLowerCase();
                             return n === nutrient.toLowerCase();
                           });
-                          const v = t?.Target_kg_ha ?? t?.target_kg_ha;
+                          let v = direct?.Target_kg_ha ?? direct?.target_kg_ha;
+                          if (typeof v !== "number") {
+                            const oxide = OXIDE_TO_ELEMENT[nutrient];
+                            if (oxide) {
+                              const t = bi?.nutrient_targets?.find((nt) => {
+                                const n = (nt.Nutrient || nt.nutrient || "").toLowerCase();
+                                return n === oxide.from.toLowerCase();
+                              });
+                              const oxideVal = t?.Target_kg_ha ?? t?.target_kg_ha;
+                              if (typeof oxideVal === "number") v = oxideVal * oxide.factor;
+                            }
+                          }
                           return typeof v === "number" ? v.toFixed(0) : "—";
                         };
                         return (
@@ -1081,10 +1151,10 @@ function SeasonBuilderPage() {
                 <div className="rounded-lg bg-green-50 p-4 text-center">
                   <Check className="mx-auto size-8 text-green-600" />
                   <p className="mt-2 font-medium text-green-800">
-                    {blendGroupsData.length} optimized blend{blendGroupsData.length !== 1 ? "s" : ""} ready
+                    {blendCount} blend{blendCount !== 1 ? "s" : ""} · {userApplications.length} application{userApplications.length !== 1 ? "s" : ""} ready
                   </p>
                   <p className="mt-1 text-sm text-green-700">
-                    {userApplications.length} applications across {blocks.filter((b) => b.crop).length} blocks
+                    {blendGroupsData.length} group{blendGroupsData.length !== 1 ? "s" : ""} across {blocks.filter((b) => b.crop).length} block{blocks.filter((b) => b.crop).length !== 1 ? "s" : ""}
                   </p>
                 </div>
               </div>

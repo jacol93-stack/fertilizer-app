@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Droplet, FlaskConical, Leaf, TrendingUp, MapPin } from "lucide-react";
+import { AlertTriangle, CheckCircle, Droplet, FlaskConical, Leaf, TrendingUp, MapPin } from "lucide-react";
 import { Sparkline } from "@/components/dashboard/sparkline";
 import type { Field } from "@/lib/season-constants";
 
@@ -16,14 +16,86 @@ export interface BlockCardData {
   /** Most-recent yield kg/ha + benchmark band. */
   latestYield?: { season: string; tHa: number | null; benchmark?: { low: number; typical: number; high: number } };
   yieldHistory?: number[];
+  /** Counts surfaced under the latest-row when the block carries
+   * historical data — gives the user a quick "how much do we know
+   * about this block" read at a glance. */
+  soilCount?: number;
+  leafCount?: number;
+  yieldCount?: number;
+}
+
+const HEALTH_LABELS: Record<string, string> = {
+  size: "size",
+  crop: "crop",
+  soil_analysis: "soil analysis",
+  soil_macros_missing: "soil macros",
+  tree_age: "tree age",
+  planting_date: "planting date",
+  yield_target: "yield target",
+  irrigation_type: "irrigation",
+  accepted_methods: "methods",
+  pop_per_ha: "trees / ha",
+  soil_pH_missing: "pH",
+  soil_CEC_missing: "CEC",
+};
+
+function MiniHealthPill({ health }: { health: NonNullable<Field["health"]> }) {
+  if (health.level === "ok") {
+    return (
+      <span
+        className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700"
+        title="All engine-relevant inputs present"
+      >
+        <CheckCircle className="size-2.5" />
+        Ready
+      </span>
+    );
+  }
+  if (health.level === "critical") {
+    const label = health.critical
+      .map((k) => HEALTH_LABELS[k] ?? k)
+      .slice(0, 2)
+      .join(", ");
+    return (
+      <span
+        className="inline-flex items-center gap-0.5 rounded-full bg-red-50 px-1.5 py-0.5 text-[9px] font-semibold text-red-700"
+        title={`Engine can't build until: ${health.critical.map((k) => HEALTH_LABELS[k] ?? k).join(", ")}`}
+      >
+        <AlertTriangle className="size-2.5" />
+        {label}{health.critical.length > 2 && ` +${health.critical.length - 2}`}
+      </span>
+    );
+  }
+  const label = health.warnings
+    .map((k) => HEALTH_LABELS[k] ?? k)
+    .slice(0, 1)
+    .join(", ");
+  return (
+    <span
+      className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700"
+      title={`Programme will assume: ${health.warnings.map((k) => HEALTH_LABELS[k] ?? k).join(", ")}`}
+    >
+      <AlertTriangle className="size-2.5" />
+      {label}{health.warnings.length > 1 && ` +${health.warnings.length - 1}`}
+    </span>
+  );
 }
 
 export function BlockCard({
   clientId,
   data,
+  selectable,
+  selected,
+  onToggleSelect,
 }: {
   clientId: string;
   data: BlockCardData;
+  /** When true, the card renders as a button that toggles `selected`
+   * instead of navigating to the field detail page. Drives bulk-delete
+   * mode in the Farms & Blocks list. */
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const { field, latestSoil, latestLeaf, latestYield, soilHistory, leafHistory, yieldHistory } = data;
   const cropBadge = field.crop ? (
@@ -52,15 +124,24 @@ export function BlockCard({
       ? Math.round((latestYield.tHa / latestYield.benchmark.typical) * 100)
       : null;
 
-  return (
-    <Link
-      href={`/clients/${clientId}/fields/${field.id}`}
-      className="group flex flex-col rounded-lg border bg-white p-3.5 transition-all hover:border-[var(--sapling-orange)]/50 hover:shadow-md"
-    >
+  const inner = (
+    <>
+      {selectable && (
+        <div
+          className={`absolute right-2.5 top-2.5 z-10 flex size-4 items-center justify-center rounded-full border-2 ${
+            selected
+              ? "border-[var(--sapling-orange)] bg-[var(--sapling-orange)]"
+              : "border-gray-300 bg-white"
+          }`}
+        >
+          {selected && <span className="text-[8px] leading-none text-white">✓</span>}
+        </div>
+      )}
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-semibold text-[var(--sapling-dark)]">
+          <div className="flex items-center gap-1.5 truncate text-sm font-semibold text-[var(--sapling-dark)]">
             {field.name}
+            {field.health && <MiniHealthPill health={field.health} />}
           </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
             {field.size_ha != null && <span>{field.size_ha} ha</span>}
@@ -120,6 +201,26 @@ export function BlockCard({
           {field.gps_lat.toFixed(4)}, {field.gps_lng.toFixed(4)}
         </div>
       )}
+    </>
+  );
+
+  const cardClass = `group relative flex flex-col rounded-lg border bg-white p-3.5 transition-all hover:border-[var(--sapling-orange)]/50 hover:shadow-md ${
+    selected ? "ring-2 ring-[var(--sapling-orange)]" : ""
+  }`;
+  if (selectable) {
+    return (
+      <button
+        type="button"
+        onClick={onToggleSelect}
+        className={`${cardClass} cursor-pointer text-left`}
+      >
+        {inner}
+      </button>
+    );
+  }
+  return (
+    <Link href={`/clients/${clientId}/fields/${field.id}`} className={cardClass}>
+      {inner}
     </Link>
   );
 }

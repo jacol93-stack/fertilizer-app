@@ -38,7 +38,10 @@ import { api } from "@/lib/api";
 
 const mainLinks = [
   { href: "/quick-blend", label: "Quick Blend", icon: FlaskConical },
-  { href: "/quick-analysis", label: "Quick Analysis", icon: Leaf },
+  // /quick-analysis was removed — replaced by per-client Soil Reports
+  // (sidebar action on the client detail page). Soil interpretation
+  // now lives at /clients/[id]/soil-reports rather than as a global
+  // entry point because it's always client-scoped.
   { href: "/season-manager", label: "Season Manager", icon: Calendar },
   { href: "/quotes", label: "Quotes", icon: FileText },
   { href: "/clients", label: "Clients", icon: Users },

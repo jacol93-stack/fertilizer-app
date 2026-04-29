@@ -8,6 +8,7 @@
  * the backend.
  */
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
 
 export interface ParsedSheet {
   headers: string[];
@@ -18,6 +19,16 @@ export interface ParsedSheet {
 /** Normalise a header — lowercase, trim, strip punctuation. */
 export function normaliseHeader(h: string): string {
   return h.toLowerCase().trim().replace(/[^\w\s]/g, "").replace(/\s+/g, "_");
+}
+
+/** Dispatch to the right parser based on the file extension. xlsx
+ * parses in-browser so users skip the "save as CSV" step. */
+export async function parseSpreadsheetFile(file: File): Promise<ParsedSheet> {
+  const lower = file.name.toLowerCase();
+  if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) {
+    return parseXlsxFile(file);
+  }
+  return parseCsvFile(file);
 }
 
 /** Parse a CSV file into rows of {header_normalised: cell_value}. */
@@ -41,6 +52,84 @@ export async function parseCsvFile(file: File): Promise<ParsedSheet> {
       error: (err) => reject(err),
     });
   });
+}
+
+/** Parse an xlsx (or xls) file in the browser. We pick the first
+ * non-Instructions sheet so the Sapling templates' leading
+ * Instructions tab is skipped automatically. Headers are normalised
+ * the same way as the CSV path so downstream `mapFieldRow` etc. work
+ * unchanged. */
+export async function parseXlsxFile(file: File): Promise<ParsedSheet> {
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type: "array" });
+  const sheetName =
+    wb.SheetNames.find((n) => n.toLowerCase() !== "instructions") ??
+    wb.SheetNames[0];
+  if (!sheetName) {
+    throw new Error("xlsx file contains no sheets");
+  }
+  const sheet = wb.Sheets[sheetName];
+
+  // First pass: read raw rows as arrays so we can detect the header
+  // row even if the workbook has banner / unit rows above it.
+  const aoa = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
+    defval: "",
+    raw: false,
+    blankrows: false,
+  });
+  if (aoa.length === 0) {
+    return { headers: [], rows: [], raw_row_count: 0 };
+  }
+  const headerRowIdx = pickHeaderRow(aoa);
+  const headerRow = (aoa[headerRowIdx] || []).map((h) => String(h ?? ""));
+  const dataRows = aoa.slice(headerRowIdx + 1);
+
+  const normHeaders = headerRow.map((h) => normaliseHeader(h));
+  const rows: Record<string, string>[] = [];
+  for (const arr of dataRows) {
+    const row: Record<string, string> = {};
+    let nonEmpty = false;
+    for (let i = 0; i < normHeaders.length; i++) {
+      const key = normHeaders[i];
+      if (!key) continue;
+      const cell = arr[i];
+      const value =
+        cell == null
+          ? ""
+          : cell instanceof Date
+            ? cell.toISOString().slice(0, 10)
+            : String(cell);
+      row[key] = value;
+      if (value !== "") nonEmpty = true;
+    }
+    if (nonEmpty) rows.push(row);
+  }
+  return {
+    headers: headerRow,
+    rows,
+    raw_row_count: dataRows.length,
+  };
+}
+
+/** Find the first row that looks like a header — a row with at least
+ * 2 non-empty cells, all of which are short strings (not numbers).
+ * Tolerates the Sapling templates' "Bulk-import template — fields"
+ * banner row above the actual header. */
+function pickHeaderRow(aoa: unknown[][]): number {
+  for (let i = 0; i < Math.min(aoa.length, 10); i++) {
+    const row = aoa[i] || [];
+    const cells = row.map((v) => (v == null ? "" : String(v).trim()));
+    const nonEmpty = cells.filter((v) => v !== "");
+    if (nonEmpty.length < 2) continue;
+    // All non-empty cells should be short text (header labels), not
+    // numbers / long sentences (data or instructions).
+    const allHeaderShaped = nonEmpty.every(
+      (v) => v.length <= 60 && !/^[\d.,\-+%]+$/.test(v),
+    );
+    if (allHeaderShaped) return i;
+  }
+  return 0;
 }
 
 /** Pick the first present value across a list of header aliases. */

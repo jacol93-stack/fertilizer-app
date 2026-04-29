@@ -73,12 +73,17 @@ export async function previewSchedule(
   options?: {
     clusterMargin?: number;
     clusterAssignments?: Record<string, string>;
+    /** When set, the server runs agglomerative clustering and returns
+     * exactly this many groups (or fewer if fewer blocks). Overrides
+     * clusterMargin. */
+    targetClusters?: number | null;
   },
 ): Promise<PreviewScheduleResponse> {
   return api.post<PreviewScheduleResponse>(`${BASE}/preview-schedule`, {
     blocks,
     cluster_margin: options?.clusterMargin ?? 0.25,
     cluster_assignments: options?.clusterAssignments ?? {},
+    target_clusters: options?.targetClusters ?? null,
   });
 }
 
@@ -169,6 +174,67 @@ export async function downloadProgrammePdf(
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// ============================================================
+// Opus narrative — generate / fetch
+// ============================================================
+
+export interface NarrativeIssue {
+  severity: "fail" | "warn" | "info";
+  category: string;
+  where: string;
+  what: string;
+  fix: string;
+}
+
+export interface NarrativeReport {
+  verdict: "PASS" | "WARN" | "FAIL";
+  issues: NarrativeIssue[];
+  section_count: number;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  cache_write_tokens: number;
+  duration_seconds: number;
+  cost_usd: number;
+  used_opus_prose: boolean;
+}
+
+export interface GenerateNarrativeResponse {
+  artifact_id: string;
+  narrative_overrides: Record<string, unknown>;
+  raw_prose: Record<string, unknown>;
+  narrative_report: NarrativeReport;
+  narrative_generated_at: string;
+  narrative_locked_at?: string | null;
+}
+
+export interface NarrativeFetchResponse {
+  artifact_id: string;
+  narrative_overrides: Record<string, unknown> | null;
+  narrative_report: NarrativeReport | null;
+  narrative_generated_at: string | null;
+  narrative_locked_at: string | null;
+}
+
+/** Fire the Opus pipeline against an artifact. Refuses with 409 once
+ * the narrative has been locked (artifact moved to approved). */
+export async function generateProgrammeNarrative(
+  id: string,
+): Promise<GenerateNarrativeResponse> {
+  return api.post<GenerateNarrativeResponse>(
+    `${BASE}/${id}/generate-narrative`,
+    {},
+  );
+}
+
+/** Read the persisted narrative state. Returns nulls when no narrative
+ * has been generated yet. */
+export async function getProgrammeNarrative(
+  id: string,
+): Promise<NarrativeFetchResponse> {
+  return api.get<NarrativeFetchResponse>(`${BASE}/${id}/narrative`);
 }
 
 function parseFilenameFromHeader(header: string | null): string | null {

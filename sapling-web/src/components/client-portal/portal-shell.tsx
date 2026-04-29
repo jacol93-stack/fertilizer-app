@@ -14,6 +14,7 @@ import {
   Settings,
   Plus,
   FlaskConical,
+  FileBarChart,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { api } from "@/lib/api";
@@ -86,7 +87,14 @@ export function ClientPortalShell({
     return () => {
       alive = false;
     };
-  }, [clientId]);
+    // Re-fetch counts on every route change inside the client portal.
+    // Without `pathname` in the dep list, navigating from /import back
+    // to /overview leaves the sidebar stale — the user just bulk-
+    // imported 16 fields but the FARMS / BLOCKS / PROGRAMMES strip
+    // still reads the pre-import counts. Cheap (3 lightweight GETs)
+    // and matches the user's mental model of "everything refreshes
+    // when I click around".
+  }, [clientId, pathname]);
 
   const buildProgrammeHref = (() => {
     const params = new URLSearchParams({ client_id: clientId });
@@ -240,6 +248,13 @@ export function ClientPortalShell({
             >
               <FlaskConical className="size-3.5" />
               New blend
+            </Link>
+            <Link
+              href={`/clients/${clientId}/soil-reports/new`}
+              className="flex items-center gap-2 rounded-md px-3 py-1.5 text-xs text-[var(--sapling-dark)] transition-colors hover:bg-orange-50"
+            >
+              <FileBarChart className="size-3.5" />
+              New soil report
             </Link>
             <Link
               href={`/clients/${clientId}/settings`}

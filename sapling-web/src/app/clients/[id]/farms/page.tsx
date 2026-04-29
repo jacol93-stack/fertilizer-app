@@ -10,6 +10,8 @@ import {
   Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SelectionToolbar } from "@/components/ui/selection-toolbar";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { BlockCard, type BlockCardData } from "@/components/client-portal/block-card";
 import type { Field } from "@/lib/season-constants";
@@ -53,6 +55,95 @@ export default function FarmsAndBlocksPage() {
   const [soils, setSoils] = useState<SoilAnalysis[]>([]);
   const [leaves, setLeaves] = useState<LeafAnalysis[]>([]);
   const [yields, setYields] = useState<YieldRecord[]>([]);
+
+  // Bulk-select for farms (top-level toolbar) and per-farm fields
+  // (toolbar inside each farm section).
+  const [farmSelectMode, setFarmSelectMode] = useState(false);
+  const [selectedFarmIds, setSelectedFarmIds] = useState<Set<string>>(new Set());
+  const [fieldSelectFarmId, setFieldSelectFarmId] = useState<string | null>(null);
+  const [selectedFieldIds, setSelectedFieldIds] = useState<Set<string>>(new Set());
+
+  const refreshFarmsAndFields = async () => {
+    const farmsData = await api.get<Farm[]>(`/api/clients/${clientId}/farms`);
+    setFarms(farmsData);
+    const fieldsByFarm: Record<string, Field[]> = {};
+    await Promise.all(
+      farmsData.map(async (f) => {
+        const fields = await api
+          .get<Field[]>(`/api/clients/farms/${f.id}/fields`)
+          .catch(() => []);
+        fieldsByFarm[f.id] = fields;
+      }),
+    );
+    setFarmFields(fieldsByFarm);
+  };
+
+  const handleBulkDeleteFarms = async () => {
+    const ids = Array.from(selectedFarmIds);
+    let ok = 0;
+    const failures: string[] = [];
+    for (const id of ids) {
+      try {
+        await api.delete(`/api/clients/farms/${id}`);
+        ok++;
+      } catch {
+        const f = farms.find((x) => x.id === id);
+        failures.push(f?.name ?? id);
+      }
+    }
+    if (failures.length === 0) {
+      toast.success(`Deleted ${ok} farm${ok === 1 ? "" : "s"}`);
+    } else {
+      toast.warning(
+        `${ok} deleted · ${failures.length} failed`,
+        { description: failures.slice(0, 3).join(", ") },
+      );
+    }
+    setSelectedFarmIds(new Set());
+    await refreshFarmsAndFields();
+  };
+
+  const handleBulkDeleteFields = async (farmId: string) => {
+    const ids = Array.from(selectedFieldIds);
+    let ok = 0;
+    const failures: string[] = [];
+    for (const id of ids) {
+      try {
+        await api.post(`/api/clients/fields/${id}/delete`, {});
+        ok++;
+      } catch {
+        const f = (farmFields[farmId] ?? []).find((x) => x.id === id);
+        failures.push(f?.name ?? id);
+      }
+    }
+    if (failures.length === 0) {
+      toast.success(`Deleted ${ok} block${ok === 1 ? "" : "s"}`);
+    } else {
+      toast.warning(
+        `${ok} deleted · ${failures.length} failed`,
+        { description: failures.slice(0, 3).join(", ") },
+      );
+    }
+    setSelectedFieldIds(new Set());
+    setFieldSelectFarmId(null);
+    await refreshFarmsAndFields();
+  };
+
+  const toggleFarm = (id: string) =>
+    setSelectedFarmIds((p) => {
+      const n = new Set(p);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+
+  const toggleField = (id: string) =>
+    setSelectedFieldIds((p) => {
+      const n = new Set(p);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
 
   useEffect(() => {
     let alive = true;
@@ -187,6 +278,26 @@ export default function FarmsAndBlocksPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <SelectionToolbar
+            selectionMode={farmSelectMode}
+            onToggleMode={(next) => {
+              setFarmSelectMode(next);
+              if (!next) setSelectedFarmIds(new Set());
+              // Selecting whole farms cancels block-level selection
+              if (next) {
+                setFieldSelectFarmId(null);
+                setSelectedFieldIds(new Set());
+              }
+            }}
+            totalCount={farms.length}
+            selectedCount={selectedFarmIds.size}
+            onSelectAll={(all) => {
+              if (all) setSelectedFarmIds(new Set(farms.map((f) => f.id)));
+              else setSelectedFarmIds(new Set());
+            }}
+            onDelete={handleBulkDeleteFarms}
+            itemLabel={{ singular: "farm", plural: "farms" }}
+          />
           <Link
             href={`/clients/${clientId}?action=add-farm`}
             className="inline-flex items-center gap-1.5 rounded-md bg-[var(--sapling-orange)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--sapling-orange)]/90"
@@ -220,26 +331,75 @@ export default function FarmsAndBlocksPage() {
         farms.map((farm) => {
           const fields = farmFields[farm.id] ?? [];
           const totalArea = fields.reduce((s, f) => s + (f.size_ha ?? 0), 0);
+          const isFarmSelected = selectedFarmIds.has(farm.id);
+          const blocksSelectable = fieldSelectFarmId === farm.id;
           return (
-            <section key={farm.id}>
+            <section
+              key={farm.id}
+              className={
+                farmSelectMode && isFarmSelected
+                  ? "rounded-lg ring-2 ring-[var(--sapling-orange)] p-2"
+                  : ""
+              }
+            >
               <header className="mb-3 flex items-baseline justify-between">
-                <div>
-                  <h2 className="text-base font-semibold text-[var(--sapling-dark)]">
-                    {farm.name}
-                  </h2>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {farm.region && <>{farm.region} · </>}
-                    {fields.length} {fields.length === 1 ? "block" : "blocks"} ·{" "}
-                    {totalArea.toFixed(1)} ha
-                  </p>
+                <div className="flex items-center gap-2">
+                  {farmSelectMode && (
+                    <button
+                      type="button"
+                      onClick={() => toggleFarm(farm.id)}
+                      className={`flex size-4 items-center justify-center rounded border-2 ${
+                        isFarmSelected
+                          ? "border-[var(--sapling-orange)] bg-[var(--sapling-orange)]"
+                          : "border-gray-300 bg-white"
+                      }`}
+                      title="Select for bulk delete"
+                    >
+                      {isFarmSelected && <span className="text-[8px] leading-none text-white">✓</span>}
+                    </button>
+                  )}
+                  <div>
+                    <h2 className="text-base font-semibold text-[var(--sapling-dark)]">
+                      {farm.name}
+                    </h2>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {farm.region && <>{farm.region} · </>}
+                      {fields.length} {fields.length === 1 ? "block" : "blocks"} ·{" "}
+                      {totalArea.toFixed(1)} ha
+                    </p>
+                  </div>
                 </div>
-                <Link
-                  href={`/clients/${clientId}?addFieldFarm=${farm.id}`}
-                  className="inline-flex items-center gap-1 rounded-md border bg-white px-2 py-1 text-[11px] text-[var(--sapling-dark)] hover:bg-orange-50"
-                >
-                  <Plus className="size-3" />
-                  Add block
-                </Link>
+                <div className="flex items-center gap-1.5">
+                  {!farmSelectMode && fields.length > 0 && (
+                    <SelectionToolbar
+                      selectionMode={blocksSelectable}
+                      onToggleMode={(next) => {
+                        if (next) {
+                          setFieldSelectFarmId(farm.id);
+                          setSelectedFieldIds(new Set());
+                        } else {
+                          setFieldSelectFarmId(null);
+                          setSelectedFieldIds(new Set());
+                        }
+                      }}
+                      totalCount={fields.length}
+                      selectedCount={blocksSelectable ? selectedFieldIds.size : 0}
+                      onSelectAll={(all) => {
+                        if (all) setSelectedFieldIds(new Set(fields.map((f) => f.id)));
+                        else setSelectedFieldIds(new Set());
+                      }}
+                      onDelete={() => handleBulkDeleteFields(farm.id)}
+                      itemLabel={{ singular: "block", plural: "blocks" }}
+                    />
+                  )}
+                  <Link
+                    href={`/clients/${clientId}?addFieldFarm=${farm.id}`}
+                    className="inline-flex items-center gap-1 rounded-md border bg-white px-2 py-1 text-[11px] text-[var(--sapling-dark)] hover:bg-orange-50"
+                  >
+                    <Plus className="size-3" />
+                    Add block
+                  </Link>
+                </div>
               </header>
 
               {fields.length === 0 ? (
@@ -257,7 +417,16 @@ export default function FarmsAndBlocksPage() {
                   {fields.map((field) => {
                     const data = cardDataByFieldId.get(field.id);
                     if (!data) return null;
-                    return <BlockCard key={field.id} clientId={clientId} data={data} />;
+                    return (
+                      <BlockCard
+                        key={field.id}
+                        clientId={clientId}
+                        data={data}
+                        selectable={blocksSelectable}
+                        selected={selectedFieldIds.has(field.id)}
+                        onToggleSelect={() => toggleField(field.id)}
+                      />
+                    );
                   })}
                 </div>
               )}

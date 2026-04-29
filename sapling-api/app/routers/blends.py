@@ -624,14 +624,26 @@ def list_blends(
     client_id: str | None = Query(None, description="Filter by client ID"),
     farm_id: str | None = Query(None, description="Filter by farm ID"),
     field_id: str | None = Query(None, description="Filter by field ID"),
+    include_deleted: bool = Query(False, description="Admin-only: include soft-deleted blends"),
     user: CurrentUser = Depends(get_current_user),
 ):
-    """List blends. Agents see own saved blends; admins see all."""
+    """List blends. Agents see own saved blends; admins see all.
+
+    Soft-deleted blends are hidden by default for both agents and
+    admins so the regular listing matches the rest of the app's
+    soft-delete semantics. Admins can pass `include_deleted=true` for
+    a Trash view; non-admins are rejected.
+    """
     sb = get_supabase_admin()
     query = sb.table("blends").select("*", count="exact")
 
+    if include_deleted and user.role != "admin":
+        raise HTTPException(403, "Only admins can list soft-deleted blends")
+    if not include_deleted:
+        query = query.is_("deleted_at", "null")
+
     if user.role != "admin":
-        query = query.eq("agent_id", user.id).eq("status", "saved").is_("deleted_at", "null")
+        query = query.eq("agent_id", user.id).eq("status", "saved")
 
     if search:
         query = query.or_(

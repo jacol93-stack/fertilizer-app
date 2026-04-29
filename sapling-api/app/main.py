@@ -14,7 +14,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.rate_limit import limiter, rate_limit_middleware
-from app.routers import analysis_v2, blends, soil, materials, clients, crop_norms, reports, admin, quotes, programmes_v2, leaf, sessions, dashboard, workbench
+from app.routers import analysis_v2, blends, soil, materials, clients, crop_norms, reports, admin, quotes, programmes_v2, leaf, sessions, dashboard, workbench, soil_reports
 
 
 class _JsonLogFormatter(logging.Formatter):
@@ -198,6 +198,7 @@ app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(quotes.router, prefix="/api/quotes", tags=["Quotes"])
 app.include_router(programmes_v2.router, prefix="/api", tags=["Programmes v2"])
+app.include_router(soil_reports.router, prefix="/api", tags=["Soil Reports"])
 app.include_router(analysis_v2.router, prefix="/api/analysis/v2", tags=["Quick Analysis v2"])
 app.include_router(leaf.router, prefix="/api/leaf", tags=["Leaf Analysis"])
 app.include_router(sessions.router, prefix="/api/sessions", tags=["Sessions"])

@@ -103,6 +103,7 @@ def select_methods(
     avail = method_availability.available_kinds()
     # Per-finding redirects — pre-compute which nutrients should prefer foliar
     foliar_priority_nutrients = _foliar_priority_from_findings(soil_factor_report)
+    total_stages = len(stage_splits)
 
     assignments: list[MethodAssignment] = []
 
@@ -114,6 +115,7 @@ def select_methods(
                 nutrient=nutrient, amount=amount,
                 stage_number=split.stage_number,
                 stage_name=split.stage_name,
+                total_stages=total_stages,
                 avail=avail,
                 foliar_priority=nutrient in foliar_priority_nutrients,
                 crop_family=crop_family,
@@ -132,15 +134,45 @@ def _route_nutrient(
     amount: float,
     stage_number: int,
     stage_name: str,
+    total_stages: int,
     avail: set[MethodKind],
     foliar_priority: bool,
     crop_family: Optional[str],
 ) -> list[MethodAssignment]:
-    """Decide method(s) for ONE (stage, nutrient, amount)."""
-    # First stage of the season: "establishment" / "pre-plant" / "planting".
-    # Maps cleanly across annuals (literally pre-plant) and perennials
-    # (pre-flush / pre-budbreak — early-season nutrient buildup).
-    is_first_stage = stage_name.lower() in ("establishment", "pre-plant", "planting")
+    """Decide method(s) for ONE (stage, nutrient, amount).
+
+    Routing policy is keyed on **stage role**, not stage_name strings,
+    so the same rule applies across crops (perennial trees, vines,
+    annuals, vegetables, sugarcane). The roles:
+
+      * **Basal** (stage_number == 1) — pre-plant / pre-flush /
+        post-harvest compound. Heavy, slow-moving nutrients (P, K, Ca,
+        Mg, S) go to dry broadcast for soil reaction time and Al
+        protection; N goes to liquid when available so it's split-
+        applied across the actual demand stages, otherwise a dry
+        broadcast fallback gets it down before peak demand.
+      * **In-season** (middle stages) — N + K + Mg + S go to liquid
+        when available (efficient root uptake + demand-matched
+        timing); fall back to dry side-dress, then foliar (capped).
+      * **Maturation** (stage_number == total_stages) — same routing
+        as in-season but the stage_splitter already allocates small
+        amounts here, so the engine naturally tapers off.
+
+    Micros (Zn / B / Mn / Fe / Cu / Mo) and soil-availability-gap
+    redirects (P:Zn → foliar Zn) sit on top of this and route to
+    foliar first regardless of stage role.
+
+    Stage-role keying replaces the previous stage_name-string match
+    (`("establishment", "pre-plant", "planting")`) which silently
+    missed every crop whose stages had crop-specific names — that bug
+    routed all of Anton's macadamia through fertigation because his
+    Stage-1 was named "Post-harvest + flower initiation".
+    """
+    is_basal = stage_number == 1
+    is_maturation = (total_stages > 1 and stage_number == total_stages)
+    # is_in_season is everything that isn't basal or maturation; we
+    # don't need to compute it explicitly because we route by has_dry
+    # / has_liquid preference for non-basal stages.
     has_liquid = (MethodKind.LIQUID_DRIP in avail or
                   MethodKind.LIQUID_PIVOT in avail or
                   MethodKind.LIQUID_SPRINKLER in avail)
@@ -175,14 +207,22 @@ def _route_nutrient(
             ))
         return out
 
-    # ----- First stage of season: heavy P goes basal -----
-    if is_first_stage and nutrient_base == "P":
+    # ----- Basal stage: heavy slow-moving nutrients go dry -----
+    # P, K, Ca, Mg, S all benefit from being positioned in the soil
+    # before peak demand. Dry broadcast is the standard SA basal
+    # delivery; band placement (DRY_BAND) is preferred for annuals
+    # close to seed but DRY_BROADCAST is the universal fallback.
+    if is_basal and nutrient_base in ("P", "K", "Ca", "Mg", "S"):
         if has_dry:
             return [MethodAssignment(
                 stage_number=stage_number, stage_name=stage_name,
                 nutrient=nutrient, method=MethodKind.DRY_BROADCAST,
                 kg_per_ha=round(amount, 2),
-                reason="Early-season P — broadcast basal; slow soil mobility, position before peak demand; also protects against Al fixation",
+                reason=(
+                    f"Basal {nutrient} — dry broadcast positions the nutrient "
+                    f"before peak demand. Slow soil mobility (P) / cation "
+                    f"exchange dynamics (K, Ca, Mg) reward early placement."
+                ),
                 tier=2,
             )]
         if has_liquid:
@@ -190,18 +230,33 @@ def _route_nutrient(
                 stage_number=stage_number, stage_name=stage_name,
                 nutrient=nutrient, method=MethodKind.LIQUID_DRIP,
                 kg_per_ha=round(amount, 2),
-                reason="No dry spreader — route early-season P via drip (less ideal but fallback)",
+                reason=(
+                    f"Basal {nutrient} — no dry spreader available, routing "
+                    f"via drip as fallback. Less ideal for slow-moving "
+                    f"nutrients; agronomic outcome may be reduced."
+                ),
                 tier=6,
             )]
+        # Last resort handled at end of function.
 
-    # ----- Calcium: basal for amendments (lime), drip for in-season Ca-Nit -----
-    if nutrient_base == "Ca":
-        if has_liquid and not is_first_stage:
+    # ----- Basal N: liquid preferred (split application), dry fallback -----
+    # N at basal stage is different from P/K — it leaches and shouldn't
+    # be front-loaded. Drip lets it be split across demand. If no
+    # liquid available, broadcast is acceptable but a dry side-dress
+    # closer to demand peak would be better; we use broadcast for the
+    # consistency it gives the agronomist (one pass at planting / pre-
+    # flush) and let timing walls do their job.
+    if is_basal and nutrient_base == "N":
+        if has_liquid:
             return [MethodAssignment(
                 stage_number=stage_number, stage_name=stage_name,
                 nutrient=nutrient, method=MethodKind.LIQUID_DRIP,
                 kg_per_ha=round(amount, 2),
-                reason="In-season Ca via drip (calcium stream) — also provides Al antagonism",
+                reason=(
+                    "Basal N — drip routing splits the dose across the "
+                    "actual demand stages instead of front-loading; "
+                    "reduces leaching loss."
+                ),
                 tier=2,
             )]
         if has_dry:
@@ -209,28 +264,43 @@ def _route_nutrient(
                 stage_number=stage_number, stage_name=stage_name,
                 nutrient=nutrient, method=MethodKind.DRY_BROADCAST,
                 kg_per_ha=round(amount, 2),
-                reason="Ca via dry (lime/gypsum) — early-season preferred for reaction time",
+                reason=(
+                    "Basal N — no fertigation available, dry broadcast "
+                    "with the basal pass. Timing walls enforce no-N "
+                    "stages downstream."
+                ),
                 tier=3,
             )]
 
-    # ----- Macros (N / P / K / S / Mg) — drip preferred, dry fallback -----
-    if nutrient_base in ("N", "P", "K", "S", "Mg"):
+    # ----- In-season + maturation: liquid preferred, dry fallback ------
+    # Every macro routes here for non-basal stages. Drip wins when
+    # available because it matches root uptake to demand. Dry side-
+    # dress is the next-best option (placed near the active root zone).
+    # Foliar last (capped, used as a delivery mechanism only when the
+    # other two are absent).
+    if nutrient_base in ("N", "P", "K", "Ca", "Mg", "S"):
         if has_liquid:
             return [MethodAssignment(
                 stage_number=stage_number, stage_name=stage_name,
                 nutrient=nutrient, method=MethodKind.LIQUID_DRIP,
                 kg_per_ha=round(amount, 2),
-                reason=f"In-season {nutrient} via drip — efficient root uptake + demand-matched timing",
+                reason=(
+                    f"In-season {nutrient} via drip — efficient root "
+                    f"uptake + demand-matched timing."
+                ),
                 tier=3,
             )]
         if has_dry:
-            method = (MethodKind.DRY_BROADCAST if is_first_stage
+            method = (MethodKind.DRY_BROADCAST if is_maturation
                       else MethodKind.DRY_SIDE_DRESS)
             return [MethodAssignment(
                 stage_number=stage_number, stage_name=stage_name,
                 nutrient=nutrient, method=method,
                 kg_per_ha=round(amount, 2),
-                reason=f"Dry {method.value.replace('_', ' ')} — no fertigation available",
+                reason=(
+                    f"Dry {method.value.replace('_', ' ')} — no fertigation "
+                    f"available, in-season delivery via spreader."
+                ),
                 tier=3,
             )]
         if has_foliar:

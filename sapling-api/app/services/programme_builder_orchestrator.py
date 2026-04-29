@@ -144,6 +144,30 @@ class OrchestratorInput:
     # work with these beyond reading optimal bands per parameter.
     sufficiency_rows: Optional[list[dict]] = None
     param_map_rows: Optional[list[dict]] = None
+    # cluster_id → list of source BlockInputs that fed the aggregate.
+    # When supplied, the orchestrator runs soil-side reasoning (factor
+    # findings, pre-season recommendations, soil snapshots) on each
+    # SOURCE block individually rather than on the cluster aggregate
+    # — block-specific signals like Blok 100's 22% Al-saturation
+    # otherwise get averaged out in a multi-block cluster and miss
+    # the lime-priority window. Blend production still runs on the
+    # cluster aggregate from `blocks`. Singleton clusters are fine
+    # either way (source == effective).
+    cluster_sources: Optional[dict[str, list]] = None
+    # Assumptions pre-computed upstream (typically by compute_season_targets
+    # in the router) — yield-target defaults, density scaling, N-min
+    # credit, etc. Merged into the orchestrator's own assumptions list
+    # so they flow to the artifact's Assumptions section. Without this
+    # bridge any assumption emitted before the orchestrator runs is
+    # silently dropped.
+    pre_computed_assumptions: list[Assumption] = field(default_factory=list)
+    # Per-cluster method overrides set by the agronomist on the cluster
+    # board. Keys are cluster_ids (e.g. "A", "B"). When a cluster_id
+    # appears here, the engine uses its MethodAvailability instead of
+    # the global `method_availability` for that group's blends. Lets
+    # the user say "Group A drip-only this season, Group B broadcast
+    # only" without changing the underlying field capability.
+    method_availability_per_cluster: dict[str, MethodAvailability] = field(default_factory=dict)
 
 
 # ============================================================
@@ -160,7 +184,7 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
     """
     decision_trace: list[str] = []
     sources_audit: list[SourceCitation] = []
-    assumptions: list[Assumption] = []
+    assumptions: list[Assumption] = list(inputs.pre_computed_assumptions or [])
     all_risk_flags: list[RiskFlag] = []
     all_outstanding: list[OutstandingItem] = []
     all_foliar_events: list[FoliarEvent] = []
@@ -171,13 +195,149 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
     soil_factor_reports = {}
 
     # --------------------------------------------------------
-    # Per-block reasoning
+    # Per-SOURCE soil pass (snapshots + pre-season)
+    # --------------------------------------------------------
+    # Soil reasoning + pre-season recommendations run per SOURCE block,
+    # not per cluster aggregate. Block-specific signals (e.g. Blok 100's
+    # 22% Al-saturation while Blok 101 sits at 8%) get averaged out in
+    # a multi-block cluster — running per source preserves the lime-
+    # priority signal that drives pre-season scheduling and the visual
+    # range bars in the per-block soil report.
+    source_blocks: list[BlockInput] = []
+    if inputs.cluster_sources:
+        seen_ids: set[str] = set()
+        for sources in inputs.cluster_sources.values():
+            for src in sources:
+                if src.block_id in seen_ids:
+                    continue
+                seen_ids.add(src.block_id)
+                source_blocks.append(src)
+    else:
+        # No clustering metadata — treat the input list as the source
+        # set (singleton clusters case).
+        source_blocks = list(inputs.blocks)
+
+    # Build a block_id → cluster_id resolver. Singleton clusters keep
+    # their original block_id (the orchestrator never rewrites it to
+    # `cluster_<letter>`), so the per-cluster method-availability
+    # override lookup needs an explicit map. Without this, single-block
+    # programmes silently drop their cluster overrides — the agronomist
+    # excludes fertigation + foliar on the cluster board, the engine
+    # falls back to global method_availability, and uses fertigation
+    # + foliar anyway. This map fixes that.
+    block_to_cluster: dict[str, str] = {}
+    if inputs.cluster_sources:
+        for cluster_id, sources in inputs.cluster_sources.items():
+            for src in sources:
+                block_to_cluster[src.block_id] = cluster_id
+
+    soil_snapshots_out: list[SoilSnapshot] = []
+    for src in source_blocks:
+        src_sf_report = reason_soil_factors(
+            soil_values=src.soil_parameters,
+            crop=inputs.crop,
+            water_values=inputs.water_values,
+        )
+        # Promote per-source Al-critical detection to the high_al_soil
+        # flag so blend production downstream picks up the toxicity
+        # context even when the cluster aggregate looks benign.
+        if high_al_soil is None:
+            for f in src_sf_report.findings:
+                if f.parameter == "Al_saturation_pct" and f.severity == "critical":
+                    high_al_soil = True
+                    break
+        # Mode A pre-season — per source, so per-block lime / gypsum /
+        # dolomite recommendations land with the right rate.
+        recs = recommend_pre_season_actions(
+            block_id=src.block_id,
+            soil_factor_report=src_sf_report,
+            build_date=inputs.build_date,
+            planting_date=inputs.planting_date,
+            available_materials=inputs.available_materials,
+        )
+        all_pre_season_recs.extend(recs)
+        if recs:
+            decision_trace.append(
+                f"Block {src.block_id}: pre-season — {len(recs)} recommendation"
+                f"{'s' if len(recs) != 1 else ''} from soil findings"
+            )
+        # SoilSnapshot with full structured data (per-source).
+        headline = [f.message for f in src_sf_report.by_severity_at_least("warn")[:3]]
+        computed_ratios = {
+            k: float(v) for k, v in (src_sf_report.computed or {}).items()
+            if isinstance(v, (int, float))
+        }
+        factor_findings = [
+            FactorFindingOut(
+                kind=f.kind,
+                severity=f.severity,
+                parameter=f.parameter,
+                value=float(f.value),
+                threshold=float(f.threshold) if f.threshold is not None else None,
+                message=f.message,
+                recommended_action=f.recommended_action,
+                source_id=f.source_id,
+                source_section=f.source_section,
+                tier=f.tier,
+            )
+            for f in src_sf_report.findings
+        ]
+        # Normalise unit-suffixed keys ("K (mg/kg)" → "K") before the
+        # sufficiency lookup. Without this the soil-report shows only
+        # parameters whose labels happen to match the sufficiency table
+        # exactly — usually just pH (KCl) — and every other lab
+        # parameter (K / Ca / Mg / P / S / saturations) silently drops
+        # out, leaving the agronomist staring at "no NPK, no ratios".
+        from app.services.soil_engine import normalise_soil_values
+        normalised_params = normalise_soil_values(src.soil_parameters)
+        nutrient_status = _build_nutrient_status(
+            soil_parameters=normalised_params,
+            sufficiency_rows=inputs.sufficiency_rows or [],
+            param_map_rows=inputs.param_map_rows or [],
+            lab_method=src.lab_method,
+        )
+        soil_snapshots_out.append(SoilSnapshot(
+            block_id=src.block_id,
+            block_name=src.block_name,
+            block_area_ha=src.block_area_ha,
+            lab_name=src.lab_name,
+            lab_method=src.lab_method,
+            sample_date=src.sample_date,
+            sample_id=src.sample_id,
+            parameters=src.soil_parameters,
+            computed_ratios=computed_ratios,
+            factor_findings=factor_findings,
+            nutrient_status=nutrient_status,
+            headline_signals=headline,
+        ))
+
+    # --------------------------------------------------------
+    # Per-EFFECTIVE-block reasoning (blend production)
     # --------------------------------------------------------
     block_totals: dict[str, dict[str, float]] = {}
     stage_schedules: list[StageSchedule] = []
     updated_pre_season_inputs: list[PreSeasonInput] = []
-    soil_snapshots_out: list[SoilSnapshot] = []
     all_blends = []  # populated by consolidator per block
+
+    # Multi-block clusters need a "directory" snapshot so the walkthrough
+    # group-lookup keyed on cluster_X has somewhere to read the member
+    # list + total area from. Filtered out of the Soil Report by the
+    # renderer (it skips cluster_-prefixed snapshots) — purely a lookup
+    # entry, no parameters / findings on it.
+    if inputs.cluster_sources:
+        for cluster_id, sources in inputs.cluster_sources.items():
+            if len(sources) <= 1:
+                continue
+            soil_snapshots_out.append(SoilSnapshot(
+                block_id=f"cluster_{cluster_id}",
+                block_name=", ".join(s.block_name for s in sources),
+                block_area_ha=sum(s.block_area_ha for s in sources),
+                parameters={},
+                computed_ratios={},
+                factor_findings=[],
+                nutrient_status=[],
+                headline_signals=[],
+            ))
 
     for block in inputs.blocks:
         decision_trace.append(f"Block {block.block_id}: start reasoning")
@@ -203,23 +363,14 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
             if block_has_critical_al:
                 high_al_soil = True
 
-        # 2. Pre-season module — three modes
+        # 2. Pre-season — Mode A recommendations (lime / gypsum etc.)
+        # are produced per SOURCE block in the upstream per-source pass,
+        # not here on the cluster aggregate (averaging would dilute the
+        # block-specific signals that drive pre-season scheduling).
+        # Mode B (residual computation) stays in-loop because pre-season
+        # INPUTS are already-applied amendments tracked at the cluster
+        # level via the BlockInput's pre_season_inputs field.
         months_to_planting = (inputs.planting_date - inputs.build_date).days / 30.44
-
-        # Mode A — recommend
-        recs = recommend_pre_season_actions(
-            block_id=block.block_id,
-            soil_factor_report=sf_report,
-            build_date=inputs.build_date,
-            planting_date=inputs.planting_date,
-            available_materials=inputs.available_materials,
-        )
-        all_pre_season_recs.extend(recs)
-        if recs:
-            decision_trace.append(
-                f"Block {block.block_id}: Pre-season Mode A — "
-                f"{len(recs)} recommendations ({months_to_planting:.1f} mo lead time)"
-            )
 
         # Mode B — compute residual
         residual_subtraction: dict[str, float] = {}
@@ -353,11 +504,31 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
                     item="Application-month coverage gap",
                     why_it_matters=msg,
                 ))
+            # Removed: the "no allowed application month inside its
+            # window" warning was deliberately killed (see month_allocator
+            # comment + memory:project_application_timing_and_blend_count).
+            # Agronomist owns timing; engine doesn't bark.
 
-        # 5. Method selector
+        # 5. Method selector — uses per-cluster availability when the
+        # agronomist set an override on the cluster board, falls back
+        # to the global method_availability otherwise.
+        # Resolve cluster_id with three fallbacks (in priority order):
+        #   1. The `cluster_` prefix on multi-block synthetic blocks
+        #   2. The block_to_cluster map (singletons keep their original id)
+        #   3. The block_id itself (no clustering at all)
+        if block.block_id.startswith("cluster_"):
+            cluster_id = block.block_id[len("cluster_"):]
+        elif block.block_id in block_to_cluster:
+            cluster_id = block_to_cluster[block.block_id]
+        else:
+            cluster_id = block.block_id
+        block_method_availability = (
+            inputs.method_availability_per_cluster.get(cluster_id)
+            or inputs.method_availability
+        )
         method_assignments = select_methods(
             stage_splits=stage_splits,
-            method_availability=inputs.method_availability,
+            method_availability=block_method_availability,
             soil_factor_report=sf_report,
             crop_family=get_family(inputs.crop),
         )
@@ -365,15 +536,28 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
             f"Block {block.block_id}: MethodSelector — {len(method_assignments)} routings"
         )
 
-        # 6. Foliar trigger engine
-        foliar_events = trigger_foliar_events(
-            block_id=block.block_id,
-            crop=inputs.crop,
-            planting_date=inputs.planting_date,
-            soil_factor_report=sf_report,
-            leaf_deficiencies=block.leaf_deficiencies,
-            block_area_ha=block.block_area_ha,
-        )
+        # 6. Foliar trigger engine — gated on the same per-cluster
+        # availability the method selector uses. Previously this fired
+        # unconditionally, so a cluster override that turned foliar OFF
+        # still produced foliar events (the user excluded foliar but
+        # the report had foliar passes anyway). Honour the agronomist's
+        # call: if foliar isn't on the equipment list for this cluster,
+        # don't trigger any foliar events for it.
+        if block_method_availability.has_foliar_sprayer:
+            foliar_events = trigger_foliar_events(
+                block_id=block.block_id,
+                crop=inputs.crop,
+                planting_date=inputs.planting_date,
+                soil_factor_report=sf_report,
+                leaf_deficiencies=block.leaf_deficiencies,
+                block_area_ha=block.block_area_ha,
+            )
+        else:
+            foliar_events = []
+            decision_trace.append(
+                f"Block {block.block_id}: FoliarTriggerEngine SKIPPED — "
+                f"cluster override excluded foliar"
+            )
         all_foliar_events.extend(foliar_events)
         if foliar_events:
             decision_trace.append(
@@ -531,51 +715,11 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
         # 10. Block totals — assemble from adjusted_targets
         block_totals[block.block_id] = adjusted_targets
 
-        # 10. Soil snapshot for output
-        headline = [f.message for f in sf_report.by_severity_at_least("warn")[:3]]
-        # Computed ratios + derived metrics — copied from the soil-factor
-        # reasoner's report so the renderer can surface Ca:Mg, ESP, SAR,
-        # etc. in the Ratios section without re-computing.
-        computed_ratios = {
-            k: float(v) for k, v in (sf_report.computed or {}).items()
-            if isinstance(v, (int, float))
-        }
-        # Structured findings — same data the engine used for adjustments,
-        # exposed verbatim for the visual ratio panel + tooltips.
-        factor_findings = [
-            FactorFindingOut(
-                kind=f.kind,
-                severity=f.severity,
-                parameter=f.parameter,
-                value=float(f.value),
-                threshold=float(f.threshold) if f.threshold is not None else None,
-                message=f.message,
-                recommended_action=f.recommended_action,
-                source_id=f.source_id,
-                source_section=f.source_section,
-                tier=f.tier,
-            )
-            for f in sf_report.findings
-        ]
-        nutrient_status = _build_nutrient_status(
-            soil_parameters=block.soil_parameters,
-            sufficiency_rows=inputs.sufficiency_rows or [],
-            param_map_rows=inputs.param_map_rows or [],
-        )
-        soil_snapshots_out.append(SoilSnapshot(
-            block_id=block.block_id,
-            block_name=block.block_name,
-            block_area_ha=block.block_area_ha,
-            lab_name=block.lab_name,
-            lab_method=block.lab_method,
-            sample_date=block.sample_date,
-            sample_id=block.sample_id,
-            parameters=block.soil_parameters,
-            computed_ratios=computed_ratios,
-            factor_findings=factor_findings,
-            nutrient_status=nutrient_status,
-            headline_signals=headline,
-        ))
+        # SoilSnapshot generation is handled in the upstream per-source
+        # pass — the cluster aggregate's snapshot would just duplicate
+        # what the per-source snapshots already cover for the soil
+        # report, and the renderer's per-block visualisations want the
+        # per-source granularity.
 
     # --------------------------------------------------------
     # Build the header
@@ -707,10 +851,43 @@ def _classify_status(value: float, low_max: float, optimal_max: float) -> str:
     return "ok"
 
 
+# SASRI / FAS Truog extraction reports nutrient concentrations in mg/L
+# (volumetric extract) rather than the mass-based mg/kg used by Mehlich-
+# 3, Bray-1, Olsen, Bemlab Ambic etc. The threshold tables are stored
+# without unit annotations because within a method they're internally
+# consistent — what changes is the LABEL on the rendered report. This
+# pattern matches lab_method strings that come from FAS / SASRI reports
+# so the renderer prints "mg/L" for Truog samples.
+_TRUOG_LAB_PATTERNS = ("truog", "sasri", "fas")
+
+
+def _is_truog_method(lab_method: Optional[str]) -> bool:
+    if not lab_method:
+        return False
+    method = lab_method.lower()
+    return any(p in method for p in _TRUOG_LAB_PATTERNS)
+
+
+def _unit_for_parameter(param: str, lab_method: Optional[str]) -> str:
+    """Return the display unit for a soil parameter given the lab
+    method. SASRI / FAS Truog samples report soil-extractable mg/L;
+    everyone else reports mg/kg. Structural parameters (CEC,
+    base-saturation %) keep their own units regardless of method.
+    """
+    label_unit = _NUTRIENT_DISPLAY.get(param, (param, ""))[1]
+    if not label_unit or label_unit == "%" or label_unit == "cmol/kg":
+        return label_unit
+    # mg/kg-class units flip to mg/L on a SASRI/FAS Truog report.
+    if label_unit == "mg/kg" and _is_truog_method(lab_method):
+        return "mg/L"
+    return label_unit
+
+
 def _build_nutrient_status(
     soil_parameters: dict[str, float],
     sufficiency_rows: list[dict],
     param_map_rows: list[dict],
+    lab_method: Optional[str] = None,
 ) -> list[NutrientStatusEntry]:
     """Build the 'nutrients vs ideal' rows for one block's snapshot.
 
@@ -722,6 +899,12 @@ def _build_nutrient_status(
     param_map_rows is consulted as a fallback when a soil column name
     doesn't directly match a sufficiency row's parameter (e.g. when
     the lab names it `P_Mehlich3` but sufficiency keys it as `P`).
+
+    `lab_method` drives the display unit. SASRI / FAS Truog reports use
+    mg/L for soil extracts (volumetric method); everyone else uses
+    mg/kg. Numbers stay as the lab reported them — no conversion
+    between methods because the extraction efficiencies aren't
+    interchangeable.
     """
     if not soil_parameters or not sufficiency_rows:
         return []
@@ -765,7 +948,8 @@ def _build_nutrient_status(
         if key in seen_keys:
             continue
         seen_keys.add(key)
-        label, unit = _NUTRIENT_DISPLAY.get(soil_param, (soil_param, ""))
+        label, _ = _NUTRIENT_DISPLAY.get(soil_param, (soil_param, ""))
+        unit = _unit_for_parameter(soil_param, lab_method)
         chart_min, chart_max = _resolve_chart_bounds(suff, value, low_max, optimal_max)
         entries.append(NutrientStatusEntry(
             parameter=soil_param,

@@ -114,56 +114,102 @@ def recommend_pre_season_actions(
 
     Returns:
         list of PreSeasonRecommendation, one per (finding × applicable material).
-        Empty if no lead time or no relevant findings.
+        Empty only when there are no relevant soil findings — late builds
+        still emit recommendations, just with adapted timing guidance
+        (apply for full reaction by next cycle's window).
     """
     months_to_planting = _months_between(build_date, planting_date)
-    if months_to_planting <= 0:
-        return []
 
     recs: list[PreSeasonRecommendation] = []
 
-    # ----- Al toxicity → recommend lime if lead time allows (3-6 mo) -----
+    # Defensive: if the block already reads alkaline (KCl ≥ 7.0 or H2O
+    # ≥ 7.5), skip Al-driven lime — Al saturation can co-exist with
+    # high pH on mottled / variable soils, but liming further locks
+    # out micros. Note the pH-low finding can never co-fire with this
+    # guard (a pH-low reading is by definition not alkaline), so the
+    # pH-driven lime path is unaffected.
+    measured_ph_kcl = soil_factor_report.computed.get("pH (KCl)")
+    measured_ph_h2o = soil_factor_report.computed.get("pH (H2O)")
+    ph_is_already_alkaline = (
+        (measured_ph_kcl is not None and measured_ph_kcl >= 7.0)
+        or (measured_ph_h2o is not None and measured_ph_h2o >= 7.5)
+    )
+
+    # ----- Lime triggers (deduped): Al toxicity + pH-low -----
+    # Both trigger lime; combine reasons into a single recommendation
+    # so the agronomist doesn't see two near-identical lime entries
+    # for the same block.
+    lime_reasons: list[str] = []
     al_findings = [f for f in soil_factor_report.findings
                    if f.parameter == "Al_saturation_pct" and f.severity in ("warn", "critical")]
-    for finding in al_findings:
-        rec = _try_recommend_lime(
+    if al_findings and not ph_is_already_alkaline:
+        lime_reasons.extend(f.message for f in al_findings)
+    ph_low_findings = [f for f in soil_factor_report.findings
+                       if f.parameter == "pH (KCl)" and f.severity in ("warn", "critical")]
+    lime_reasons.extend(f.message for f in ph_low_findings)
+    if lime_reasons:
+        recs.append(_recommend_lime(
             block_id=block_id,
-            finding_message=finding.message,
+            finding_message=" | ".join(lime_reasons),
             build_date=build_date,
             planting_date=planting_date,
             months_to_planting=months_to_planting,
             available_materials=available_materials,
-        )
-        if rec:
-            recs.append(rec)
+        ))
 
-    # ----- Sodicity → recommend gypsum (0.5-2 mo lead time) -----
+    # ----- Sulphur trigger: pH above crop optimal -----
+    # New 2026-04-28 path. Acidifying amendment for alkaline soils on
+    # non-acid-loving crops. Slow conversion (3-9 months via Thiobacillus)
+    # so always emit, with adaptive timing guidance.
+    ph_high_findings = [f for f in soil_factor_report.findings
+                        if f.parameter == "pH (KCl)_high" and f.severity in ("warn", "critical")]
+    if ph_high_findings:
+        recs.append(_recommend_sulphur(
+            block_id=block_id,
+            finding_message=" | ".join(f.message for f in ph_high_findings),
+            build_date=build_date,
+            planting_date=planting_date,
+            months_to_planting=months_to_planting,
+            available_materials=available_materials,
+        ))
+
+    # ----- Gypsum triggers (deduped): SAR + Ca:Mg-low at OK pH -----
+    # SAR-driven (Na displacement) and Ca:Mg-driven (Ca shortage at
+    # adequate pH) both call for gypsum — fold both reasons into one
+    # recommendation. Ca:Mg path is gated by pH-in-band on the reasoner
+    # side, so when it fires lime would over-shoot.
+    gypsum_reasons: list[str] = []
     sar_findings = [f for f in soil_factor_report.findings
                     if f.parameter == "SAR" and f.severity in ("warn", "critical")]
-    for finding in sar_findings:
-        rec = _try_recommend_gypsum(
+    gypsum_reasons.extend(f.message for f in sar_findings)
+    ca_mg_findings = [f for f in soil_factor_report.findings
+                      if f.parameter == "Ca:Mg" and f.severity in ("warn", "critical")]
+    gypsum_reasons.extend(f.message for f in ca_mg_findings)
+    if gypsum_reasons:
+        recs.append(_recommend_gypsum(
             block_id=block_id,
-            finding_message=finding.message,
+            finding_message=" | ".join(gypsum_reasons),
             build_date=build_date,
             planting_date=planting_date,
             months_to_planting=months_to_planting,
             available_materials=available_materials,
-        )
-        if rec:
-            recs.append(rec)
+        ))
 
     return recs
 
 
-def _try_recommend_lime(
+def _recommend_lime(
     block_id: str,
     finding_message: str,
     build_date: date,
     planting_date: date,
     months_to_planting: float,
     available_materials: Optional[list[dict]],
-) -> Optional[PreSeasonRecommendation]:
-    """Try to recommend lime IF months_to_planting >= reaction_time_min."""
+) -> PreSeasonRecommendation:
+    """Always emit a lime recommendation when an Al-saturation finding
+    fires. Timing guidance adapts to the lead-time available — see
+    `_adaptive_apply_by_and_status` for the four-window logic.
+    """
     material_row = _find_material(available_materials, "Calcitic Lime")
     min_months = (material_row.get("reaction_time_months_min") if material_row
                   else None) or DEFAULT_REACTION_PROFILES["calcitic_lime"][0]
@@ -172,12 +218,14 @@ def _try_recommend_lime(
     purpose = (material_row.get("soil_improvement_purpose") if material_row
                else None) or DEFAULT_REACTION_PROFILES["calcitic_lime"][2]
 
-    if months_to_planting < float(min_months):
-        return None  # Mode C — lost opportunity, handled separately
-
-    apply_by = planting_date - timedelta(days=int(float(min_months) * 30))
-    expected_pct = min(100, int((months_to_planting / float(max_months)) * 100))
-
+    apply_by, expected = _adaptive_apply_by_and_status(
+        build_date=build_date,
+        planting_date=planting_date,
+        months_to_planting=months_to_planting,
+        min_months=float(min_months),
+        max_months=float(max_months),
+        action_verb="reacted",
+    )
     return PreSeasonRecommendation(
         block_id=block_id,
         material="Calcitic Lime",
@@ -186,9 +234,7 @@ def _try_recommend_lime(
         reason=f"Address: {finding_message}",
         recommended_apply_by_date=apply_by,
         reaction_time_months=float(min_months),
-        expected_status_at_planting=(
-            f"~{expected_pct}% reacted at planting if applied by {apply_by.isoformat()}"
-        ),
+        expected_status_at_planting=expected,
         source=SourceCitation(
             source_id=PRE_SEASON_SOURCE[0],
             section=PRE_SEASON_SOURCE[1],
@@ -197,15 +243,16 @@ def _try_recommend_lime(
     )
 
 
-def _try_recommend_gypsum(
+def _recommend_gypsum(
     block_id: str,
     finding_message: str,
     build_date: date,
     planting_date: date,
     months_to_planting: float,
     available_materials: Optional[list[dict]],
-) -> Optional[PreSeasonRecommendation]:
-    """Recommend gypsum if SAR active and lead time allows."""
+) -> PreSeasonRecommendation:
+    """Always emit a gypsum recommendation when a sodicity finding
+    fires. Timing guidance adapts the same way as the lime helper."""
     material_row = _find_material(available_materials, "Gypsum")
     min_months = (material_row.get("reaction_time_months_min") if material_row
                   else None) or DEFAULT_REACTION_PROFILES["gypsum"][0]
@@ -214,12 +261,14 @@ def _try_recommend_gypsum(
     purpose = (material_row.get("soil_improvement_purpose") if material_row
                else None) or DEFAULT_REACTION_PROFILES["gypsum"][2]
 
-    if months_to_planting < float(min_months):
-        return None
-
-    apply_by = planting_date - timedelta(days=int(float(min_months) * 30))
-    expected_pct = min(100, int((months_to_planting / float(max_months)) * 100))
-
+    apply_by, expected = _adaptive_apply_by_and_status(
+        build_date=build_date,
+        planting_date=planting_date,
+        months_to_planting=months_to_planting,
+        min_months=float(min_months),
+        max_months=float(max_months),
+        action_verb="Na displacement",
+    )
     return PreSeasonRecommendation(
         block_id=block_id,
         material="Gypsum",
@@ -228,14 +277,126 @@ def _try_recommend_gypsum(
         reason=f"Address: {finding_message}",
         recommended_apply_by_date=apply_by,
         reaction_time_months=float(min_months),
-        expected_status_at_planting=(
-            f"~{expected_pct}% Na displacement at planting if applied by {apply_by.isoformat()}"
-        ),
+        expected_status_at_planting=expected,
         source=SourceCitation(
             source_id=PRE_SEASON_SOURCE[0],
             section=PRE_SEASON_SOURCE[1],
             tier=Tier(PRE_SEASON_SOURCE[2]),
         ),
+    )
+
+
+def _recommend_sulphur(
+    block_id: str,
+    finding_message: str,
+    build_date: date,
+    planting_date: date,
+    months_to_planting: float,
+    available_materials: Optional[list[dict]],
+) -> PreSeasonRecommendation:
+    """Elemental sulphur recommendation for alkaline soils. Slow
+    bacterial oxidation (3-9 months) means timing guidance matters more
+    than for gypsum — apply early enough for Thiobacillus to convert S⁰
+    to SO₄ + H⁺ before peak demand."""
+    material_row = _find_material(available_materials, "Elemental Sulphur")
+    min_months = (material_row.get("reaction_time_months_min") if material_row
+                  else None) or DEFAULT_REACTION_PROFILES["elemental_sulphur"][0]
+    max_months = (material_row.get("reaction_time_months_max") if material_row
+                  else None) or DEFAULT_REACTION_PROFILES["elemental_sulphur"][1]
+    purpose = (material_row.get("soil_improvement_purpose") if material_row
+               else None) or DEFAULT_REACTION_PROFILES["elemental_sulphur"][2]
+
+    apply_by, expected = _adaptive_apply_by_and_status(
+        build_date=build_date,
+        planting_date=planting_date,
+        months_to_planting=months_to_planting,
+        min_months=float(min_months),
+        max_months=float(max_months),
+        action_verb="acidification",
+    )
+    return PreSeasonRecommendation(
+        block_id=block_id,
+        material="Elemental Sulphur",
+        target_rate_per_ha="500-1 500 kg/ha (size to pH excess + soil buffer; "
+                           "split applications on heavier rates)",
+        purpose=purpose,
+        reason=f"Address: {finding_message}",
+        recommended_apply_by_date=apply_by,
+        reaction_time_months=float(min_months),
+        expected_status_at_planting=expected,
+        source=SourceCitation(
+            source_id=PRE_SEASON_SOURCE[0],
+            section=PRE_SEASON_SOURCE[1],
+            tier=Tier(PRE_SEASON_SOURCE[2]),
+        ),
+    )
+
+
+def _adaptive_apply_by_and_status(
+    *,
+    build_date: date,
+    planting_date: date,
+    months_to_planting: float,
+    min_months: float,
+    max_months: float,
+    action_verb: str,
+) -> tuple[date, str]:
+    """Compute (apply_by_date, expected_status_string) for any pre-
+    season amendment, given the lead time available. Four windows:
+
+      1. ON-TIME with full reaction
+         (lead ≥ max_months): apply by season-cycle start − min_months,
+         "fully reacted by season start".
+
+      2. ON-TIME with partial reaction
+         (min_months ≤ lead < max_months): apply by season-cycle start
+         − min_months, "expected ~X% reacted by season start".
+
+      3. LATE — limited reaction this cycle
+         (0 < lead < min_months): apply as soon as possible (early
+         build_date + 7 days), "limited reaction time this season —
+         partial benefit this cycle, full benefit next".
+
+      4. PAST — next cycle window
+         (lead ≤ 0): build is at or after the cycle start. Pivot the
+         apply-by to next cycle (planting_date + 12 months − min_months),
+         "apply as soon as practical for full reaction by next cycle".
+
+    For mature perennials there's no real "planting" event — the
+    `planting_date` is the season-cycle start used as the timing anchor.
+    Recommendations always emit so the agronomist sees the soil-side
+    correction need regardless of when the programme is built.
+    """
+    if months_to_planting >= max_months:
+        # Window 1 — on time, full reaction
+        apply_by = planting_date - timedelta(days=int(min_months * 30))
+        return apply_by, (
+            f"Fully reacted by season start (~{int(max_months)}-month reaction "
+            f"window covered)."
+        )
+    if months_to_planting >= min_months:
+        # Window 2 — on time, partial reaction
+        apply_by = planting_date - timedelta(days=int(min_months * 30))
+        pct = max(0, min(100, int((months_to_planting / max_months) * 100)))
+        return apply_by, (
+            f"~{pct}% reacted by season start. Plan a top-up next cycle for "
+            f"full benefit."
+        )
+    if months_to_planting > 0:
+        # Window 3 — late but cycle hasn't started; apply now for partial
+        apply_by = build_date + timedelta(days=7)
+        return apply_by, (
+            f"Limited reaction time this cycle ({months_to_planting:.1f} mo "
+            f"available, {min_months:.0f} mo ideal). Apply at the earliest "
+            f"opportunity — partial benefit this season, full benefit next."
+        )
+    # Window 4 — cycle already started, target next cycle
+    next_cycle_start = date(planting_date.year + 1, planting_date.month, planting_date.day)
+    apply_by = next_cycle_start - timedelta(days=int(min_months * 30))
+    return apply_by, (
+        f"Cycle already underway — apply at the earliest opportunity to set up "
+        f"full {action_verb} for the next cycle (target reaction window: "
+        f"~{int(min_months)} months before {next_cycle_start.isoformat()})."
     )
 
 
@@ -346,17 +507,24 @@ def flag_lost_opportunities(
 
     al_findings = [f for f in soil_factor_report.findings
                    if f.parameter == "Al_saturation_pct" and f.severity in ("warn", "critical")]
-    if al_findings and months < DEFAULT_REACTION_PROFILES["calcitic_lime"][0]:
+    ph_low_findings = [f for f in soil_factor_report.findings
+                       if f.parameter == "pH (KCl)" and f.severity in ("warn", "critical")]
+    lime_too_late = (al_findings or ph_low_findings) and months < DEFAULT_REACTION_PROFILES["calcitic_lime"][0]
+    if lime_too_late:
         items.append(OutstandingItem(
             item="Lime application — too late this season for full reaction",
             why_it_matters=(
-                f"Al saturation needs lime to neutralise. Lime requires 3-6 months "
-                f"to react fully. Build-to-plant gap is only {months:.1f} months — "
-                f"insufficient for this season. Schedule lime for post-harvest of "
-                f"this crop to set up the next season."
+                f"Soil acidity / Al saturation needs lime to correct. Lime requires "
+                f"3-6 months to react fully. Build-to-plant gap is only "
+                f"{months:.1f} months — insufficient for this season. Schedule lime "
+                f"for post-harvest of this crop to set up the next season."
             ),
-            impact_if_skipped="Al stress will persist into the following season",
+            impact_if_skipped=(
+                "Acidity / Al stress persists into the following season; early-"
+                "growth and P availability will under-perform"
+            ),
         ))
+    if al_findings and months < DEFAULT_REACTION_PROFILES["calcitic_lime"][0]:
         flags.append(RiskFlag(
             message=(
                 f"Al active but no time to lime (gap {months:.1f} months, lime needs 3-6). "
@@ -370,17 +538,66 @@ def flag_lost_opportunities(
                 tier=Tier(PRE_SEASON_SOURCE[2]),
             ),
         ))
+    if ph_low_findings and not al_findings and months < DEFAULT_REACTION_PROFILES["calcitic_lime"][0]:
+        flags.append(RiskFlag(
+            message=(
+                f"Acidic pH but no time to lime (gap {months:.1f} months, lime needs 3-6). "
+                f"Ca / Mg / P availability will run below capacity this season; lean "
+                f"on foliar Ca + Mg at critical stages and avoid acidifying N sources."
+            ),
+            severity="warn",
+            source=SourceCitation(
+                source_id=PRE_SEASON_SOURCE[0],
+                section=PRE_SEASON_SOURCE[1],
+                tier=Tier(PRE_SEASON_SOURCE[2]),
+            ),
+        ))
+
+    ph_high_findings = [f for f in soil_factor_report.findings
+                        if f.parameter == "pH (KCl)_high" and f.severity in ("warn", "critical")]
+    if ph_high_findings and months < DEFAULT_REACTION_PROFILES["elemental_sulphur"][0]:
+        items.append(OutstandingItem(
+            item="Elemental sulphur application — too late this season for pH correction",
+            why_it_matters=(
+                f"Alkaline soil needs elemental sulphur to acidify. Bacterial "
+                f"oxidation requires 3-9 months. Build-to-plant gap is only "
+                f"{months:.1f} months — schedule sulphur for post-harvest."
+            ),
+            impact_if_skipped=(
+                "Zn / Fe / Mn / B / P availability remain locked at current pH; "
+                "expect micronutrient deficiencies despite soil-test sufficiency"
+            ),
+        ))
+        flags.append(RiskFlag(
+            message=(
+                f"Alkaline pH but no time to acidify (gap {months:.1f} months, "
+                f"sulphur needs 3-9). Lean on foliar Zn / Fe / Mn / B and "
+                f"acidifying N sources (ammonium sulphate) this season."
+            ),
+            severity="warn",
+            source=SourceCitation(
+                source_id=PRE_SEASON_SOURCE[0],
+                section=PRE_SEASON_SOURCE[1],
+                tier=Tier(PRE_SEASON_SOURCE[2]),
+            ),
+        ))
 
     sar_findings = [f for f in soil_factor_report.findings
                     if f.parameter == "SAR" and f.severity in ("warn", "critical")]
-    if sar_findings and months < DEFAULT_REACTION_PROFILES["gypsum"][0]:
+    ca_mg_findings = [f for f in soil_factor_report.findings
+                      if f.parameter == "Ca:Mg" and f.severity in ("warn", "critical")]
+    if (sar_findings or ca_mg_findings) and months < DEFAULT_REACTION_PROFILES["gypsum"][0]:
+        driver = "Sodicity" if sar_findings else "Low Ca:Mg ratio"
         items.append(OutstandingItem(
-            item="Gypsum application — too late this season for full Na displacement",
+            item="Gypsum application — too late this season for full reaction",
             why_it_matters=(
-                f"Sodicity needs gypsum to displace Na. Gypsum requires ~0.5-2 months. "
+                f"{driver} needs gypsum to correct. Gypsum requires ~0.5-2 months. "
                 f"Build-to-plant gap is only {months:.1f} months — schedule for post-harvest."
             ),
-            impact_if_skipped="Soil structure problems persist; Na toxicity continues",
+            impact_if_skipped=(
+                "Cation balance / Na issues persist; Ca-driven physiological "
+                "disorders (BER, tip-burn) more likely on susceptible crops"
+            ),
         ))
 
     return items, flags

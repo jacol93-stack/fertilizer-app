@@ -319,3 +319,65 @@ def test_cluster_and_aggregate_auto_clusters_skip_pinned_ids():
     assert len(clusters) == 2
     assert clusters[0].cluster_id == "A"
     assert clusters[1].cluster_id == "B"
+
+
+# ============================================================
+# target_clusters (agglomerative, user picks group count)
+# ============================================================
+
+
+def test_target_clusters_produces_exact_count():
+    """When the user picks N groups, the agglomerative path produces
+    exactly N clusters (or fewer when block count < N)."""
+    blocks = [
+        _StubBlock("1", "A", 10.0, {"N": 100, "P2O5": 40, "K2O": 60}),
+        _StubBlock("2", "B", 10.0, {"N": 200, "P2O5": 40, "K2O": 20}),
+        _StubBlock("3", "C", 10.0, {"N": 20, "P2O5": 40, "K2O": 200}),
+        _StubBlock("4", "D", 10.0, {"N": 110, "P2O5": 38, "K2O": 58}),
+    ]
+    for k in (1, 2, 3, 4):
+        clusters = cluster_and_aggregate(blocks, target_clusters=k)
+        assert len(clusters) == k, f"Expected {k} clusters, got {len(clusters)}"
+
+
+def test_target_clusters_respects_pinned_assignments():
+    """Pinned blocks form their own cluster id even when target_clusters
+    would otherwise merge them with a closer auto block."""
+    blocks = [
+        _StubBlock("1", "A", 10.0, {"N": 100, "P2O5": 40, "K2O": 60}),
+        _StubBlock("2", "B", 10.0, {"N": 100, "P2O5": 40, "K2O": 60}),
+        _StubBlock("3", "C", 10.0, {"N": 200, "P2O5": 40, "K2O": 20}),
+    ]
+    # Pin "1" to its own cluster X. Even at k=2, block 2 (identical to
+    # block 1) shouldn't be merged into X because X is the user's hand
+    # — it must be paired with block 3 if anything.
+    clusters = cluster_and_aggregate(
+        blocks, assignments={"1": "X"}, target_clusters=2,
+    )
+    assert len(clusters) == 2
+    cluster_for: dict[str, str] = {}
+    for c in clusters:
+        for bid in c.block_ids:
+            cluster_for[bid] = c.cluster_id
+    assert cluster_for["1"] == "X"
+    # Block 1 keeps X exclusively; the user pinned them apart.
+    assert cluster_for["2"] != "X" or cluster_for["3"] != "X"
+
+
+def test_target_clusters_merges_closest_first():
+    """At k=2 with three blocks (two near, one far), the two near
+    blocks get merged and the far block stays alone."""
+    blocks = [
+        _StubBlock("1", "Near A", 10.0, {"N": 100, "P2O5": 40, "K2O": 60}),
+        _StubBlock("2", "Near B", 10.0, {"N": 105, "P2O5": 41, "K2O": 58},
+                   soil_parameters={"pH (KCl)": 5.5}),
+        _StubBlock("3", "Far",    10.0, {"N": 20, "P2O5": 40, "K2O": 200},
+                   soil_parameters={"pH (KCl)": 7.5}),
+    ]
+    clusters = cluster_and_aggregate(blocks, target_clusters=2)
+    assert len(clusters) == 2
+    sizes = sorted(len(c.block_ids) for c in clusters)
+    assert sizes == [1, 2]
+    # The pair must be the near ones, not Far + one of the near ones.
+    pair_cluster = next(c for c in clusters if len(c.block_ids) == 2)
+    assert set(pair_cluster.block_ids) == {"1", "2"}

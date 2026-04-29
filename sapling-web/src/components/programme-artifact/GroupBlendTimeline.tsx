@@ -33,8 +33,12 @@ interface GroupRow {
   blends: Array<Blend & { code: string }>;
 }
 
+// User-facing labels follow SA grower convention: ratios read as
+// N : P : K with the implicit understanding that P / K are oxide forms
+// (P₂O₅, K₂O). Engine internals keep the explicit `P2O5` / `K2O` keys
+// to preserve chemistry; this map is the display boundary.
 const NUTRIENT_LABEL: Record<string, string> = {
-  N: "N", P2O5: "P₂O₅", K2O: "K₂O",
+  N: "N", P2O5: "P", K2O: "K",
   Ca: "Ca", Mg: "Mg", S: "S",
   Zn: "Zn", B: "B", Mn: "Mn", Fe: "Fe", Cu: "Cu", Mo: "Mo",
 };

@@ -361,6 +361,28 @@ def test_compute_soil_esp_returns_none_without_inputs():
     assert compute_soil_esp_pct({"Ca": 10}) is None
 
 
+def test_compute_soil_esp_uses_lab_na_saturation_directly():
+    """SA labs report Na saturation % alongside the raw Na mg/kg.
+    After normalise_soil_values strips the unit suffix, "Na Saturation"
+    is the canonical key — engine should short-circuit on it instead of
+    recomputing from Na/CEC. Regression: an Anton-Muller report rendered
+    ESP = 374 % because the engine missed this key and fell through to
+    a divide-by-different-units fallback."""
+    # Anton 5A actual lab values, post unit-suffix normalisation.
+    # Returned value is rounded to 1 dp.
+    soil = {"Na": 26.0, "CEC": 6.94, "Na Saturation": 1.65}
+    result = compute_soil_esp_pct(soil)
+    assert abs(result - 1.65) < 0.1
+
+
+def test_compute_soil_esp_from_mgkg_when_lab_omits_saturation():
+    """Lab reports Na in mg/kg, no precomputed saturation column. Fall
+    back to Na (mg/kg) → cmol_c/kg via the 229.9 equivalent weight."""
+    # 26 mg/kg ÷ 229.9 = 0.113 cmol_c/kg; / 6.94 × 100 = 1.6 %
+    soil = {"Na": 26.0, "CEC": 6.94}
+    assert abs(compute_soil_esp_pct(soil) - 1.6) < 0.2
+
+
 def test_compute_water_sar_typical_karoo_borehole():
     """Typical Karoo borehole: Na ~200 mg/L, Ca ~60 mg/L, Mg ~30 mg/L.
     Computed SAR should land in the moderate-to-severe band."""

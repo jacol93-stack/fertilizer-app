@@ -6,10 +6,12 @@ artifact mapping all surface here as a clear failure.
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 
+from app.models import ProgrammeArtifact
 from app.services.pdf_renderer import (
     _nutrient_pretty,
     _strip_source_refs,
@@ -72,6 +74,25 @@ def test_operator_mode_not_yet_implemented():
         render_programme_pdf(artifact, mode="operator")
 
 
+def test_pdf_renderer_torture():
+    """Torture test for Opus-prose readiness.
+
+    The fixture deliberately exercises edge cases the live engine doesn't
+    yet hit at scale: 12-block groups, 300-word `why_brief` paragraphs,
+    4-way split days, missing optional fields, 0-stage and 8+-rec blocks.
+    Goal is to surface layout / page-break / text-overflow regressions
+    BEFORE Opus narratives go live and start emitting variable-length
+    prose. We assert only that the renderer survives — no content checks,
+    so the test stays decoupled from copy decisions.
+    """
+    fixture_path = FIXTURES_DIR / "torture_test_artifact.json"
+    data = json.loads(fixture_path.read_text())
+    artifact = ProgrammeArtifact.model_validate(data)
+    pdf = render_programme_pdf(artifact)
+    assert len(pdf) > 100_000
+    assert pdf[:4] == b"%PDF"
+
+
 # ============================================================
 # Disclosure-boundary regression
 # ============================================================
@@ -113,21 +134,27 @@ def test_pdf_renderer_no_raw_material_names_in_blends():
         "MAP", "MKP", "SOP", "KCl", "Urea", "Solubor", "Manure Compost",
         "Magnesium Sulphate", "Magnesium Nitrate", "Zinc Oxide",
     )
-    # Note: the ANALYSIS strings legitimately mention nutrients (N, K, P)
-    # but never the raw material names. We only check the material names.
+    # "KCl" appears legitimately as part of the soil-test method label
+    # `pH (KCl)`. Mask that occurrence before scanning so we only catch
+    # the bare fertilizer-material reference.
+    scrubbed = html.replace("pH (KCl)", "pH(method)")
     for material in forbidden_materials:
         # The "Calcium Nitrate" check has to allow "Calcium" as a nutrient
         # mention but not the full product name.
-        assert material not in html, f"PDF HTML leaked raw material: {material}"
+        assert material not in scrubbed, f"PDF HTML leaked raw material: {material}"
 
 
 # ============================================================
 # Helper functions
 # ============================================================
 
-def test_nutrient_pretty_subscripts_p_and_k():
-    assert _nutrient_pretty("P2O5") == "P₂O₅"
-    assert _nutrient_pretty("K2O") == "K₂O"
+def test_nutrient_pretty_uses_bare_letters_for_p_and_k():
+    # SA grower convention: ratios read as N : P : K with the implicit
+    # understanding that P / K labels carry the oxide-form percentage.
+    # Engine internals keep P2O5 / K2O as canonical keys; this filter
+    # is the display boundary.
+    assert _nutrient_pretty("P2O5") == "P"
+    assert _nutrient_pretty("K2O") == "K"
 
 
 def test_nutrient_pretty_passes_through_unaffected():

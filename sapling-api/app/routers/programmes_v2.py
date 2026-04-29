@@ -23,7 +23,7 @@ data + crop + dates + method availability.
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Optional
 from uuid import UUID
 
@@ -71,7 +71,12 @@ class BlockRequest(BaseModel):
     block_name: str
     block_area_ha: float = Field(..., gt=0)
     soil_parameters: dict[str, float] = Field(default_factory=dict)
-    yield_target_per_ha: float = Field(..., gt=0)
+    # Optional — when missing/0, target_computation falls back to
+    # crop_requirements.default_yield (full-bearing potential) and
+    # emits an Assumption. Combined with tree_age + perennial_age_factors,
+    # this gives correct rates for young / non-bearing blocks without
+    # forcing the agronomist to enter "mature potential" manually.
+    yield_target_per_ha: Optional[float] = Field(None, ge=0)
     # Optional pre-computed targets; when omitted, the server uses target_computation
     season_targets: Optional[dict[str, float]] = None
     lab_name: Optional[str] = None
@@ -122,6 +127,13 @@ class BuildProgrammeRequest(BaseModel):
     stage_count: int = Field(default=5, ge=3, le=6)
     blocks: list[BlockRequest]
     method_availability: MethodAvailability
+    # Per-cluster method override set by the agronomist on the cluster
+    # board. cluster_id → MethodAvailability. When a cluster_id appears
+    # here, the engine uses its availability for that group's blends
+    # instead of the global `method_availability`. Lets the user say
+    # "Group A drip-only this season, Group B broadcast only" without
+    # changing the field's stored capability.
+    method_availability_per_cluster: dict[str, MethodAvailability] = Field(default_factory=dict)
     high_al_soil: Optional[bool] = None
     wet_summer_between_apply_and_plant: bool = False
     has_gypsum_in_plan: bool = False
@@ -188,6 +200,7 @@ async def build_programme_endpoint(
     # nutrients per block) for post-build narrative rendering.
     calc_path_tally: dict[str, int] = {}
     unadjusted_by_block: list[tuple[str, list[str]]] = []
+    pre_computed_assumptions: list = []
     for b in request.blocks:
         targets = b.season_targets
         if targets is None:
@@ -204,12 +217,18 @@ async def build_programme_endpoint(
                 block_pop_per_ha=b.pop_per_ha,
                 harvest_mode=request.harvest_mode,
                 tree_age=b.tree_age,
+                block_name=b.block_name,
             )
             targets = result.targets
             for path in result.calc_path_by_nutrient.values():
                 calc_path_tally[path] = calc_path_tally.get(path, 0) + 1
             if result.unadjusted_nutrients:
                 unadjusted_by_block.append((b.block_name, list(result.unadjusted_nutrients)))
+            # Forward any per-block assumptions (yield-target default,
+            # density scaling, N-min credit, etc.) to the orchestrator
+            # so they reach the artifact's Assumptions section.
+            if result.assumptions:
+                pre_computed_assumptions.extend(result.assumptions)
         block_inputs.append(BlockInput(
             block_id=b.block_id,
             block_name=b.block_name,
@@ -259,6 +278,7 @@ async def build_programme_endpoint(
         ref_number=request.ref_number,
         stage_count=request.stage_count,
         method_availability=request.method_availability,
+        method_availability_per_cluster=request.method_availability_per_cluster,
         blocks=effective_blocks,
         high_al_soil=request.high_al_soil,
         wet_summer_between_apply_and_plant=request.wet_summer_between_apply_and_plant,
@@ -271,6 +291,8 @@ async def build_programme_endpoint(
         application_months=request.application_months,
         sufficiency_rows=catalog.sufficiency_rows,
         param_map_rows=catalog.param_map_rows,
+        cluster_sources=cluster_sources,
+        pre_computed_assumptions=pre_computed_assumptions,
     )
 
     try:
@@ -292,10 +314,9 @@ async def build_programme_endpoint(
     # decision trace.
     _append_cluster_narrative(artifact, cluster_aggs)
 
-    # Per-block soil snapshots under multi-block clusters, so the
-    # agronomist still sees each block's raw soil data alongside the
-    # cluster's aggregated view.
-    _append_per_block_soil_snapshots(artifact, cluster_sources)
+    # Per-block soil snapshots are now emitted by the orchestrator
+    # itself (per-source pass) with full structured data — no longer
+    # need to append them here.
 
     # Provenance + blind-spot narrative: calc-path mix in the decision
     # trace (so the Sources Audit section shows how many nutrients
@@ -392,6 +413,11 @@ class PreviewScheduleRequest(BaseModel):
     # Manual cluster assignments mirror of BuildProgrammeRequest.
     # Empty dict → pure auto-cluster (default UX).
     cluster_assignments: dict[str, str] = Field(default_factory=dict)
+    # User-driven group count. When set, overrides `cluster_margin` and
+    # uses agglomerative clustering to produce exactly this many groups.
+    # The wizard's "Number of groups" picker sends this; passing None
+    # falls back to the legacy threshold-driven path.
+    target_clusters: Optional[int] = Field(default=None, ge=1, le=50)
     # Hooks for future build-input parity. Defaults match BuildProgrammeRequest.
     subtract_harvested_removal: bool = False
     harvest_mode: Optional[str] = None
@@ -410,6 +436,19 @@ class _ClusterStub:
         self.soil_parameters = soil_parameters
 
 
+def _material_to_correction_type(material: str) -> str:
+    """Map a pre-season material name onto the chip-type taxonomy the
+    wizard renders (lime / gypsum / sulphur / organic_matter)."""
+    name = (material or "").lower()
+    if "lime" in name or "dolomit" in name:
+        return "lime"
+    if "gypsum" in name:
+        return "gypsum"
+    if "sulphur" in name or "sulfur" in name:
+        return "sulphur"
+    return "other"
+
+
 @router.post("/preview-schedule")
 async def preview_schedule(
     request: PreviewScheduleRequest,
@@ -423,7 +462,13 @@ async def preview_schedule(
     agronomist can see "blocks A+B+C share recipe X; block D is its own
     recipe" before committing.
     """
-    from app.services.soil_corrections import calculate_all_corrections, calculate_corrective_targets
+    from app.services.soil_corrections import (
+        calculate_corrective_targets,
+        check_organic_carbon,
+        get_nutrient_explanations,
+    )
+    from app.services.soil_factor_reasoner import reason_soil_factors
+    from app.services.pre_season_module import recommend_pre_season_actions
 
     sb = get_supabase_admin()
 
@@ -471,17 +516,13 @@ async def preview_schedule(
         analysis = analyses_by_id.get(b.soil_analysis_id) if b.soil_analysis_id else None
         nutrient_targets = (analysis or {}).get("nutrient_targets") or []
 
-        if not nutrient_targets:
-            unplanable_blocks.append({
-                "block_id": b.block_id,
-                "block_name": b.block_name,
-                "reason": "missing_targets",
-            })
-            continue
-
         # Compute fresh v2 season targets so clustering uses the same
-        # numbers the build will produce. Skip if yield_target missing —
-        # target_computation needs it to scale removal.
+        # numbers the build will produce. Always attempt this — when the
+        # linked analysis was created via bulk-import (no crop / yield at
+        # the time of upload), nutrient_targets is empty but the block
+        # itself carries crop + yield_target from the field record, so
+        # we can still compute targets here from the analysis's
+        # soil_values.
         v2_targets: dict[str, float] = {}
         soil_values_for_targets = (analysis or {}).get("soil_values") or {}
         if b.yield_target and soil_values_for_targets:
@@ -503,6 +544,17 @@ async def preview_schedule(
                 # the block still gets growth-stage + correction info.
                 v2_targets = {}
 
+        # Block is unplanable only if BOTH pre-stored targets and
+        # freshly-computed v2 targets came up empty — i.e. nothing the
+        # programme builder can use.
+        if not nutrient_targets and not v2_targets:
+            unplanable_blocks.append({
+                "block_id": b.block_id,
+                "block_name": b.block_name,
+                "reason": "missing_targets",
+            })
+            continue
+
         # Growth stages — try crop, fall back to base crop ("Citrus (Valencia)" → "Citrus")
         crop = b.crop
         base_crop = crop.split("(")[0].strip() if "(" in crop else crop
@@ -521,7 +573,18 @@ async def preview_schedule(
             })
             continue
 
-        # Accepted methods — field first, then crop_application_methods, then default
+        # Accepted methods — block-level is authoritative.
+        # Resolution order:
+        #   1. `field.accepted_methods` array (the agronomist's stored
+        #      per-block capability — what this orchard *can* do).
+        #   2. `crop_application_methods` for the crop (fallback when
+        #      the field record was created without methods set).
+        #   3. Derive from irrigation_type when accepted_methods + crop
+        #      methods both come up empty. Used to silently drop to
+        #      `["broadcast"]` only — that lost fertigation routing on
+        #      drip/micro orchards. Now: drip/micro/pivot → broadcast
+        #      + fertigation; none → broadcast. Foliar always available
+        #      (cheap, universal capability).
         field_row = fields_by_id.get(b.field_id) if b.field_id else None
         accepted_methods = (field_row or {}).get("accepted_methods") or []
         if not accepted_methods:
@@ -531,24 +594,67 @@ async def preview_schedule(
             except Exception:
                 accepted_methods = []
         if not accepted_methods:
-            accepted_methods = ["broadcast"]
+            irr = (field_row or {}).get("irrigation_type")
+            fert_capable = (field_row or {}).get("fertigation_capable")
+            derived = ["broadcast", "foliar"]  # always available
+            if irr in ("drip", "micro", "pivot", "sprinkler") and fert_capable:
+                derived.append("fertigation")
+            accepted_methods = derived
 
         # Soil corrections (uses linked analysis when present)
-        corrections_payload = {"corrections": [], "nutrient_explanations": []}
-        corrective_payload = {"corrective_items": [], "missing_data": []}
+        # ─────────────────────────────────────────────────────────
+        # Unified path: the wizard's grouping page now surfaces the
+        # SAME pre-season recommendations the final artifact uses.
+        # Previously the preview ran a parallel `calculate_all_corrections`
+        # which only fired on legacy classifications-based triggers
+        # (Al + SAR), so blocks with low pH / high pH / low Ca:Mg
+        # showed up clean on the grouping page but flagged in the
+        # final report. This now routes through soil_factor_reasoner
+        # → recommend_pre_season_actions, the same code the artifact
+        # build runs at orchestrator.py:237.
+        #
+        # Build/planting dates: the preview is interpretive — we only
+        # need the *kind* of recommendation, not exact apply-by dates.
+        # Anchor on today + 6 months so the timing copy reads sensibly;
+        # final artifact uses the user's actual build/planting dates.
+        corrections_payload: dict = {"corrections": [], "nutrient_explanations": []}
+        corrective_payload = {"corrective_items": [], "missing_data": [], "assumptions": []}
         if analysis:
             soil_vals = analysis.get("soil_values") or {}
-            corrections_payload = calculate_all_corrections(
-                soil_values=soil_vals,
-                classifications=analysis.get("classifications") or {},
-                ratio_results=analysis.get("ratio_results"),
-                nutrient_targets=nutrient_targets,
-                crop=crop,
+            preview_build = date.today()
+            preview_plant = preview_build + timedelta(days=180)
+            sf_report = reason_soil_factors(soil_vals, crop=crop)
+            recs = recommend_pre_season_actions(
+                block_id=b.block_id,
+                soil_factor_report=sf_report,
+                build_date=preview_build,
+                planting_date=preview_plant,
             )
-            for c in corrections_payload["corrections"]:
-                c["block_id"] = b.block_id
-                c["block_name"] = b.block_name
-            all_corrections.extend(corrections_payload["corrections"])
+            unified_corrections: list[dict] = []
+            for r in recs:
+                unified_corrections.append({
+                    "type": _material_to_correction_type(r.material),
+                    "product": r.material,
+                    "rate": r.target_rate_per_ha,
+                    "timing": r.expected_status_at_planting or "Pre-season",
+                    "reason": r.reason,
+                    "block_id": b.block_id,
+                    "block_name": b.block_name,
+                })
+            # Org C / OM check has no equivalent in the new module —
+            # keep it as a parallel correction so we don't lose the
+            # build-OM-up advice on low-carbon soils.
+            org_c = check_organic_carbon(soil_vals, analysis.get("classifications") or {})
+            if org_c:
+                org_c["block_id"] = b.block_id
+                org_c["block_name"] = b.block_name
+                unified_corrections.append(org_c)
+
+            corrections_payload = {
+                "corrections": unified_corrections,
+                "nutrient_explanations": get_nutrient_explanations(nutrient_targets),
+            }
+            all_corrections.extend(unified_corrections)
 
             snapshot = analysis.get("norms_snapshot") or {}
             suf_rows = snapshot.get("sufficiency") or []
@@ -573,13 +679,28 @@ async def preview_schedule(
         except Exception:
             pass
 
+        # Surface the freshest nutrient_targets we have. The persisted
+        # `nutrient_targets` from the linked soil_analysis is often empty
+        # for bulk-imported rows (lab files don't carry crop+yield, so
+        # the upload-time computation skipped it). v2_targets is the
+        # on-the-fly recompute we always do here — promote it into the
+        # response under `nutrient_targets` when the persisted version
+        # is empty so the wizard's Review table renders real numbers
+        # instead of em-dashes.
+        effective_targets = nutrient_targets
+        if not effective_targets and v2_targets:
+            effective_targets = [
+                {"Nutrient": nut, "Target_kg_ha": float(kg)}
+                for nut, kg in v2_targets.items()
+            ]
+
         block_info.append({
             "block_id": b.block_id,
             "block_name": b.block_name,
             "crop": crop,
             "crop_type": crop_type,
             "growth_stages": stages,
-            "nutrient_targets": nutrient_targets,
+            "nutrient_targets": effective_targets,
             "accepted_methods": accepted_methods,
             "irrigation_type": (field_row or {}).get("irrigation_type"),
             "fertigation_capable": (field_row or {}).get("fertigation_capable"),
@@ -587,6 +708,7 @@ async def preview_schedule(
             "nutrient_explanations": corrections_payload["nutrient_explanations"],
             "corrective_targets": corrective_payload["corrective_items"],
             "missing_corrective_data": corrective_payload["missing_data"],
+            "corrective_assumptions": corrective_payload.get("assumptions", []),
         })
 
         # Build a cluster stub if we have v2 targets to cluster on.
@@ -605,14 +727,18 @@ async def preview_schedule(
             block_info[-1]["v2_season_targets"] = v2_targets
             block_info[-1]["block_area_ha"] = float(b.area_ha) if b.area_ha else None
 
-    # Cluster the planable blocks with the user-chosen margin and any
-    # manual assignments (drag-drop overrides from the wizard).
+    # Cluster the planable blocks with the user-chosen group count
+    # (or threshold), respecting any manual assignments. When the
+    # wizard sends `target_clusters`, agglomerative clustering produces
+    # exactly that many groups; otherwise the legacy first-fit + refine
+    # path runs against `cluster_margin`.
     clusters_payload: list[dict] = []
     if cluster_stubs:
         cluster_aggs = cluster_and_aggregate(
             cluster_stubs,
             margin=request.cluster_margin,
             assignments=request.cluster_assignments,
+            target_clusters=request.target_clusters,
         )
         for agg in cluster_aggs:
             clusters_payload.append({
@@ -689,7 +815,7 @@ async def render_programme_artifact_pdf(
     supabase = get_supabase_admin()
     query = (
         supabase.table("programme_artifacts")
-        .select("artifact, state")
+        .select("artifact, state, narrative_overrides")
         .eq("id", str(artifact_id))
     )
     if user.role != "admin":
@@ -698,9 +824,16 @@ async def render_programme_artifact_pdf(
     if not result.data:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Programme not found")
 
-    artifact_dict = result.data[0]["artifact"]
-    artifact = ProgrammeArtifact.model_validate(artifact_dict)
-    pdf_bytes = render_programme_pdf(artifact, mode="client")
+    row = result.data[0]
+    artifact = ProgrammeArtifact.model_validate(row["artifact"])
+    # When persisted Opus prose is available, render against it. Cheap
+    # + deterministic. The narrative is lock-stable from approval, so
+    # every re-download produces the same PDF.
+    pdf_bytes = render_programme_pdf(
+        artifact,
+        mode="client",
+        narrative_overrides=row.get("narrative_overrides") or None,
+    )
 
     filename = _suggest_pdf_filename(artifact)
     return Response(
@@ -809,7 +942,7 @@ async def transition_state(
     supabase = get_supabase_admin()
     select_query = (
         supabase.table("programme_artifacts")
-        .select("state,artifact")
+        .select("state,artifact,narrative_overrides")
         .eq("id", str(artifact_id))
     )
     if user.role != "admin":
@@ -847,6 +980,18 @@ async def transition_state(
         update["reviewed_at"] = datetime.utcnow().isoformat()
         if request.reviewer_notes is not None:
             update["reviewer_notes"] = request.reviewer_notes
+        # Lock the narrative if one has been generated. After this
+        # point generate-narrative refuses with 409 and the PDF
+        # renderer always uses the same prose for this artifact.
+        # Re-check narrative_overrides on the row we already have so
+        # we don't burn a round-trip.
+        artifact_row = current.data[0]
+        if artifact_row.get("narrative_overrides"):
+            update["narrative_locked_at"] = datetime.utcnow().isoformat()
+    # Reverse path: approved→draft un-locks narrative so the user can
+    # regenerate after picking up a fault in the prose during review.
+    if curr_state == "approved" and new_state == "draft":
+        update["narrative_locked_at"] = None
 
     update_query = (
         supabase.table("programme_artifacts")
@@ -885,6 +1030,216 @@ async def archive_programme(
     if not result.data:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Programme not found")
     return None
+
+
+# ============================================================
+# Opus narrative — generate / fetch / lock
+# ============================================================
+# Three-layer defense (engine + fact validator + policeman) lives
+# inside enhance_artifact_prose. The endpoint just wraps persistence,
+# cost capping, and lifecycle gating. Locked-once-approved is enforced
+# in two places: here (refuse to regenerate) and on transition_state
+# (sets narrative_locked_at on draft→approved).
+
+# Hard cost ceiling per generation. List pricing as of 2026-04: input
+# $15/MTok, output $75/MTok, cache reads $1.50/MTok, cache writes
+# $18.75/MTok. A typical 4-section render lands ~$0.25; pathological
+# runs could escalate. Anything above $5 is almost certainly a bug
+# (loop, retry storm, runaway prompt) and we'd rather fail loudly.
+NARRATIVE_COST_CAP_USD = 5.0
+
+
+def _estimate_narrative_cost_usd(
+    input_tokens: int,
+    output_tokens: int,
+    cache_read_tokens: int,
+    cache_write_tokens: int,
+) -> float:
+    return round(
+        input_tokens * 15 / 1_000_000
+        + output_tokens * 75 / 1_000_000
+        + cache_read_tokens * 1.5 / 1_000_000
+        + cache_write_tokens * 18.75 / 1_000_000,
+        4,
+    )
+
+
+class GenerateNarrativeResponse(BaseModel):
+    artifact_id: UUID
+    narrative_overrides: dict
+    raw_prose: dict
+    narrative_report: dict
+    narrative_generated_at: datetime
+    narrative_locked_at: Optional[datetime] = None
+
+
+@router.post(
+    "/{artifact_id}/generate-narrative",
+    response_model=GenerateNarrativeResponse,
+)
+async def generate_narrative(
+    artifact_id: UUID,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Fire the Opus narrative pipeline against a draft artifact.
+
+    Refuses if `narrative_locked_at IS NOT NULL` — once approved, the
+    narrative is frozen with the engine artifact. Costs are estimated
+    against list pricing and logged to ai_usage; renders above the
+    NARRATIVE_COST_CAP_USD ceiling are aborted post-hoc (tokens already
+    spent are recorded, prose is discarded).
+    """
+    from app.services.narrative.opus_renderer import enhance_artifact_prose
+    from app.services.pdf_renderer import _baseline_for_narrative, _build_context
+
+    supabase = get_supabase_admin()
+    query = (
+        supabase.table("programme_artifacts")
+        .select("id, user_id, state, artifact, narrative_locked_at")
+        .eq("id", str(artifact_id))
+    )
+    if user.role != "admin":
+        query = query.eq("user_id", user.id)
+    current = query.limit(1).execute()
+    if not current.data:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Programme not found")
+
+    row = current.data[0]
+    if row.get("narrative_locked_at"):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Narrative is locked — programme has been approved. "
+            "Move back to draft before regenerating.",
+        )
+
+    artifact = ProgrammeArtifact.model_validate(row["artifact"])
+    context = _build_context(artifact)
+    baseline = _baseline_for_narrative(context, artifact)
+
+    try:
+        result = enhance_artifact_prose(artifact, baseline=baseline, mode="client")
+    except RuntimeError as exc:
+        # Missing API key, etc. — surface clearly rather than burning
+        # the user with a generic 500.
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            f"Narrative pipeline not configured: {exc}",
+        )
+
+    cost_usd = _estimate_narrative_cost_usd(
+        result.input_tokens,
+        result.output_tokens,
+        result.cache_read_tokens,
+        result.cache_write_tokens,
+    )
+
+    # Log to ai_usage regardless of outcome so cost telemetry captures
+    # FAIL runs too (those still spend tokens on the audit layer).
+    try:
+        supabase.table("ai_usage").insert({
+            "user_id": user.id,
+            "operation": "generate_narrative",
+            "model": "claude-opus-4-7",
+            "input_tokens": result.input_tokens,
+            "output_tokens": result.output_tokens,
+            "cost_usd": cost_usd,
+            "metadata": {
+                "artifact_id": str(artifact_id),
+                "verdict": result.verdict,
+                "section_count": result.section_count,
+                "duration_seconds": round(result.duration_seconds, 1),
+                "cache_read_tokens": result.cache_read_tokens,
+                "cache_write_tokens": result.cache_write_tokens,
+                "issue_count": len(result.issues),
+            },
+        }).execute()
+    except Exception as exc:
+        logger.warning("ai_usage insert failed for generate_narrative: %s", exc)
+
+    if cost_usd > NARRATIVE_COST_CAP_USD:
+        raise HTTPException(
+            status.HTTP_507_INSUFFICIENT_STORAGE,
+            f"Narrative generation exceeded cost cap (${cost_usd:.2f} > "
+            f"${NARRATIVE_COST_CAP_USD:.2f}). Tokens recorded in ai_usage; "
+            "prose discarded. Investigate before retrying.",
+        )
+
+    narrative_report = {
+        "verdict": result.verdict,
+        "issues": result.issues,
+        "section_count": result.section_count,
+        "input_tokens": result.input_tokens,
+        "output_tokens": result.output_tokens,
+        "cache_read_tokens": result.cache_read_tokens,
+        "cache_write_tokens": result.cache_write_tokens,
+        "duration_seconds": round(result.duration_seconds, 1),
+        "cost_usd": cost_usd,
+        "used_opus_prose": result.used_opus_prose,
+    }
+    generated_at = datetime.utcnow()
+
+    update = {
+        "narrative_overrides": result.overrides,
+        "narrative_report": narrative_report,
+        "narrative_generated_at": generated_at.isoformat(),
+    }
+    upd_query = (
+        supabase.table("programme_artifacts")
+        .update(update)
+        .eq("id", str(artifact_id))
+    )
+    if user.role != "admin":
+        upd_query = upd_query.eq("user_id", user.id)
+    upd_query.execute()
+
+    return GenerateNarrativeResponse(
+        artifact_id=artifact_id,
+        narrative_overrides=result.overrides,
+        raw_prose=result.raw_prose,
+        narrative_report=narrative_report,
+        narrative_generated_at=generated_at,
+        narrative_locked_at=None,
+    )
+
+
+class NarrativeFetchResponse(BaseModel):
+    artifact_id: UUID
+    narrative_overrides: Optional[dict] = None
+    narrative_report: Optional[dict] = None
+    narrative_generated_at: Optional[datetime] = None
+    narrative_locked_at: Optional[datetime] = None
+
+
+@router.get("/{artifact_id}/narrative", response_model=NarrativeFetchResponse)
+async def fetch_narrative(
+    artifact_id: UUID,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Read the persisted narrative state for an artifact. Returns NULLs
+    for every narrative field when no narrative has been generated yet."""
+    supabase = get_supabase_admin()
+    query = (
+        supabase.table("programme_artifacts")
+        .select(
+            "id, user_id, narrative_overrides, narrative_report, "
+            "narrative_generated_at, narrative_locked_at",
+        )
+        .eq("id", str(artifact_id))
+    )
+    if user.role != "admin":
+        query = query.eq("user_id", user.id)
+    current = query.limit(1).execute()
+    if not current.data:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Programme not found")
+
+    row = current.data[0]
+    return NarrativeFetchResponse(
+        artifact_id=artifact_id,
+        narrative_overrides=row.get("narrative_overrides"),
+        narrative_report=row.get("narrative_report"),
+        narrative_generated_at=row.get("narrative_generated_at"),
+        narrative_locked_at=row.get("narrative_locked_at"),
+    )
 
 
 # ============================================================

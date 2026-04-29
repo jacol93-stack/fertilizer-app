@@ -45,6 +45,11 @@ export interface WizardToV2Input {
   /** Soil analysis metadata (lab + sample date) per analysis id. */
   soilMetaByAnalysisId?: Record<string, SoilAnalysisMeta>;
   methodAvailability: MethodAvailability;
+  /** Per-cluster method override set on the cluster board. cluster_id
+   * → list of method names (broadcast/fertigation/foliar) the user
+   * kept enabled for that group's blends. Empty / missing key → engine
+   * uses the global methodAvailability for that cluster. */
+  methodOverridesByCluster?: Record<string, string[]>;
   /** NPK-ratio L1 distance threshold for clustering blocks. Lower =
    * more separate recipes; higher = simpler stock list for the farmer.
    * Default 0.25 — wizard surfaces it on the Schedule step. */
@@ -132,6 +137,7 @@ export function wizardStateToBuildRequest(
     soilValuesByAnalysisId,
     soilMetaByAnalysisId,
     methodAvailability,
+    methodOverridesByCluster,
   } = input;
 
   const namedBlocks = blocks.filter((b) => b.name && b.crop);
@@ -233,6 +239,20 @@ export function wizardStateToBuildRequest(
     .filter((m) => Number.isInteger(m) && m >= 1 && m <= 12);
   const dedupedMonths = Array.from(new Set(applicationMonths)).sort((a, b) => a - b);
 
+  // Per-cluster method overrides — convert each cluster's selected
+  // method-name list to a MethodAvailability boolean dict the engine
+  // understands. Only emit clusters that actually have an override
+  // (non-empty list); missing clusters use the global availability.
+  const methodAvailabilityPerCluster: Record<string, MethodAvailability> = {};
+  if (methodOverridesByCluster) {
+    for (const [clusterId, methods] of Object.entries(methodOverridesByCluster)) {
+      if (!methods || methods.length === 0) continue;
+      methodAvailabilityPerCluster[clusterId] = methodNamesToAvailability(
+        methods, methodAvailability,
+      );
+    }
+  }
+
   const request: BuildProgrammeRequest = {
     client_name: clientName || "Unknown client",
     farm_name: farmName || "Unknown farm",
@@ -247,8 +267,32 @@ export function wizardStateToBuildRequest(
     ...(input.clusterMargin !== undefined && { cluster_margin: input.clusterMargin }),
     ...(Object.keys(assignments).length > 0 && { cluster_assignments: assignments }),
     ...(dedupedMonths.length > 0 && { application_months: dedupedMonths }),
+    ...(Object.keys(methodAvailabilityPerCluster).length > 0 && {
+      method_availability_per_cluster: methodAvailabilityPerCluster,
+    }),
   };
   return { request, skippedBlocks };
+}
+
+/** Convert a list of method names into the MethodAvailability flag-set
+ * the engine consumes. Caller's `base` provides the equipment baseline
+ * (e.g. has_seed_treatment); we only flip the kind-related flags
+ * according to the user's per-group selection. */
+function methodNamesToAvailability(
+  methods: string[],
+  base: MethodAvailability,
+): MethodAvailability {
+  const set = new Set(methods);
+  const fertigation = set.has("fertigation");
+  return {
+    ...base,
+    has_drip: fertigation && base.has_drip,
+    has_pivot: fertigation && base.has_pivot,
+    has_sprinkler: fertigation && base.has_sprinkler,
+    has_fertigation_injectors: fertigation && base.has_fertigation_injectors,
+    has_foliar_sprayer: set.has("foliar") && base.has_foliar_sprayer,
+    has_granular_spreader: set.has("broadcast") && base.has_granular_spreader,
+  };
 }
 
 /**

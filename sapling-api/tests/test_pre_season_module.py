@@ -76,8 +76,12 @@ def test_recommend_lime_when_al_active_and_lead_time_sufficient():
     assert "Al" in rec.reason or "saturation" in rec.reason
 
 
-def test_no_lime_recommendation_if_no_lead_time():
-    """1 month lead time with Al active → NO recommendation (lime needs 3+)."""
+def test_lime_recommendation_with_short_lead_time_signals_partial_reaction():
+    """1 month lead time with Al active → lime IS recommended, but the
+    expected_status flags limited reaction time this cycle (Window 3 of
+    `_adaptive_apply_by_and_status`). Engine no longer gates on lead
+    time — agronomist gets the soil-side action regardless, with
+    explicit timing guidance so they know what to expect."""
     soil = {"Al": 851, "Ca": 1025, "Mg": 242, "K": 227, "Na": 10}
     report = reason_soil_factors(soil, crop="Garlic")
     build = date(2026, 4, 1)
@@ -90,7 +94,14 @@ def test_no_lime_recommendation_if_no_lead_time():
         planting_date=plant,
         available_materials=SAMPLE_MATERIALS,
     )
-    assert not any(r.material == "Calcitic Lime" for r in recs)
+    lime_recs = [r for r in recs if r.material == "Calcitic Lime"]
+    assert len(lime_recs) == 1
+    rec = lime_recs[0]
+    # Apply-by lands at build_date + ~1 week (Window 3 — apply ASAP).
+    assert rec.recommended_apply_by_date <= build + timedelta(days=14)
+    # Status text must signal that the cycle has limited reaction time
+    # so the agronomist knows the partial-benefit framing.
+    assert "Limited reaction time" in rec.expected_status_at_planting
 
 
 def test_recommend_gypsum_for_sodicity():

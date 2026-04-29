@@ -294,10 +294,13 @@ def test_append_per_block_soil_snapshots_for_multi_block_cluster():
     """Multi-block cluster → per-original-block SoilSnapshots appended,
     each with the block's raw soil_parameters + lab metadata, labelled
     with '(in Cluster X)' so the viewer knows the context."""
+    # pH delta kept below the soil-state split threshold (0.8 units) so
+    # the auto-refiner doesn't break this cluster apart — the test is
+    # about snapshot emission, not clustering policy.
     b1 = _bi("1", "Land A", 2.0, {"N": 100, "P2O5": 40, "K2O": 60},
-             soil={"pH": 5.5, "P_mgkg": 10})
+             soil={"pH": 5.7, "P_mgkg": 10})
     b2 = _bi("2", "Land B", 8.0, {"N": 100, "P2O5": 40, "K2O": 60},
-             soil={"pH": 6.5, "P_mgkg": 30})
+             soil={"pH": 6.0, "P_mgkg": 30})
     _effective, _aggs, sources = _cluster_block_inputs([b1, b2])
 
     artifact = _StubArtifact()
@@ -310,7 +313,7 @@ def test_append_per_block_soil_snapshots_for_multi_block_cluster():
     assert any("Land B (in Cluster" in n for n in names)
     # Raw parameters preserved — not the cluster's aggregated mean
     land_a = next(s for s in artifact.soil_snapshots if "Land A" in s.block_name)
-    assert land_a.parameters["pH"] == 5.5
+    assert land_a.parameters["pH"] == 5.7
     assert land_a.parameters["P_mgkg"] == 10
 
 
@@ -328,30 +331,56 @@ def test_append_per_block_soil_snapshots_noop_for_singletons():
     assert artifact.soil_snapshots == []
 
 
-def test_append_cluster_narrative_emits_risk_flag_on_heterogeneity():
-    """Cluster with high nutrient variation produces a critical/watch
-    RiskFlag naming the affected nutrients."""
-    # Same NPK ratio (20:10:10 across the board) so they cluster, but
-    # very different absolute K2O: 60, 180, 240 → CV ~48% → split-level
-    # (K2O split threshold is 35%).
+def test_auto_split_breaks_heterogeneous_cluster_by_worst_nutrient():
+    """Three blocks with the same NPK ratio but very different absolute
+    amounts get auto-split by the post-clustering pass — what would have
+    been one heterogeneous cluster becomes two homogeneous ones, sorted
+    by the worst-CV nutrient (K2O here). Replaces the prior contract
+    where the system surfaced a heterogeneity warning instead of acting
+    on it."""
     b1 = _bi("1", "Land A", 10.0, {"N": 120, "P2O5": 60, "K2O": 60})
     b2 = _bi("2", "Land B", 10.0, {"N": 360, "P2O5": 180, "K2O": 180})
     b3 = _bi("3", "Land C", 10.0, {"N": 480, "P2O5": 240, "K2O": 240})
     effective, aggs, _sources = _cluster_block_inputs([b1, b2, b3])
-    # All three have the same ratio (2:1:1) → one cluster
-    assert len(aggs) == 1
-    assert len(aggs[0].block_ids) == 3
+    # Auto-split kicks in: median split on K2O → low (b1) | high (b2,b3)
+    assert len(aggs) == 2
+    cluster_block_counts = sorted(len(a.block_ids) for a in aggs)
+    assert cluster_block_counts == [1, 2]
+    # Neither resulting cluster should still be split-level
+    assert all(not a.heterogeneity.any_split for a in aggs)
 
     artifact = _StubArtifact()
     _append_cluster_narrative(artifact, aggs)
-    assert len(artifact.risk_flags) == 1
-    msg = artifact.risk_flags[0].message
-    assert "Cluster" in msg
-    assert "K2O" in msg
-    # Split → "Consider splitting" message; citation included
-    assert artifact.risk_flags[0].severity == "critical"
-    assert "splitting" in msg.lower()
-    assert "Wilding" in msg
+    # No RiskFlag because each resulting cluster is below the split
+    # threshold — the auto-split addressed the underlying problem.
+    assert artifact.risk_flags == []
+
+
+def test_auto_split_separates_blocks_with_extreme_pH_spread():
+    """Blocks with the same NPK ratio + similar absolute amounts but
+    very different pH must split. An averaged programme pH-blind to
+    the spread would lime an alkaline block (locking out micros) or
+    pull an acidic block further down."""
+    # Same recipe shape and similar magnitudes — pre-fix this would
+    # cluster into one. pH delta of 3.2 units exceeds the 0.8 split
+    # threshold and forces a split on soil-state alone.
+    b1 = _bi("1", "Acid block", 10.0, {"N": 100, "P2O5": 40, "K2O": 60},
+             soil={"pH (KCl)": 4.4})
+    b2 = _bi("2", "Mid block", 10.0, {"N": 100, "P2O5": 40, "K2O": 60},
+             soil={"pH (KCl)": 5.5})
+    b3 = _bi("3", "Alkaline block", 10.0, {"N": 100, "P2O5": 40, "K2O": 60},
+             soil={"pH (KCl)": 7.6})
+    _, aggs, _ = _cluster_block_inputs([b1, b2, b3])
+    # At least 2 sub-clusters — extreme blocks must NOT share a group
+    assert len(aggs) >= 2
+    # Acid + alkaline blocks must not share the same cluster
+    cluster_for = {}
+    for a in aggs:
+        for bid in a.block_ids:
+            cluster_for[bid] = a.cluster_id
+    assert cluster_for["1"] != cluster_for["3"], (
+        "pH 4.4 and pH 7.6 must not share a cluster"
+    )
 
 
 # ============================================================

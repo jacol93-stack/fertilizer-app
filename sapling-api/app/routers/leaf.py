@@ -28,7 +28,10 @@ class LeafSaveRequest(BaseModel):
     block_id: str | None = None
     crop: str = Field(..., min_length=1, max_length=200)
     sample_part: str | None = Field(None, max_length=200)
-    sample_date: str | None = None
+    # Required so every persisted leaf analysis is sortable in the
+    # historical view + the duplicate detection has a real key. UI
+    # defaults to today when the agronomist has no specific date.
+    sample_date: str = Field(..., min_length=1, max_length=20)
     lab_name: str | None = Field(None, max_length=200)
     values: dict[str, float]
     classifications: dict | None = None
@@ -82,11 +85,23 @@ def classify_leaf(body: LeafClassifyRequest, user: CurrentUser = Depends(get_cur
 
 @router.post("/", status_code=201)
 def save_leaf_analysis(body: LeafSaveRequest, user: CurrentUser = Depends(get_current_user)):
-    """Save a leaf analysis record."""
+    """Save a leaf analysis record. Same canonicalisation contract as
+    soil analyses: caller-supplied `values` go through the
+    canonicaliser registry (which knows the macros + micros leaf
+    interpretation needs), canonical form is persisted to `values`,
+    verbatim input lands in `raw_values` for audit."""
     sb = get_supabase_admin()
 
     data = body.model_dump(exclude_none=True)
     data["agent_id"] = user.id
+
+    if data.get("values"):
+        from app.services.soil_canonicaliser import canonicalise_soil_values
+        canonical = canonicalise_soil_values(
+            data["values"], source="leaf_api_direct",
+        )
+        data["raw_values"] = canonical.raw
+        data["values"] = canonical.values
 
     result = sb.table("leaf_analyses").insert(data).execute()
     if not result.data:
@@ -106,6 +121,7 @@ def list_leaf_analyses(
     page: PageParams = Depends(PageParams.as_query),
     user: CurrentUser = Depends(get_current_user),
     client_id: str | None = None,
+    farm_id: str | None = None,
     field_id: str | None = None,
 ):
     """List leaf analyses. Agents see own, admins see all."""
@@ -115,6 +131,8 @@ def list_leaf_analyses(
         query = query.eq("agent_id", user.id)
     if client_id:
         query = query.eq("client_id", client_id)
+    if farm_id:
+        query = query.eq("farm_id", farm_id)
     if field_id:
         query = query.eq("field_id", field_id)
     query = apply_page(query, page, default_order="created_at")
@@ -258,19 +276,50 @@ async def extract_leaf_report(
     from app.services.lab_extractor import extract_from_document
 
     allowed_types = {
-        "application/pdf", "image/jpeg", "image/png", "image/webp", "image/gif",
+        "application/pdf",
+        "image/jpeg", "image/png", "image/webp", "image/gif",
+        # Spreadsheet exports — leaf labs use the same xlsx/csv shapes
+        # as soil; the AI handles arbitrary column orders + parameter
+        # names regardless of department.
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+        "text/csv",
     }
-    if file.content_type not in allowed_types:
+    is_allowed = file.content_type in allowed_types
+    if not is_allowed and file.filename:
+        lower = file.filename.lower()
+        if lower.endswith((".xlsx", ".xls", ".csv")):
+            is_allowed = True
+    if not is_allowed:
         raise HTTPException(
-            400, f"Unsupported file type: {file.content_type}. Upload a PDF or image."
+            400,
+            f"Unsupported file type: {file.content_type}. "
+            f"Upload a PDF, image, xlsx, or CSV.",
         )
 
     contents = await file.read()
     if len(contents) > 50 * 1024 * 1024:
         raise HTTPException(400, "File too large. Maximum 50 MB.")
 
+    # Normalise content type from filename when the browser sent
+    # something generic (Finder-dragged xlsx → application/octet-stream).
+    effective_content_type = file.content_type
+    if file.filename:
+        lower = file.filename.lower()
+        if lower.endswith(".xlsx"):
+            effective_content_type = (
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        elif lower.endswith(".xls"):
+            effective_content_type = "application/vnd.ms-excel"
+        elif lower.endswith(".csv"):
+            effective_content_type = "text/csv"
+
     try:
-        result = extract_from_document(contents, file.content_type, lab_name_hint, mode="leaf")
+        result = extract_from_document(
+            contents, effective_content_type, lab_name_hint, mode="leaf",
+            user_id=user.id,
+        )
     except ValueError as e:
         raise HTTPException(400, str(e))
     except Exception as e:

@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>{{ header.title }}</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+{# Running header — repeats on every interior page via WeasyPrint position: running() #}
+<div class="running-header">
+  <div class="running-header__brand">
+    <img class="running-header__logo" src="file://__ASSET_DIR__/logo_icon_only.png" alt="" />
+    <span class="running-header__wordmark">Sapling</span>
+  </div>
+</div>
+
+{# ============================================================
+   COVER PAGE — same visual language as the programme cover
+   ============================================================ #}
+<section class="cover">
+  <img class="cover__watermark" src="file://__ASSET_DIR__/logo_icon_only.png" alt="" />
+  <div class="cover__inner">
+    <div class="cover__rule"></div>
+    <h1 class="cover__title">
+      Soil<br />
+      <span class="cover__title-accent">Report.</span>
+    </h1>
+    <p class="cover__tagline">Read the land before it speaks.</p>
+    {% if cover_subhead %}
+    <p class="cover__sub">{{ cover_subhead }}</p>
+    {% endif %}
+
+    <div class="cover__meta">
+      {% if header.client_name %}
+      <span class="cover__meta-label">Client</span>
+      <span class="cover__meta-value">{{ header.client_name }}</span>
+      {% endif %}
+      {% if header.farm_name %}
+      <span class="cover__meta-label">Farm</span>
+      <span class="cover__meta-value">{{ header.farm_name }}</span>
+      {% endif %}
+      <span class="cover__meta-label">Generated</span>
+      <span class="cover__meta-value">{{ header.generated_on_formatted }}</span>
+      <span class="cover__meta-label">Scope</span>
+      <span class="cover__meta-value">{{ header.scope_label }}</span>
+      <span class="cover__meta-label">Coverage</span>
+      <span class="cover__meta-value">
+        {{ header.block_count }} block{% if header.block_count != 1 %}s{% endif %} ·
+        {{ header.analysis_count }} analys{% if header.analysis_count == 1 %}is{% else %}es{% endif %}
+        {% if header.span_phrase %}· {{ header.span_phrase }}{% endif %}
+      </span>
+    </div>
+
+    <div class="cover__footer">
+      <span>{{ header.client_name or '' }}{% if header.farm_name %} · {{ header.farm_name }}{% endif %}</span>
+      <span>Sapling · Agricultural Advisory</span>
+    </div>
+  </div>
+</section>
+
+{# ============================================================
+   CONTENTS — TOC with target-counter page numbers
+   ============================================================ #}
+<section class="contents">
+  <header class="page-header">
+    <div class="page-header__brand">
+      <img class="page-header__logo" src="file://__ASSET_DIR__/logo_icon_only.png" alt="" />
+      <span class="page-header__wordmark">Sapling</span>
+    </div>
+    <span class="page-header__locator">Contents</span>
+  </header>
+  <span class="section__label">Contents</span>
+  <h2 class="section__title">In this report.</h2>
+  <ol class="contents__list">
+    {% for entry in contents_entries %}
+    <li class="contents__row">
+      <a class="contents__link" href="#{{ entry.anchor }}">
+        <span class="contents__num">{{ "%02d"|format(loop.index) }}</span>
+        <span class="contents__title">{{ entry.title }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+
+{# ============================================================
+   SECTION 01 — EXECUTIVE SUMMARY
+   ============================================================ #}
+<section class="section" id="section-summary">
+  {% include "_page_header.html" %}
+  <span class="section__label">Section 01</span>
+  <h2 class="section__title">Executive summary.</h2>
+  <p class="section__intro">{{ executive_intro }}</p>
+
+  {% if headline_signals %}
+  <aside class="callout">
+    <span class="callout__label">Three loudest signals</span>
+    <ul>
+      {% for sig in headline_signals %}
+      <li>{{ sig }}</li>
+      {% endfor %}
+    </ul>
+  </aside>
+  {% endif %}
+</section>
+
+{# ============================================================
+   SECTION 02 — PER-BLOCK SOIL DETAIL
+   Same visual language as programme.html's Section 02. Each block
+   gets its own page break + snapshot.
+   ============================================================ #}
+{% if soil_snapshots %}
+<section class="section" id="section-blocks">
+  {% include "_page_header.html" %}
+  <div class="section-cover">
+    <span class="section__label">Section 02</span>
+    <h2 class="section__title">Per-block soil detail.</h2>
+    <p class="section__intro">{{ blocks_intro }}</p>
+  </div>
+
+  {% for snap in soil_snapshots %}
+  <div class="soil-block">
+    <div class="soil-block__header">
+      <h3 class="subsection soil-block__title">
+        {{ snap.block_name }}
+        <span class="soil-block__meta">{{ "%.2f"|format(snap.block_area_ha) }} ha</span>
+      </h3>
+      {% if snap.sample_label %}
+      <p class="sample-meta">{{ snap.sample_label }}</p>
+      {% endif %}
+    </div>
+
+    {% if snap.nutrient_rows %}
+    <h4 class="soil-block__subhead">Nutrients vs ideal</h4>
+    <table class="soil-table">
+      <thead>
+        <tr>
+          <th>Parameter</th>
+          <th>Reading</th>
+          <th>Optimal range</th>
+          <th>Status</th>
+          <th class="soil-table__bar-col">Position vs ideal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in snap.nutrient_rows %}
+        <tr>
+          <td class="soil-table__name">{{ row.label }}</td>
+          <td class="mono">{{ row.value_display }}{% if row.unit %} {{ row.unit }}{% endif %}</td>
+          <td class="mono soil-table__optimal">{{ row.optimal_display }}{% if row.unit %} {{ row.unit }}{% endif %}</td>
+          <td>
+            <span class="status status--{{ row.status }}">{{ row.status_label }}</span>
+          </td>
+          <td>
+            <div class="range-bar">
+              <div class="range-bar__optimal"
+                   style="left: {{ "%.1f"|format(row.bar_optimal_left_pct) }}%;
+                          width: {{ "%.1f"|format(row.bar_optimal_width_pct) }}%;"></div>
+              <div class="range-bar__marker range-bar__marker--{{ row.status }}"
+                   style="left: {{ "%.1f"|format(row.bar_value_pct) }}%;"></div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    {% if snap.cation_balance_rows %}
+    <h4 class="soil-block__subhead">Cation balance (% of CEC)</h4>
+    <table class="soil-table">
+      <thead>
+        <tr>
+          <th>Cation</th>
+          <th>Saturation</th>
+          <th>Optimal range</th>
+          <th>Status</th>
+          <th class="soil-table__bar-col">Position vs ideal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in snap.cation_balance_rows %}
+        <tr>
+          <td class="soil-table__name">{{ row.label }}</td>
+          <td class="mono">{{ row.value_display }}</td>
+          <td class="mono soil-table__optimal">{{ row.optimal_display }}</td>
+          <td>
+            <span class="status status--{{ row.status }}">{{ row.status_label }}</span>
+          </td>
+          <td>
+            <div class="range-bar">
+              <div class="range-bar__optimal"
+                   style="left: {{ "%.1f"|format(row.bar_optimal_left_pct) }}%;
+                          width: {{ "%.1f"|format(row.bar_optimal_width_pct) }}%;"></div>
+              <div class="range-bar__marker range-bar__marker--{{ row.status }}"
+                   style="left: {{ "%.1f"|format(row.bar_value_pct) }}%;"></div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    {% if snap.cation_ratio_rows %}
+    <h4 class="soil-block__subhead">Cation ratios</h4>
+    <table class="soil-table">
+      <thead>
+        <tr>
+          <th>Ratio</th>
+          <th>Reading</th>
+          <th>Target band</th>
+          <th>Status</th>
+          <th class="soil-table__bar-col">Position vs ideal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in snap.cation_ratio_rows %}
+        <tr>
+          <td class="soil-table__name">{{ row.label }}</td>
+          <td class="mono">{{ row.value_display }}</td>
+          <td class="mono soil-table__optimal">{{ row.optimal_display }}</td>
+          <td>
+            <span class="status status--{{ row.status }}">{{ row.status_label }}</span>
+          </td>
+          <td>
+            <div class="range-bar">
+              <div class="range-bar__optimal"
+                   style="left: {{ "%.1f"|format(row.bar_optimal_left_pct) }}%;
+                          width: {{ "%.1f"|format(row.bar_optimal_width_pct) }}%;"></div>
+              <div class="range-bar__marker range-bar__marker--{{ row.status }}"
+                   style="left: {{ "%.1f"|format(row.bar_value_pct) }}%;"></div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    {% if snap.ratio_rows %}
+    <h4 class="soil-block__subhead">Antagonisms &amp; availability checks</h4>
+    <table class="soil-table soil-table--ratios">
+      <thead>
+        <tr>
+          <th>Ratio</th>
+          <th>Reading</th>
+          <th>Target</th>
+          <th>Status</th>
+          <th class="soil-table__bar-col">Position vs ideal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in snap.ratio_rows %}
+        <tr>
+          <td class="soil-table__name">{{ row.label }}</td>
+          <td class="mono">{{ row.value_display }}</td>
+          <td class="mono soil-table__optimal">{{ row.target_display }}</td>
+          <td>
+            <span class="status status--{{ row.severity }}">{{ row.severity_label }}</span>
+          </td>
+          <td>
+            <div class="range-bar">
+              <div class="range-bar__optimal"
+                   style="left: {{ "%.1f"|format(row.bar_optimal_left_pct) }}%;
+                          width: {{ "%.1f"|format(row.bar_optimal_width_pct) }}%;"></div>
+              <div class="range-bar__marker range-bar__marker--{{ row.severity if row.severity in ['low', 'high', 'ok'] else 'high' if row.severity in ['warn', 'critical'] else 'ok' }}"
+                   style="left: {{ "%.1f"|format(row.bar_value_pct) }}%;"></div>
+            </div>
+          </td>
+        </tr>
+        {% if row.message or row.recommended_action %}
+        <tr class="soil-table__note-row">
+          <td></td>
+          <td colspan="4" class="soil-table__note">
+            {{ row.message }}
+            {% if row.recommended_action %}
+            <span class="soil-table__action">{{ row.recommended_action }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    {% if snap.headline_signals %}
+    <h4 class="soil-block__subhead">The loudest signals</h4>
+    {% for sig in snap.headline_signals %}
+    <div class="signal">
+      <p class="signal__body">{{ sig }}</p>
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{# ============================================================
+   SECTION 03 — TRENDS OVER TIME
+   Only when at least one block has ≥ 2 analyses on the timeline.
+   ============================================================ #}
+{% if trend_blocks %}
+<section class="section" id="section-trends">
+  {% include "_page_header.html" %}
+  <span class="section__label">Section 03</span>
+  <h2 class="section__title">Trends over time.</h2>
+  <p class="section__intro">{{ trends_intro }}</p>
+
+  {% for trend in trend_blocks %}
+  <div class="soil-block">
+    <h3 class="subsection soil-block__title">
+      {{ trend.block_name }}
+      <span class="soil-block__meta">
+        {{ trend.n_analyses }} analyses · {{ trend.span_label }}
+      </span>
+    </h3>
+
+    {% if trend.headline_signals %}
+    <h4 class="soil-block__subhead">What's moving</h4>
+    {% for sig in trend.headline_signals %}
+    <div class="signal">
+      <p class="signal__body">{{ sig }}</p>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if trend.parameter_rows %}
+    <h4 class="soil-block__subhead">Parameter-by-parameter</h4>
+    <table class="soil-table">
+      <thead>
+        <tr>
+          <th>Parameter</th>
+          <th>Earliest</th>
+          <th>Latest</th>
+          <th>Change</th>
+          <th>Direction</th>
+          <th>Significance</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in trend.parameter_rows %}
+        <tr>
+          <td class="soil-table__name">{{ row.parameter }}</td>
+          <td class="mono">{{ row.earliest_display }}</td>
+          <td class="mono">{{ row.latest_display }}</td>
+          <td class="mono">{{ row.delta_display }}</td>
+          <td>
+            <span class="status status--{{ row.direction_class }}">{{ row.direction_label }}</span>
+          </td>
+          <td class="mono">{{ row.significance_label }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{# ============================================================
+   SECTION 04 — HOLISTIC SUMMARY (multi-block only)
+   ============================================================ #}
+{% if holistic_signals %}
+<section class="section" id="section-holistic">
+  {% include "_page_header.html" %}
+  <span class="section__label">Section 04</span>
+  <h2 class="section__title">Across the farm.</h2>
+  <p class="section__intro">{{ holistic_intro }}</p>
+
+  <ol class="numbered-list">
+    {% for sig in holistic_signals %}
+    <li>{{ sig }}</li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}
+
+{# ============================================================
+   END MARKER
+   ============================================================ #}
+<section class="section" id="section-end">
+  {% include "_page_header.html" %}
+  <div class="end-marker">End of Soil Report</div>
+  <p class="end-marker__ref">
+    Generated {{ header.generated_on_formatted }}
+    {% if header.client_name %} · {{ header.client_name }}{% endif %}
+    {% if header.farm_name %} · {{ header.farm_name }}{% endif %}
+  </p>
+</section>
+
+</body>
+</html>

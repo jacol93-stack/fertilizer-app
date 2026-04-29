@@ -77,13 +77,58 @@
         "Ca:B": 2800.0,
         "soil_ESP_pct": 1.0
       },
+      "factor_findings": [
+        {
+          "kind": "antagonism",
+          "severity": "warn",
+          "parameter": "Ca:B",
+          "value": 2800.0,
+          "threshold": 1000.0,
+          "message": "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.",
+          "recommended_action": "Apply foliar B at critical stages (pre-bloom, fruit set)",
+          "source_id": "SHORROCKS_1997",
+          "source_section": "Plant & Soil 193:121-148",
+          "tier": 3
+        },
+        {
+          "kind": "balance",
+          "severity": "warn",
+          "parameter": "pH (KCl)",
+          "value": 4.8,
+          "threshold": 5.0,
+          "message": "pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion limited.",
+          "recommended_action": "Lime application (calcitic or dolomitic per Mg status). Size against pH deficit + buffer factor; pre-season for reaction time.",
+          "source_id": "FERTASA_5_1",
+          "source_section": "FERTASA Soil Fertility Handbook §5.1 — Liming and pH management",
+          "tier": 1
+        }
+      ],
+      "nutrient_status": [],
       "headline_signals": [
-        "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering."
+        "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering.",
+        "pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion limited."
       ]
     }
   ],
   "pre_season_inputs": [],
-  "pre_season_recommendations": [],
+  "pre_season_recommendations": [
+    {
+      "block_id": "mac-levubu-ref",
+      "material": "Calcitic Lime",
+      "target_rate_per_ha": "1 500-2 500 kg/ha (size to lime requirement test)",
+      "purpose": "pH lift + Ca",
+      "reason": "Address: pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion limited.",
+      "recommended_apply_by_date": "2026-11-01",
+      "reaction_time_months": 4.0,
+      "expected_status_at_planting": "Cycle already underway — apply at the earliest opportunity to set up full reacted for the next cycle (target reaction window: ~4 months before 2027-03-01).",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Standard SA agronomy + Foth-Ellis Soil Fertility 2nd ed. + IFA 1992",
+        "note": null,
+        "tier": 6
+      }
+    }
+  ],
   "stage_schedules": [
     {
       "block_id": "mac-levubu-ref",
@@ -211,7 +256,7 @@
       "raw_products": [
         {
           "product": "Manure Compost",
-          "analysis": "N 2.1%, P₂O₅ 1.0%, K₂O 1.6%, Ca 2.2%, Mg 1.0%, S 0.7%",
+          "analysis": "N 2.1%, P 1.0%, K 1.6%, Ca 2.2%, Mg 1.0%, S 0.7%",
           "stream": null,
           "rate_per_event_per_ha": "250 kg",
           "rate_per_stage_per_ha": "500 kg",
@@ -219,18 +264,41 @@
           "source": null
         },
         {
+          "product": "KCl",
+          "analysis": "K 60.0%",
+          "stream": null,
+          "rate_per_event_per_ha": "17 kg",
+          "rate_per_stage_per_ha": "34 kg",
+          "batch_total": "170 kg",
+          "source": null
+        },
+        {
           "product": "MAP",
-          "analysis": "N 11.0%, P₂O₅ 51.0%",
+          "analysis": "N 11.0%, P 51.0%",
           "stream": null,
           "rate_per_event_per_ha": "5.4 kg",
           "rate_per_stage_per_ha": "11 kg",
           "batch_total": "54 kg",
           "source": null
+        },
+        {
+          "product": "SOP",
+          "analysis": "K 50.0%, S 18.0%",
+          "stream": null,
+          "rate_per_event_per_ha": "3.3 kg",
+          "rate_per_stage_per_ha": "6.7 kg",
+          "batch_total": "33 kg",
+          "source": null
         }
       ],
       "concentrates": [],
       "nutrients_delivered": {
-        "P2O5": 10.5
+        "P2O5": 10.5,
+        "K2O": 31.7,
+        "S": 4.7,
+        "N": 11.7,
+        "Ca": 11.0,
+        "Mg": 5.0
       },
       "sources": [
         {
@@ -281,30 +349,12 @@
       },
       "raw_products": [
         {
-          "product": "Potassium Nitrate",
-          "analysis": "N 13.0%, K₂O 46.0%",
-          "stream": "B",
-          "rate_per_event_per_ha": "28 kg",
-          "rate_per_stage_per_ha": "57 kg",
-          "batch_total": "283 kg",
-          "source": null
-        },
-        {
           "product": "Calcium Nitrate",
           "analysis": "N 15.5%, Ca 19.0%",
           "stream": "A",
-          "rate_per_event_per_ha": "23 kg",
-          "rate_per_stage_per_ha": "46 kg",
-          "batch_total": "231 kg",
-          "source": null
-        },
-        {
-          "product": "SOP",
-          "analysis": "K₂O 50.0%, S 18.0%",
-          "stream": "B",
-          "rate_per_event_per_ha": "9.2 kg",
-          "rate_per_stage_per_ha": "18 kg",
-          "batch_total": "92 kg",
+          "rate_per_event_per_ha": "47 kg",
+          "rate_per_stage_per_ha": "94 kg",
+          "batch_total": "468 kg",
           "source": null
         }
       ],
@@ -312,26 +362,16 @@
         {
           "name": "Part A (Calcium stream)",
           "contains": "Calcium Nitrate",
-          "dry_weight_or_liquid": "231 kg dry salts",
+          "dry_weight_or_liquid": "468 kg dry salts",
           "strength_g_per_l": 300.0,
-          "volume_l": 770.0,
+          "volume_l": 1560.0,
           "per_event_dose_l": null,
           "injection_notes": "Inject via dedicated stock-tank line (never mix with Part B)"
-        },
-        {
-          "name": "Part B (Sulphate + phosphate stream)",
-          "contains": "Potassium Nitrate + SOP",
-          "dry_weight_or_liquid": "375 kg dry salts",
-          "strength_g_per_l": 100.0,
-          "volume_l": 3750.0,
-          "per_event_dose_l": null,
-          "injection_notes": "Inject via second stock-tank line, parallel or sequential"
         }
       ],
       "nutrients_delivered": {
         "N": 14.5,
-        "K2O": 35.2,
-        "S": 3.3
+        "Ca": 17.8
       },
       "sources": [
         {
@@ -390,7 +430,7 @@
       "raw_products": [
         {
           "product": "Potassium Nitrate",
-          "analysis": "N 13.0%, K₂O 46.0%",
+          "analysis": "N 13.0%, K 46.0%",
           "stream": "B",
           "rate_per_event_per_ha": "28 kg",
           "rate_per_stage_per_ha": "85 kg",
@@ -399,7 +439,7 @@
         },
         {
           "product": "MAP",
-          "analysis": "N 11.0%, P₂O₅ 51.0%",
+          "analysis": "N 11.0%, P 51.0%",
           "stream": "B",
           "rate_per_event_per_ha": "9.8 kg",
           "rate_per_stage_per_ha": "29 kg",
@@ -417,7 +457,7 @@
         },
         {
           "product": "SOP",
-          "analysis": "K₂O 50.0%, S 18.0%",
+          "analysis": "K 50.0%, S 18.0%",
           "stream": "B",
           "rate_per_event_per_ha": "10 kg",
           "rate_per_stage_per_ha": "31 kg",
@@ -449,7 +489,8 @@
         "N": 29.0,
         "P2O5": 15.0,
         "K2O": 54.3,
-        "S": 5.5
+        "S": 5.5,
+        "Ca": 18.1
       },
       "sources": [
         {
@@ -501,7 +542,7 @@
       "raw_products": [
         {
           "product": "Potassium Nitrate",
-          "analysis": "N 13.0%, K₂O 46.0%",
+          "analysis": "N 13.0%, K 46.0%",
           "stream": "B",
           "rate_per_event_per_ha": "113 kg",
           "rate_per_stage_per_ha": "226 kg",
@@ -510,7 +551,7 @@
         },
         {
           "product": "MAP",
-          "analysis": "N 11.0%, P₂O₅ 51.0%",
+          "analysis": "N 11.0%, P 51.0%",
           "stream": "B",
           "rate_per_event_per_ha": "18 kg",
           "rate_per_stage_per_ha": "35 kg",
@@ -528,7 +569,7 @@
         },
         {
           "product": "SOP",
-          "analysis": "K₂O 50.0%, S 18.0%",
+          "analysis": "K 50.0%, S 18.0%",
           "stream": "B",
           "rate_per_event_per_ha": "18 kg",
           "rate_per_stage_per_ha": "37 kg",
@@ -560,7 +601,8 @@
         "N": 43.5,
         "P2O5": 18.0,
         "K2O": 122.3,
-        "S": 6.6
+        "S": 6.6,
+        "Ca": 12.5
       },
       "sources": [
         {
@@ -605,7 +647,7 @@
       "raw_products": [
         {
           "product": "Potassium Nitrate",
-          "analysis": "N 13.0%, K₂O 46.0%",
+          "analysis": "N 13.0%, K 46.0%",
           "stream": "B",
           "rate_per_event_per_ha": "170 kg",
           "rate_per_stage_per_ha": "170 kg",
@@ -614,7 +656,7 @@
         },
         {
           "product": "MAP",
-          "analysis": "N 11.0%, P₂O₅ 51.0%",
+          "analysis": "N 11.0%, P 51.0%",
           "stream": "B",
           "rate_per_event_per_ha": "24 kg",
           "rate_per_stage_per_ha": "24 kg",
@@ -632,7 +674,7 @@
         },
         {
           "product": "SOP",
-          "analysis": "K₂O 50.0%, S 18.0%",
+          "analysis": "K 50.0%, S 18.0%",
           "stream": "B",
           "rate_per_event_per_ha": "24 kg",
           "rate_per_stage_per_ha": "24 kg",
@@ -664,7 +706,8 @@
         "N": 36.2,
         "P2O5": 12.0,
         "K2O": 90.2,
-        "S": 4.4
+        "S": 4.4,
+        "Ca": 14.2
       },
       "sources": [
         {
@@ -754,6 +797,16 @@
   },
   "risk_flags": [
     {
+      "message": "Acidic pH but no time to lime (gap -1.8 months, lime needs 3-6). Ca / Mg / P availability will run below capacity this season; lean on foliar Ca + Mg at critical stages and avoid acidifying N sources.",
+      "severity": "warn",
+      "source": {
+        "source_id": "IMPLEMENTER_CONVENTION",
+        "section": "Standard SA agronomy + Foth-Ellis Soil Fertility 2nd ed. + IFA 1992",
+        "note": null,
+        "tier": 6
+      }
+    },
+    {
       "message": "Soil Ca:B = 2800 exceeds 1000:1 — Ca-induced B deficiency likely, especially at flowering. — Action: Apply foliar B at critical stages (pre-bloom, fruit set)",
       "severity": "warn",
       "source": {
@@ -762,14 +815,24 @@
         "note": null,
         "tier": 3
       }
+    },
+    {
+      "message": "pH (KCl) 4.80 below crop-optimal band (5.0–6.5). Acidic soil restricts Ca / Mg / P availability; root expansion limited. — Action: Lime application (calcitic or dolomitic per Mg status). Size against pH deficit + buffer factor; pre-season for reaction time.",
+      "severity": "warn",
+      "source": {
+        "source_id": "FERTASA_5_1",
+        "section": "FERTASA Soil Fertility Handbook §5.1 — Liming and pH management",
+        "note": null,
+        "tier": 1
+      }
     }
   ],
   "assumptions": [],
   "outstanding_items": [
     {
-      "item": "Application-month coverage gap",
-      "why_it_matters": "Stage 5 'maturation' (Dec–Feb) has no allowed application month inside its window. Nutrients for this stage were not delivered. Consider adding a month within this window.",
-      "impact_if_skipped": null
+      "item": "Lime application — too late this season for full reaction",
+      "why_it_matters": "Soil acidity / Al saturation needs lime to correct. Lime requires 3-6 months to react fully. Build-to-plant gap is only -1.8 months — insufficient for this season. Schedule lime for post-harvest of this crop to set up the next season.",
+      "impact_if_skipped": "Acidity / Al stress persists into the following season; early-growth and P availability will under-perform"
     },
     {
       "item": "Irrigation water test (EC, pH, Ca, Mg, Na, HCO₃, Cl)",
@@ -786,7 +849,7 @@
     {
       "category": "dry_blend",
       "product": "Manure Compost",
-      "analysis": "N 2.1%, P₂O₅ 1.0%, K₂O 1.6%, Ca 2.2%, Mg 1.0%, S 0.7%",
+      "analysis": "N 2.1%, P 1.0%, K 1.6%, Ca 2.2%, Mg 1.0%, S 0.7%",
       "total_per_block": {
         "mac-levubu-ref": 2500.0
       },
@@ -795,8 +858,18 @@
     },
     {
       "category": "dry_blend",
+      "product": "KCl",
+      "analysis": "K 60.0%",
+      "total_per_block": {
+        "mac-levubu-ref": 170.0
+      },
+      "total_overall": 170.0,
+      "unit": "kg"
+    },
+    {
+      "category": "dry_blend",
       "product": "MAP",
-      "analysis": "N 11.0%, P₂O₅ 51.0%",
+      "analysis": "N 11.0%, P 51.0%",
       "total_per_block": {
         "mac-levubu-ref": 54.0
       },
@@ -804,13 +877,13 @@
       "unit": "kg"
     },
     {
-      "category": "drip",
-      "product": "Potassium Nitrate",
-      "analysis": "N 13.0%, K₂O 46.0%",
+      "category": "dry_blend",
+      "product": "SOP",
+      "analysis": "K 50.0%, S 18.0%",
       "total_per_block": {
-        "mac-levubu-ref": 2685.0
+        "mac-levubu-ref": 33.0
       },
-      "total_overall": 2685.0,
+      "total_overall": 33.0,
       "unit": "kg"
     },
     {
@@ -818,29 +891,39 @@
       "product": "Calcium Nitrate",
       "analysis": "N 15.5%, Ca 19.0%",
       "total_per_block": {
-        "mac-levubu-ref": 1412.0
+        "mac-levubu-ref": 1649.0
       },
-      "total_overall": 1412.0,
+      "total_overall": 1649.0,
       "unit": "kg"
     },
     {
       "category": "drip",
-      "product": "SOP",
-      "analysis": "K₂O 50.0%, S 18.0%",
+      "product": "Potassium Nitrate",
+      "analysis": "N 13.0%, K 46.0%",
       "total_per_block": {
-        "mac-levubu-ref": 550.0
+        "mac-levubu-ref": 2402.0
       },
-      "total_overall": 550.0,
+      "total_overall": 2402.0,
       "unit": "kg"
     },
     {
       "category": "drip",
       "product": "MAP",
-      "analysis": "N 11.0%, P₂O₅ 51.0%",
+      "analysis": "N 11.0%, P 51.0%",
       "total_per_block": {
         "mac-levubu-ref": 441.0
       },
       "total_overall": 441.0,
+      "unit": "kg"
+    },
+    {
+      "category": "drip",
+      "product": "SOP",
+      "analysis": "K 50.0%, S 18.0%",
+      "total_per_block": {
+        "mac-levubu-ref": 458.0
+      },
+      "total_overall": 458.0,
       "unit": "kg"
     },
     {
@@ -874,17 +957,19 @@
   ],
   "overall_confidence": null,
   "decision_trace": [
+    "Block mac-levubu-ref: pre-season — 1 recommendation from soil findings",
     "Block mac-levubu-ref: start reasoning",
-    "Block mac-levubu-ref: SoilFactorReasoner produced 1 findings",
+    "Block mac-levubu-ref: SoilFactorReasoner produced 2 findings",
+    "Block mac-levubu-ref: Pre-season Mode C — 1 lost opportunities",
     "Block mac-levubu-ref: StageSplitter — 5 stages using fruit_tree family shape (tier 1)",
     "Block mac-levubu-ref: MonthAllocator — 8 application events mapped from 8 allowed months",
     "Block mac-levubu-ref: MethodSelector — 16 routings",
     "Block mac-levubu-ref: FoliarTriggerEngine — 3 events (1 soil_availability_gap, 1 quality_window, 1 stage_peak_demand)",
     "Block mac-levubu-ref: Consolidator — 5 blends (no merges applied)",
-    "Orchestrator: produced artifact with 1 blocks, 0 recommendations, 3 foliar events, 1 risk flags",
+    "Orchestrator: produced artifact with 1 blocks, 1 recommendations, 3 foliar events, 3 risk flags",
     "Orchestrator: BlendValidator — 5 blends validated, 0 warnings/errors surfaced"
   ],
-  "created_at": "2026-04-26T22:56:50.429026",
-  "updated_at": "2026-04-26T22:56:50.429027",
+  "created_at": "2026-04-29T11:16:12.177092",
+  "updated_at": "2026-04-29T11:16:12.177105",
   "render_hint": null
 }

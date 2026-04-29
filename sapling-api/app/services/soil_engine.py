@@ -1,6 +1,52 @@
 """Soil analysis classification, adjustment, and nutrient target calculation."""
 
+import re
+
 NUTRIENTS_SOIL = ["N", "P", "K", "Ca", "Mg", "S", "Fe", "B", "Mn", "Zn", "Mo", "Cu"]
+
+
+# Lab files often carry units in the column header — "K (mg/kg)",
+# "P (Bray-1) (mg/kg)", "CEC (cmol/kg)", "Acid Saturation (%)" — but the
+# engine's reference tables (soil_sufficiency, soil_parameter_map,
+# ideal_ratios) use units-free canonical names ("K", "P (Bray-1)",
+# "CEC", "Acid Saturation"). The AI-extracted bulk-import path in
+# particular preserves the lab's column heading verbatim, which broke
+# every downstream lookup until this normaliser was added. Old manual-
+# entry rows already use canonical keys, so normalising is idempotent
+# for them.
+#
+# Rule: strip a trailing parenthesised group when its body contains
+# any of `/ % cmol mg kg meq` — these are unambiguous unit markers.
+# Keeps method qualifiers like `(Bray-1)` and `(KCl)` intact.
+_UNIT_PARENS_RE = re.compile(r"\s*\([^)]*(?:[/%]|cmol|mg|kg|meq|g/ml)[^)]*\)\s*$")
+
+
+def _canonicalise_param_name(key: str) -> str:
+    """Strip a trailing unit-bearing parenthesised group from a soil
+    parameter name. Idempotent on already-canonical keys."""
+    if not key:
+        return key
+    return _UNIT_PARENS_RE.sub("", key).strip()
+
+
+def normalise_soil_values(soil_values: dict | None) -> dict:
+    """Return a new soil_values dict with unit-suffix-stripped keys.
+
+    When a stripped key collides with an already-canonical key in the
+    same dict (e.g. both "K" and "K (mg/kg)" present), the canonical
+    one wins to preserve original-author intent.
+    """
+    if not soil_values:
+        return {}
+    out: dict = {}
+    for k, v in soil_values.items():
+        canonical = _canonicalise_param_name(k)
+        if canonical in out and k == canonical:
+            # Prefer already-canonical entry over stripped duplicate.
+            out[canonical] = v
+        elif canonical not in out:
+            out[canonical] = v
+    return out
 
 SOIL_CLASSIFICATIONS = ["Very Low", "Low", "Optimal", "High", "Very High"]
 
@@ -417,6 +463,8 @@ def calculate_cation_ratio_target(soil_values, cec, ratio_rows, nutrient,
     if nutrient not in ("Ca", "Mg"):
         return None
 
+    soil_values = normalise_soil_values(soil_values)
+
     # Skip flag: acid-loving crops whose universal targets would damage.
     if crop_name and crop_calc_flags_rows:
         flag_row = next(
@@ -495,6 +543,7 @@ def calculate_nutrient_targets(crop_name, yield_target, soil_values,
                                 crop_override_rows=None, rate_table_rows=None,
                                 rate_table_context=None, ratio_rows=None,
                                 crop_calc_flags_rows=None):
+    soil_values = normalise_soil_values(soil_values)
     """Calculate adjusted nutrient targets (kg/ha) for a crop.
 
     Preemption order per nutrient:
@@ -636,6 +685,7 @@ def adjust_targets_for_ratios(targets, ratio_results, soil_values, ratio_rows):
     Returns:
         Updated targets list with ratio adjustment fields added
     """
+    soil_values = normalise_soil_values(soil_values)
     # Build lookup: nutrient name -> target dict
     target_map = {t["Nutrient"]: t for t in targets}
 
@@ -908,6 +958,7 @@ def evaluate_ratios(soil_values, ratio_rows):
         ratio_rows: list of dicts from ideal_ratios table
     """
     results = []
+    soil_values = normalise_soil_values(soil_values)
 
     def sv(key):
         v = soil_values.get(key)
