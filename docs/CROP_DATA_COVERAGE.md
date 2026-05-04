@@ -1,6 +1,6 @@
 # Crop Data Coverage Audit
 
-_Generated 2026-05-04 13:22 UTC. 81 crops in `crop_requirements`._
+_Generated 2026-05-04 13:30 UTC. 82 crops in `crop_requirements`._
 _Regenerate: `python sapling-api/scripts/generate_crop_coverage.py`_
 
 Every blank cell or `_needs source_` marker is a literature search. When a citation lands, add the row to the appropriate table and rerun this script — the gap will close on the next diff.
@@ -44,6 +44,7 @@ Counts are rows in each per-crop table.
 | [Groundnut](#groundnut) | 1 | 1 | 4 | 6 | 0 | 4 | 0 | 0 | 0 | 3 |
 | [Guava](#guava) | 1 | 0 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
 | [Honeybush](#honeybush) | 1 | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 |
+| [Kiwi](#kiwi) | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
 | [Lentils](#lentils) | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 3 |
 | [Lettuce](#lettuce) | 1 | 0 | 3 | 7 | 6 | 0 | 0 | 1 | 0 | 3 |
 | [Litchi](#litchi) | 1 | 1 | 5 | 0 | 5 | 0 | 4 | 0 | 0 | 3 |
@@ -4119,6 +4120,113 @@ _No rows._
 **Application methods** (`crop_application_methods`)
 
 _No rows._
+
+
+
+### Kiwi
+
+<a id="kiwi"></a>
+
+**Base requirements** (`crop_requirements`)
+
+| Field | Value |
+|---|---|
+| Crop type | perennial |
+| Type (legacy) | Perennial |
+| Parent crop | — |
+| Default yield | 25 |
+| Yield unit | t fruit/ha |
+| Population / ha | 600 |
+| Years to bearing | — |
+| Years to full bearing | — |
+| N (target/uptake) | 0 |
+| P | 0 |
+| K | 0 |
+| Ca | 0 |
+| Mg | 0 |
+| S | 0 |
+| B | 0 |
+| Zn | 0 |
+| Fe | 0 |
+| Mn | 0 |
+| Cu | 0 |
+| Mo | 0 |
+| Customer-ready flag | True |
+
+**Soil sufficiency bands** (`crop_sufficiency_overrides`)
+
+_Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps — generic bands apply until a citation is added._
+
+| Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
+|---|---|---|---|---|---|
+| **pH (KCl)** | — | — | — | — | _needs source_ |
+| **pH (H2O)** | — | — | — | — | _needs source_ |
+| **N (total)** | — | — | — | — | _needs source_ |
+| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| **P (Citric acid)** | — | — | — | — | _needs source_ |
+| **P (Olsen)** | — | — | — | — | _needs source_ |
+| **K** | — | — | — | — | _needs source_ |
+| **Ca** | — | — | — | — | _needs source_ |
+| **Mg** | — | — | — | — | _needs source_ |
+| **S** | — | — | — | — | _needs source_ |
+| **Na** | — | — | — | — | _needs source_ |
+| **B** | — | — | — | — | _needs source_ |
+| **Zn** | — | — | — | — | _needs source_ |
+| **Fe** | — | — | — | — | _needs source_ |
+| **Mn** | — | — | — | — | _needs source_ |
+| **Cu** | — | — | — | — | _needs source_ |
+| **Mo** | — | — | — | — | _needs source_ |
+| **Org C** | — | — | — | — | _needs source_ |
+| **CEC** | — | — | — | — | _needs source_ |
+
+**Growth stages** (`crop_growth_stages`)
+
+_No rows._
+
+**Rate-table cells** (`fertilizer_rate_tables`)
+
+_No rows._
+
+**Leaf norms** (`fertasa_leaf_norms`)
+
+| Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
+|---|---|---|---|---|---|---|
+| **N** | — | — | — | — | — | _needs source_ |
+| **P** | — | — | — | — | — | _needs source_ |
+| **K** | — | — | — | — | — | _needs source_ |
+| **Ca** | — | — | — | — | — | _needs source_ |
+| **Mg** | — | — | — | — | — | _needs source_ |
+| **S** | — | — | — | — | — | _needs source_ |
+| **B** | — | — | — | — | — | _needs source_ |
+| **Zn** | — | — | — | — | — | _needs source_ |
+| **Fe** | — | — | — | — | — | _needs source_ |
+| **Mn** | — | — | — | — | — | _needs source_ |
+| **Cu** | — | — | — | — | — | _needs source_ |
+| **Mo** | — | — | — | — | — | _needs source_ |
+
+**Nutrient removal** (`fertasa_nutrient_removal`)
+
+_No rows._
+
+**Perennial age factors** (`perennial_age_factors`)
+
+_No rows._
+
+**Yield benchmarks** (`crop_yield_benchmarks`)
+
+_No rows._
+
+**Calc flags** (`crop_calc_flags`)
+
+_No rows._
+
+**Application methods** (`crop_application_methods`)
+
+| Method | Default | Nutrients suited | Timing | Crop notes |
+|---|---|---|---|---|
+| broadcast | True | ['N', 'P', 'K', 'Ca', 'Mg', 'S'] | Winter dormancy + post-harvest; granular under canopy line. Split N across the season. | — |
+| fertigation | False | ['N', 'K', 'Ca', 'Mg', 'S', 'Fe', 'Zn', 'B', 'Mn'] | Primary in-season delivery; weekly during budbreak through fruit fill (Sep-Mar). | — |
+| foliar | False | ['Zn', 'B', 'Fe', 'Mn', 'Cu', 'Ca'] | Zn + B critical for fruit set; Ca sprays for storage quality. | — |
 
 
 
