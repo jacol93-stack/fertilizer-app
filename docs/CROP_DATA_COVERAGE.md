@@ -1,6 +1,6 @@
 # Crop Data Coverage Audit
 
-_Generated 2026-05-04 22:09 UTC. 82 crops in `crop_requirements`._
+_Generated 2026-05-04 22:28 UTC. 82 crops in `crop_requirements`._
 _Regenerate: `python sapling-api/scripts/generate_crop_coverage.py`_
 
 Every blank cell or `_needs source_` marker is a literature search. When a citation lands, add the row to the appropriate table and rerun this script — the gap will close on the next diff.
@@ -40,7 +40,7 @@ Counts are rows in each per-crop table.
 | [Cotton](#cotton) | 1 | 5 | 4 | 24 | 8 | 2 | 0 | 2 | 0 | 4 |
 | [Fig](#fig) | 1 | 5 | 5 | 0 | 11 | 1 | 5 | 3 | 0 | 3 |
 | [Garlic](#garlic) | 1 | 5 | 4 | 10 | 11 | 1 | 0 | 3 | 0 | 4 |
-| [Gem Squash](#gem-squash) | 1 | 0 | 0 | 7 | 11 | 0 | 0 | 0 | 0 | 0 |
+| [Gem Squash](#gem-squash) | 1 | 0 | 0 | 3 | 11 | 0 | 0 | 0 | 0 | 0 |
 | [Groundnut](#groundnut) | 1 | 5 | 4 | 6 | 0 | 4 | 0 | 0 | 0 | 3 |
 | [Guava](#guava) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 3 | 0 | 3 |
 | [Honeybush](#honeybush) | 1 | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 |
@@ -50,9 +50,9 @@ Counts are rows in each per-crop table.
 | [Litchi](#litchi) | 1 | 10 | 5 | 0 | 11 | 0 | 4 | 0 | 0 | 3 |
 | [Lucerne](#lucerne) | 1 | 7 | 5 | 106 | 9 | 2 | 4 | 2 | 0 | 3 |
 | [Macadamia](#macadamia) | 1 | 16 | 4 | 5 | 13 | 4 | 5 | 11 | 0 | 3 |
-| [Maize](#maize) | 1 | 6 | 4 | 0 | 11 | 1 | 0 | 2 | 0 | 0 |
-| [Maize (dryland)](#maize-dryland) | 1 | 5 | 4 | 72 | 0 | 0 | 0 | 0 | 0 | 4 |
-| [Maize (irrigated)](#maize-irrigated) | 1 | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 5 |
+| [Maize](#maize) | 1 | 6 | 4 | 75 | 11 | 1 | 0 | 2 | 0 | 0 |
+| [Maize (dryland)](#maize-dryland) | 1 | 5 | 4 | 48 | 0 | 0 | 0 | 0 | 0 | 4 |
+| [Maize (irrigated)](#maize-irrigated) | 1 | 5 | 5 | 44 | 0 | 0 | 0 | 0 | 0 | 5 |
 | [Mango](#mango) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 1 | 0 | 3 |
 | [Nectarine](#nectarine) | 1 | 7 | 5 | 0 | 11 | 1 | 0 | 1 | 0 | 0 |
 | [Oat](#oat) | 1 | 0 | 4 | 0 | 0 | 3 | 0 | 0 | 0 | 0 |
@@ -60,7 +60,7 @@ Counts are rows in each per-crop table.
 | [Onion](#onion) | 1 | 0 | 4 | 7 | 10 | 0 | 0 | 1 | 0 | 5 |
 | [Passion Fruit](#passion-fruit) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 3 | 0 | 3 |
 | [Pea](#pea) | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| [Pea (Green)](#pea-green) | 1 | 0 | 0 | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
+| [Pea (Green)](#pea-green) | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | [Peach](#peach) | 1 | 7 | 5 | 0 | 11 | 1 | 4 | 1 | 0 | 3 |
 | [Pear](#pear) | 1 | 8 | 5 | 0 | 11 | 1 | 5 | 1 | 0 | 3 |
 | [Pecan](#pecan) | 1 | 9 | 5 | 0 | 11 | 2 | 5 | 0 | 0 | 3 |
@@ -71,7 +71,7 @@ Counts are rows in each per-crop table.
 | [Pomegranate](#pomegranate) | 1 | 7 | 5 | 1 | 11 | 1 | 5 | 4 | 0 | 3 |
 | [Potato](#potato) | 1 | 3 | 4 | 126 | 11 | 1 | 0 | 0 | 0 | 5 |
 | [Pumpkin](#pumpkin) | 1 | 0 | 4 | 7 | 11 | 0 | 0 | 1 | 0 | 4 |
-| [Raspberry](#raspberry) | 1 | 1 | 0 | 4 | 11 | 0 | 0 | 2 | 1 | 0 |
+| [Raspberry](#raspberry) | 1 | 2 | 0 | 4 | 11 | 0 | 0 | 2 | 1 | 0 |
 | [Rooibos](#rooibos) | 1 | 2 | 4 | 3 | 0 | 0 | 0 | 1 | 1 | 2 |
 | [Sorghum](#sorghum) | 1 | 0 | 4 | 0 | 3 | 1 | 0 | 2 | 0 | 4 |
 | [Soybean](#soybean) | 1 | 6 | 4 | 48 | 8 | 0 | 0 | 2 | 0 | 3 |
@@ -79,7 +79,7 @@ Counts are rows in each per-crop table.
 | [Strawberry](#strawberry) | 1 | 2 | 4 | 7 | 6 | 1 | 0 | 3 | 0 | 3 |
 | [Sugarcane](#sugarcane) | 1 | 4 | 4 | 56 | 13 | 0 | 0 | 2 | 0 | 5 |
 | [Sunflower](#sunflower) | 1 | 5 | 4 | 65 | 7 | 4 | 0 | 1 | 0 | 4 |
-| [Sweet Melon](#sweet-melon) | 1 | 0 | 0 | 7 | 11 | 0 | 0 | 0 | 0 | 0 |
+| [Sweet Melon](#sweet-melon) | 1 | 0 | 0 | 0 | 11 | 0 | 0 | 0 | 0 | 0 |
 | [Sweet Potato](#sweet-potato) | 1 | 5 | 4 | 7 | 11 | 0 | 0 | 0 | 0 | 3 |
 | [Sweetcorn](#sweetcorn) | 1 | 0 | 4 | 71 | 0 | 3 | 0 | 0 | 0 | 5 |
 | [Table Grape](#table-grape) | 1 | 7 | 5 | 0 | 7 | 1 | 4 | 1 | 0 | 3 |
@@ -3596,22 +3596,22 @@ _No rows._
 | Crop type | annual |
 | Type (legacy) | Annual |
 | Parent crop | — |
-| Default yield | 15 |
+| Default yield | 8 |
 | Yield unit | t bulb/ha |
 | Population / ha | 200000 |
 | Years to bearing | — |
 | Years to full bearing | — |
-| N (target/uptake) | 4 |
-| P | 0.5 |
-| K | 3.5 |
+| N (target/uptake) | 8.4 |
+| P | 2 |
+| K | 9.8 |
 | Ca | 0.6 |
 | Mg | 0.3 |
-| S | 0.4 |
+| S | 4.6 |
 | B | 0.005 |
-| Zn | 0.005 |
-| Fe | 0.02 |
-| Mn | 0.005 |
-| Cu | 0.002 |
+| Zn | 0.016 |
+| Fe | 0.108 |
+| Mn | 0.017 |
+| Cu | 0.004 |
 | Mo | 0.001 |
 | Customer-ready flag | True |
 
@@ -3779,13 +3779,9 @@ _No rows._
 
 | Nutrient | Soil method | Soil-test band | Yield band (t/ha) | Rate (kg/ha) | Filter | Source |
 |---|---|---|---|---|---|---|
-| K | NH4OAc | 0–80 mg/kg | 0–— | 100–100 | — | FERTASA Handbook 5.6.1 Table 3 |
-| K | NH4OAc | 80–150 mg/kg | 0–— | 80–80 | — | FERTASA Handbook 5.6.1 Table 3 |
-| K | NH4OAc | 150–— mg/kg | 0–— | 50–50 | — | FERTASA Handbook 5.6.1 Table 3 |
 | N | — | —–— — | 0–— | 120–150 | — | FERTASA Handbook 5.6.1 Table 1 |
 | P | Bray-1 | 0–20 mg/kg | 0–— | 120–120 | — | FERTASA Handbook 5.6.1 Table 2 |
 | P | Bray-1 | 20–50 mg/kg | 0–— | 90–90 | — | FERTASA Handbook 5.6.1 Table 2 |
-| P | Bray-1 | 50–— mg/kg | 0–— | 60–60 | — | FERTASA Handbook 5.6.1 Table 2 |
 
 **Leaf norms** (`fertasa_leaf_norms`)
 
@@ -3968,7 +3964,7 @@ _No rows._
 | Years to full bearing | — |
 | N (target/uptake) | 4 |
 | P | 0.5 |
-| K | 5 |
+| K | 7.5 |
 | Ca | 1.2 |
 | Mg | 0.5 |
 | S | 0.3 |
@@ -5108,7 +5104,83 @@ _Extra rows on this crop outside the canonical soil schema:_ `Acid Saturation`
 
 **Rate-table cells** (`fertilizer_rate_tables`)
 
-_No rows._
+| Nutrient | Soil method | Soil-test band | Yield band (t/ha) | Rate (kg/ha) | Filter | Source |
+|---|---|---|---|---|---|---|
+| K | NH4OAc | 10–29 mg/kg | 3–3 | 19–19 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 10–29 mg/kg | 4–4 | 28–28 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 10–29 mg/kg | 5–5 | 37–37 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 10–29 mg/kg | 6–6 | 46–46 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 10–29 mg/kg | 7–7 | 55–55 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 10–29 mg/kg | 10–10 | 82–82 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 10–29 mg/kg | 2–2 | 10–10 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 10–29 mg/kg | 8–8 | 64–64 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 10–29 mg/kg | 9–9 | 73–73 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 20–39 mg/kg | 2–2 | 0–0 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 20–39 mg/kg | 3–3 | 11–11 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 20–39 mg/kg | 4–4 | 20–20 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 20–39 mg/kg | 5–5 | 29–29 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 20–39 mg/kg | 6–6 | 38–38 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 20–39 mg/kg | 7–7 | 47–47 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 20–39 mg/kg | 8–8 | 56–56 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 20–39 mg/kg | 9–9 | 64–64 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 20–39 mg/kg | 10–10 | 73–73 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 40–59 mg/kg | 2–2 | 0–0 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 40–59 mg/kg | 3–3 | 5–5 | low-clay <25% | FERTASA Table 5.4.6 |
+| K | NH4OAc | 40–59 mg/kg | 4–4 | 13–13 | low-clay <25% | FERTASA Table 5.4.6 |
+| P | Bray-1 | 0–4 mg/kg | 2–2 | 20–20 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 0–4 mg/kg | 3–3 | 42–42 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 0–4 mg/kg | 5–5 | 88–88 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 0–4 mg/kg | 6–6 | 109–109 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 0–4 mg/kg | 7–7 | 130–130 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 0–4 mg/kg | 9–9 | 130–130 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 0–4 mg/kg | 4–4 | 65–65 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 0–4 mg/kg | 8–8 | 130–130 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 0–4 mg/kg | 10–10 | 130–130 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 2–2 | 17–17 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 3–3 | 31–31 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 5–5 | 63–63 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 7–7 | 90–90 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 9–9 | 95–95 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 10–10 | 97–97 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 4–4 | 47–47 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 6–6 | 67–67 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 8–8 | 93–93 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 2–2 | 13–13 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 6–6 | 50–50 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 7–7 | 59–59 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 9–9 | 67–67 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 10–10 | 68–68 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 3–3 | 19–19 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 4–4 | 30–30 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 5–5 | 42–42 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 8–8 | 64–64 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 2–2 | 10–10 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 3–3 | 13–13 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 5–5 | 29–29 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 6–6 | 36–36 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 7–7 | 42–42 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 8–8 | 47–47 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 9–9 | 50–50 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 4–4 | 21–21 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 10–10 | 53–53 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 3–3 | 10–10 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 4–4 | 15–15 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 5–5 | 19–19 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 9–9 | 38–38 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 10–10 | 42–42 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 2–2 | 7–7 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 6–6 | 26–26 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 7–7 | 31–31 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 8–8 | 34–34 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 3–3 | 9–9 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 5–5 | 15–15 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 7–7 | 22–22 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 9–9 | 27–27 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 2–2 | 6–6 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 4–4 | 12–12 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 6–6 | 18–18 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 8–8 | 24–24 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 10–10 | 30–30 | — | FERTASA Table 5.4.5 |
 
 **Leaf norms** (`fertasa_leaf_norms`)
 
@@ -5225,78 +5297,54 @@ _Extra rows on this crop outside the canonical soil schema:_ `Acid Saturation`
 
 | Nutrient | Soil method | Soil-test band | Yield band (t/ha) | Rate (kg/ha) | Filter | Source |
 |---|---|---|---|---|---|---|
-| N | — | —–— — | 2–2 | 23–23 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 2.5–2.5 | 41–41 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 3–3 | 58–58 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 3.5–3.5 | 75–75 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 4–4 | 92–92 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 4.5–4.5 | 109–109 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 5–5 | 126–126 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 5.5–5.5 | 143–143 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 6–6 | 160–160 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 2–2 | 17–17 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 2.5–2.5 | 35–35 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 3–3 | 52–52 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 3.5–3.5 | 69–69 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 4–4 | 86–86 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 4.5–4.5 | 103–103 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 5–5 | 120–120 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 5.5–5.5 | 137–137 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 6–6 | 154–154 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 2–2 | 10–10 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 2.5–2.5 | 28–28 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 3–3 | 45–45 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 3.5–3.5 | 62–62 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 4–4 | 79–79 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 4.5–4.5 | 96–96 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 5–5 | 113–113 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 5.5–5.5 | 133–133 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 6–6 | 147–147 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 2–2 | 4–4 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 2.5–2.5 | 22–22 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 3–3 | 39–39 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 3.5–3.5 | 56–56 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 4–4 | 73–73 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 4.5–4.5 | 90–90 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 5–5 | 107–107 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 5.5–5.5 | 124–124 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 6–6 | 141–141 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 2–2 | 0–0 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 2.5–2.5 | 16–16 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 3–3 | 33–33 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 3.5–3.5 | 50–50 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 4–4 | 67–67 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 4.5–4.5 | 84–84 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 5–5 | 101–101 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 5.5–5.5 | 118–118 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 6–6 | 135–135 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 2–2 | 0–0 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 2.5–2.5 | 9–9 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 3–3 | 26–26 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 3.5–3.5 | 43–43 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 4–4 | 60–60 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 4.5–4.5 | 77–77 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 5–5 | 94–94 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 5.5–5.5 | 111–111 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 6–6 | 128–128 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 2–2 | 0–0 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 2.5–2.5 | 0–0 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 3–3 | 14–14 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 3.5–3.5 | 31–31 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 4–4 | 48–48 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 4.5–4.5 | 65–65 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 5–5 | 82–82 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 5.5–5.5 | 99–99 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 6–6 | 116–116 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 2–2 | 0–0 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 2.5–2.5 | 0–0 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 3–3 | 0–0 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 3.5–3.5 | 18–18 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 4–4 | 35–35 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 4.5–4.5 | 52–52 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 5–5 | 69–69 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 5.5–5.5 | 86–86 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
-| N | — | —–— — | 6–6 | 103–103 | — | ARC-GCI Maize Information Guide Table 2 (p.79) |
+| P | Bray-1 | 0–4 mg/kg | 5–5 | 88–88 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 0–4 mg/kg | 7–7 | 130–130 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 0–4 mg/kg | 9–9 | 130–130 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 0–4 mg/kg | 2–2 | 20–20 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 0–4 mg/kg | 3–3 | 42–42 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 0–4 mg/kg | 4–4 | 65–65 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 0–4 mg/kg | 6–6 | 109–109 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 0–4 mg/kg | 8–8 | 130–130 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 0–4 mg/kg | 10–10 | 130–130 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 2–2 | 17–17 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 8–8 | 93–93 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 9–9 | 95–95 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 3–3 | 31–31 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 4–4 | 47–47 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 5–5 | 63–63 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 6–6 | 67–67 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 7–7 | 90–90 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 10–10 | 97–97 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 2–2 | 13–13 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 4–4 | 30–30 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 6–6 | 50–50 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 9–9 | 67–67 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 10–10 | 68–68 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 3–3 | 19–19 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 5–5 | 42–42 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 7–7 | 59–59 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 8–8 | 64–64 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 3–3 | 13–13 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 5–5 | 29–29 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 6–6 | 36–36 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 9–9 | 50–50 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 2–2 | 10–10 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 4–4 | 21–21 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 7–7 | 42–42 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 8–8 | 47–47 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 10–10 | 53–53 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 2–2 | 7–7 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 3–3 | 10–10 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 4–4 | 15–15 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 5–5 | 19–19 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 10–10 | 42–42 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 6–6 | 26–26 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 7–7 | 31–31 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 8–8 | 34–34 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 9–9 | 38–38 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 8–8 | 24–24 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 9–9 | 27–27 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 2–2 | 6–6 | — | FERTASA Table 5.4.5 |
 
 **Leaf norms** (`fertasa_leaf_norms`)
 
@@ -5412,7 +5460,52 @@ _Extra rows on this crop outside the canonical soil schema:_ `Acid Saturation`
 
 **Rate-table cells** (`fertilizer_rate_tables`)
 
-_No rows._
+| Nutrient | Soil method | Soil-test band | Yield band (t/ha) | Rate (kg/ha) | Filter | Source |
+|---|---|---|---|---|---|---|
+| P | Bray-1 | 0–4 mg/kg | 2–2 | 20–20 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 0–4 mg/kg | 6–6 | 109–109 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 0–4 mg/kg | 8–8 | 130–130 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 0–4 mg/kg | 10–10 | 130–130 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 3–3 | 31–31 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 5–5 | 63–63 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 7–7 | 90–90 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 5–7 mg/kg | 9–9 | 95–95 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 2–2 | 13–13 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 4–4 | 30–30 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 7–7 | 59–59 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 8–8 | 64–64 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 10–10 | 68–68 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 3–3 | 19–19 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 5–5 | 42–42 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 6–6 | 50–50 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 8–14 mg/kg | 9–9 | 67–67 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 4–4 | 21–21 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 6–6 | 36–36 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 7–7 | 42–42 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 9–9 | 50–50 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 2–2 | 10–10 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 3–3 | 13–13 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 5–5 | 29–29 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 8–8 | 47–47 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 15–20 mg/kg | 10–10 | 53–53 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 9–9 | 38–38 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 2–2 | 7–7 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 4–4 | 15–15 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 5–5 | 19–19 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 7–7 | 31–31 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 3–3 | 10–10 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 6–6 | 26–26 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 8–8 | 34–34 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 21–27 mg/kg | 10–10 | 42–42 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 2–2 | 6–6 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 5–5 | 15–15 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 6–6 | 18–18 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 7–7 | 22–22 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 8–8 | 24–24 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 3–3 | 9–9 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 4–4 | 12–12 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 9–9 | 27–27 | — | FERTASA Table 5.4.5 |
+| P | Bray-1 | 28–34 mg/kg | 10–10 | 30–30 | — | FERTASA Table 5.4.5 |
 
 **Leaf norms** (`fertasa_leaf_norms`)
 
@@ -6351,15 +6444,7 @@ _No rows._
 
 **Rate-table cells** (`fertilizer_rate_tables`)
 
-| Nutrient | Soil method | Soil-test band | Yield band (t/ha) | Rate (kg/ha) | Filter | Source |
-|---|---|---|---|---|---|---|
-| K | NH4OAc | 0–80 mg/kg | 0–— | 70–70 | — | FERTASA Handbook 5.6.1 Table 3 |
-| K | NH4OAc | 80–150 mg/kg | 0–— | 50–50 | — | FERTASA Handbook 5.6.1 Table 3 |
-| K | NH4OAc | 150–— mg/kg | 0–— | 20–20 | — | FERTASA Handbook 5.6.1 Table 3 |
-| N | — | —–— — | 0–— | 20–45 | — | FERTASA Handbook 5.6.1 Table 1 |
-| P | Bray-1 | 0–20 mg/kg | 0–— | 70–70 | — | FERTASA Handbook 5.6.1 Table 2 |
-| P | Bray-1 | 20–50 mg/kg | 0–— | 50–50 | — | FERTASA Handbook 5.6.1 Table 2 |
-| P | Bray-1 | 50–— mg/kg | 0–— | 20–20 | — | FERTASA Handbook 5.6.1 Table 2 |
+_No rows._
 
 **Leaf norms** (`fertasa_leaf_norms`)
 
@@ -7257,7 +7342,7 @@ _No rows._
 | Crop type | perennial |
 | Type (legacy) | Perennial |
 | Parent crop | — |
-| Default yield | 20 |
+| Default yield | 25 |
 | Yield unit | t fruit/ha |
 | Population / ha | 600 |
 | Years to bearing | — |
@@ -7778,8 +7863,8 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| pH (H2O) | 5 | 6 | 6.5 | 7 | NCSU AG-697: caneberries prefer pH 6.0-6.5. Lime below 6.0. |
+| pH (KCl) | 4.5 | 5 | 5.5 | 6 | DERIVED from H2O-0.5 (FERTASA convention) for SA cool-climate raspberry. T2 derived. |
+| pH (H2O) | 4.7 | 5.5 | 6 | 6.5 | NZ Plant & Food + WSU PNW 656 — raspberry more acid-preferring than blackberry in cool climate. Replaces NCSU 6.0-6.5 (Southeast US warm-climate). T2. |
 | **N (total)** | — | — | — | — | _needs source_ |
 | **P (Bray-1)** | — | — | — | — | _needs source_ |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
@@ -8921,15 +9006,7 @@ _No rows._
 
 **Rate-table cells** (`fertilizer_rate_tables`)
 
-| Nutrient | Soil method | Soil-test band | Yield band (t/ha) | Rate (kg/ha) | Filter | Source |
-|---|---|---|---|---|---|---|
-| K | NH4OAc | 0–80 mg/kg | 0–— | 100–100 | — | FERTASA Handbook 5.6.1 Table 3 |
-| K | NH4OAc | 80–150 mg/kg | 0–— | 80–80 | — | FERTASA Handbook 5.6.1 Table 3 |
-| K | NH4OAc | 150–— mg/kg | 0–— | 50–50 | — | FERTASA Handbook 5.6.1 Table 3 |
-| N | — | —–— — | 0–— | 120–160 | — | FERTASA Handbook 5.6.1 Table 1 |
-| P | Bray-1 | 0–20 mg/kg | 0–— | 120–120 | — | FERTASA Handbook 5.6.1 Table 2 |
-| P | Bray-1 | 20–50 mg/kg | 0–— | 90–90 | — | FERTASA Handbook 5.6.1 Table 2 |
-| P | Bray-1 | 50–— mg/kg | 0–— | 60–60 | — | FERTASA Handbook 5.6.1 Table 2 |
+_No rows._
 
 **Leaf norms** (`fertasa_leaf_norms`)
 

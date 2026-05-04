@@ -1,0 +1,34 @@
+-- ============================================================
+-- 120: User-approved gated corrections + Maize P/K rate cells
+--      from FERTASA digital handbook (data we already own)
+-- ============================================================
+-- User-approved gated corrections (previously held for sign-off):
+--   * Garlic per-ton coefficients: S 0.4→4.6 (10× off), N 4→8.4,
+--     K 3.5→9.8, P 0.5→2.0; default_yield 15→8 t/ha. Reddy 2017
+--     Int J Curr Microbiol App Sci T3 (Allahabad Safeda).
+--   * Guava per-ton K: 5.0→7.5 (ICAR Singh 2017 — Allahabad Safeda
+--     is sister to SA's Fan Retief).
+--   * Pomegranate default_yield: 20→25 t/ha (UC ANR Day & Wilkins
+--     2011 Wonderful in California).
+--   * Raspberry pH bands: switched from NCSU 6.0-6.5 to NZ P&F
+--     5.5-6.0 (SA cool-climate Heritage/Polka — same biology as NZ).
+--
+-- Maize P + K rate matrices from FERTASA digital handbook
+-- (data/fertasa_handbook/maize_old_guidelines_ocr.txt) — were image-
+-- only OCR; now extracted as full grid:
+--   * Table 5.4.5 — P fertilization (Bray-1 P × yield 2-10 t/ha):
+--     6 P bands × 9 yield bands = 54 cells × 3 maize variants = 162 cells
+--   * Table 5.4.6 — K low-clay (<25%): 7 K bands × 9 yields × 2 variants
+--     (genus + dryland) = 126 cells
+--   * Table 5.4.7 — K high-clay (>25%): 7 K bands × 9 yields × 2 variants
+--     (genus + irrigated) = 126 cells
+-- Total: +414 maize rate-table cells from FERTASA digital we already
+-- had on disk.
+--
+-- Schema extension for crop_calc_flags (14+ columns) deferred — the
+-- CropNote system already surfaces all the flags as prose with a
+-- programmatic `kind` field; engine consumption from `kind` works
+-- equally well as dedicated columns until the product-selector layer
+-- needs indexed query performance.
+--
+-- Applied via python supabase admin client (mirrors 110-119 pattern).
