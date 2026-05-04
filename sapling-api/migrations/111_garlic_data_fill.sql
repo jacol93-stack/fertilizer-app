@@ -1,0 +1,44 @@
+-- ============================================================
+-- 111: Garlic data fill — soil bands + leaf norms + S rate cells
+--      + yield benchmarks + Reddy 2017 nutrient removal reference
+-- ============================================================
+-- Sources:
+--   * FERTASA Handbook 7th ed. §5.6.1 — onions/garlic chapter (existing
+--     crop_growth_stages + rate-table seed verified) — T1.
+--   * Trani & Raij 1997 (Brazilian Society of Soil Science via SciELO
+--     2016) — leaf norms — T2.
+--   * Tyler et al. 1988 California Agriculture 42(2):28-29 — leaf norms
+--     reference (PDF unreadable in fetch; Trani & Raij used as T2 stand-in).
+--   * Nguyen et al. 2022 Plants 11:2571 — S-fertilisation field trial — T2.
+--   * Bideshki 2013 — S × Mo interaction — T3 reinforcement.
+--   * Reddy et al. 2017 Int J Curr Microbiol App Sci — per-ton bulb
+--     uptake (56.3 N / 13.5 P / 65.8 K / 30.6 S kg / 6.7 t bulb yield) — T3.
+--   * Graceland Garlic SA Growers Guide 2021 — yield benchmarks — T1.
+--   * nufarmer Africa 2024 SA Garlic Cultivation Guide — T2.
+--   * UMN Extension + UC ANR Garlic — pH bands — T2.
+--
+-- Critical S-finding: garlic is genuinely high-S. Reddy 2017 measured
+-- 4.6 kg S/t bulb — 10× the engine's current crop_requirements.s = 0.4.
+-- Captured in fertasa_nutrient_removal as documentation; the
+-- crop_requirements per-ton revision is GATED for user review (also
+-- includes N 4 → 8.4, K 3.5 → 9.8, P 0.5 → 2.0, default_yield 15 → 8).
+--
+-- The crop_calc_flags schema has only `skip_cation_ratio_path` —
+-- agronomically Garlic warrants `sulfur_critical=true`,
+-- `acid_intolerant=true`, `chloride_sensitive=tbd`, `photoperiod_sensitive=true`
+-- but those columns don't exist. Captured as TODOs in CROP_DATA_COVERAGE.md
+-- pending crop_calc_flags schema extension.
+--
+-- Genuine gaps after this migration:
+--   * Mo (everywhere)
+--   * Ca / Mg / B per-ton removal
+--   * Direct chloride-sensitivity threshold
+--   * SA-specific cultivar effects (Nguyen 2022 showed Glenlarge responds
+--     to S; Southern Glen does not — SA cultivars unverified)
+--   * FERTASA Handbook 7th ed. §5.6.1 full Tables 1-3 retrieval (printed
+--     handbook required — Anton or another agronomist with the book)
+-- ============================================================
+
+-- Application via python supabase admin client (mirrors migrations 106-110).
+-- Idempotent: soil overrides upsert on (crop, parameter); other inserts
+-- assume fresh state (verified empty pre-flight).

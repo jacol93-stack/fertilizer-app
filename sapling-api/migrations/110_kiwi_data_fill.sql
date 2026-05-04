@@ -1,0 +1,51 @@
+-- ============================================================
+-- 110: Kiwi data fill — first complete pass across all 8 tables
+-- ============================================================
+-- Kiwi was added to crop_requirements with structural placeholders only
+-- (migration 107). This migration populates everything else from the NZ
+-- + international literature, since SA kiwifruit literature is thin.
+--
+-- Sources (per memory feedback_fertasa_first.md, NZ T1 sources accepted
+-- where SA gap exists):
+--   * OSU PNW 507 "Growing Kiwifruit" (2005, B. Strik) — T2 single best
+--     densely-cited source covering soil, leaf, age, rates.
+--   * Hill Labs (Hamilton NZ) Kiwifruit/Green & Kiwifruit/Gold Crop
+--     Guides — T1 NZ commercial.
+--   * Smith, G.S. / Asher, C.J. / Clark, C.J. 1985, 1987, 1988 — NZ
+--     foundational nutrition work — T2/T3.
+--   * Buwalda, J.G. & Smith, G.S. 1990 Sci Hort 37 — T3.
+--   * Zhao, Tong, Wang 2013 Acta Hort 984:169 — T3 nutrient uptake.
+--   * Smith, Buwalda, Clark 1988 Sci Hort 37:87 — T3 nutrient dynamics.
+--   * Haifa Crop Guide Kiwi — T2 commercial.
+--   * Fertiliser Association of NZ (FANZ) Olsen P bands — T1.
+--
+-- Honest provenance flags:
+--   * pH (KCl) row is DERIVED from H2O − 0.5 offset. NZ literature uses
+--     pH (H2O) exclusively. SA labs report pH (KCl). Direct kiwi pH
+--     (KCl) bands not published anywhere.
+--   * P (Bray-1) row is DERIVED from Olsen × 1.6 conversion (FERTASA
+--     5.7 method ratio). NZ uses Olsen exclusively.
+--   * SA yield benchmarks are inferred from NZ mature − establishment
+--     penalty (T3) — no Hortgro SA kiwifruit benchmark published.
+--
+-- Critical commercial rule (TODO — schema gap):
+--   Kiwi is acutely Cl-sensitive. Smith/Clark/Holland 1987 NZJCHS
+--   shows kiwi requires >0.213% Cl in leaf DM but Cl-bearing fertilisers
+--   (KCl, MOP) damage roots. Cl must come from irrigation/background.
+--   Engine should filter KCl/MOP from kiwi blend candidates. Currently
+--   crop_calc_flags schema has no `no_chloride_fertilisers` column —
+--   captured in source_note as TODO until schema extends.
+--
+-- Genuine gaps after this migration:
+--   * Mo (everywhere)
+--   * Soil Ca / S / Zn (no kiwi-specific bands; universal applies)
+--   * Direct pH (KCl) and Bray-1 P bands (currently derived)
+--   * SA-specific yield benchmarks
+-- ============================================================
+
+-- Application by python supabase admin client (mirrors migrations 106-109
+-- pattern). The crop_yield_benchmarks.source_tier column requires string
+-- enum values ('T1', 'T2', 'T3'), not integers — this caught the python
+-- application on first run; corrected. SQL kept here for documentation;
+-- the live writes are idempotent at the python layer (delete-then-insert
+-- on retry).
