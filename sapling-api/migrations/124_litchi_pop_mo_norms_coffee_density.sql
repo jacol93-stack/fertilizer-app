@@ -1,0 +1,53 @@
+-- ============================================================
+-- 124: Litchi pop fix + Mo leaf norms + Coffee planting density
+-- ============================================================
+-- Edge-gap last-sweep agent surfaced three concrete actions that
+-- previous research declared "no source found" but actually had
+-- citable values when searched against US extension publications:
+--
+-- 1. CRITICAL: Litchi pop_per_ha 400 → 200 (Begemann 2014 Acta Hort
+--    1029.2 — explicit math: 344,500 trees ÷ 1,731 ha = 199). Engine
+--    was 2× too high for every Litchi block. Cross-validated by DAFF
+--    Litchi Infopak (range 65-200/ha extensive systems most common,
+--    9×6m "ideal" = 185/ha) and Stassen "Litchi High Density Orchard
+--    Management" frame.
+--
+-- 2. Coffee planting density (Snijder 1990 Acta Hort 275.20 — T1 SA
+--    cited!): 4,200-6,000 plants/ha; engine set to 5,000 midpoint.
+--    Was 0; this is a meaningful fix for the small SA coffee industry.
+--
+-- 3. Mo leaf norms — 21 fillable cells. Previous research agents all
+--    reported "no source found" for Mo. This was wrong. SCSB394 +
+--    UF/IFAS SS618 + UC ANR Ventura + NC State Tobacco DO publish Mo
+--    leaf norms for major crops:
+--      * Avocado 0.05-1.0 mg/kg (UC ANR T2)
+--      * Citrus genus + 5 cultivars 0.1-1.0 (UF/IFAS SS618 T2)
+--      * Tobacco genus + 4 variants 0.2-1.0 (NC State T2)
+--      * Maize genus + 2 variants 0.1-2.0 (SCSB394 T2)
+--      * Sorghum 0.1-2.0 (SCSB394 T2)
+--      * Groundnut 0.1-5.0 (SCSB394 T2 — wide pH-dependent band)
+--      * Wheat / Barley / Oat 0.1-2.0 (SCSB394 small grains)
+--      * Soybean 1.0-5.0 (Mosaic + SCSB394 T3)
+--
+-- Soil Mo extractable test STAYS as a confirmed gap (methodology gap
+-- not literature gap — no reliable plant-available soil Mo test exists
+-- for routine interpretation; pH-based proxy is the only justifiable
+-- engine rule).
+--
+-- Tobacco soil-Cl threshold: confirmed no T1 SA published source.
+-- FERTASA chapter 5.11 (digital JSON in repo) is qualitative on Cl
+-- only. NC State Extension Tobacco Fertility T2 is the highest-tier
+-- source available. crop_calc_flags.source_note for all 5 Tobacco
+-- rows annotated with this confirmation.
+--
+-- Confirmed gaps (no engine action):
+--   * Tea (Camellia sinensis) leaf norms for SA — no T1; Tocklai TRA
+--     T2 remains best
+--   * Coffee leaf norms for SA — no T1; Embrapa Café T2 remains best
+--   * Pecan Mo norm — actively avoided in literature ("negative
+--     response noted")
+--   * Cotton + Sugarcane Mo norms — SCSB394 explicitly omits
+--   * Macadamia Mo (FERTASA 5.8.1 PDF not extractable; manual download
+--     would close this)
+--
+-- Applied via python supabase admin client.

@@ -1,6 +1,6 @@
 # Crop Data Coverage Audit
 
-_Generated 2026-05-04 23:23 UTC. 82 crops in `crop_requirements`._
+_Generated 2026-05-04 23:25 UTC. 82 crops in `crop_requirements`._
 _Regenerate: `python sapling-api/scripts/generate_crop_coverage.py`_
 
 Every blank cell or `_needs source_` marker is a literature search. When a citation lands, add the row to the appropriate table and rerun this script — the gap will close on the next diff.
@@ -14,9 +14,9 @@ Counts are rows in each per-crop table.
 | [Apple](#apple) | 1 | 8 | 5 | 0 | 11 | 1 | 5 | 1 | 1 | 3 |
 | [Apricot](#apricot) | 1 | 5 | 5 | 0 | 11 | 0 | 4 | 1 | 0 | 3 |
 | [Asparagus](#asparagus) | 1 | 0 | 4 | 12 | 5 | 2 | 0 | 1 | 1 | 3 |
-| [Avocado](#avocado) | 1 | 10 | 5 | 0 | 15 | 1 | 5 | 9 | 1 | 3 |
+| [Avocado](#avocado) | 1 | 10 | 5 | 0 | 16 | 1 | 5 | 9 | 1 | 3 |
 | [Banana](#banana) | 1 | 7 | 4 | 15 | 11 | 1 | 2 | 1 | 1 | 3 |
-| [Barley](#barley) | 1 | 0 | 4 | 0 | 0 | 3 | 0 | 0 | 1 | 3 |
+| [Barley](#barley) | 1 | 0 | 4 | 0 | 1 | 3 | 0 | 0 | 1 | 3 |
 | [Bean (Dry)](#bean-dry) | 1 | 5 | 4 | 60 | 0 | 2 | 0 | 2 | 1 | 4 |
 | [Bean (Green)](#bean-green) | 1 | 0 | 4 | 7 | 0 | 0 | 0 | 0 | 1 | 4 |
 | [Beetroot](#beetroot) | 1 | 4 | 0 | 7 | 0 | 0 | 0 | 0 | 1 | 0 |
@@ -41,7 +41,7 @@ Counts are rows in each per-crop table.
 | [Fig](#fig) | 1 | 5 | 5 | 0 | 11 | 1 | 5 | 3 | 1 | 3 |
 | [Garlic](#garlic) | 1 | 5 | 4 | 10 | 11 | 1 | 0 | 3 | 1 | 4 |
 | [Gem Squash](#gem-squash) | 1 | 0 | 0 | 3 | 11 | 0 | 0 | 0 | 0 | 0 |
-| [Groundnut](#groundnut) | 1 | 5 | 4 | 6 | 0 | 4 | 0 | 0 | 1 | 3 |
+| [Groundnut](#groundnut) | 1 | 5 | 4 | 6 | 1 | 4 | 0 | 0 | 1 | 3 |
 | [Guava](#guava) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 3 | 0 | 3 |
 | [Honeybush](#honeybush) | 1 | 2 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 |
 | [Kiwi](#kiwi) | 1 | 8 | 7 | 0 | 12 | 1 | 6 | 5 | 1 | 3 |
@@ -51,11 +51,11 @@ Counts are rows in each per-crop table.
 | [Lucerne](#lucerne) | 1 | 7 | 5 | 106 | 9 | 2 | 4 | 2 | 1 | 3 |
 | [Macadamia](#macadamia) | 1 | 16 | 4 | 5 | 13 | 4 | 5 | 11 | 0 | 3 |
 | [Maize](#maize) | 1 | 6 | 4 | 75 | 11 | 1 | 0 | 2 | 0 | 0 |
-| [Maize (dryland)](#maize-dryland) | 1 | 5 | 4 | 48 | 0 | 0 | 0 | 0 | 0 | 4 |
-| [Maize (irrigated)](#maize-irrigated) | 1 | 5 | 5 | 44 | 0 | 0 | 0 | 0 | 0 | 5 |
+| [Maize (dryland)](#maize-dryland) | 1 | 5 | 4 | 48 | 1 | 0 | 0 | 0 | 0 | 4 |
+| [Maize (irrigated)](#maize-irrigated) | 1 | 5 | 5 | 44 | 1 | 0 | 0 | 0 | 0 | 5 |
 | [Mango](#mango) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 1 | 1 | 3 |
 | [Nectarine](#nectarine) | 1 | 7 | 5 | 0 | 11 | 1 | 0 | 1 | 0 | 0 |
-| [Oat](#oat) | 1 | 0 | 4 | 0 | 0 | 3 | 0 | 0 | 0 | 0 |
+| [Oat](#oat) | 1 | 0 | 4 | 0 | 1 | 3 | 0 | 0 | 0 | 0 |
 | [Olive](#olive) | 1 | 5 | 5 | 3 | 11 | 1 | 4 | 2 | 0 | 3 |
 | [Onion](#onion) | 1 | 0 | 4 | 7 | 10 | 0 | 0 | 1 | 1 | 5 |
 | [Passion Fruit](#passion-fruit) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 3 | 0 | 3 |
@@ -73,7 +73,7 @@ Counts are rows in each per-crop table.
 | [Pumpkin](#pumpkin) | 1 | 0 | 4 | 7 | 11 | 0 | 0 | 1 | 0 | 4 |
 | [Raspberry](#raspberry) | 1 | 2 | 0 | 4 | 11 | 0 | 0 | 2 | 1 | 0 |
 | [Rooibos](#rooibos) | 1 | 2 | 4 | 3 | 0 | 0 | 0 | 1 | 1 | 2 |
-| [Sorghum](#sorghum) | 1 | 0 | 4 | 0 | 3 | 1 | 0 | 2 | 0 | 4 |
+| [Sorghum](#sorghum) | 1 | 0 | 4 | 0 | 4 | 1 | 0 | 2 | 0 | 4 |
 | [Soybean](#soybean) | 1 | 6 | 4 | 48 | 8 | 0 | 0 | 2 | 1 | 3 |
 | [Spinach](#spinach) | 1 | 0 | 3 | 0 | 6 | 0 | 0 | 1 | 0 | 3 |
 | [Strawberry](#strawberry) | 1 | 2 | 4 | 7 | 6 | 1 | 0 | 3 | 0 | 3 |
@@ -84,11 +84,11 @@ Counts are rows in each per-crop table.
 | [Sweetcorn](#sweetcorn) | 1 | 0 | 4 | 71 | 0 | 3 | 0 | 0 | 0 | 5 |
 | [Table Grape](#table-grape) | 1 | 7 | 5 | 0 | 7 | 1 | 4 | 1 | 0 | 3 |
 | [Tea](#tea) | 1 | 2 | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
-| [Tobacco](#tobacco) | 1 | 2 | 4 | 34 | 11 | 0 | 0 | 1 | 1 | 3 |
-| [Tobacco (Burley)](#tobacco-burley) | 1 | 0 | 0 | 0 | 11 | 1 | 0 | 0 | 1 | 0 |
-| [Tobacco (Dark air-cured)](#tobacco-dark-air-cured) | 1 | 0 | 0 | 4 | 11 | 1 | 0 | 0 | 1 | 0 |
-| [Tobacco (Flue-cured)](#tobacco-flue-cured) | 1 | 0 | 0 | 3 | 11 | 1 | 0 | 0 | 1 | 0 |
-| [Tobacco (Light air-cured)](#tobacco-light-air-cured) | 1 | 0 | 0 | 0 | 11 | 1 | 0 | 0 | 1 | 0 |
+| [Tobacco](#tobacco) | 1 | 2 | 4 | 34 | 12 | 0 | 0 | 1 | 1 | 3 |
+| [Tobacco (Burley)](#tobacco-burley) | 1 | 0 | 0 | 0 | 12 | 1 | 0 | 0 | 1 | 0 |
+| [Tobacco (Dark air-cured)](#tobacco-dark-air-cured) | 1 | 0 | 0 | 4 | 12 | 1 | 0 | 0 | 1 | 0 |
+| [Tobacco (Flue-cured)](#tobacco-flue-cured) | 1 | 0 | 0 | 3 | 12 | 1 | 0 | 0 | 1 | 0 |
+| [Tobacco (Light air-cured)](#tobacco-light-air-cured) | 1 | 0 | 0 | 0 | 12 | 1 | 0 | 0 | 1 | 0 |
 | [Tomato](#tomato) | 1 | 7 | 4 | 0 | 11 | 3 | 0 | 4 | 1 | 3 |
 | [Watermelon](#watermelon) | 1 | 0 | 4 | 0 | 11 | 0 | 0 | 1 | 0 | 3 |
 | [Wheat](#wheat) | 1 | 9 | 4 | 47 | 10 | 3 | 0 | 2 | 0 | 4 |
@@ -563,7 +563,7 @@ _No rows._
 | Fe | Recent fully-expanded leaf | Feb-Apr | — | 50–150 | — | 5.7.1 |
 | Mn | Recent fully-expanded leaf | Feb-Apr | — | 50–250 | 1000 | 5.7.1 |
 | Cu | Recent fully-expanded leaf | Feb-Apr | — | 5–15 | — | 5.7.1 |
-| **Mo** | — | — | — | — | — | _needs source_ |
+| Mo | mature leaf | mid-season | 0.05 | 0.05–1 | 2 | UC ANR Ventura Avocado Leaf Analysis Guide (Lee 1980). T2. |
 
 _Extra leaf rows outside the canonical element set:_ `N (Edranol)`, `N (Hass)`, `N (Pinkerton)`, `N (Ryan)`
 
@@ -836,7 +836,7 @@ _No rows._
 | **Fe** | — | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | — | _needs source_ |
 | **Cu** | — | — | — | — | — | _needs source_ |
-| **Mo** | — | — | — | — | — | _needs source_ |
+| Mo | mature leaf | mid-season | 0.1 | 0.1–2 | 5 | SCSB394 small grains. T2. |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
@@ -3240,7 +3240,7 @@ _No rows._
 | Parent crop | — |
 | Default yield | 2 |
 | Yield unit | t green/ha |
-| Population / ha | 2500 |
+| Population / ha | 5000 |
 | Years to bearing | — |
 | Years to full bearing | — |
 | N (target/uptake) | 60 |
@@ -3943,7 +3943,7 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | **Fe** | — | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | — | _needs source_ |
 | **Cu** | — | — | — | — | — | _needs source_ |
-| **Mo** | — | — | — | — | — | _needs source_ |
+| Mo | mature leaf | mid-season | 0.1 | 0.1–5 | 10 | SCSB394 — peanut Mo wide range; pH-dependent. T2. |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
@@ -4590,7 +4590,7 @@ _No rows._
 | Parent crop | — |
 | Default yield | 10 |
 | Yield unit | t fruit/ha |
-| Population / ha | 400 |
+| Population / ha | 200 |
 | Years to bearing | — |
 | Years to full bearing | — |
 | N (target/uptake) | 7 |
@@ -5401,7 +5401,7 @@ _Extra rows on this crop outside the canonical soil schema:_ `Acid Saturation`
 | **Fe** | — | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | — | _needs source_ |
 | **Cu** | — | — | — | — | — | _needs source_ |
-| **Mo** | — | — | — | — | — | _needs source_ |
+| Mo | mature leaf | mid-season | 0.1 | 0.1–2 | 5 | SCSB394. T2. |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
@@ -5562,7 +5562,7 @@ _Extra rows on this crop outside the canonical soil schema:_ `Acid Saturation`
 | **Fe** | — | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | — | _needs source_ |
 | **Cu** | — | — | — | — | — | _needs source_ |
-| **Mo** | — | — | — | — | — | _needs source_ |
+| Mo | mature leaf | mid-season | 0.1 | 0.1–2 | 5 | SCSB394. T2. |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
@@ -5913,7 +5913,7 @@ _No rows._
 | **Fe** | — | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | — | _needs source_ |
 | **Cu** | — | — | — | — | — | _needs source_ |
-| **Mo** | — | — | — | — | — | _needs source_ |
+| Mo | mature leaf | mid-season | 0.1 | 0.1–2 | 5 | SCSB394 small grains. T2. |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
@@ -8199,7 +8199,7 @@ _No rows._
 | **Fe** | — | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | — | _needs source_ |
 | **Cu** | — | — | — | — | — | _needs source_ |
-| **Mo** | — | — | — | — | — | _needs source_ |
+| Mo | mature leaf | mid-season | 0.1 | 0.1–2 | 5 | SCSB394 (seedling 0.1-5.0 wider band). T2. |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
@@ -9768,7 +9768,7 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | Fe | mid-canopy leaf | topping | 50 | 50–250 | — | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
 | Mn | mid-canopy leaf | topping | 30 | 30–100 | 250 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
 | Cu | mid-canopy leaf | topping | 5 | 5–25 | 50 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
-| **Mo** | — | — | — | — | — | _needs source_ |
+| Mo | mature leaf | mid-season | 0.2 | 0.2–1 | 2 | NC State Extension Tobacco Mo Deficiency. T2. |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
@@ -9788,7 +9788,7 @@ _No rows._
 
 | skip_cation_ratio_path | Source | Section | Year | Tier | Note |
 |---|---|---|---|---|---|
-| False | FERTASA 5.11 | 5.11 | 2017 | 1 | — |
+| False | FERTASA 5.11 | 5.11 | 2017 | 1 | Cross-validated NC State Extension Tobacco Fertility (no T1 SA soil-Cl threshold published — confirmed gap; T2 fallback documented). |
 
 **Application methods** (`crop_application_methods`)
 
@@ -9879,7 +9879,7 @@ _No rows._
 | Fe | mid-canopy leaf | topping | 50 | 50–250 | — | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
 | Mn | mid-canopy leaf | topping | 30 | 30–100 | 250 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
 | Cu | mid-canopy leaf | topping | 5 | 5–25 | 50 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
-| **Mo** | — | — | — | — | — | _needs source_ |
+| Mo | mature leaf | mid-season | 0.2 | 0.2–1 | 2 | NC State Extension. T2. |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
@@ -9899,7 +9899,7 @@ _No rows._
 
 | skip_cation_ratio_path | Source | Section | Year | Tier | Note |
 |---|---|---|---|---|---|
-| False | FERTASA 5.11 | 5.11 | 2017 | 1 | — |
+| False | FERTASA 5.11 | 5.11 | 2017 | 1 | Cross-validated NC State Extension Tobacco Fertility (no T1 SA soil-Cl threshold published — confirmed gap; T2 fallback documented). |
 
 **Application methods** (`crop_application_methods`)
 
@@ -9991,7 +9991,7 @@ _No rows._
 | Fe | mid-canopy leaf | topping | 50 | 50–250 | — | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
 | Mn | mid-canopy leaf | topping | 30 | 30–100 | 250 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
 | Cu | mid-canopy leaf | topping | 5 | 5–25 | 50 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
-| **Mo** | — | — | — | — | — | _needs source_ |
+| Mo | mature leaf | mid-season | 0.2 | 0.2–1 | 2 | NC State Extension. T2. |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
@@ -10011,7 +10011,7 @@ _No rows._
 
 | skip_cation_ratio_path | Source | Section | Year | Tier | Note |
 |---|---|---|---|---|---|
-| False | FERTASA 5.11 | 5.11 | 2017 | 1 | — |
+| False | FERTASA 5.11 | 5.11 | 2017 | 1 | Cross-validated NC State Extension Tobacco Fertility (no T1 SA soil-Cl threshold published — confirmed gap; T2 fallback documented). |
 
 **Application methods** (`crop_application_methods`)
 
@@ -10102,7 +10102,7 @@ _No rows._
 | Fe | mid-canopy leaf | topping | 50 | 50–250 | — | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
 | Mn | mid-canopy leaf | topping | 30 | 30–100 | 250 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
 | Cu | mid-canopy leaf | topping | 5 | 5–25 | 50 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
-| **Mo** | — | — | — | — | — | _needs source_ |
+| Mo | mature leaf | mid-season | 0.2 | 0.2–1 | 2 | NC State Extension. T2. |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
@@ -10122,7 +10122,7 @@ _No rows._
 
 | skip_cation_ratio_path | Source | Section | Year | Tier | Note |
 |---|---|---|---|---|---|
-| False | FERTASA 5.11 | 5.11 | 2017 | 1 | — |
+| False | FERTASA 5.11 | 5.11 | 2017 | 1 | Cross-validated NC State Extension Tobacco Fertility (no T1 SA soil-Cl threshold published — confirmed gap; T2 fallback documented). |
 
 **Application methods** (`crop_application_methods`)
 
@@ -10209,7 +10209,7 @@ _No rows._
 | Fe | mid-canopy leaf | topping | 50 | 50–250 | — | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
 | Mn | mid-canopy leaf | topping | 30 | 30–100 | 250 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
 | Cu | mid-canopy leaf | topping | 5 | 5–25 | 50 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
-| **Mo** | — | — | — | — | — | _needs source_ |
+| Mo | mature leaf | mid-season | 0.2 | 0.2–1 | 2 | NC State Extension. T2. |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
@@ -10229,7 +10229,7 @@ _No rows._
 
 | skip_cation_ratio_path | Source | Section | Year | Tier | Note |
 |---|---|---|---|---|---|
-| False | FERTASA 5.11 | 5.11 | 2017 | 1 | — |
+| False | FERTASA 5.11 | 5.11 | 2017 | 1 | Cross-validated NC State Extension Tobacco Fertility (no T1 SA soil-Cl threshold published — confirmed gap; T2 fallback documented). |
 
 **Application methods** (`crop_application_methods`)
 
