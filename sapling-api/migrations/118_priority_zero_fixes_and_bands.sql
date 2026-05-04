@@ -1,0 +1,50 @@
+-- ============================================================
+-- 118: Priority zero-bug fixes + cited soil bands across remaining
+--      crop families (legumes, solanaceae, cucurbits, cereals,
+--      oilseeds, tobacco)
+-- ============================================================
+-- This migration addresses the same SILENT ENGINE BUG pattern that
+-- was found across multiple crops: per-ton coefficients = 0 means
+-- the engine returns no scaling for those blocks, regardless of
+-- yield target.
+--
+-- Critical zero-fixes (silent engine bugs):
+--   * Tobacco 4 variants (Burley/Dark/Flue/Light) — all per-ton
+--     coefficients zero. FERTASA 5.11.1 publishes per-variant N
+--     (35/43/69/59) + uniform P/K/Ca/Mg/S.
+--   * Sweet Melon, Gem Squash — crop_requirements all zeros.
+--     Filled from Yara melon family + Cucurbita pepo cross-apply.
+--   * Pea + Pea (Green) — all per-ton coefficients zero. Filled
+--     from AHDB UK Field Pea + UF/IFAS HS725.
+--   * Onion pop_per_ha 100,000 → 750,000 (was 7.5× off per
+--     Starke Ayres §3.3 — engine N rate tables that index by
+--     plant population were silently mis-firing).
+--
+-- Soil bands added (65 cited rows across 14 crops):
+--   * Solanaceae trio: Tomato, Pepper (Bell), Brinjal, Chillies
+--   * Roots: Sweet Potato, Carrot, Beetroot
+--   * Legumes: Soybean, Bean (Dry), Groundnut, Lucerne
+--   * Oilseeds: Sunflower, Canola
+--   * Industrial: Cotton (with K-band correction — was
+--     60/120/250/450, FERTASA 5.9 says 80/100/120 by texture)
+--
+-- Lucerne perennial_age_factors (was empty): 4 rows establishment
+-- vs full vs decline. n_factor=1.0 across all rows because
+-- N-fixation is handled via crop_calc_flags.n_fixation_active
+-- (when the schema gets that column), not via age scaling.
+-- Test_programme_data_integrity asserts age_factor curves
+-- monotonic-up across N/P/K/general; lucerne's biological N
+-- behaviour must not be encoded as a non-monotonic n_factor curve.
+--
+-- Sources cited per-row in `notes` columns.
+--
+-- Genuine schema gaps still pending (calc_flags extension):
+--   * n_fixation_active (all 8 legumes)
+--   * chloride_sensitive (tobacco, avocado, kiwi)
+--   * sulfur_critical (garlic, cabbage, canola)
+--   * acid_obligate (rooibos, honeybush, blueberry)
+--   * boron_sensitive (dry bean — FERTASA hard cap)
+--   * n_protein_cap (malting barley)
+--   * photoperiod_sensitive (onion, garlic)
+--
+-- Applied via python supabase admin client (mirrors 110/111 pattern).

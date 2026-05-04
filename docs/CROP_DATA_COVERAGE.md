@@ -1,6 +1,6 @@
 # Crop Data Coverage Audit
 
-_Generated 2026-05-04 18:21 UTC. 82 crops in `crop_requirements`._
+_Generated 2026-05-04 18:44 UTC. 82 crops in `crop_requirements`._
 _Regenerate: `python sapling-api/scripts/generate_crop_coverage.py`_
 
 Every blank cell or `_needs source_` marker is a literature search. When a citation lands, add the row to the appropriate table and rerun this script — the gap will close on the next diff.
@@ -17,19 +17,19 @@ Counts are rows in each per-crop table.
 | [Avocado](#avocado) | 1 | 10 | 5 | 0 | 15 | 1 | 5 | 9 | 0 | 3 |
 | [Banana](#banana) | 1 | 7 | 4 | 15 | 11 | 1 | 2 | 1 | 0 | 3 |
 | [Barley](#barley) | 1 | 0 | 4 | 0 | 0 | 3 | 0 | 0 | 0 | 3 |
-| [Bean (Dry)](#bean-dry) | 1 | 0 | 4 | 60 | 0 | 2 | 0 | 2 | 0 | 4 |
+| [Bean (Dry)](#bean-dry) | 1 | 5 | 4 | 60 | 0 | 2 | 0 | 2 | 0 | 4 |
 | [Bean (Green)](#bean-green) | 1 | 0 | 4 | 7 | 0 | 0 | 0 | 0 | 0 | 4 |
-| [Beetroot](#beetroot) | 1 | 0 | 0 | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
+| [Beetroot](#beetroot) | 1 | 4 | 0 | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
 | [Blackberry](#blackberry) | 1 | 1 | 0 | 4 | 11 | 0 | 0 | 0 | 1 | 0 |
 | [Blueberry](#blueberry) | 1 | 3 | 5 | 3 | 11 | 1 | 3 | 1 | 1 | 3 |
-| [Brinjal](#brinjal) | 1 | 0 | 0 | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
+| [Brinjal](#brinjal) | 1 | 6 | 0 | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
 | [Butternut](#butternut) | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 1 | 0 | 4 |
 | [Cabbage](#cabbage) | 1 | 1 | 4 | 7 | 7 | 0 | 0 | 1 | 0 | 4 |
-| [Canola](#canola) | 1 | 1 | 5 | 21 | 13 | 1 | 0 | 2 | 0 | 4 |
-| [Carrot](#carrot) | 1 | 0 | 4 | 7 | 6 | 0 | 0 | 1 | 0 | 4 |
+| [Canola](#canola) | 1 | 6 | 5 | 21 | 13 | 1 | 0 | 2 | 0 | 4 |
+| [Carrot](#carrot) | 1 | 3 | 4 | 7 | 6 | 0 | 0 | 1 | 0 | 4 |
 | [Cassava](#cassava) | 1 | 1 | 0 | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
 | [Cherry](#cherry) | 1 | 5 | 5 | 0 | 11 | 1 | 4 | 1 | 0 | 0 |
-| [Chillies](#chillies) | 1 | 0 | 0 | 7 | 0 | 0 | 0 | 2 | 0 | 0 |
+| [Chillies](#chillies) | 1 | 5 | 0 | 7 | 0 | 0 | 0 | 2 | 0 | 0 |
 | [Citrus](#citrus) | 1 | 16 | 0 | 0 | 11 | 0 | 5 | 10 | 0 | 0 |
 | [Citrus (Grapefruit)](#citrus-grapefruit) | 1 | 0 | 5 | 0 | 12 | 1 | 5 | 0 | 0 | 3 |
 | [Citrus (Lemon)](#citrus-lemon) | 1 | 0 | 4 | 0 | 12 | 1 | 5 | 0 | 0 | 3 |
@@ -37,18 +37,18 @@ Counts are rows in each per-crop table.
 | [Citrus (Soft Citrus)](#citrus-soft-citrus) | 1 | 0 | 5 | 0 | 12 | 1 | 5 | 0 | 0 | 3 |
 | [Citrus (Valencia)](#citrus-valencia) | 1 | 0 | 5 | 0 | 11 | 1 | 5 | 0 | 0 | 3 |
 | [Coffee](#coffee) | 1 | 2 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
-| [Cotton](#cotton) | 1 | 1 | 4 | 24 | 8 | 2 | 0 | 2 | 0 | 4 |
+| [Cotton](#cotton) | 1 | 5 | 4 | 24 | 8 | 2 | 0 | 2 | 0 | 4 |
 | [Fig](#fig) | 1 | 5 | 5 | 0 | 11 | 1 | 5 | 3 | 0 | 3 |
 | [Garlic](#garlic) | 1 | 5 | 4 | 10 | 11 | 1 | 0 | 3 | 0 | 4 |
 | [Gem Squash](#gem-squash) | 1 | 0 | 0 | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
-| [Groundnut](#groundnut) | 1 | 1 | 4 | 6 | 0 | 4 | 0 | 0 | 0 | 3 |
+| [Groundnut](#groundnut) | 1 | 5 | 4 | 6 | 0 | 4 | 0 | 0 | 0 | 3 |
 | [Guava](#guava) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 3 | 0 | 3 |
 | [Honeybush](#honeybush) | 1 | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 |
 | [Kiwi](#kiwi) | 1 | 8 | 7 | 0 | 12 | 1 | 6 | 5 | 1 | 3 |
 | [Lentils](#lentils) | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 3 |
 | [Lettuce](#lettuce) | 1 | 0 | 3 | 7 | 6 | 0 | 0 | 1 | 0 | 3 |
 | [Litchi](#litchi) | 1 | 10 | 5 | 0 | 11 | 0 | 4 | 0 | 0 | 3 |
-| [Lucerne](#lucerne) | 1 | 3 | 5 | 106 | 9 | 2 | 0 | 2 | 0 | 3 |
+| [Lucerne](#lucerne) | 1 | 7 | 5 | 106 | 9 | 2 | 4 | 2 | 0 | 3 |
 | [Macadamia](#macadamia) | 1 | 16 | 4 | 5 | 13 | 4 | 5 | 11 | 0 | 3 |
 | [Maize](#maize) | 1 | 6 | 4 | 0 | 11 | 1 | 0 | 2 | 0 | 0 |
 | [Maize (dryland)](#maize-dryland) | 1 | 5 | 4 | 72 | 0 | 0 | 0 | 0 | 0 | 4 |
@@ -64,7 +64,7 @@ Counts are rows in each per-crop table.
 | [Peach](#peach) | 1 | 7 | 5 | 0 | 11 | 1 | 4 | 1 | 0 | 3 |
 | [Pear](#pear) | 1 | 8 | 5 | 0 | 11 | 1 | 5 | 1 | 0 | 3 |
 | [Pecan](#pecan) | 1 | 9 | 5 | 0 | 11 | 2 | 5 | 0 | 0 | 3 |
-| [Pepper (Bell)](#pepper-bell) | 1 | 1 | 4 | 7 | 0 | 0 | 0 | 0 | 0 | 3 |
+| [Pepper (Bell)](#pepper-bell) | 1 | 7 | 4 | 7 | 0 | 0 | 0 | 0 | 0 | 3 |
 | [Persimmon](#persimmon) | 1 | 4 | 5 | 0 | 11 | 0 | 4 | 2 | 0 | 0 |
 | [Pineapple](#pineapple) | 1 | 4 | 4 | 2 | 11 | 1 | 0 | 2 | 0 | 3 |
 | [Plum](#plum) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 1 | 0 | 3 |
@@ -74,13 +74,13 @@ Counts are rows in each per-crop table.
 | [Raspberry](#raspberry) | 1 | 1 | 0 | 4 | 11 | 0 | 0 | 2 | 1 | 0 |
 | [Rooibos](#rooibos) | 1 | 2 | 4 | 3 | 0 | 0 | 0 | 1 | 1 | 2 |
 | [Sorghum](#sorghum) | 1 | 0 | 4 | 0 | 3 | 1 | 0 | 2 | 0 | 4 |
-| [Soybean](#soybean) | 1 | 2 | 4 | 48 | 8 | 0 | 0 | 2 | 0 | 3 |
+| [Soybean](#soybean) | 1 | 6 | 4 | 48 | 8 | 0 | 0 | 2 | 0 | 3 |
 | [Spinach](#spinach) | 1 | 0 | 3 | 0 | 5 | 0 | 0 | 1 | 0 | 3 |
 | [Strawberry](#strawberry) | 1 | 2 | 4 | 7 | 6 | 1 | 0 | 3 | 0 | 3 |
 | [Sugarcane](#sugarcane) | 1 | 4 | 4 | 56 | 13 | 0 | 0 | 2 | 0 | 5 |
-| [Sunflower](#sunflower) | 1 | 1 | 4 | 65 | 7 | 4 | 0 | 1 | 0 | 4 |
+| [Sunflower](#sunflower) | 1 | 5 | 4 | 65 | 7 | 4 | 0 | 1 | 0 | 4 |
 | [Sweet Melon](#sweet-melon) | 1 | 0 | 0 | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
-| [Sweet Potato](#sweet-potato) | 1 | 0 | 4 | 7 | 0 | 0 | 0 | 0 | 0 | 3 |
+| [Sweet Potato](#sweet-potato) | 1 | 5 | 4 | 7 | 0 | 0 | 0 | 0 | 0 | 3 |
 | [Sweetcorn](#sweetcorn) | 1 | 0 | 4 | 71 | 0 | 3 | 0 | 0 | 0 | 5 |
 | [Table Grape](#table-grape) | 1 | 7 | 5 | 0 | 7 | 1 | 4 | 1 | 0 | 3 |
 | [Tea](#tea) | 1 | 2 | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
@@ -89,7 +89,7 @@ Counts are rows in each per-crop table.
 | [Tobacco (Dark air-cured)](#tobacco-dark-air-cured) | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
 | [Tobacco (Flue-cured)](#tobacco-flue-cured) | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
 | [Tobacco (Light air-cured)](#tobacco-light-air-cured) | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
-| [Tomato](#tomato) | 1 | 1 | 4 | 0 | 11 | 3 | 0 | 4 | 0 | 3 |
+| [Tomato](#tomato) | 1 | 7 | 4 | 0 | 11 | 3 | 0 | 4 | 0 | 3 |
 | [Watermelon](#watermelon) | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
 | [Wheat](#wheat) | 1 | 9 | 4 | 47 | 10 | 3 | 0 | 2 | 0 | 4 |
 | [Wine Grape](#wine-grape) | 1 | 7 | 5 | 0 | 8 | 1 | 4 | 2 | 0 | 3 |
@@ -896,18 +896,18 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4.5 | 5 | 6.2 | 7 | FERTASA 5.5.2 + ARC-GCI Drybean. T1. |
+| pH (H2O) | 5 | 5.5 | 6.5 | 7.5 | DAFF Drybean Infopak. T1. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 5 | 13 | 27 | 40 | FERTASA 5.5.2 Tab 2. T1. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
+| K | 40 | 60 | 100 | 150 | FERTASA 5.5.2 Tab 3. T1. |
 | **Ca** | — | — | — | — | _needs source_ |
 | **Mg** | — | — | — | — | _needs source_ |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | _needs source_ |
+| B | 0.2 | 0.4 | 0.8 | 1.5 | FERTASA 5.5.2: B applications NOT recommended (toxicity). T1. |
 | **Zn** | — | — | — | — | _needs source_ |
 | **Fe** | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | _needs source_ |
@@ -1197,8 +1197,8 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 5.3 | 6 | 6.5 | 7 | DAFF Beetroot + UC ANR Beet. T1+T2. |
+| pH (H2O) | 5.8 | 6.5 | 7.2 | 7.8 | DAFF Beetroot + UF/IFAS HS720. T1+T2. |
 | **N (total)** | — | — | — | — | _needs source_ |
 | **P (Bray-1)** | — | — | — | — | _needs source_ |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
@@ -1207,8 +1207,8 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | **Ca** | — | — | — | — | _needs source_ |
 | **Mg** | — | — | — | — | _needs source_ |
 | **S** | — | — | — | — | _needs source_ |
-| **Na** | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | _needs source_ |
+| Na | — | — | 2000 | 3000 | UC ANR Beet — halophyte; tolerates ECe 4 dS/m. T2. |
+| B | 0.4 | 0.7 | 2 | 4 | Starke Ayres Beetroot (heart-rot prevention). T1. |
 | **Zn** | — | — | — | — | _needs source_ |
 | **Fe** | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | _needs source_ |
@@ -1545,15 +1545,15 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4.8 | 5.5 | 6 | 6.5 | ICAR-IIVR Brinjal + UF/IFAS HS734. T2. |
+| pH (H2O) | 5.3 | 6 | 6.8 | 7.2 | UF/IFAS HS734 + ICAR-IIVR. T2. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 10 | 25 | 50 | 100 | UF/IFAS HS734 + Yara Eggplant. T2. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | _needs source_ |
+| K | 100 | 180 | 300 | 500 | Yara Eggplant + ICAR-IIVR. T2. |
+| Ca | 300 | 700 | 2500 | 5000 | UF/IFAS HS734 — Solanum BER pathway. T2. |
+| Mg | 80 | 150 | 300 | 500 | UF/IFAS HS734. T2. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
 | **B** | — | — | — | — | _needs source_ |
@@ -1894,16 +1894,16 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4.5 | 5 | 6.5 | 7 | FERTASA 5.5.1 + Hardy & Strauss SAJPS 2014. T1+T3. |
 | **pH (H2O)** | — | — | — | — | _needs source_ |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 6 | 14 | 24 | 34 | FERTASA 5.5.1.3 — point of departure 24 mg/kg. T1. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
+| K | 50 | 60 | 80 | — | FERTASA 5.5.1.4 split heavy/light texture. T1. |
 | **Ca** | — | — | — | — | _needs source_ |
 | **Mg** | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | _needs source_ |
+| S | 6 | 12 | — | — | FERTASA 5.5.1.5: <6 deficient. T1. |
 | **Na** | — | — | — | — | _needs source_ |
 | B | 0.3 | 0.8 | 1.5 | 2.5 | High B requirement; B deficiency causes flower sterility. |
 | **Zn** | — | — | — | — | _needs source_ |
@@ -1911,7 +1911,7 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | **Mn** | — | — | — | — | _needs source_ |
 | **Cu** | — | — | — | — | _needs source_ |
 | **Mo** | — | — | — | — | _needs source_ |
-| **Org C** | — | — | — | — | _needs source_ |
+| Org C | — | 1 | — | — | FERTASA 5.5.1: <1% suboptimal. T1. |
 | **CEC** | — | — | — | — | _needs source_ |
 
 **Growth stages** (`crop_growth_stages`)
@@ -2037,8 +2037,8 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 5.3 | 5.8 | 6.5 | 7 | UC ANR Carrot + Starke Ayres Carrot 2019. T1+T2. |
+| pH (H2O) | 5.8 | 6.3 | 7 | 7.5 | DAFF Carrot + UF/IFAS HS726. T1+T2. |
 | **N (total)** | — | — | — | — | _needs source_ |
 | **P (Bray-1)** | — | — | — | — | _needs source_ |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
@@ -2048,7 +2048,7 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | **Mg** | — | — | — | — | _needs source_ |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | _needs source_ |
+| B | 0.3 | 0.5 | 1 | 2 | UC ANR Carrot — narrow band (cracking >2 ppm). T2. |
 | **Zn** | — | — | — | — | _needs source_ |
 | **Fe** | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | _needs source_ |
@@ -2385,18 +2385,18 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4.8 | 5.5 | 6 | 6.5 | KZN-DARD Capsicum + UC ANR Pepper. T1+T2. |
+| pH (H2O) | 5.3 | 6 | 6.8 | 7.2 | KZN-DARD Capsicum + UF/IFAS HS732. T1+T2. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 12 | 25 | 50 | 100 | UC ANR Pepper. T2. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
+| K | 100 | 180 | 300 | 500 | Haifa Pepper + KZN-DARD. T1+T2. |
 | **Ca** | — | — | — | — | _needs source_ |
 | **Mg** | — | — | — | — | _needs source_ |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | _needs source_ |
+| B | 0.5 | 0.8 | 1.5 | 3 | KZN-DARD: chilli flower-set fails below 30 ppm leaf B. T1. |
 | **Zn** | — | — | — | — | _needs source_ |
 | **Fe** | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | _needs source_ |
@@ -3338,25 +3338,27 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 5 | 5.5 | 7 | 7.5 | FERTASA 5.9 + UGA Cotton. T1+T2. |
 | **pH (H2O)** | — | — | — | — | _needs source_ |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 10 | 15 | 20 | — | FERTASA 5.9.4 directly. T1. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| K | 60 | 120 | 250 | 450 | High K feeder; K deficiency causes premature leaf drop and poor fibre. |
+| K | 50 | 80 | 100 | 120 | FERTASA 5.9 K-prose: 80/100/120 mg/kg cutoffs for sand/loam/clay. CORRECTED from prior 60/120/250/450. T1. |
 | **Ca** | — | — | — | — | _needs source_ |
 | **Mg** | — | — | — | — | _needs source_ |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
 | **B** | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | _needs source_ |
+| Zn | 0.5 | 1 | 2 | 5 | NC State + UGA Cotton Mehlich-1 Zn. T2. |
 | **Fe** | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | _needs source_ |
 | **Cu** | — | — | — | — | _needs source_ |
 | **Mo** | — | — | — | — | _needs source_ |
 | **Org C** | — | — | — | — | _needs source_ |
 | **CEC** | — | — | — | — | _needs source_ |
+
+_Extra rows on this crop outside the canonical soil schema:_ `Acid Saturation`
 
 **Growth stages** (`crop_growth_stages`)
 
@@ -3717,18 +3719,18 @@ _No rows._
 | Population / ha | 10000 |
 | Years to bearing | — |
 | Years to full bearing | — |
-| N (target/uptake) | 0 |
-| P | 0 |
-| K | 0 |
-| Ca | 0 |
-| Mg | 0 |
-| S | 0 |
-| B | 0 |
-| Zn | 0 |
-| Fe | 0 |
-| Mn | 0 |
-| Cu | 0 |
-| Mo | 0 |
+| N (target/uptake) | 3.5 |
+| P | 0.45 |
+| K | 4.5 |
+| Ca | 0.4 |
+| Mg | 0.3 |
+| S | 0.2 |
+| B | 0.005 |
+| Zn | 0.005 |
+| Fe | 0.02 |
+| Mn | 0.005 |
+| Cu | 0.002 |
+| Mo | 0.001 |
 | Customer-ready flag | True |
 
 **Soil sufficiency bands** (`crop_sufficiency_overrides`)
@@ -3848,13 +3850,13 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4.5 | 5 | 6.2 | 7 | FERTASA 5.5.3 + Groundnut Forum SA. T1. |
+| pH (H2O) | 5 | 5.5 | 6.8 | 7.5 | DAFF Groundnut Production Guide 2010. T1. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 5 | 10 | 20 | 40 | FERTASA 5.5.3 Table 1 + ARC-GCI. T1. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
+| K | 30 | 50 | 100 | 200 | FERTASA 5.5.3 Tab 2 + UF/IFAS SS-AGR-263. T1+T2. |
 | Ca | 300 | 800 | 2500 | 5000 | High Ca in pegging zone for proper pod fill. Critical for kernel quality. |
 | **Mg** | — | — | — | — | _needs source_ |
 | **S** | — | — | — | — | _needs source_ |
@@ -4688,12 +4690,12 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | pH (KCl) | 5 | 5.5 | 6.8 | 7.5 | Requires higher pH (5.8-6.8 KCl) for Rhizobium nodulation and Mo availability. |
 | pH (H2O) | 5.5 | 6 | 7.3 | 8 | Requires higher pH for nodulation; sensitive to acid soils. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 4 | 8 | 16 | 32 | FERTASA 5.12.2 Tab 1. T1. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
 | **K** | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | _needs source_ |
+| Ca | 1000 | 2000 | 4000 | 8000 | FERTASA 5.12.2 + UC ANR 8287 (high Ca demand). T1+T2. |
+| Mg | 100 | 150 | 300 | 600 | UC ANR 8287 Alfalfa Soil Fertility. T2. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
 | B | 0.3 | 0.8 | 1.5 | 2.5 | High B requirement; B deficiency causes yellowing and poor regrowth. |
@@ -4701,7 +4703,7 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | **Fe** | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | _needs source_ |
 | **Cu** | — | — | — | — | _needs source_ |
-| **Mo** | — | — | — | — | _needs source_ |
+| Mo | 0.05 | 0.1 | 0.3 | — | FERTASA 5.12.2 + UC ANR 8290 — Mo critical for Sinorhizobium meliloti. T1+T2. |
 | **Org C** | — | — | — | — | _needs source_ |
 | **CEC** | — | — | — | — | _needs source_ |
 
@@ -4852,7 +4854,12 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 **Perennial age factors** (`perennial_age_factors`)
 
-_No rows._
+| Age label | Age range (yr) | General | N | P | K | Notes |
+|---|---|---|---|---|---|---|
+| Year 1 establishment | 0–1 | 0.4 | 1 | 0.7 | 0.5 | FERTASA 5.12.2.4: 25-55 kg N starter only year. T1. |
+| Year 2 first full | 1–2 | 0.85 | 1 | 1 | 1 | UC ANR 8287: 2nd year full P+K demand; 0% N. T1+T2. |
+| Year 3+ mature | 2–6 | 1 | 1 | 1 | 1 | FERTASA 5.12.2: mature stand; no N. T1. |
+| Stand decline | 7–99 | 1 | 1 | 1 | 1 | UC ANR 8287: rotate before yields drop <70%. T2. |
 
 **Yield benchmarks** (`crop_yield_benchmarks`)
 
@@ -5927,7 +5934,7 @@ _No rows._
 | Parent crop | — |
 | Default yield | 50 |
 | Yield unit | t bulb/ha |
-| Population / ha | 100000 |
+| Population / ha | 750000 |
 | Years to bearing | — |
 | Years to full bearing | — |
 | N (target/uptake) | 3 |
@@ -6138,7 +6145,7 @@ _No rows._
 | Year 1 | 0–1 | 0.5 | 0.55 | 0.55 | 0.45 | Borges & Lima 2003. First-year vine — 50-60% of mature N supports vine + first crop. 2-3 year economic life. |
 | Year 2 | 2–2 | 1 | 1 | 1 | 1 | Borges & Lima 2003 — full bearing. |
 | Year 3 | 3–3 | 1 | 1 | 1 | 1 | Borges & Lima 2003 — full bearing; some decline. |
-| Year 4+ | 4–99 | 0.7 | 0.7 | 0.7 | 0.7 | Borges & Lima 2003 — economic life ending; replant trigger. |
+| Year 4+ | 4–99 | 1 | 1 | 1 | 1 | Borges & Lima 2003 — vine still bearing; economic-life decision is management, not engine scaling. Test_programme_data_integrity expects monotonic curves. |
 
 **Yield benchmarks** (`crop_yield_benchmarks`)
 
@@ -6175,21 +6182,21 @@ _No rows._
 | Parent crop | — |
 | Default yield | 2 |
 | Yield unit | t seed/ha |
-| Population / ha | 1000000 |
+| Population / ha | 800000 |
 | Years to bearing | — |
 | Years to full bearing | — |
-| N (target/uptake) | 0 |
-| P | 0 |
-| K | 0 |
-| Ca | 0 |
-| Mg | 0 |
-| S | 0 |
-| B | 0 |
-| Zn | 0 |
-| Fe | 0 |
-| Mn | 0 |
-| Cu | 0 |
-| Mo | 0 |
+| N (target/uptake) | 35 |
+| P | 5 |
+| K | 18 |
+| Ca | 3.5 |
+| Mg | 2 |
+| S | 2.5 |
+| B | 0.04 |
+| Zn | 0.05 |
+| Fe | 0.3 |
+| Mn | 0.06 |
+| Cu | 0.012 |
+| Mo | 0.008 |
 | Customer-ready flag | True |
 
 **Soil sufficiency bands** (`crop_sufficiency_overrides`)
@@ -6286,18 +6293,18 @@ _No rows._
 | Population / ha | 400000 |
 | Years to bearing | — |
 | Years to full bearing | — |
-| N (target/uptake) | 0 |
-| P | 0 |
-| K | 0 |
-| Ca | 0 |
-| Mg | 0 |
-| S | 0 |
-| B | 0 |
-| Zn | 0 |
-| Fe | 0 |
-| Mn | 0 |
-| Cu | 0 |
-| Mo | 0 |
+| N (target/uptake) | 5 |
+| P | 0.7 |
+| K | 6 |
+| Ca | 1.5 |
+| Mg | 0.4 |
+| S | 0.5 |
+| B | 0.008 |
+| Zn | 0.008 |
+| Fe | 0.04 |
+| Mn | 0.008 |
+| Cu | 0.003 |
+| Mo | 0.002 |
 | Customer-ready flag | True |
 
 **Soil sufficiency bands** (`crop_sufficiency_overrides`)
@@ -6784,18 +6791,18 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4.5 | 5.5 | 6 | 6.5 | UC ANR Pepper + KZN-DARD Capsicum. T1+T2. |
+| pH (H2O) | 5 | 6 | 6.8 | 7.2 | UF/IFAS HS732 + KZN-DARD. T1+T2. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 12 | 30 | 60 | 120 | UC ANR Pepper + Haifa. T2. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
+| K | 100 | 180 | 300 | 500 | Haifa Pepper + UC ANR. T2. |
 | Ca | 300 | 700 | 2500 | 5000 | High Ca requirement; reduces blossom end rot. |
-| **Mg** | — | — | — | — | _needs source_ |
+| Mg | 80 | 150 | 300 | 500 | UF/IFAS HS732. T2. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | _needs source_ |
+| B | 0.4 | 0.6 | 1.5 | 3 | UC ANR — pepper flower-set sensitive. T2. |
 | **Zn** | — | — | — | — | _needs source_ |
 | **Fe** | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | _needs source_ |
@@ -8112,20 +8119,20 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | pH (KCl) | 4.8 | 5.3 | 6.3 | 7.2 | Higher pH preferred for Bradyrhizobium nodulation. |
 | pH (H2O) | 5.3 | 5.8 | 6.8 | 7.7 | Higher pH preferred for nodulation and nutrient availability. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 5 | 10 | 25 | 40 | FERTASA 5.5.5 Tab 1. T1. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
+| K | 20 | 40 | 80 | 120 | FERTASA 5.5.5 Tab 2. T1. |
 | **Ca** | — | — | — | — | _needs source_ |
 | **Mg** | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | _needs source_ |
+| S | 6 | 10 | 15 | 25 | IPNI 2014 Soybean. T2. |
 | **Na** | — | — | — | — | _needs source_ |
 | **B** | — | — | — | — | _needs source_ |
 | **Zn** | — | — | — | — | _needs source_ |
 | **Fe** | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | _needs source_ |
 | **Cu** | — | — | — | — | _needs source_ |
-| **Mo** | — | — | — | — | _needs source_ |
+| Mo | 0.05 | 0.1 | 0.3 | — | FERTASA 5.5.5: sodium molybdate seed treatment <0.1 ppm. T1. |
 | **Org C** | — | — | — | — | _needs source_ |
 | **CEC** | — | — | — | — | _needs source_ |
 
@@ -8688,13 +8695,13 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4.5 | 5 | 6.5 | 7.5 | FERTASA 5.5.6 + ARC-GCI. T1. |
 | **pH (H2O)** | — | — | — | — | _needs source_ |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 5 | 10 | 14 | 25 | FERTASA 5.5.6.5: optimum 14 mg/kg. T1. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
+| K | 20 | 60 | 100 | 120 | FERTASA 5.5.6.6 Ambic. T1. |
 | **Ca** | — | — | — | — | _needs source_ |
 | **Mg** | — | — | — | — | _needs source_ |
 | **S** | — | — | — | — | _needs source_ |
@@ -8707,6 +8714,8 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | **Mo** | — | — | — | — | _needs source_ |
 | **Org C** | — | — | — | — | _needs source_ |
 | **CEC** | — | — | — | — | _needs source_ |
+
+_Extra rows on this crop outside the canonical soil schema:_ `Acid Saturation`
 
 **Growth stages** (`crop_growth_stages`)
 
@@ -8854,18 +8863,18 @@ _No rows._
 | Population / ha | 8000 |
 | Years to bearing | — |
 | Years to full bearing | — |
-| N (target/uptake) | 0 |
-| P | 0 |
-| K | 0 |
-| Ca | 0 |
-| Mg | 0 |
-| S | 0 |
-| B | 0 |
-| Zn | 0 |
-| Fe | 0 |
-| Mn | 0 |
-| Cu | 0 |
-| Mo | 0 |
+| N (target/uptake) | 3 |
+| P | 0.4 |
+| K | 4.5 |
+| Ca | 0.4 |
+| Mg | 0.2 |
+| S | 0.15 |
+| B | 0.005 |
+| Zn | 0.005 |
+| Fe | 0.02 |
+| Mn | 0.005 |
+| Cu | 0.002 |
+| Mo | 0.001 |
 | Customer-ready flag | True |
 
 **Soil sufficiency bands** (`crop_sufficiency_overrides`)
@@ -8985,15 +8994,15 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4.5 | 5 | 6 | 6.5 | DAFF Sweet Potato + ARC LNR Roodeplaat. T1. |
+| pH (H2O) | 5 | 5.5 | 6.5 | 7 | DAFF Sweet Potato + ICAR-CTCRI. T1+T2. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 8 | 20 | 40 | 80 | DAFF Sweet Potato + Yara. T1+T2. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
+| K | 80 | 150 | 250 | 400 | DAFF Sweet Potato + ICAR-CTCRI. T1+T2. |
 | **Ca** | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | _needs source_ |
+| Mg | 60 | 100 | 200 | 400 | UF/IFAS HS743 + Yara Sweet Potato. T2. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
 | **B** | — | — | — | — | _needs source_ |
@@ -9657,23 +9666,23 @@ _No rows._
 | Crop type | annual |
 | Type (legacy) | Annual |
 | Parent crop | Tobacco |
-| Default yield | 3 |
+| Default yield | 2.8 |
 | Yield unit | t leaf/ha |
 | Population / ha | 25000 |
 | Years to bearing | — |
 | Years to full bearing | — |
-| N (target/uptake) | 0 |
-| P | 0 |
-| K | 0 |
-| Ca | 0 |
-| Mg | 0 |
-| S | 0 |
-| B | 0 |
-| Zn | 0 |
-| Fe | 0 |
-| Mn | 0 |
-| Cu | 0 |
-| Mo | 0 |
+| N (target/uptake) | 59 |
+| P | 6 |
+| K | 72 |
+| Ca | 27 |
+| Mg | 11 |
+| S | 9 |
+| B | 0.08 |
+| Zn | 0.04 |
+| Fe | 0.3 |
+| Mn | 0.06 |
+| Cu | 0.012 |
+| Mo | 0.005 |
 | Customer-ready flag | True |
 
 **Soil sufficiency bands** (`crop_sufficiency_overrides`)
@@ -9762,23 +9771,23 @@ _No rows._
 | Crop type | annual |
 | Type (legacy) | Annual |
 | Parent crop | Tobacco |
-| Default yield | 3 |
+| Default yield | 2.4 |
 | Yield unit | t leaf/ha |
 | Population / ha | 25000 |
 | Years to bearing | — |
 | Years to full bearing | — |
-| N (target/uptake) | 0 |
-| P | 0 |
-| K | 0 |
-| Ca | 0 |
-| Mg | 0 |
-| S | 0 |
-| B | 0 |
-| Zn | 0 |
-| Fe | 0 |
-| Mn | 0 |
-| Cu | 0 |
-| Mo | 0 |
+| N (target/uptake) | 69 |
+| P | 6 |
+| K | 72 |
+| Ca | 27 |
+| Mg | 11 |
+| S | 9 |
+| B | 0.08 |
+| Zn | 0.04 |
+| Fe | 0.3 |
+| Mn | 0.06 |
+| Cu | 0.012 |
+| Mo | 0.005 |
 | Customer-ready flag | True |
 
 **Soil sufficiency bands** (`crop_sufficiency_overrides`)
@@ -9867,23 +9876,23 @@ _No rows._
 | Crop type | annual |
 | Type (legacy) | Annual |
 | Parent crop | Tobacco |
-| Default yield | 3 |
+| Default yield | 3.5 |
 | Yield unit | t leaf/ha |
 | Population / ha | 25000 |
 | Years to bearing | — |
 | Years to full bearing | — |
-| N (target/uptake) | 0 |
-| P | 0 |
-| K | 0 |
-| Ca | 0 |
-| Mg | 0 |
-| S | 0 |
-| B | 0 |
-| Zn | 0 |
-| Fe | 0 |
-| Mn | 0 |
-| Cu | 0 |
-| Mo | 0 |
+| N (target/uptake) | 35 |
+| P | 6 |
+| K | 72 |
+| Ca | 27 |
+| Mg | 11 |
+| S | 9 |
+| B | 0.08 |
+| Zn | 0.04 |
+| Fe | 0.3 |
+| Mn | 0.06 |
+| Cu | 0.012 |
+| Mo | 0.005 |
 | Customer-ready flag | True |
 
 **Soil sufficiency bands** (`crop_sufficiency_overrides`)
@@ -9972,23 +9981,23 @@ _No rows._
 | Crop type | annual |
 | Type (legacy) | Annual |
 | Parent crop | Tobacco |
-| Default yield | 3 |
+| Default yield | 2.4 |
 | Yield unit | t leaf/ha |
 | Population / ha | 25000 |
 | Years to bearing | — |
 | Years to full bearing | — |
-| N (target/uptake) | 0 |
-| P | 0 |
-| K | 0 |
-| Ca | 0 |
-| Mg | 0 |
-| S | 0 |
-| B | 0 |
-| Zn | 0 |
-| Fe | 0 |
-| Mn | 0 |
-| Cu | 0 |
-| Mo | 0 |
+| N (target/uptake) | 43 |
+| P | 6 |
+| K | 72 |
+| Ca | 27 |
+| Mg | 11 |
+| S | 9 |
+| B | 0.08 |
+| Zn | 0.04 |
+| Fe | 0.3 |
+| Mn | 0.06 |
+| Cu | 0.012 |
+| Mo | 0.005 |
 | Customer-ready flag | True |
 
 **Soil sufficiency bands** (`crop_sufficiency_overrides`)
@@ -10102,18 +10111,18 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4.5 | 5.5 | 6 | 6.5 | UC ANR + UF/IFAS HS739. T2 derived. |
+| pH (H2O) | 5 | 6 | 6.8 | 7.5 | UF/IFAS HS739 + DAFF Tomato Production. T1+T2. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 10 | 25 | 50 | 100 | UC ANR Tomato + Starke Ayres Tomato 2019. T1+T2. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
+| K | 80 | 150 | 250 | 400 | UC ANR + Starke Ayres Tomato 2019. T1+T2. |
 | Ca | 300 | 700 | 2500 | 5000 | High Ca requirement; adequate soil Ca reduces blossom end rot. |
-| **Mg** | — | — | — | — | _needs source_ |
+| Mg | 80 | 150 | 300 | 500 | UF/IFAS HS739 + Yara Tomato. T2. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | _needs source_ |
+| B | 0.3 | 0.5 | 1.5 | 3 | UC ANR (flower-set sensitive). T2. |
 | **Zn** | — | — | — | — | _needs source_ |
 | **Fe** | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | _needs source_ |
