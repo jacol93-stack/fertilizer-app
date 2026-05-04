@@ -1,6 +1,6 @@
 # Crop Data Coverage Audit
 
-_Generated 2026-05-04 18:44 UTC. 82 crops in `crop_requirements`._
+_Generated 2026-05-04 22:09 UTC. 82 crops in `crop_requirements`._
 _Regenerate: `python sapling-api/scripts/generate_crop_coverage.py`_
 
 Every blank cell or `_needs source_` marker is a literature search. When a citation lands, add the row to the appropriate table and rerun this script — the gap will close on the next diff.
@@ -22,14 +22,14 @@ Counts are rows in each per-crop table.
 | [Beetroot](#beetroot) | 1 | 4 | 0 | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
 | [Blackberry](#blackberry) | 1 | 1 | 0 | 4 | 11 | 0 | 0 | 0 | 1 | 0 |
 | [Blueberry](#blueberry) | 1 | 3 | 5 | 3 | 11 | 1 | 3 | 1 | 1 | 3 |
-| [Brinjal](#brinjal) | 1 | 6 | 0 | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
-| [Butternut](#butternut) | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 1 | 0 | 4 |
-| [Cabbage](#cabbage) | 1 | 1 | 4 | 7 | 7 | 0 | 0 | 1 | 0 | 4 |
+| [Brinjal](#brinjal) | 1 | 6 | 0 | 7 | 11 | 0 | 0 | 0 | 0 | 0 |
+| [Butternut](#butternut) | 1 | 0 | 4 | 9 | 11 | 0 | 0 | 1 | 0 | 4 |
+| [Cabbage](#cabbage) | 1 | 1 | 4 | 7 | 8 | 1 | 0 | 1 | 0 | 4 |
 | [Canola](#canola) | 1 | 6 | 5 | 21 | 13 | 1 | 0 | 2 | 0 | 4 |
 | [Carrot](#carrot) | 1 | 3 | 4 | 7 | 6 | 0 | 0 | 1 | 0 | 4 |
 | [Cassava](#cassava) | 1 | 1 | 0 | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
 | [Cherry](#cherry) | 1 | 5 | 5 | 0 | 11 | 1 | 4 | 1 | 0 | 0 |
-| [Chillies](#chillies) | 1 | 5 | 0 | 7 | 0 | 0 | 0 | 2 | 0 | 0 |
+| [Chillies](#chillies) | 1 | 5 | 0 | 7 | 11 | 0 | 0 | 2 | 0 | 0 |
 | [Citrus](#citrus) | 1 | 16 | 0 | 0 | 11 | 0 | 5 | 10 | 0 | 0 |
 | [Citrus (Grapefruit)](#citrus-grapefruit) | 1 | 0 | 5 | 0 | 12 | 1 | 5 | 0 | 0 | 3 |
 | [Citrus (Lemon)](#citrus-lemon) | 1 | 0 | 4 | 0 | 12 | 1 | 5 | 0 | 0 | 3 |
@@ -40,13 +40,13 @@ Counts are rows in each per-crop table.
 | [Cotton](#cotton) | 1 | 5 | 4 | 24 | 8 | 2 | 0 | 2 | 0 | 4 |
 | [Fig](#fig) | 1 | 5 | 5 | 0 | 11 | 1 | 5 | 3 | 0 | 3 |
 | [Garlic](#garlic) | 1 | 5 | 4 | 10 | 11 | 1 | 0 | 3 | 0 | 4 |
-| [Gem Squash](#gem-squash) | 1 | 0 | 0 | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
+| [Gem Squash](#gem-squash) | 1 | 0 | 0 | 7 | 11 | 0 | 0 | 0 | 0 | 0 |
 | [Groundnut](#groundnut) | 1 | 5 | 4 | 6 | 0 | 4 | 0 | 0 | 0 | 3 |
 | [Guava](#guava) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 3 | 0 | 3 |
 | [Honeybush](#honeybush) | 1 | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 |
 | [Kiwi](#kiwi) | 1 | 8 | 7 | 0 | 12 | 1 | 6 | 5 | 1 | 3 |
 | [Lentils](#lentils) | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 3 |
-| [Lettuce](#lettuce) | 1 | 0 | 3 | 7 | 6 | 0 | 0 | 1 | 0 | 3 |
+| [Lettuce](#lettuce) | 1 | 0 | 3 | 7 | 7 | 0 | 0 | 1 | 0 | 3 |
 | [Litchi](#litchi) | 1 | 10 | 5 | 0 | 11 | 0 | 4 | 0 | 0 | 3 |
 | [Lucerne](#lucerne) | 1 | 7 | 5 | 106 | 9 | 2 | 4 | 2 | 0 | 3 |
 | [Macadamia](#macadamia) | 1 | 16 | 4 | 5 | 13 | 4 | 5 | 11 | 0 | 3 |
@@ -56,41 +56,41 @@ Counts are rows in each per-crop table.
 | [Mango](#mango) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 1 | 0 | 3 |
 | [Nectarine](#nectarine) | 1 | 7 | 5 | 0 | 11 | 1 | 0 | 1 | 0 | 0 |
 | [Oat](#oat) | 1 | 0 | 4 | 0 | 0 | 3 | 0 | 0 | 0 | 0 |
-| [Olive](#olive) | 1 | 2 | 5 | 3 | 4 | 1 | 4 | 2 | 0 | 3 |
-| [Onion](#onion) | 1 | 0 | 4 | 7 | 0 | 0 | 0 | 1 | 0 | 5 |
+| [Olive](#olive) | 1 | 5 | 5 | 3 | 11 | 1 | 4 | 2 | 0 | 3 |
+| [Onion](#onion) | 1 | 0 | 4 | 7 | 10 | 0 | 0 | 1 | 0 | 5 |
 | [Passion Fruit](#passion-fruit) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 3 | 0 | 3 |
 | [Pea](#pea) | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | [Pea (Green)](#pea-green) | 1 | 0 | 0 | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
 | [Peach](#peach) | 1 | 7 | 5 | 0 | 11 | 1 | 4 | 1 | 0 | 3 |
 | [Pear](#pear) | 1 | 8 | 5 | 0 | 11 | 1 | 5 | 1 | 0 | 3 |
 | [Pecan](#pecan) | 1 | 9 | 5 | 0 | 11 | 2 | 5 | 0 | 0 | 3 |
-| [Pepper (Bell)](#pepper-bell) | 1 | 7 | 4 | 7 | 0 | 0 | 0 | 0 | 0 | 3 |
+| [Pepper (Bell)](#pepper-bell) | 1 | 7 | 4 | 7 | 11 | 0 | 0 | 0 | 0 | 3 |
 | [Persimmon](#persimmon) | 1 | 4 | 5 | 0 | 11 | 0 | 4 | 2 | 0 | 0 |
 | [Pineapple](#pineapple) | 1 | 4 | 4 | 2 | 11 | 1 | 0 | 2 | 0 | 3 |
 | [Plum](#plum) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 1 | 0 | 3 |
 | [Pomegranate](#pomegranate) | 1 | 7 | 5 | 1 | 11 | 1 | 5 | 4 | 0 | 3 |
 | [Potato](#potato) | 1 | 3 | 4 | 126 | 11 | 1 | 0 | 0 | 0 | 5 |
-| [Pumpkin](#pumpkin) | 1 | 0 | 4 | 7 | 0 | 0 | 0 | 1 | 0 | 4 |
+| [Pumpkin](#pumpkin) | 1 | 0 | 4 | 7 | 11 | 0 | 0 | 1 | 0 | 4 |
 | [Raspberry](#raspberry) | 1 | 1 | 0 | 4 | 11 | 0 | 0 | 2 | 1 | 0 |
 | [Rooibos](#rooibos) | 1 | 2 | 4 | 3 | 0 | 0 | 0 | 1 | 1 | 2 |
 | [Sorghum](#sorghum) | 1 | 0 | 4 | 0 | 3 | 1 | 0 | 2 | 0 | 4 |
 | [Soybean](#soybean) | 1 | 6 | 4 | 48 | 8 | 0 | 0 | 2 | 0 | 3 |
-| [Spinach](#spinach) | 1 | 0 | 3 | 0 | 5 | 0 | 0 | 1 | 0 | 3 |
+| [Spinach](#spinach) | 1 | 0 | 3 | 0 | 6 | 0 | 0 | 1 | 0 | 3 |
 | [Strawberry](#strawberry) | 1 | 2 | 4 | 7 | 6 | 1 | 0 | 3 | 0 | 3 |
 | [Sugarcane](#sugarcane) | 1 | 4 | 4 | 56 | 13 | 0 | 0 | 2 | 0 | 5 |
 | [Sunflower](#sunflower) | 1 | 5 | 4 | 65 | 7 | 4 | 0 | 1 | 0 | 4 |
-| [Sweet Melon](#sweet-melon) | 1 | 0 | 0 | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
-| [Sweet Potato](#sweet-potato) | 1 | 5 | 4 | 7 | 0 | 0 | 0 | 0 | 0 | 3 |
+| [Sweet Melon](#sweet-melon) | 1 | 0 | 0 | 7 | 11 | 0 | 0 | 0 | 0 | 0 |
+| [Sweet Potato](#sweet-potato) | 1 | 5 | 4 | 7 | 11 | 0 | 0 | 0 | 0 | 3 |
 | [Sweetcorn](#sweetcorn) | 1 | 0 | 4 | 71 | 0 | 3 | 0 | 0 | 0 | 5 |
 | [Table Grape](#table-grape) | 1 | 7 | 5 | 0 | 7 | 1 | 4 | 1 | 0 | 3 |
 | [Tea](#tea) | 1 | 2 | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
-| [Tobacco](#tobacco) | 1 | 2 | 4 | 38 | 0 | 0 | 0 | 1 | 0 | 3 |
-| [Tobacco (Burley)](#tobacco-burley) | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
-| [Tobacco (Dark air-cured)](#tobacco-dark-air-cured) | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
-| [Tobacco (Flue-cured)](#tobacco-flue-cured) | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
-| [Tobacco (Light air-cured)](#tobacco-light-air-cured) | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
+| [Tobacco](#tobacco) | 1 | 2 | 4 | 34 | 11 | 0 | 0 | 1 | 0 | 3 |
+| [Tobacco (Burley)](#tobacco-burley) | 1 | 0 | 0 | 0 | 11 | 1 | 0 | 0 | 0 | 0 |
+| [Tobacco (Dark air-cured)](#tobacco-dark-air-cured) | 1 | 0 | 0 | 4 | 11 | 1 | 0 | 0 | 0 | 0 |
+| [Tobacco (Flue-cured)](#tobacco-flue-cured) | 1 | 0 | 0 | 3 | 11 | 1 | 0 | 0 | 0 | 0 |
+| [Tobacco (Light air-cured)](#tobacco-light-air-cured) | 1 | 0 | 0 | 0 | 11 | 1 | 0 | 0 | 0 | 0 |
 | [Tomato](#tomato) | 1 | 7 | 4 | 0 | 11 | 3 | 0 | 4 | 0 | 3 |
-| [Watermelon](#watermelon) | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
+| [Watermelon](#watermelon) | 1 | 0 | 4 | 0 | 11 | 0 | 0 | 1 | 0 | 3 |
 | [Wheat](#wheat) | 1 | 9 | 4 | 47 | 10 | 3 | 0 | 2 | 0 | 4 |
 | [Wine Grape](#wine-grape) | 1 | 7 | 5 | 0 | 8 | 1 | 4 | 2 | 0 | 3 |
 
@@ -1585,17 +1585,17 @@ _No rows._
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| N | most-recent mature leaf | first flower | 3 | 3.5–5 | 5.5 | UC ANR Eggplant + UF/IFAS HS734. T2. |
+| P | most-recent mature leaf | first flower | 0.2 | 0.3–0.6 | 0.8 | UC ANR Eggplant + UF/IFAS HS734. T2. |
+| K | most-recent mature leaf | first flower | 2.5 | 3–4.5 | 5.5 | UC ANR Eggplant + UF/IFAS HS734. T2. |
+| Ca | most-recent mature leaf | first flower | 1 | 1.5–3 | 4 | UC ANR Eggplant + UF/IFAS HS734. T2. |
+| Mg | most-recent mature leaf | first flower | 0.3 | 0.4–0.8 | 1.2 | UC ANR Eggplant + UF/IFAS HS734. T2. |
+| S | most-recent mature leaf | first flower | 0.2 | 0.3–0.6 | 0.8 | UC ANR Eggplant + UF/IFAS HS734. T2. |
+| B | most-recent mature leaf | first flower | 25 | 30–80 | 100 | UC ANR Eggplant + UF/IFAS HS734. T2. |
+| Zn | most-recent mature leaf | first flower | 18 | 25–60 | 200 | UC ANR Eggplant + UF/IFAS HS734. T2. |
+| Fe | most-recent mature leaf | first flower | 50 | 60–300 | — | UC ANR Eggplant + UF/IFAS HS734. T2. |
+| Mn | most-recent mature leaf | first flower | 30 | 40–250 | 500 | UC ANR Eggplant + UF/IFAS HS734. T2. |
+| Cu | most-recent mature leaf | first flower | 5 | 6–25 | — | UC ANR Eggplant + UF/IFAS HS734. T2. |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
@@ -1687,23 +1687,33 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 **Rate-table cells** (`fertilizer_rate_tables`)
 
-_No rows._
+| Nutrient | Soil method | Soil-test band | Yield band (t/ha) | Rate (kg/ha) | Filter | Source |
+|---|---|---|---|---|---|---|
+| P | Bray-1 | 1–10 mg/kg | 0–65 | 140–160 | — | Hortgro horticulture.org.za butternut soil-type tables Butternut Fertilizer Application by Soil Type |
+| P | Bray-1 | 11–20 mg/kg | 0–65 | 120–140 | — | Hortgro horticulture.org.za butternut soil-type tables Butternut Fertilizer Application by Soil Type |
+| P | Bray-1 | 21–30 mg/kg | 0–65 | 100–120 | — | Hortgro horticulture.org.za butternut soil-type tables Butternut Fertilizer Application by Soil Type |
+| P | Bray-1 | 31–40 mg/kg | 0–65 | 80–100 | — | Hortgro horticulture.org.za butternut soil-type tables Butternut Fertilizer Application by Soil Type |
+| P | Bray-1 | 41–60 mg/kg | 0–65 | 60–80 | — | Hortgro horticulture.org.za butternut soil-type tables Butternut Fertilizer Application by Soil Type |
+| P | Bray-1 | 61–80 mg/kg | 0–65 | 40–60 | — | Hortgro horticulture.org.za butternut soil-type tables Butternut Fertilizer Application by Soil Type |
+| P | Bray-1 | 81–100 mg/kg | 0–65 | 20–40 | — | Hortgro horticulture.org.za butternut soil-type tables Butternut Fertilizer Application by Soil Type |
+| P | Bray-1 | 101–120 mg/kg | 0–65 | 0–20 | — | Hortgro horticulture.org.za butternut soil-type tables Butternut Fertilizer Application by Soil Type |
+| P | Bray-1 | 121–200 mg/kg | 0–65 | 0–0 | — | Hortgro horticulture.org.za butternut soil-type tables Butternut Fertilizer Application by Soil Type |
 
 **Leaf norms** (`fertasa_leaf_norms`)
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| N | most-recent mature leaf | all stages | 4 | 4–5 | 5.5 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| P | most-recent mature leaf | all stages | 0.3 | 0.3–1 | 1.2 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| K | most-recent mature leaf | all stages | 3 | 3–4 | 5 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Ca | most-recent mature leaf | all stages | 1.2 | 1.2–2 | 3 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Mg | most-recent mature leaf | all stages | 0.25 | 0.25–1 | 1.2 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| S | most-recent mature leaf | all stages | 0.2 | 0.2–0.75 | 1 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| B | most-recent mature leaf | all stages | 25 | 25–85 | 120 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Zn | most-recent mature leaf | all stages | 20 | 20–200 | 300 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Fe | most-recent mature leaf | all stages | 50 | 50–300 | — | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Mn | most-recent mature leaf | all stages | 25 | 25–250 | 500 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Cu | most-recent mature leaf | all stages | 5 | 5–60 | 100 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
@@ -1827,11 +1837,13 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | **Fe** | — | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | — | _needs source_ |
 | **Cu** | — | — | — | — | — | _needs source_ |
-| **Mo** | — | — | — | — | — | _needs source_ |
+| Mo | most-recent mature leaf | mid-growth | 0.1 | 0.2–1 | 5 | SCSB#394 + UF/IFAS HS964 brassica Mo guidance. T2. |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
-_No rows._
+| Part | Per | N | P | K | Ca | Mg | S | Source / notes |
+|---|---|---|---|---|---|---|---|---|
+| head | kg/t fresh head | 2.2 | 0.5 | 1.5 | 0.5 | 0.2 | 0.3 | Starke Ayres Cabbage 2019 + UF/IFAS Brassica |
 
 **Perennial age factors** (`perennial_age_factors`)
 
@@ -2425,17 +2437,17 @@ _No rows._
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| N | most-recent mature leaf | first flower | 3 | 3.5–5 | 5.5 | UC Davis Geisseler Pepper + KZN-DARD Capsicum (chilli upper B band raised). T1+T2. |
+| P | most-recent mature leaf | first flower | 0.2 | 0.3–0.6 | 0.8 | UC Davis Geisseler Pepper + KZN-DARD Capsicum (chilli upper B band raised). T1+T2. |
+| K | most-recent mature leaf | first flower | 2.5 | 3–4.5 | 5.5 | UC Davis Geisseler Pepper + KZN-DARD Capsicum (chilli upper B band raised). T1+T2. |
+| Ca | most-recent mature leaf | first flower | 1 | 1.5–3 | 4 | UC Davis Geisseler Pepper + KZN-DARD Capsicum (chilli upper B band raised). T1+T2. |
+| Mg | most-recent mature leaf | first flower | 0.3 | 0.4–0.8 | 1.2 | UC Davis Geisseler Pepper + KZN-DARD Capsicum (chilli upper B band raised). T1+T2. |
+| S | most-recent mature leaf | first flower | 0.2 | 0.3–0.6 | 0.8 | UC Davis Geisseler Pepper + KZN-DARD Capsicum (chilli upper B band raised). T1+T2. |
+| B | most-recent mature leaf | first flower | 25 | 40–80 | 100 | UC Davis Geisseler Pepper + KZN-DARD Capsicum (chilli upper B band raised). T1+T2. |
+| Zn | most-recent mature leaf | first flower | 18 | 25–60 | 200 | UC Davis Geisseler Pepper + KZN-DARD Capsicum (chilli upper B band raised). T1+T2. |
+| Fe | most-recent mature leaf | first flower | 50 | 60–300 | — | UC Davis Geisseler Pepper + KZN-DARD Capsicum (chilli upper B band raised). T1+T2. |
+| Mn | most-recent mature leaf | first flower | 30 | 40–250 | 500 | UC Davis Geisseler Pepper + KZN-DARD Capsicum (chilli upper B band raised). T1+T2. |
+| Cu | most-recent mature leaf | first flower | 5 | 6–25 | — | UC Davis Geisseler Pepper + KZN-DARD Capsicum (chilli upper B band raised). T1+T2. |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
@@ -3779,17 +3791,17 @@ _No rows._
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| N | most-recent mature leaf | all stages | 4 | 4–5 | 5.5 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| P | most-recent mature leaf | all stages | 0.3 | 0.3–1 | 1.2 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| K | most-recent mature leaf | all stages | 3 | 3–4 | 5 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Ca | most-recent mature leaf | all stages | 1.2 | 1.2–2 | 3 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Mg | most-recent mature leaf | all stages | 0.25 | 0.25–1 | 1.2 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| S | most-recent mature leaf | all stages | 0.2 | 0.2–0.75 | 1 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| B | most-recent mature leaf | all stages | 25 | 25–85 | 120 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Zn | most-recent mature leaf | all stages | 20 | 20–200 | 300 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Fe | most-recent mature leaf | all stages | 50 | 50–300 | — | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Mn | most-recent mature leaf | all stages | 25 | 25–250 | 500 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Cu | most-recent mature leaf | all stages | 5 | 5–60 | 100 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
@@ -4503,7 +4515,7 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | **Fe** | — | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | — | _needs source_ |
 | **Cu** | — | — | — | — | — | _needs source_ |
-| **Mo** | — | — | — | — | — | _needs source_ |
+| Mo | most-recent mature leaf | mid-growth | 0.1 | 0.2–1 | 5 | SCSB#394 p.73 Lettuce, Greenhouse. T2. |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
@@ -5830,15 +5842,15 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 6 | 6.5 | 7 | 7.8 | UC Davis Geisseler Olives + SA Olive Association: calcicole. T2. |
 | **pH (H2O)** | — | — | — | — | _needs source_ |
 | **N (total)** | — | — | — | — | _needs source_ |
 | **P (Bray-1)** | — | — | — | — | _needs source_ |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
 | K | — | 125 | — | — | CDFA: pre-plant minimum 125 ppm K for new orchards (per Vossen). |
-| **Ca** | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | _needs source_ |
+| Ca | — | 1500 | 4000 | — | UC Davis Geisseler (calcicole; deficiency rare). T2. |
+| Mg | 60 | 100 | 250 | 500 | Fernandez-Escobar 2011. T2. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
 | B | — | 0.33 | — | 2 | CDFA: hot-water soil B below 0.33 = deficient (older literature used 0.5). Above 2 ppm saturated paste = toxicity risk. |
@@ -5875,14 +5887,14 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | N | Recently mature leaves | July | 1.4 | 1.5–2 | 2 | CDFA FREP Olive Guideline |
 | P | Recently mature leaves | July | 0.1 | 0.1–0.3 | — | CDFA FREP Olive Guideline |
 | K | Recently mature leaves | July | 0.4 | 0.8–— | — | CDFA FREP Olive Guideline |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
+| Ca | mid-shoot leaf | July (NH winter rest) | 1 | 1–2.5 | 4 | Fernandez-Escobar 2011 J Plant Nutr + IFAPA Spain Olivar protocol. T2. |
+| Mg | mid-shoot leaf | July (NH winter rest) | 0.08 | 0.1–0.3 | 1 | Fernandez-Escobar 2011 J Plant Nutr + IFAPA Spain Olivar protocol. T2. |
+| S | mid-shoot leaf | July (NH winter rest) | 0.1 | 0.1–0.15 | — | Fernandez-Escobar 2011 J Plant Nutr + IFAPA Spain Olivar protocol. T2. |
 | B | Recently mature leaves | July | 14 | 19–150 | 185 | CDFA FREP Olive Guideline |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| Zn | mid-shoot leaf | July (NH winter rest) | 10 | 10–30 | 80 | Fernandez-Escobar 2011 J Plant Nutr + IFAPA Spain Olivar protocol. T2. |
+| Fe | mid-shoot leaf | July (NH winter rest) | 80 | 90–200 | — | Fernandez-Escobar 2011 J Plant Nutr + IFAPA Spain Olivar protocol. T2. |
+| Mn | mid-shoot leaf | July (NH winter rest) | 20 | 20–150 | 1000 | Fernandez-Escobar 2011 J Plant Nutr + IFAPA Spain Olivar protocol. T2. |
+| Cu | mid-shoot leaf | July (NH winter rest) | 4 | 4–15 | — | Fernandez-Escobar 2011 J Plant Nutr + IFAPA Spain Olivar protocol. T2. |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
@@ -6002,17 +6014,17 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
+| N | most-recent mature leaf | pre bulb enlargement | 3 | 3.1–4.27 | 5 | SCSB#394 p.83 Vidalia Onion (Caldwell 1991, Pankov 1984). T2. |
+| P | most-recent mature leaf | pre bulb enlargement | 0.2 | 0.26–0.48 | 0.6 | SCSB#394 p.83 Vidalia Onion (Caldwell 1991, Pankov 1984). T2. |
+| K | most-recent mature leaf | pre bulb enlargement | 1.5 | 1.98–4.22 | 5 | SCSB#394 p.83 Vidalia Onion (Caldwell 1991, Pankov 1984). T2. |
+| Ca | most-recent mature leaf | pre bulb enlargement | 0.7 | 0.9–1.84 | 2.5 | SCSB#394 p.83 Vidalia Onion (Caldwell 1991, Pankov 1984). T2. |
+| Mg | most-recent mature leaf | pre bulb enlargement | 0.1 | 0.16–0.32 | 0.5 | SCSB#394 p.83 Vidalia Onion (Caldwell 1991, Pankov 1984). T2. |
+| S | most-recent mature leaf | pre bulb enlargement | 0.1 | 0.15–0.57 | 0.8 | SCSB#394 p.83 Vidalia Onion (Caldwell 1991, Pankov 1984). T2. |
+| B | most-recent mature leaf | pre bulb enlargement | 5 | 6–15 | 30 | SCSB#394 p.83 Vidalia Onion (Caldwell 1991, Pankov 1984). T2. |
+| Zn | most-recent mature leaf | pre bulb enlargement | 12 | 16–45 | 100 | SCSB#394 p.83 Vidalia Onion (Caldwell 1991, Pankov 1984). T2. |
 | **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| Mn | most-recent mature leaf | pre bulb enlargement | 30 | 51–149 | 300 | SCSB#394 p.83 Vidalia Onion (Caldwell 1991, Pankov 1984). T2. |
+| Cu | most-recent mature leaf | pre bulb enlargement | 4 | 5–28 | 50 | SCSB#394 p.83 Vidalia Onion (Caldwell 1991, Pankov 1984). T2. |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
@@ -6836,17 +6848,17 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| N | most-recent mature leaf | first flower | 3 | 3.5–5 | 5.5 | UC Davis Geisseler Pepper + UF/IFAS HS732. T2. |
+| P | most-recent mature leaf | first flower | 0.2 | 0.3–0.6 | 0.8 | UC Davis Geisseler Pepper + UF/IFAS HS732. T2. |
+| K | most-recent mature leaf | first flower | 2.5 | 3–4.5 | 5.5 | UC Davis Geisseler Pepper + UF/IFAS HS732. T2. |
+| Ca | most-recent mature leaf | first flower | 1 | 1.5–3 | 4 | UC Davis Geisseler Pepper + UF/IFAS HS732. T2. |
+| Mg | most-recent mature leaf | first flower | 0.3 | 0.4–0.8 | 1.2 | UC Davis Geisseler Pepper + UF/IFAS HS732. T2. |
+| S | most-recent mature leaf | first flower | 0.2 | 0.3–0.6 | 0.8 | UC Davis Geisseler Pepper + UF/IFAS HS732. T2. |
+| B | most-recent mature leaf | first flower | 25 | 30–80 | 100 | UC Davis Geisseler Pepper + UF/IFAS HS732. T2. |
+| Zn | most-recent mature leaf | first flower | 18 | 25–60 | 200 | UC Davis Geisseler Pepper + UF/IFAS HS732. T2. |
+| Fe | most-recent mature leaf | first flower | 50 | 60–300 | — | UC Davis Geisseler Pepper + UF/IFAS HS732. T2. |
+| Mn | most-recent mature leaf | first flower | 30 | 40–250 | 500 | UC Davis Geisseler Pepper + UF/IFAS HS732. T2. |
+| Cu | most-recent mature leaf | first flower | 5 | 6–25 | — | UC Davis Geisseler Pepper + UF/IFAS HS732. T2. |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
@@ -7688,17 +7700,17 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| N | most-recent mature leaf | all stages | 4 | 4–5 | 5.5 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| P | most-recent mature leaf | all stages | 0.3 | 0.3–1 | 1.2 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| K | most-recent mature leaf | all stages | 3 | 3–4 | 5 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Ca | most-recent mature leaf | all stages | 1.2 | 1.2–2 | 3 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Mg | most-recent mature leaf | all stages | 0.25 | 0.25–1 | 1.2 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| S | most-recent mature leaf | all stages | 0.2 | 0.2–0.75 | 1 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| B | most-recent mature leaf | all stages | 25 | 25–85 | 120 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Zn | most-recent mature leaf | all stages | 20 | 20–200 | 300 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Fe | most-recent mature leaf | all stages | 50 | 50–300 | — | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Mn | most-recent mature leaf | all stages | 25 | 25–250 | 500 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Cu | most-recent mature leaf | all stages | 5 | 5–60 | 100 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
@@ -8327,7 +8339,7 @@ _No rows._
 | **Fe** | — | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | — | _needs source_ |
 | **Cu** | — | — | — | — | — | _needs source_ |
-| **Mo** | — | — | — | — | — | _needs source_ |
+| Mo | most-recent mature leaf | mid-growth | 0.1 | 0.2–1 | 5 | SCSB#394 p.77 Spinach, Greenhouse. T2. |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
@@ -8923,17 +8935,17 @@ _No rows._
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| N | most-recent mature leaf | all stages | 4 | 4–5 | 5.5 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| P | most-recent mature leaf | all stages | 0.3 | 0.3–1 | 1.2 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| K | most-recent mature leaf | all stages | 3 | 3–4 | 5 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Ca | most-recent mature leaf | all stages | 1.2 | 1.2–2 | 3 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Mg | most-recent mature leaf | all stages | 0.25 | 0.25–1 | 1.2 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| S | most-recent mature leaf | all stages | 0.2 | 0.2–0.75 | 1 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| B | most-recent mature leaf | all stages | 25 | 25–85 | 120 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Zn | most-recent mature leaf | all stages | 20 | 20–200 | 300 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Fe | most-recent mature leaf | all stages | 50 | 50–300 | — | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Mn | most-recent mature leaf | all stages | 25 | 25–250 | 500 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Cu | most-recent mature leaf | all stages | 5 | 5–60 | 100 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
@@ -9039,17 +9051,17 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| N | petiole / 7th leaf from tip | mid-bulking | 3.5 | 4–5.5 | 6.5 | ICAR-CTCRI Sweet Potato Bulletin + UF/IFAS HS743. T2. |
+| P | petiole / 7th leaf from tip | mid-bulking | 0.2 | 0.25–0.5 | 0.7 | ICAR-CTCRI Sweet Potato Bulletin + UF/IFAS HS743. T2. |
+| K | petiole / 7th leaf from tip | mid-bulking | 3 | 3.5–6 | 7 | ICAR-CTCRI Sweet Potato Bulletin + UF/IFAS HS743. T2. |
+| Ca | petiole / 7th leaf from tip | mid-bulking | 0.5 | 0.7–1.5 | 2.5 | ICAR-CTCRI Sweet Potato Bulletin + UF/IFAS HS743. T2. |
+| Mg | petiole / 7th leaf from tip | mid-bulking | 0.25 | 0.3–0.8 | 1 | ICAR-CTCRI Sweet Potato Bulletin + UF/IFAS HS743. T2. |
+| S | petiole / 7th leaf from tip | mid-bulking | 0.15 | 0.2–0.4 | 0.6 | ICAR-CTCRI Sweet Potato Bulletin + UF/IFAS HS743. T2. |
+| B | petiole / 7th leaf from tip | mid-bulking | 25 | 30–80 | 120 | ICAR-CTCRI Sweet Potato Bulletin + UF/IFAS HS743. T2. |
+| Zn | petiole / 7th leaf from tip | mid-bulking | 15 | 20–60 | 150 | ICAR-CTCRI Sweet Potato Bulletin + UF/IFAS HS743. T2. |
+| Fe | petiole / 7th leaf from tip | mid-bulking | 40 | 50–300 | — | ICAR-CTCRI Sweet Potato Bulletin + UF/IFAS HS743. T2. |
+| Mn | petiole / 7th leaf from tip | mid-bulking | 25 | 30–250 | 500 | ICAR-CTCRI Sweet Potato Bulletin + UF/IFAS HS743. T2. |
+| Cu | petiole / 7th leaf from tip | mid-bulking | 4 | 5–20 | 50 | ICAR-CTCRI Sweet Potato Bulletin + UF/IFAS HS743. T2. |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
@@ -9599,10 +9611,6 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | K | Ambic | 150–— mg/kg | 2.5–2.5 | 120–120 | — | FERTASA Handbook 5.11 Table 7 |
 | K | Ambic | 150–— mg/kg | 3–3 | 170–170 | — | FERTASA Handbook 5.11 Table 7 |
 | K | Ambic | 150–— mg/kg | 4–4 | 220–220 | — | FERTASA Handbook 5.11 Table 7 |
-| N | — | —–— — | 2–2 | 190–190 | — | FERTASA Handbook 5.11 Table 5 |
-| N | — | —–— — | 2.5–2.5 | 220–220 | — | FERTASA Handbook 5.11 Table 5 |
-| N | — | —–— — | 3–3 | 250–250 | — | FERTASA Handbook 5.11 Table 5 |
-| N | — | —–— — | 3–— | 250–250 | — | FERTASA Handbook 5.11 Table 5 |
 | P | Bray-1 | 0–10 mg/kg | 0–— | 120–120 | — | FERTASA Handbook 5.11 Table 6 |
 | P | Bray-1 | 10–20 mg/kg | 0–— | 110–110 | — | FERTASA Handbook 5.11 Table 6 |
 | P | Bray-1 | 20–30 mg/kg | 0–— | 100–100 | — | FERTASA Handbook 5.11 Table 6 |
@@ -9614,17 +9622,17 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| N | mid-canopy leaf | topping | 3.5 | 3.5–5 | 5.5 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| P | mid-canopy leaf | topping | 0.25 | 0.25–0.5 | 0.55 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| K | mid-canopy leaf | topping | 2.5 | 2.5–4.5 | 5 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Ca | mid-canopy leaf | topping | 1 | 1–3 | 4 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Mg | mid-canopy leaf | topping | 0.25 | 0.25–1 | 1.5 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| S | mid-canopy leaf | topping | 0.25 | 0.25–0.6 | 0.8 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| B | mid-canopy leaf | topping | 25 | 25–75 | 100 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Zn | mid-canopy leaf | topping | 25 | 25–100 | 150 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Fe | mid-canopy leaf | topping | 50 | 50–250 | — | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Mn | mid-canopy leaf | topping | 30 | 30–100 | 250 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Cu | mid-canopy leaf | topping | 5 | 5–25 | 50 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
@@ -9723,17 +9731,17 @@ _No rows._
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| N | mid-canopy leaf | topping | 3.5 | 3.5–5 | 5.5 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| P | mid-canopy leaf | topping | 0.25 | 0.25–0.5 | 0.55 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| K | mid-canopy leaf | topping | 2.5 | 2.5–4.5 | 5 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Ca | mid-canopy leaf | topping | 1 | 1–3 | 4 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Mg | mid-canopy leaf | topping | 0.25 | 0.25–1 | 1.5 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| S | mid-canopy leaf | topping | 0.25 | 0.25–0.6 | 0.8 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| B | mid-canopy leaf | topping | 25 | 25–75 | 100 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Zn | mid-canopy leaf | topping | 25 | 25–100 | 150 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Fe | mid-canopy leaf | topping | 50 | 50–250 | — | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Mn | mid-canopy leaf | topping | 30 | 30–100 | 250 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Cu | mid-canopy leaf | topping | 5 | 5–25 | 50 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
@@ -9822,23 +9830,28 @@ _No rows._
 
 **Rate-table cells** (`fertilizer_rate_tables`)
 
-_No rows._
+| Nutrient | Soil method | Soil-test band | Yield band (t/ha) | Rate (kg/ha) | Filter | Source |
+|---|---|---|---|---|---|---|
+| N | — | —–— — | 2–2 | 190–190 | — | FERTASA Handbook 5.11 Table 5 |
+| N | — | —–— — | 2.5–2.5 | 220–220 | — | FERTASA Handbook 5.11 Table 5 |
+| N | — | —–— — | 3–3 | 250–250 | — | FERTASA Handbook 5.11 Table 5 |
+| N | — | —–— — | 3–— | 250–250 | — | FERTASA Handbook 5.11 Table 5 |
 
 **Leaf norms** (`fertasa_leaf_norms`)
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| N | mid-canopy leaf | topping | 3.5 | 3.5–5 | 5.5 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| P | mid-canopy leaf | topping | 0.25 | 0.25–0.5 | 0.55 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| K | mid-canopy leaf | topping | 2.5 | 2.5–4.5 | 5 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Ca | mid-canopy leaf | topping | 1 | 1–3 | 4 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Mg | mid-canopy leaf | topping | 0.25 | 0.25–1 | 1.5 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| S | mid-canopy leaf | topping | 0.25 | 0.25–0.6 | 0.8 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| B | mid-canopy leaf | topping | 25 | 25–75 | 100 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Zn | mid-canopy leaf | topping | 25 | 25–100 | 150 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Fe | mid-canopy leaf | topping | 50 | 50–250 | — | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Mn | mid-canopy leaf | topping | 30 | 30–100 | 250 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Cu | mid-canopy leaf | topping | 5 | 5–25 | 50 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
@@ -9927,23 +9940,27 @@ _No rows._
 
 **Rate-table cells** (`fertilizer_rate_tables`)
 
-_No rows._
+| Nutrient | Soil method | Soil-test band | Yield band (t/ha) | Rate (kg/ha) | Filter | Source |
+|---|---|---|---|---|---|---|
+| N | clay-banded | 5–15 % | 3–4 | 120–140 | — | FERTASA 5.11.4 Tab 5.11.4 |
+| N | clay-banded | 15–25 % | 3–4 | 90–120 | — | FERTASA 5.11.4 Tab 5.11.4 |
+| N | clay-banded | 25–40 % | 3–4 | 80–90 | — | FERTASA 5.11.4 Tab 5.11.4 |
 
 **Leaf norms** (`fertasa_leaf_norms`)
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| N | mid-canopy leaf | topping | 3.5 | 3.5–5 | 5.5 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| P | mid-canopy leaf | topping | 0.25 | 0.25–0.5 | 0.55 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| K | mid-canopy leaf | topping | 2.5 | 2.5–4.5 | 5 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Ca | mid-canopy leaf | topping | 1 | 1–3 | 4 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Mg | mid-canopy leaf | topping | 0.25 | 0.25–1 | 1.5 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| S | mid-canopy leaf | topping | 0.25 | 0.25–0.6 | 0.8 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| B | mid-canopy leaf | topping | 25 | 25–75 | 100 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Zn | mid-canopy leaf | topping | 25 | 25–100 | 150 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Fe | mid-canopy leaf | topping | 50 | 50–250 | — | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Mn | mid-canopy leaf | topping | 30 | 30–100 | 250 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Cu | mid-canopy leaf | topping | 5 | 5–25 | 50 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
@@ -10038,17 +10055,17 @@ _No rows._
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| N | mid-canopy leaf | topping | 3.5 | 3.5–5 | 5.5 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| P | mid-canopy leaf | topping | 0.25 | 0.25–0.5 | 0.55 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| K | mid-canopy leaf | topping | 2.5 | 2.5–4.5 | 5 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Ca | mid-canopy leaf | topping | 1 | 1–3 | 4 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Mg | mid-canopy leaf | topping | 0.25 | 0.25–1 | 1.5 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| S | mid-canopy leaf | topping | 0.25 | 0.25–0.6 | 0.8 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| B | mid-canopy leaf | topping | 25 | 25–75 | 100 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Zn | mid-canopy leaf | topping | 25 | 25–100 | 150 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Fe | mid-canopy leaf | topping | 50 | 50–250 | — | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Mn | mid-canopy leaf | topping | 30 | 30–100 | 250 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
+| Cu | mid-canopy leaf | topping | 5 | 5–25 | 50 | NC State Tobacco Production Guide + UTennessee Burley + UKentucky Burley. T2 cross-apply (Nicotiana tabacum same species globally). |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
@@ -10269,17 +10286,17 @@ _No rows._
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| N | most-recent mature leaf | all stages | 4 | 4–5 | 5.5 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| P | most-recent mature leaf | all stages | 0.3 | 0.3–1 | 1.2 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| K | most-recent mature leaf | all stages | 3 | 3–4 | 5 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Ca | most-recent mature leaf | all stages | 1.2 | 1.2–2 | 3 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Mg | most-recent mature leaf | all stages | 0.25 | 0.25–1 | 1.2 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| S | most-recent mature leaf | all stages | 0.2 | 0.2–0.75 | 1 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| B | most-recent mature leaf | all stages | 25 | 25–85 | 120 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Zn | most-recent mature leaf | all stages | 20 | 20–200 | 300 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Fe | most-recent mature leaf | all stages | 50 | 50–300 | — | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Mn | most-recent mature leaf | all stages | 25 | 25–250 | 500 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
+| Cu | most-recent mature leaf | all stages | 5 | 5–60 | 100 | SCSB#394 p.69 Cucumber as cucurbit-family proxy. T2. |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
@@ -10292,7 +10309,9 @@ _No rows._
 
 **Yield benchmarks** (`crop_yield_benchmarks`)
 
-_No rows._
+| Cultivar | Region | Water regime | Low t/ha | Typical t/ha | High t/ha | Unit | Source |
+|---|---|---|---|---|---|---|---|
+| All-Sweet / Crimson Sweet | SA | irrigated | 30 | 40 | 60 | t fresh fruit/ha | SA Vegetable Farming portal + Starke Ayres Watermelon 2019. |
 
 **Calc flags** (`crop_calc_flags`)
 

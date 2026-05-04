@@ -1,0 +1,64 @@
+-- ============================================================
+-- 119: Final data fill — high-impact remaining items
+-- ============================================================
+-- Closes the bulk crop-data-fill workstream by hitting the highest-
+-- impact remaining gaps from the second wave of research agents
+-- (oilseeds/tobacco, solanaceae+root, cucurbits+leafy+alliums,
+-- specialty perennials).
+--
+-- Critical fixes:
+--   * Tobacco N rate-table re-tagging — migration 060 loaded
+--     190/220/250 kg N rates as `Tobacco` (genus) but those are
+--     FERTASA 5.11.5 dark-air-cured, NOT 5.11.4 flue-cured. Engine
+--     was over-applying flue-cured N by ~50% on Limpopo blocks.
+--     Re-assigned existing rows to Tobacco (Dark air-cured); added
+--     proper FERTASA 5.11.4 clay-banded flue-cured N rate cells
+--     (3 cells × clay band).
+--
+-- Leaf norm fills (177 rows total — biggest single addition):
+--   * Tobacco × 5 crops: 55 rows (NC State T2 — all were empty)
+--   * Solanaceae trio (Pepper Bell, Brinjal, Chillies): 33 rows
+--     (UC ANR + UF/IFAS HS732/HS734)
+--   * Cucurbit family (Pumpkin, Butternut, Sweet Melon, Watermelon,
+--     Gem Squash): 55 rows (SCSB#394 Cucumber as cucurbit-family
+--     proxy)
+--   * Onion: 10 rows (SCSB#394 Vidalia)
+--   * Sweet Potato: 11 rows (ICAR-CTCRI + UF/IFAS HS743)
+--   * Cabbage + Lettuce + Spinach: +3 leaf-Mo rows
+--   * Olive: +7 rows (Fernandez-Escobar 2011 J Plant Nutr —
+--     extended from N/P/K/B base to full macros + micros)
+--
+-- Rate-table cells:
+--   * Butternut: +9 P rate cells (Hortgro horticulture.org.za
+--     soil-type tables — T1 SA published in 2024)
+--
+-- Yield benchmark + nutrient_removal:
+--   * Watermelon: +1 (SA Vegetable Farming + Starke Ayres 2019)
+--   * Cabbage: +1 nutrient_removal (Starke Ayres 2019)
+--
+-- Soil bands:
+--   * Olive: +3 cited rows (UC Davis Geisseler + Fernandez-Escobar)
+--
+-- Coverage doc summary post-migration:
+--   * 307 → 310 sufficiency override rows
+--   * Total leaf-norm rows up by ~177
+--
+-- Genuine gaps still remaining:
+--   * Mo soil bands universally
+--   * SASRI sugarcane P/K rate tables (paywalled)
+--   * Hortgro Annual Industry Report per-cultivar yields (members)
+--   * Raath 2021 R250 citrus handbook (paywalled)
+--   * FERTASA Vol 5.6.1 garlic Tables 1-3 (printed handbook)
+--   * Coffee + Tea full SA-specific data (small SA industries —
+--     T2 international fallback dominant)
+--   * Rooibos / Honeybush leaf norms + per-ton removal (literature
+--     gap — only 1-2 academic papers globally per crop)
+--
+-- crop_calc_flags schema extension still needed for:
+--   no_chloride_fertilisers, sulfur_critical, acid_intolerant,
+--   chloride_sensitive, photoperiod_sensitive, n_protein_cap,
+--   n_rate_ceiling_kg_per_ha, alternate_bearing_risk, salt_tolerant,
+--   ca_quality_critical, b_critical_for_set, n_fixation_active,
+--   k_luxury_consumer, harvest_cycle_active.
+--
+-- Applied via python supabase admin client (mirrors 110-118 pattern).
