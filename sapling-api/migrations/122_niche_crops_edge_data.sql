@@ -1,0 +1,70 @@
+-- ============================================================
+-- 122: Niche crops + edge data fill — final-sweep research findings
+-- ============================================================
+-- Closes a few specific cited gaps surfaced by the third research
+-- agent (niche crops + cultivar deltas + foliar protocol survey).
+--
+-- Cited additions:
+--
+-- 1. Bennie Valencia yield benchmarks (T1 SA Fruit Journal Dec 2023/
+--    Jan 2024 — Letsitele/Limpopo): irrigated 60/70/80 t/ha, fertigated
+--    70/80/90. Was a real gap on the cultivar yield benchmarks table.
+--
+-- 2. Honeybush P (Bray-1) soil band (Cawe & Dlamini 2007 SAJPS Vol 24
+--    No 3 — T1 SA): below 6 mg/kg suppresses growth; target ≥20 mg/kg
+--    for plastic-mulched Cyclopia subternata. Closes the P-side gap
+--    that complemented the existing zero-N rule for honeybush.
+--
+-- 3. Cassava per-ton K correction (Imran et al. 2020 Agron Sustain Dev
+--    40:8 — T2): K from 3.6-5.4 kg/t (DAFF 2009 — likely overstated)
+--    to 1.66 kg/t. Aligns with IITA published norms.
+--
+-- Citation hygiene (no value changes):
+-- 4. Persimmon nutrient_removal: cross-validated by Lo Bianco et al.
+--    2023 MDPI Horticulturae 9(3):374 (Italian Kaki Tipo + Rojo Brillante).
+-- 5. Sweet Melon nutrient_removal: cross-validated by QUEFTS Yang et al.
+--    2022 MDPI Agronomy 12:1 207.
+--
+-- Architectural validation surfaced by this research pass:
+-- ─────────────────────────────────────────────────────────
+-- Foliar protocol IS correctly architected as rules-based
+-- (`crop_application_methods.timing_notes`). The agronomic literature
+-- publishes by crop × micronutrient × growth stage, NOT as continuous
+-- bands keyed to soil + leaf analyses. Specific cited rules:
+--
+--   * Apple bitter pit Ca: 70 days after full bloom, every 2 weeks,
+--     6+ sprays, ~25 kg Ca/ha total seasonal (Lotze & Theron 2005-08
+--     SA Hortgro)
+--   * Macadamia B: Sep-Dec foliar Solubor 1 g/L, up to 4 sprays;
+--     maintenance 75 g Solubor/100 L every 2 years (FERTASA 5.8.1)
+--   * Citrus Zn/B/Mn: 2/3 spring flush leaf expansion, 100-150 g/100 L,
+--     3-4 applications/season (CRI Citrus Academy NQ2)
+--   * Avocado B: pre-anthesis cauliflower stage, 100 g Solubor/100 L
+--     (SAAGA 1990-96). Avocado leaves poor at foliar Zn uptake — soil
+--     Zn preferred (UC ANR research).
+--   * Mango B: pre-bloom panicle expansion, 75-100 g Solubor/100 L
+--     (Yara Mango).
+--   * Tomato Ca: weekly from first flower for BER prevention — but
+--     foliar is INSURANCE not primary cure (LSU AgCenter); root-zone
+--     management is primary. Engine should label foliar Ca on tomato
+--     as "secondary insurance" not "primary cure".
+--
+-- These specific timing+rate pairs could be enriched into the existing
+-- crop_application_methods.timing_notes columns in a future migration
+-- (small text update; no schema change).
+--
+-- Confirmed paywall gaps (open literature did NOT close):
+--   * Wine grape per-cultivar petiole bloom norms (Vinpro Yearbook
+--     members-only)
+--   * Apple per-cultivar leaf-Ca % bands (Hortgro Cripps Pink Best
+--     Practice 2022 + Pink Lady Handbook 2003 — URLs open but PDFs
+--     not parseable; manual download required)
+--   * Macadamia per-cultivar leaf-norm bands — literature genuinely
+--     does not split by cultivar (confirmed via Australian Stephens
+--     & Trochoulias 2007 + FERTASA 5.8.1 not splitting). Not a gap;
+--     a non-existent split.
+--   * Stone fruit per-cultivar yield bands (Culdevco/Hortgro members)
+--   * MAC101 macadamia yield (newer release; SAMAC industry stats
+--     members)
+--
+-- Applied via python supabase admin client.

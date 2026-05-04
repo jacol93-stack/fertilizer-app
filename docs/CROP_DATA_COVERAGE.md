@@ -1,6 +1,6 @@
 # Crop Data Coverage Audit
 
-_Generated 2026-05-04 22:28 UTC. 82 crops in `crop_requirements`._
+_Generated 2026-05-04 23:23 UTC. 82 crops in `crop_requirements`._
 _Regenerate: `python sapling-api/scripts/generate_crop_coverage.py`_
 
 Every blank cell or `_needs source_` marker is a literature search. When a citation lands, add the row to the appropriate table and rerun this script — the gap will close on the next diff.
@@ -11,26 +11,26 @@ Counts are rows in each per-crop table.
 
 | Crop | base reqs | soil bands | growth stages | rate cells | leaf norms | removal | age factors | yield bench | calc flags | methods |
 |---|---|---|---|---|---|---|---|---|---|---|
-| [Apple](#apple) | 1 | 8 | 5 | 0 | 11 | 1 | 5 | 1 | 0 | 3 |
+| [Apple](#apple) | 1 | 8 | 5 | 0 | 11 | 1 | 5 | 1 | 1 | 3 |
 | [Apricot](#apricot) | 1 | 5 | 5 | 0 | 11 | 0 | 4 | 1 | 0 | 3 |
-| [Asparagus](#asparagus) | 1 | 0 | 4 | 12 | 5 | 2 | 0 | 1 | 0 | 3 |
-| [Avocado](#avocado) | 1 | 10 | 5 | 0 | 15 | 1 | 5 | 9 | 0 | 3 |
-| [Banana](#banana) | 1 | 7 | 4 | 15 | 11 | 1 | 2 | 1 | 0 | 3 |
-| [Barley](#barley) | 1 | 0 | 4 | 0 | 0 | 3 | 0 | 0 | 0 | 3 |
-| [Bean (Dry)](#bean-dry) | 1 | 5 | 4 | 60 | 0 | 2 | 0 | 2 | 0 | 4 |
-| [Bean (Green)](#bean-green) | 1 | 0 | 4 | 7 | 0 | 0 | 0 | 0 | 0 | 4 |
-| [Beetroot](#beetroot) | 1 | 4 | 0 | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
+| [Asparagus](#asparagus) | 1 | 0 | 4 | 12 | 5 | 2 | 0 | 1 | 1 | 3 |
+| [Avocado](#avocado) | 1 | 10 | 5 | 0 | 15 | 1 | 5 | 9 | 1 | 3 |
+| [Banana](#banana) | 1 | 7 | 4 | 15 | 11 | 1 | 2 | 1 | 1 | 3 |
+| [Barley](#barley) | 1 | 0 | 4 | 0 | 0 | 3 | 0 | 0 | 1 | 3 |
+| [Bean (Dry)](#bean-dry) | 1 | 5 | 4 | 60 | 0 | 2 | 0 | 2 | 1 | 4 |
+| [Bean (Green)](#bean-green) | 1 | 0 | 4 | 7 | 0 | 0 | 0 | 0 | 1 | 4 |
+| [Beetroot](#beetroot) | 1 | 4 | 0 | 7 | 0 | 0 | 0 | 0 | 1 | 0 |
 | [Blackberry](#blackberry) | 1 | 1 | 0 | 4 | 11 | 0 | 0 | 0 | 1 | 0 |
 | [Blueberry](#blueberry) | 1 | 3 | 5 | 3 | 11 | 1 | 3 | 1 | 1 | 3 |
 | [Brinjal](#brinjal) | 1 | 6 | 0 | 7 | 11 | 0 | 0 | 0 | 0 | 0 |
 | [Butternut](#butternut) | 1 | 0 | 4 | 9 | 11 | 0 | 0 | 1 | 0 | 4 |
-| [Cabbage](#cabbage) | 1 | 1 | 4 | 7 | 8 | 1 | 0 | 1 | 0 | 4 |
-| [Canola](#canola) | 1 | 6 | 5 | 21 | 13 | 1 | 0 | 2 | 0 | 4 |
+| [Cabbage](#cabbage) | 1 | 1 | 4 | 7 | 8 | 1 | 0 | 1 | 1 | 4 |
+| [Canola](#canola) | 1 | 6 | 5 | 21 | 13 | 1 | 0 | 2 | 1 | 4 |
 | [Carrot](#carrot) | 1 | 3 | 4 | 7 | 6 | 0 | 0 | 1 | 0 | 4 |
-| [Cassava](#cassava) | 1 | 1 | 0 | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
+| [Cassava](#cassava) | 1 | 1 | 0 | 3 | 0 | 1 | 0 | 0 | 0 | 0 |
 | [Cherry](#cherry) | 1 | 5 | 5 | 0 | 11 | 1 | 4 | 1 | 0 | 0 |
 | [Chillies](#chillies) | 1 | 5 | 0 | 7 | 11 | 0 | 0 | 2 | 0 | 0 |
-| [Citrus](#citrus) | 1 | 16 | 0 | 0 | 11 | 0 | 5 | 10 | 0 | 0 |
+| [Citrus](#citrus) | 1 | 16 | 0 | 0 | 11 | 0 | 5 | 12 | 1 | 0 |
 | [Citrus (Grapefruit)](#citrus-grapefruit) | 1 | 0 | 5 | 0 | 12 | 1 | 5 | 0 | 0 | 3 |
 | [Citrus (Lemon)](#citrus-lemon) | 1 | 0 | 4 | 0 | 12 | 1 | 5 | 0 | 0 | 3 |
 | [Citrus (Navel)](#citrus-navel) | 1 | 0 | 5 | 0 | 12 | 1 | 5 | 0 | 0 | 3 |
@@ -38,43 +38,43 @@ Counts are rows in each per-crop table.
 | [Citrus (Valencia)](#citrus-valencia) | 1 | 0 | 5 | 0 | 11 | 1 | 5 | 0 | 0 | 3 |
 | [Coffee](#coffee) | 1 | 2 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
 | [Cotton](#cotton) | 1 | 5 | 4 | 24 | 8 | 2 | 0 | 2 | 0 | 4 |
-| [Fig](#fig) | 1 | 5 | 5 | 0 | 11 | 1 | 5 | 3 | 0 | 3 |
-| [Garlic](#garlic) | 1 | 5 | 4 | 10 | 11 | 1 | 0 | 3 | 0 | 4 |
+| [Fig](#fig) | 1 | 5 | 5 | 0 | 11 | 1 | 5 | 3 | 1 | 3 |
+| [Garlic](#garlic) | 1 | 5 | 4 | 10 | 11 | 1 | 0 | 3 | 1 | 4 |
 | [Gem Squash](#gem-squash) | 1 | 0 | 0 | 3 | 11 | 0 | 0 | 0 | 0 | 0 |
-| [Groundnut](#groundnut) | 1 | 5 | 4 | 6 | 0 | 4 | 0 | 0 | 0 | 3 |
+| [Groundnut](#groundnut) | 1 | 5 | 4 | 6 | 0 | 4 | 0 | 0 | 1 | 3 |
 | [Guava](#guava) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 3 | 0 | 3 |
-| [Honeybush](#honeybush) | 1 | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 |
+| [Honeybush](#honeybush) | 1 | 2 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 |
 | [Kiwi](#kiwi) | 1 | 8 | 7 | 0 | 12 | 1 | 6 | 5 | 1 | 3 |
-| [Lentils](#lentils) | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 3 |
-| [Lettuce](#lettuce) | 1 | 0 | 3 | 7 | 7 | 0 | 0 | 1 | 0 | 3 |
-| [Litchi](#litchi) | 1 | 10 | 5 | 0 | 11 | 0 | 4 | 0 | 0 | 3 |
-| [Lucerne](#lucerne) | 1 | 7 | 5 | 106 | 9 | 2 | 4 | 2 | 0 | 3 |
+| [Lentils](#lentils) | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 1 | 3 |
+| [Lettuce](#lettuce) | 1 | 0 | 3 | 7 | 7 | 0 | 0 | 1 | 1 | 3 |
+| [Litchi](#litchi) | 1 | 10 | 5 | 0 | 11 | 0 | 4 | 0 | 1 | 3 |
+| [Lucerne](#lucerne) | 1 | 7 | 5 | 106 | 9 | 2 | 4 | 2 | 1 | 3 |
 | [Macadamia](#macadamia) | 1 | 16 | 4 | 5 | 13 | 4 | 5 | 11 | 0 | 3 |
 | [Maize](#maize) | 1 | 6 | 4 | 75 | 11 | 1 | 0 | 2 | 0 | 0 |
 | [Maize (dryland)](#maize-dryland) | 1 | 5 | 4 | 48 | 0 | 0 | 0 | 0 | 0 | 4 |
 | [Maize (irrigated)](#maize-irrigated) | 1 | 5 | 5 | 44 | 0 | 0 | 0 | 0 | 0 | 5 |
-| [Mango](#mango) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 1 | 0 | 3 |
+| [Mango](#mango) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 1 | 1 | 3 |
 | [Nectarine](#nectarine) | 1 | 7 | 5 | 0 | 11 | 1 | 0 | 1 | 0 | 0 |
 | [Oat](#oat) | 1 | 0 | 4 | 0 | 0 | 3 | 0 | 0 | 0 | 0 |
 | [Olive](#olive) | 1 | 5 | 5 | 3 | 11 | 1 | 4 | 2 | 0 | 3 |
-| [Onion](#onion) | 1 | 0 | 4 | 7 | 10 | 0 | 0 | 1 | 0 | 5 |
+| [Onion](#onion) | 1 | 0 | 4 | 7 | 10 | 0 | 0 | 1 | 1 | 5 |
 | [Passion Fruit](#passion-fruit) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 3 | 0 | 3 |
-| [Pea](#pea) | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| [Pea (Green)](#pea-green) | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| [Pea](#pea) | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
+| [Pea (Green)](#pea-green) | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
 | [Peach](#peach) | 1 | 7 | 5 | 0 | 11 | 1 | 4 | 1 | 0 | 3 |
-| [Pear](#pear) | 1 | 8 | 5 | 0 | 11 | 1 | 5 | 1 | 0 | 3 |
+| [Pear](#pear) | 1 | 8 | 5 | 0 | 11 | 1 | 5 | 1 | 1 | 3 |
 | [Pecan](#pecan) | 1 | 9 | 5 | 0 | 11 | 2 | 5 | 0 | 0 | 3 |
-| [Pepper (Bell)](#pepper-bell) | 1 | 7 | 4 | 7 | 11 | 0 | 0 | 0 | 0 | 3 |
-| [Persimmon](#persimmon) | 1 | 4 | 5 | 0 | 11 | 0 | 4 | 2 | 0 | 0 |
+| [Pepper (Bell)](#pepper-bell) | 1 | 7 | 4 | 7 | 11 | 0 | 0 | 0 | 1 | 3 |
+| [Persimmon](#persimmon) | 1 | 4 | 5 | 0 | 11 | 0 | 4 | 2 | 1 | 0 |
 | [Pineapple](#pineapple) | 1 | 4 | 4 | 2 | 11 | 1 | 0 | 2 | 0 | 3 |
 | [Plum](#plum) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 1 | 0 | 3 |
-| [Pomegranate](#pomegranate) | 1 | 7 | 5 | 1 | 11 | 1 | 5 | 4 | 0 | 3 |
+| [Pomegranate](#pomegranate) | 1 | 7 | 5 | 1 | 11 | 1 | 5 | 4 | 1 | 3 |
 | [Potato](#potato) | 1 | 3 | 4 | 126 | 11 | 1 | 0 | 0 | 0 | 5 |
 | [Pumpkin](#pumpkin) | 1 | 0 | 4 | 7 | 11 | 0 | 0 | 1 | 0 | 4 |
 | [Raspberry](#raspberry) | 1 | 2 | 0 | 4 | 11 | 0 | 0 | 2 | 1 | 0 |
 | [Rooibos](#rooibos) | 1 | 2 | 4 | 3 | 0 | 0 | 0 | 1 | 1 | 2 |
 | [Sorghum](#sorghum) | 1 | 0 | 4 | 0 | 3 | 1 | 0 | 2 | 0 | 4 |
-| [Soybean](#soybean) | 1 | 6 | 4 | 48 | 8 | 0 | 0 | 2 | 0 | 3 |
+| [Soybean](#soybean) | 1 | 6 | 4 | 48 | 8 | 0 | 0 | 2 | 1 | 3 |
 | [Spinach](#spinach) | 1 | 0 | 3 | 0 | 6 | 0 | 0 | 1 | 0 | 3 |
 | [Strawberry](#strawberry) | 1 | 2 | 4 | 7 | 6 | 1 | 0 | 3 | 0 | 3 |
 | [Sugarcane](#sugarcane) | 1 | 4 | 4 | 56 | 13 | 0 | 0 | 2 | 0 | 5 |
@@ -84,15 +84,15 @@ Counts are rows in each per-crop table.
 | [Sweetcorn](#sweetcorn) | 1 | 0 | 4 | 71 | 0 | 3 | 0 | 0 | 0 | 5 |
 | [Table Grape](#table-grape) | 1 | 7 | 5 | 0 | 7 | 1 | 4 | 1 | 0 | 3 |
 | [Tea](#tea) | 1 | 2 | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
-| [Tobacco](#tobacco) | 1 | 2 | 4 | 34 | 11 | 0 | 0 | 1 | 0 | 3 |
-| [Tobacco (Burley)](#tobacco-burley) | 1 | 0 | 0 | 0 | 11 | 1 | 0 | 0 | 0 | 0 |
-| [Tobacco (Dark air-cured)](#tobacco-dark-air-cured) | 1 | 0 | 0 | 4 | 11 | 1 | 0 | 0 | 0 | 0 |
-| [Tobacco (Flue-cured)](#tobacco-flue-cured) | 1 | 0 | 0 | 3 | 11 | 1 | 0 | 0 | 0 | 0 |
-| [Tobacco (Light air-cured)](#tobacco-light-air-cured) | 1 | 0 | 0 | 0 | 11 | 1 | 0 | 0 | 0 | 0 |
-| [Tomato](#tomato) | 1 | 7 | 4 | 0 | 11 | 3 | 0 | 4 | 0 | 3 |
+| [Tobacco](#tobacco) | 1 | 2 | 4 | 34 | 11 | 0 | 0 | 1 | 1 | 3 |
+| [Tobacco (Burley)](#tobacco-burley) | 1 | 0 | 0 | 0 | 11 | 1 | 0 | 0 | 1 | 0 |
+| [Tobacco (Dark air-cured)](#tobacco-dark-air-cured) | 1 | 0 | 0 | 4 | 11 | 1 | 0 | 0 | 1 | 0 |
+| [Tobacco (Flue-cured)](#tobacco-flue-cured) | 1 | 0 | 0 | 3 | 11 | 1 | 0 | 0 | 1 | 0 |
+| [Tobacco (Light air-cured)](#tobacco-light-air-cured) | 1 | 0 | 0 | 0 | 11 | 1 | 0 | 0 | 1 | 0 |
+| [Tomato](#tomato) | 1 | 7 | 4 | 0 | 11 | 3 | 0 | 4 | 1 | 3 |
 | [Watermelon](#watermelon) | 1 | 0 | 4 | 0 | 11 | 0 | 0 | 1 | 0 | 3 |
 | [Wheat](#wheat) | 1 | 9 | 4 | 47 | 10 | 3 | 0 | 2 | 0 | 4 |
-| [Wine Grape](#wine-grape) | 1 | 7 | 5 | 0 | 8 | 1 | 4 | 2 | 0 | 3 |
+| [Wine Grape](#wine-grape) | 1 | 7 | 5 | 0 | 8 | 1 | 4 | 2 | 1 | 3 |
 
 
 ---
@@ -210,7 +210,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | Cheng 2013 Cornell + Lötze SA | n/a | 2013 | 2 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -460,7 +462,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | FERTASA 5.6.3 + UMN Asparagus | 5.6.3 | 2017 | 1 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -595,7 +599,9 @@ _Extra leaf rows outside the canonical element set:_ `N (Edranol)`, `N (Hass)`, 
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | Köhne 1990 SAAGA + Storey & Walker 1999 | 5.7.1 | 1990 | 1 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -732,7 +738,9 @@ _Extra rows on this crop outside the canonical soil schema:_ `EC (saturated past
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | Haifa Banana + IFA 1992 | n/a | 2017 | 2 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -848,7 +856,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | SAB Maltings + ARC-SGI Barley Guideline | n/a | 2017 | 1 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -1027,7 +1037,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | FERTASA 5.5.2 + ARC-GCI Drybean Manual | 5.5.2 | 2017 | 1 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -1148,7 +1160,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | FERTASA 5.6.1 + UF/IFAS HS725 | 5.6.1 | 2017 | 1 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -1264,7 +1278,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | UC ANR Beet Production | n/a | 2018 | 2 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -1857,7 +1873,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | UF/IFAS HS964 + Starke Ayres 2019 | 5.6.1 | 2019 | 2 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -2000,7 +2018,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | FERTASA 5.5.1 + Hardy 2014 | 5.5.1 | 2017 | 1 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -2223,7 +2243,9 @@ _No rows._
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
-_No rows._
+| Part | Per | N | P | K | Ca | Mg | S | Source / notes |
+|---|---|---|---|---|---|---|---|---|
+| storage root | kg/t fresh root | 2 | 0.31 | 1.66 | — | — | — | Imran et al. 2020 Agron Sustain Dev 40:8 + IITA |
 
 **Perennial age factors** (`perennial_age_factors`)
 
@@ -2586,10 +2608,14 @@ _No rows._
 | Star Ruby | — | fertigated | 45 | 65 | 90 | t/ha | CRI grower benchmarking |
 | — | — | irrigated | 30 | 50 | 70 | t/ha | CRI Industry Statistics 2023 national rolled mean |
 | — | — | fertigated | 40 | 60 | 85 | t/ha | CRI Industry Statistics 2023 top-quartile growers |
+| Bennie Valencia | Letsitele/Limpopo | irrigated | 60 | 70 | 80 | t fruit/ha | SA Fruit Journal Dec 2023/Jan 2024 — Valencia orange selections Letsitele |
+| Bennie Valencia | Letsitele/Limpopo | fertigated | 70 | 80 | 90 | t fruit/ha | SA Fruit Journal Dec 2023/Jan 2024. |
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | ARC-ISCW lowveld sandy soil baseline + FAO Y5998E | n/a | 2016 | 1 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -3573,7 +3599,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | FAO Salinity Handbook 1985 + Yara Fig | n/a | 1985 | 2 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -3702,7 +3730,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | Nguyen 2022 + Reddy 2017 | 5.6.1 | 2022 | 2 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -3934,7 +3964,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | FERTASA 5.5.3 + Manson 2013 SAJPS | 5.5.3 | 2017 | 1 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -3964,7 +3996,7 @@ _No rows._
 | Years to full bearing | — |
 | N (target/uptake) | 4 |
 | P | 0.5 |
-| K | 7.5 |
+| K | 2 |
 | Ca | 1.2 |
 | Mg | 0.5 |
 | S | 0.3 |
@@ -4109,7 +4141,7 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | **pH (KCl)** | — | — | — | — | _needs source_ |
 | pH (H2O) | 4 | 4.5 | 5 | 5.5 | DAFF Honeybush: prefers acidic soil pH < 5. Similar tolerance to rooibos. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 3 | 6 | 20 | 50 | Cawe & Dlamini 2007 SAJPS Vol 24 No 3 — below 6 mg/kg suppresses growth; target ≥20 mg/kg for plastic-mulched Cyclopia subternata. T1 SA. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
 | **K** | — | — | — | — | _needs source_ |
@@ -4169,7 +4201,7 @@ _No rows._
 
 | skip_cation_ratio_path | Source | Section | Year | Tier | Note |
 |---|---|---|---|---|---|
-| True | DAFF honeybush cultivation guide | — | 2019 | 1 | Honeybush is native to acidic Cape fynbos soils like rooibos; same reasoning. |
+| True | DAFF Honeybush Production Guide 2019 | 5.x | 2019 | 1 | Honeybush is native to acidic Cape fynbos soils like rooibos; same reasoning. |
 
 **Application methods** (`crop_application_methods`)
 
@@ -4408,7 +4440,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | GRDC GrowNote Lentil + ICARDA 2009 | 5.5.4 | 2017 | 2 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -4529,7 +4563,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | UC ANR Lettuce Production | n/a | 2018 | 2 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -4647,7 +4683,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | Stassen 2007 + ALGA Lychee Field Guide | n/a | 2007 | 1 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -4878,7 +4916,9 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | FERTASA 5.12.2 | 5.12.2 | 2017 | 1 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -5662,7 +5702,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | Mudo et al. 2020 + Pretest 2008 Acta Hort 509 | n/a | 2020 | 3 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -6136,7 +6178,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | DAFF Onion Production Guide + Starke Ayres 2019 | n/a | 2019 | 1 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -6374,7 +6418,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | GRDC GrowNote Field Pea + AHDB UK | n/a | 2018 | 2 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -6477,7 +6523,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | DAFF Vegetable Production Guide + UF/IFAS HS725 | 5.6.1 | 2011 | 1 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -6718,7 +6766,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | NSW DPI Primefact 85 + Cornell Pear | n/a | 2024 | 2 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -6960,7 +7010,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | UF/IFAS HS732 | HS732 | 2024 | 2 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -7081,7 +7133,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | George 1997 Acta Hort 436 | n/a | 1997 | 3 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -7449,7 +7503,9 @@ _Extra rows on this crop outside the canonical soil schema:_ `Acid Saturation`
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | Holland 2009 Hort Reviews 35 + Day & Wilkins 2011 | n/a | 2009 | 2 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -8048,7 +8104,7 @@ _No rows._
 
 | skip_cation_ratio_path | Source | Section | Year | Tier | Note |
 |---|---|---|---|---|---|
-| True | SARC (SA Rooibos Council) cultivation guide | — | 2020 | 1 | Rooibos native to acidic nutrient-poor Cape fynbos soils. Migration 065 flagged with no-artificial-fertiliser rate rows; Ca/Mg ratio path must also skip. |
+| True | SARC 2020 + Hawkins & Lambers 2011 | 5.x | 2020 | 1 | Rooibos native to acidic nutrient-poor Cape fynbos soils. Migration 065 flagged with no-artificial-fertiliser rate rows; Ca/Mg ratio path must also skip. |
 
 **Application methods** (`crop_application_methods`)
 
@@ -8329,7 +8385,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | FERTASA 5.5.5 + Grain SA Soybean Guide 2019 | 5.5.5 | 2017 | 1 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -9728,7 +9786,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | FERTASA 5.11 | 5.11 | 2017 | 1 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -9837,7 +9897,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | FERTASA 5.11 | 5.11 | 2017 | 1 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -9947,7 +10009,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | FERTASA 5.11 | 5.11 | 2017 | 1 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -10056,7 +10120,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | FERTASA 5.11 | 5.11 | 2017 | 1 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -10161,7 +10227,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | FERTASA 5.11 | 5.11 | 2017 | 1 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -10278,7 +10346,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | UF/IFAS HS739 + UC ANR | HS739 | 2024 | 2 | — |
 
 **Application methods** (`crop_application_methods`)
 
@@ -10683,7 +10753,9 @@ _No rows._
 
 **Calc flags** (`crop_calc_flags`)
 
-_No rows._
+| skip_cation_ratio_path | Source | Section | Year | Tier | Note |
+|---|---|---|---|---|---|
+| False | Saayman & Lambrechts 1995 SAJEV 16(2) | n/a | 1995 | 3 | — |
 
 **Application methods** (`crop_application_methods`)
 

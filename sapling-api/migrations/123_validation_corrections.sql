@@ -1,0 +1,44 @@
+-- ============================================================
+-- 123: Validation cross-check corrections
+-- ============================================================
+-- Validation research agent surfaced three concrete actions on the
+-- material corrections that were applied earlier this week.
+--
+-- 1. Guava K REVERT: 7.5 → 2.0 kg/t fresh fruit
+--    The Singh 2017 ICAR Indian J Hort 74:381 figure was contradicted
+--    by THREE independent Brazilian sources:
+--      * Souza/Natale et al. 2016 Front Plant Sci (Rica 2.18, Paluma 1.55 kg K/t)
+--      * Hiroce et al. 1977 (cv IAC-4, 0.73 kg K/t)
+--      * Brasil Sobrinho et al. 1961 (3.13 kg K/t)
+--    Singh 7.5 is likely **K2O whole-plant uptake**, not K fruit-only
+--    export. Without paywalled access to the original Singh paper to
+--    verify, three sources outweigh one. Reverted to 2.0 kg K/t
+--    (Souza/Natale 2016 mid-band).
+--
+-- 2. Garlic citation fix:
+--    The numbers attributed to "Reddy et al. 2017 IJCMAS" are an exact
+--    numerical match to Thangasamy & Chavan 2017 Indian J Hort
+--    74(1):80-84 (56.3 kg N + 13.5 kg P + 65.8 kg K + 30.6 kg S per
+--    6.7 t bulb yield = 8.4/2.0/9.8/4.6 kg/t exactly). The original
+--    "Reddy 2017 IJCMAS" paper could not be located. Updated source
+--    attribution; values unchanged.
+--
+-- 3. Macadamia Mn basis annotation:
+--    Schoeman 2017 published per-DNIS range 0.5-1.0 kg Mn/t (midpoint
+--    0.75); FERTASA 5.8.1 0.15 kg/t fresh-NIS is the SAME PHYSICAL
+--    EXPORT on a different moisture basis. Annotated the row note to
+--    pre-empt confusion + flag the husk-recycling caveat (Mn
+--    concentrates in shell+husk; kernel-only Mn ~0.014 kg/t DNIS so
+--    if husk returned as mulch, net export drops materially).
+--
+-- Validation verdicts (no action required):
+--   * Garlic per-ton N/P/K/S: HIGH confidence — Thangasamy & Chavan
+--     exact match; Cunha et al. 2016 + Australian PMC9572700 also
+--     consistent.
+--   * Pomegranate default_yield 25 t/ha: HIGH for SA Wonderful (POMASA
+--     conservative trajectory matches). MEDIUM globally — for Indian/
+--     Iranian fields engine over-targets ~60-100%. Keep for SA-first.
+--   * Macadamia Mn 0.75 kg/t DNIS: HIGH — Schoeman published range
+--     midpoint matches.
+--
+-- Applied via python supabase admin client.
