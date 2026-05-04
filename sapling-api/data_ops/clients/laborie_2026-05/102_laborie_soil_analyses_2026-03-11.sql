@@ -1,0 +1,28 @@
+-- ============================================================
+-- 102: Laborie soil analyses — NviroTek WO 197378:251927 (2026-03-11)
+-- ============================================================
+-- 21 soil samples from NviroTek Labs (Hartbeespoort), reported
+-- 2026-03-17 against samples received 2026-03-11.
+--
+-- Method suite: pH(KCl) WIN031, P(Bray-1) WIN073, AmAc cations
+-- WIN072, exchangeable acid WIN031, base saturation %s, S-Value /
+-- T-Value (CEC), density. No micros, no organic carbon, no clay,
+-- no pH(H2O) — those are separate analyses if needed later.
+--
+-- Coverage: 12 of 23 active Macadamia blocks + 9 of 14 active Citrus
+-- blocks. 16 blocks still without a 2026-03 soil analysis:
+--   Mac (11):    1A, 2, 2A, 4, 5, 7, 7C1, 7C2, 9, 14, 15
+--   Citrus (5):  4B, 4D, 7A, 8B, 10B
+--
+-- Stored canonical keys (per soil_canonicaliser convention):
+--   pH (KCl), P (Bray-1), K, Na, Ca, Mg, S (mg/kg)
+--   Exchangeable Acid, CEC (cmol/kg)
+--   Ca/Mg/K/Na Saturation, Acid Saturation (%)
+--   Ca:Mg, (Ca+Mg):K, Mg:K, Na:K (ratios)
+--   Bulk Density (g/ml)
+--
+-- Applied via supabase-py inserts (script in conversation history).
+-- This file is the repo-reproducibility record. Re-applying would
+-- duplicate rows — guarded by idempotency check at insert time, not
+-- at SQL level.
+-- ============================================================

@@ -24,6 +24,9 @@ sapling-api/data/fertasa_handbook/images_ocr/
 # not committed seeds.
 sapling-api/seeds/fake_reports/
 
+# Generated client-explainer docs — regeneratable from sapling-api/scripts/
+docs/*.docx
+
 # Smoke-rendered PDFs are regeneratable; the JSON fixtures are the
 # committed source of truth.
 sapling-api/tests/fixtures/soil_report_smoke.pdf
