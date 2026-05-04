@@ -432,30 +432,213 @@ CROP_NOTE_KB: dict[str, list[CropNoteData]] = {
 }
 
 
+def _note_from_flag(
+    crop: str,
+    column: str,
+    value: object,
+    row: dict,
+) -> Optional[CropNoteData]:
+    """Generate a fallback CropNote from a single flag column when the
+    hardcoded KB doesn't already cover this kind for the crop.
+
+    Used for crops where an agronomist sets a flag in the DB but no
+    rich KB entry exists yet — the report still surfaces the rule,
+    just with shorter prose."""
+    src = str(row.get("source", "") or "")
+    section = str(row.get("source_section", "") or "")
+    citation = (src + (f" §{section}" if section else "")).strip() or None
+
+    # Boolean flag → templated note
+    if column == "no_chloride_fertilisers" and value is True:
+        return CropNoteData(
+            kind="no_chloride_fertilisers",
+            headline=f"{crop} is acutely chloride-sensitive.",
+            detail="Avoid KCl/MOP. Use SOP (potassium sulphate) or KNO3.",
+            severity="warn", source_citation=citation,
+        )
+    if column == "chloride_sensitive" and value is True:
+        return CropNoteData(
+            kind="chloride_sensitive",
+            headline=f"{crop} is chloride-sensitive at moderate levels.",
+            detail="Verify irrigation water Cl + soil-Cl below the published threshold; minimise chloride-bearing fertiliser sources.",
+            severity="watch", source_citation=citation,
+        )
+    if column == "sulfur_critical" and value is True:
+        return CropNoteData(
+            kind="sulfur_critical",
+            headline=f"{crop} is high-sulphur — ensure adequate S supply.",
+            detail="S drives both yield and quality. Confirm soil-S ≥ published threshold; supplement if low.",
+            severity="warn", source_citation=citation,
+        )
+    if column == "acid_intolerant" and value is True:
+        return CropNoteData(
+            kind="acid_intolerant",
+            headline=f"{crop} is acid-intolerant.",
+            detail="Below pH (KCl) ≈ 5.0 yield declines sharply. Lime to pH target before establishment.",
+            severity="watch", source_citation=citation,
+        )
+    if column == "acid_obligate" and value is True:
+        return CropNoteData(
+            kind="acid_obligate",
+            headline=f"{crop} is acid-obligate — do not lime.",
+            detail="pH > target actively damages stand. Engine excludes lime recommendations for this crop.",
+            severity="warn", source_citation=citation,
+        )
+    if column == "salt_tolerant" and value is True:
+        return CropNoteData(
+            kind="salt_tolerant",
+            headline=f"{crop} is salt-tolerant.",
+            detail="Tolerates high Na / Cl in irrigation + soil compared to typical crops; salinity penalties relaxed.",
+            severity="info", source_citation=citation,
+        )
+    if column == "n_fixation_active" and value is True:
+        return CropNoteData(
+            kind="n_fixation_active",
+            headline=f"{crop} fixes its own nitrogen once nodulated.",
+            detail="Engine should not auto-apply N beyond a small starter dose; applied N can suppress fixation.",
+            severity="info", source_citation=citation,
+        )
+    if column == "mo_responsive" and value is True:
+        return CropNoteData(
+            kind="mo_responsive",
+            headline=f"{crop} is Mo-responsive.",
+            detail="Sodium molybdate seed treatment recommended on acid soils (pH KCl < 5.5).",
+            severity="info", source_citation=citation,
+        )
+    if column == "inoculant_required" and value is True:
+        return CropNoteData(
+            kind="inoculant_required",
+            headline=f"{crop} requires Rhizobium inoculation.",
+            detail="Inoculate seed with the species-specific strain before planting on first rotation; otherwise nodulation fails and N-fixation is dormant.",
+            severity="warn", source_citation=citation,
+        )
+    if column == "boron_sensitive" and value is True:
+        return CropNoteData(
+            kind="boron_sensitive",
+            headline=f"{crop} is boron-toxic at moderate levels.",
+            detail="Do not auto-apply soil B. Foliar B only if leaf-tissue test confirms deficiency.",
+            severity="warn", source_citation=citation,
+        )
+    if column == "boron_critical_for_set" and value is True:
+        return CropNoteData(
+            kind="boron_critical_for_set",
+            headline=f"{crop} requires B at flowering for fruit/pod set.",
+            detail="Soil + foliar B essential during flowering. Below leaf-B threshold, set fails regardless of N supply.",
+            severity="watch", source_citation=citation,
+        )
+    if column == "nitrate_form_required" and value is True:
+        return CropNoteData(
+            kind="nitrate_form_required",
+            headline=f"{crop} requires N as nitrate, not ammonium / urea.",
+            detail="Top-dress N applications must be in nitrate form. Ammoniacal N persisting into late season degrades quality.",
+            severity="warn", source_citation=citation,
+        )
+    if column == "photoperiod_sensitive" and value is True:
+        return CropNoteData(
+            kind="photoperiod_sensitive",
+            headline=f"{crop} is photoperiod-sensitive — match cultivar to latitude.",
+            detail="Cultivar choice (short / intermediate / long-day) must match planting date and latitude.",
+            severity="info", source_citation=citation,
+        )
+    if column == "alternate_bearing_risk" and value is True:
+        return CropNoteData(
+            kind="alternate_bearing_risk",
+            headline=f"{crop} shows alternate-bearing tendency.",
+            detail="High-yield 'on' years are followed by low-yield 'off' years. Crop-load thinning + balanced nutrition smooth the cycle.",
+            severity="info", source_citation=citation,
+        )
+    if column == "ca_quality_critical" and value is True:
+        return CropNoteData(
+            kind="ca_quality_critical",
+            headline=f"{crop} is Ca-quality-critical.",
+            detail="Foliar Ca during fruit cell expansion + stable irrigation prevent Ca-partition disorders (BER, bitter pit, tipburn). Soil-Ca alone is insufficient.",
+            severity="warn", source_citation=citation,
+        )
+    if column == "k_luxury_consumer" and value is True:
+        return CropNoteData(
+            kind="k_luxury_consumer",
+            headline=f"{crop} is a K-luxury consumer.",
+            detail="Removes higher-than-typical K per ton. Replenish after every harvest cycle.",
+            severity="info", source_citation=citation,
+        )
+    # Numeric ceilings
+    if column == "n_protein_cap_kg_ha" and isinstance(value, (int, float)) and value > 0:
+        return CropNoteData(
+            kind="n_protein_cap",
+            headline=f"{crop} has a hard N ceiling for grain quality.",
+            detail=f"Total pre-anthesis N must stay below {value:g} kg/ha. Above this, grain protein exceeds spec → load downgraded.",
+            severity="warn", source_citation=citation,
+        )
+    if column == "n_rate_ceiling_kg_per_ha" and isinstance(value, (int, float)) and value > 0:
+        return CropNoteData(
+            kind="n_rate_ceiling",
+            headline=f"{crop} N rate capped at {value:g} kg/ha for quality.",
+            detail=f"Total-season N above {value:g} kg/ha damages crop quality (colour, sugar, brix). Engine enforces this ceiling.",
+            severity="warn", source_citation=citation,
+        )
+    if column == "cec_floor_cmol" and isinstance(value, (int, float)) and value > 0:
+        return CropNoteData(
+            kind="cec_floor",
+            headline="Skip cation-ratio path on low-CEC soils.",
+            detail=f"Below CEC {value:g} cmol/kg, the cation-ratio path is statistically unstable; engine falls through to absolute soil-test sufficiency.",
+            severity="info", source_citation=citation,
+        )
+    return None
+
+
+# Columns that drive a fallback note when the KB doesn't cover the kind
+_DB_FLAG_COLUMNS = [
+    "no_chloride_fertilisers", "chloride_sensitive", "sulfur_critical",
+    "acid_intolerant", "acid_obligate", "salt_tolerant",
+    "n_fixation_active", "mo_responsive", "inoculant_required",
+    "boron_sensitive", "boron_critical_for_set",
+    "nitrate_form_required", "photoperiod_sensitive",
+    "alternate_bearing_risk", "ca_quality_critical", "k_luxury_consumer",
+    "n_protein_cap_kg_ha", "n_rate_ceiling_kg_per_ha", "cec_floor_cmol",
+]
+
+
 def generate_crop_notes(
     crop: str,
     crop_calc_flags_row: Optional[dict] = None,
 ) -> list[CropNoteData]:
     """Produce per-block crop notes for the given crop name.
 
-    Reads the hardcoded knowledge base + the live `crop_calc_flags`
-    row (currently only `skip_cation_ratio_path`). Cultivar variants
-    fall back to the parent genus's notes.
+    Strategy:
+      1. Start with the hardcoded KB entries for the crop (rich content,
+         citations, agronomic detail). Cultivar variants fall back to
+         the parent genus's KB notes.
+      2. Layer DB-driven notes on top — for any flag set in the live
+         `crop_calc_flags` row that the KB hasn't already covered for
+         this crop, generate a templated fallback note. This makes the
+         DB the source of truth: an agronomist who sets a flag in the
+         DB sees it surface in the report even if no KB entry exists.
 
     The notes feed two surfaces:
-      * Renderer: 'Notes' section in the new-direction nutrient
-        requirements report.
-      * Product selector (future): hard filters via `note.kind`.
+      * Renderer: 'Crop notes — agronomic context' section in the
+        nutrient-requirements report and soil report.
+      * Product selector (future): hard filters via `note.kind`
+        (e.g. `kind='no_chloride_fertilisers'` → drop KCl/MOP).
     """
     out: list[CropNoteData] = list(CROP_NOTE_KB.get(crop, []))
 
-    # Cultivar fallback to genus
+    # Cultivar fallback to genus for the KB layer
     if not out and "(" in crop:
         base_crop = crop.split("(")[0].strip()
         out = list(CROP_NOTE_KB.get(base_crop, []))
 
-    # Ratio-path override flag — surface as a note when active
-    if crop_calc_flags_row and crop_calc_flags_row.get("skip_cation_ratio_path"):
+    if not crop_calc_flags_row:
+        return out
+
+    # Ratio-path override flag — surface as a note when active and not
+    # already covered by the KB (Kiwi has skip_cation_ratio_path=True
+    # AND a KB entry; Blueberry has the flag without a KB entry — the
+    # second case wants the templated note added).
+    existing_kinds = {n.kind for n in out}
+    if (
+        crop_calc_flags_row.get("skip_cation_ratio_path")
+        and "skip_cation_ratio_path" not in existing_kinds
+    ):
         out.append(
             CropNoteData(
                 kind="skip_cation_ratio_path",
@@ -466,8 +649,31 @@ def generate_crop_notes(
                     "absolute soil-test sufficiency only."
                 ),
                 severity="info",
-                source_citation=str(crop_calc_flags_row.get("source", "")),
+                source_citation=str(crop_calc_flags_row.get("source", "") or "") or None,
             )
         )
+        existing_kinds.add("skip_cation_ratio_path")
+
+    # Layer the DB-driven flags on top of the KB
+    for col in _DB_FLAG_COLUMNS:
+        val = crop_calc_flags_row.get(col)
+        if not val:
+            continue
+        # Skip if KB already covered this kind for the crop
+        # (boolean cols use the column name as the kind; numeric cols
+        # have specific kind names — do an explicit check)
+        kind_name = col
+        if col == "n_protein_cap_kg_ha":
+            kind_name = "n_protein_cap"
+        elif col == "n_rate_ceiling_kg_per_ha":
+            kind_name = "n_rate_ceiling"
+        elif col == "cec_floor_cmol":
+            kind_name = "cec_floor"
+        if kind_name in existing_kinds:
+            continue
+        note = _note_from_flag(crop, col, val, crop_calc_flags_row)
+        if note:
+            out.append(note)
+            existing_kinds.add(note.kind)
 
     return out

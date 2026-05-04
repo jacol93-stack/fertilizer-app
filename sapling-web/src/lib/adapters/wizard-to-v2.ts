@@ -235,9 +235,14 @@ export function wizardStateToBuildRequest(
     };
   });
 
-  const applicationMonths = (input.applicationMonths ?? [])
-    .filter((m) => Number.isInteger(m) && m >= 1 && m <= 12);
-  const dedupedMonths = Array.from(new Set(applicationMonths)).sort((a, b) => a - b);
+  // Application months were used by the legacy blend optimiser to map
+  // stage allocations onto operator-allowed application slots. Under the
+  // new direction (programme report shows nutrient REQUIREMENTS only;
+  // blend / product choice moves to the product selector tool), this
+  // input no longer drives engine output that the client sees. The
+  // wizard still collects it for backwards compat with admin-mode flows;
+  // we no longer forward it to the build endpoint.
+  const dedupedMonths: number[] = [];
 
   // Per-cluster method overrides — convert each cluster's selected
   // method-name list to a MethodAvailability boolean dict the engine

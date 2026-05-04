@@ -292,6 +292,7 @@ async def build_programme_endpoint(
         sufficiency_rows=catalog.sufficiency_rows,
         crop_override_rows=catalog.crop_override_rows,
         param_map_rows=catalog.param_map_rows,
+        crop_calc_flags_rows=catalog.crop_calc_flags_rows,
         cluster_sources=cluster_sources,
         pre_computed_assumptions=pre_computed_assumptions,
     )

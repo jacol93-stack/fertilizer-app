@@ -151,6 +151,11 @@ class OrchestratorInput:
     sufficiency_rows: Optional[list[dict]] = None
     crop_override_rows: Optional[list[dict]] = None
     param_map_rows: Optional[list[dict]] = None
+    # Per-crop calc-flag rows (no_chloride_fertilisers, sulfur_critical,
+    # acid_obligate, n_fixation_active, n_protein_cap_kg_ha, etc.).
+    # CropNote generator reads from this to surface flags the hardcoded
+    # KB doesn't know about.
+    crop_calc_flags_rows: Optional[list[dict]] = None
     # cluster_id → list of source BlockInputs that fed the aggregate.
     # When supplied, the orchestrator runs soil-side reasoning (factor
     # findings, pre-season recommendations, soil snapshots) on each
@@ -356,7 +361,21 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
         # crop_calc_flags row when available.
         from app.services.crop_notes_generator import generate_crop_notes
         from app.models.programme_artifact import CropNote
-        crop_calc_row = None  # caller can pass via inputs in future
+        # Look up the crop's calc-flags row by canonical crop name with
+        # a parent-genus fallback (so 'Citrus (Valencia)' inherits from
+        # 'Citrus' if no Valencia-specific row exists).
+        crop_calc_row = None
+        if inputs.crop_calc_flags_rows:
+            crop_calc_row = next(
+                (r for r in inputs.crop_calc_flags_rows if r.get("crop") == inputs.crop),
+                None,
+            )
+            if not crop_calc_row and "(" in inputs.crop:
+                base_crop = inputs.crop.split("(")[0].strip()
+                crop_calc_row = next(
+                    (r for r in inputs.crop_calc_flags_rows if r.get("crop") == base_crop),
+                    None,
+                )
         crop_notes_dc = generate_crop_notes(inputs.crop, crop_calc_row)
         crop_notes_out = [
             CropNote(
