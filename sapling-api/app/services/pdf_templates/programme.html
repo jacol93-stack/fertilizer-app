@@ -217,6 +217,61 @@
     </table>
     {% endif %}
 
+    {% if snap.crop_notes %}
+    <h4 class="soil-block__subhead">Crop notes — agronomic context</h4>
+    <div class="crop-notes">
+      {% for note in snap.crop_notes %}
+      <div class="crop-note crop-note--{{ note.severity }}">
+        <p class="crop-note__headline">{{ note.headline }}</p>
+        <p class="crop-note__detail">{{ note.detail }}</p>
+        {% if note.source_citation %}
+        <p class="crop-note__source">{{ note.source_citation }}</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if snap.ratio_interpretations %}
+    <h4 class="soil-block__subhead">Cation balance — what each ratio means</h4>
+    <div class="ratio-interps">
+      {% for ri in snap.ratio_interpretations %}
+      <div class="ratio-interp ratio-interp--{{ ri.severity }} ratio-interp--{{ ri.state }}">
+        <div class="ratio-interp__header">
+          <span class="ratio-interp__name">{{ ri.name }}</span>
+          <span class="ratio-interp__value mono">{{ ri.value_display }}</span>
+          <span class="ratio-interp__band">target {{ ri.ideal_display }}</span>
+          <span class="status status--{{ ri.severity }}">{{ ri.state|replace('_', ' ') }}</span>
+        </div>
+        <p class="ratio-interp__what">{{ ri.what_it_measures }}</p>
+        <p class="ratio-interp__effect">{{ ri.direct_effect }}</p>
+        {% if ri.bound_nutrients %}
+        <p class="ratio-interp__bound">
+          <strong>Likely bound / under-available:</strong>
+          {% for n in ri.bound_nutrients %}<span class="bound-nut">{{ n }}</span>{% if not loop.last %}, {% endif %}{% endfor %}
+        </p>
+        {% endif %}
+        {% if ri.recommended_action %}
+        <p class="ratio-interp__action"><strong>Action:</strong> {{ ri.recommended_action }}</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if snap.ratio_summary %}
+    <div class="ratio-summary">
+      <h4 class="soil-block__subhead">Cation balance — sum effect</h4>
+      <p class="ratio-summary__body">{{ snap.ratio_summary.summary }}</p>
+      {% if snap.ratio_summary.nutrients_at_risk %}
+      <p class="ratio-summary__risk">
+        <strong>Nutrients at risk under this ratio profile:</strong>
+        {% for n in snap.ratio_summary.nutrients_at_risk %}<span class="bound-nut bound-nut--risk">{{ n }}</span>{% if not loop.last %}, {% endif %}{% endfor %}
+      </p>
+      {% endif %}
+    </div>
+    {% endif %}
+
     {% if snap.headline_signals %}
     <h4 class="soil-block__subhead">The loudest signals</h4>
     {% for sig in snap.headline_signals %}

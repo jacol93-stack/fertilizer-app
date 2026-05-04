@@ -1266,3 +1266,145 @@ h1, h2, h3, h4, h5, h6 {
   text-align: center;
   margin-top: 2mm;
 }
+
+/* ── Crop Notes (new-direction qualitative agronomy) ───────────── */
+
+.crop-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0.8rem 0 1.4rem;
+}
+
+.crop-note {
+  border-left: 4px solid var(--rule);
+  padding: 0.7rem 0.9rem;
+  background: var(--surface-soft);
+  break-inside: avoid;
+}
+
+.crop-note--warn { border-left-color: #c75a3a; }
+.crop-note--watch { border-left-color: #d4a23a; }
+.crop-note--info { border-left-color: var(--accent-soft); }
+
+.crop-note__headline {
+  font-weight: 600;
+  margin: 0 0 0.3rem 0;
+  font-size: 0.95rem;
+}
+
+.crop-note__detail {
+  margin: 0 0 0.3rem 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+
+.crop-note__source {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
+/* ── Ratio interpretations (per-ratio prose) ───────────────────── */
+
+.ratio-interps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin: 0.8rem 0 1.4rem;
+}
+
+.ratio-interp {
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.7rem 0.9rem;
+  background: var(--surface);
+  break-inside: avoid;
+}
+
+.ratio-interp--warn { border-left: 4px solid #c75a3a; }
+.ratio-interp--critical { border-left: 4px solid #a73a2a; background: #fff5f0; }
+.ratio-interp--watch { border-left: 4px solid #d4a23a; }
+.ratio-interp--info { border-left: 4px solid var(--accent-soft); }
+
+.ratio-interp__header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
+}
+
+.ratio-interp__name {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.ratio-interp__value {
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.ratio-interp__band {
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+}
+
+.ratio-interp__what {
+  margin: 0 0 0.3rem 0;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
+.ratio-interp__effect {
+  margin: 0 0 0.4rem 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.ratio-interp__bound,
+.ratio-interp__action {
+  margin: 0.3rem 0 0 0;
+  font-size: 0.85rem;
+}
+
+.bound-nut {
+  display: inline-block;
+  background: #f3e6dd;
+  border: 1px solid #c75a3a;
+  border-radius: 3px;
+  padding: 0 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #8a3a2a;
+}
+
+.bound-nut--risk {
+  background: #ffe5d8;
+  border-color: #a73a2a;
+}
+
+/* ── Holistic ratio summary callout ────────────────────────────── */
+
+.ratio-summary {
+  border: 2px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.9rem 1.1rem;
+  background: var(--surface-soft);
+  margin: 1.0rem 0 1.4rem;
+  break-inside: avoid;
+}
+
+.ratio-summary__body {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.ratio-summary__risk {
+  margin: 0;
+  font-size: 0.85rem;
+}

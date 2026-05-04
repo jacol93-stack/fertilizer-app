@@ -350,6 +350,22 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
             nutrients_at_risk=list(ratio_summary_dc.nutrients_at_risk),
         )
 
+        # Crop-specific qualitative notes (Cl-sensitive, S-critical, etc.)
+        # — feeds renderer's Notes section + future product selector
+        # filters. Looks up from hardcoded knowledge base + live
+        # crop_calc_flags row when available.
+        from app.services.crop_notes_generator import generate_crop_notes
+        from app.models.programme_artifact import CropNote
+        crop_calc_row = None  # caller can pass via inputs in future
+        crop_notes_dc = generate_crop_notes(inputs.crop, crop_calc_row)
+        crop_notes_out = [
+            CropNote(
+                kind=n.kind, headline=n.headline, detail=n.detail,
+                severity=n.severity, source_citation=n.source_citation,
+            )
+            for n in crop_notes_dc
+        ]
+
         soil_snapshots_out.append(SoilSnapshot(
             block_id=src.block_id,
             block_name=src.block_name,
@@ -364,6 +380,7 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
             nutrient_status=nutrient_status,
             ratio_interpretations=ratio_interpretations_out,
             ratio_summary=ratio_summary_out,
+            crop_notes=crop_notes_out,
             headline_signals=headline,
         ))
 

@@ -522,6 +522,48 @@ def _build_snapshot_view_from_dict(
     cation_balance_rows = _build_cation_balance_rows(soil_values, ideal_ratios or [])
     cation_ratio_rows = _build_cation_ratio_rows(soil_values, ideal_ratios or [])
 
+    # Smart ratio-by-ratio interpretations + holistic summary + crop notes
+    # — drives the new-direction "what does this soil pattern actually
+    # mean for my crop" view. Falls back gracefully when a snap was
+    # produced before the ratio_interpreter wiring landed.
+    ratio_interpretations = [
+        {
+            "name": ri.get("name"),
+            "value": ri.get("value"),
+            "value_display": _format_ratio_value(ri.get("value"), ri.get("unit")),
+            "ideal_low": ri.get("ideal_low"),
+            "ideal_high": ri.get("ideal_high"),
+            "ideal_display": _format_ratio_band(ri.get("ideal_low"), ri.get("ideal_high"), ri.get("unit")),
+            "unit": ri.get("unit"),
+            "state": ri.get("state"),
+            "severity": ri.get("severity"),
+            "what_it_measures": ri.get("what_it_measures"),
+            "direct_effect": _strip_source_refs(ri.get("direct_effect") or ""),
+            "bound_nutrients": ri.get("bound_nutrients") or [],
+            "recommended_action": _strip_source_refs(ri.get("recommended_action") or "") if ri.get("recommended_action") else None,
+            "source_citation": ri.get("source_citation"),
+        }
+        for ri in (snap.get("ratio_interpretations") or [])
+    ]
+    ratio_summary_dict = snap.get("ratio_summary") or None
+    ratio_summary = None
+    if ratio_summary_dict:
+        ratio_summary = {
+            "summary": _strip_source_refs(ratio_summary_dict.get("summary") or ""),
+            "key_concerns": ratio_summary_dict.get("key_concerns") or [],
+            "nutrients_at_risk": ratio_summary_dict.get("nutrients_at_risk") or [],
+        }
+    crop_notes = [
+        {
+            "kind": n.get("kind"),
+            "headline": _strip_source_refs(n.get("headline") or ""),
+            "detail": _strip_source_refs(n.get("detail") or ""),
+            "severity": n.get("severity") or "info",
+            "source_citation": n.get("source_citation"),
+        }
+        for n in (snap.get("crop_notes") or [])
+    ]
+
     return {
         "block_id": block_id,
         "block_name": snap.get("block_name") or "",
@@ -531,10 +573,37 @@ def _build_snapshot_view_from_dict(
         "cation_balance_rows": cation_balance_rows,
         "cation_ratio_rows": cation_ratio_rows,
         "ratio_rows": ratio_rows,
+        "ratio_interpretations": ratio_interpretations,
+        "ratio_summary": ratio_summary,
+        "crop_notes": crop_notes,
         "headline_signals": [
             _strip_source_refs(s) for s in (snap.get("headline_signals") or []) if s
         ],
     }
+
+
+def _format_ratio_value(value, unit):
+    if value is None:
+        return "—"
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return "—"
+    if unit == "%":
+        return f"{v:.1f}%"
+    return f"{v:.2f}"
+
+
+def _format_ratio_band(low, high, unit):
+    """Render a target band like '3.0–7.0' or '60–70%' or '≤ 5%' (one-sided)."""
+    if low is None and high is None:
+        return "—"
+    suffix = "%" if unit == "%" else ""
+    if low is None:
+        return f"≤ {high:g}{suffix}"
+    if high is None or high >= 999:
+        return f"≥ {low:g}{suffix}"
+    return f"{low:g}–{high:g}{suffix}"
 
 
 # Fallback target bands when the live ideal_ratios table is unavailable
