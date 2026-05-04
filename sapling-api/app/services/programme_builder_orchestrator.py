@@ -313,6 +313,43 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
             param_map_rows=inputs.param_map_rows or [],
             lab_method=src.lab_method,
         )
+        # Smart ratio-by-ratio interpretation — every relevant ratio gets
+        # an interpretation row (in-band or out-of-band) explaining what
+        # the value means agronomically and which nutrients are bound.
+        # Plus a holistic 2-3 sentence summary collapsing all ratios.
+        from app.services.ratio_interpreter import (
+            interpret_all_ratios,
+            summarise_ratios,
+        )
+        ratio_interps_dc = interpret_all_ratios(
+            soil_values=src.soil_parameters or {},
+            computed_ratios=computed_ratios,
+        )
+        ratio_summary_dc = summarise_ratios(ratio_interps_dc)
+        # Convert dataclasses → Pydantic for the artifact.
+        from app.models.programme_artifact import (
+            RatioInterpretationOut,
+            RatioHolisticSummaryOut,
+        )
+        ratio_interpretations_out = [
+            RatioInterpretationOut(
+                name=i.name, value=i.value,
+                ideal_low=i.ideal_low, ideal_high=i.ideal_high,
+                unit=i.unit, state=i.state, severity=i.severity,
+                what_it_measures=i.what_it_measures,
+                direct_effect=i.direct_effect,
+                bound_nutrients=list(i.bound_nutrients),
+                recommended_action=i.recommended_action,
+                source_citation=i.source_citation,
+            )
+            for i in ratio_interps_dc
+        ]
+        ratio_summary_out = RatioHolisticSummaryOut(
+            summary=ratio_summary_dc.summary,
+            key_concerns=list(ratio_summary_dc.key_concerns),
+            nutrients_at_risk=list(ratio_summary_dc.nutrients_at_risk),
+        )
+
         soil_snapshots_out.append(SoilSnapshot(
             block_id=src.block_id,
             block_name=src.block_name,
@@ -325,6 +362,8 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
             computed_ratios=computed_ratios,
             factor_findings=factor_findings,
             nutrient_status=nutrient_status,
+            ratio_interpretations=ratio_interpretations_out,
+            ratio_summary=ratio_summary_out,
             headline_signals=headline,
         ))
 

@@ -155,6 +155,66 @@ class NutrientStatusEntry(BaseModel):
     chart_max: Optional[float] = None
 
 
+class RatioInterpretationOut(BaseModel):
+    """One row in the per-block 'ratio-by-ratio' interpretation table.
+
+    The interpretation goes one level deeper than `FactorFindingOut`:
+    instead of only firing when a threshold is breached, every relevant
+    ratio gets a row even when in-band — so the report tells the
+    agronomist what the ratio MEANS, not just whether it breaks rules.
+
+    Drives both the soil-report's expanded "Cation Balance — what does
+    it cause?" section and the programme builder's per-block analysis.
+    """
+    name: str  # 'Ca:Mg', 'K base saturation', etc.
+    value: Optional[float] = None
+    ideal_low: Optional[float] = None
+    ideal_high: Optional[float] = None
+    unit: str  # 'ratio' | '%'
+    state: str  # 'unknown' | 'low' | 'in_range' | 'high'
+    severity: str  # 'info' | 'watch' | 'warn' | 'critical'
+    what_it_measures: str
+    direct_effect: str
+    bound_nutrients: list[str] = Field(default_factory=list)
+    recommended_action: Optional[str] = None
+    source_citation: Optional[str] = None
+
+
+class RatioHolisticSummaryOut(BaseModel):
+    """2-3 sentence collapse of all ratio interpretations + nutrients-at-risk.
+
+    Designed for the renderer's 'Cation Balance — Summary' callout block.
+    `nutrients_at_risk` also feeds the future product selector's filter
+    for 'must include foliar X' constraints when bound-nutrient
+    supplementation is required.
+    """
+    summary: str
+    key_concerns: list[str] = Field(default_factory=list)
+    nutrients_at_risk: list[str] = Field(default_factory=list)
+
+
+class CropNote(BaseModel):
+    """A qualitative agronomic note attached to a block, surfaced in the
+    new-direction report (no blend prescription) so the agronomist sees
+    the crop-specific behavioural rules without having to remember them.
+
+    Sourced from `crop_calc_flags` + crop-specific knowledge. The
+    product selector consumes the same notes as hard filters (e.g.
+    `kind='no_chloride_fertilisers'` → drop KCl/MOP from candidates).
+    """
+    kind: str
+    """Programmatic key: 'no_chloride_fertilisers' | 'sulfur_critical' |
+    'acid_intolerant' | 'chloride_sensitive' | 'photoperiod_sensitive' |
+    'high_ca_demand_for_quality' | 'n_protein_cap' | 'low_K_for_quality',
+    etc."""
+    headline: str
+    """One-line summary suitable for a callout: 'Kiwi is acutely Cl-sensitive.'"""
+    detail: str
+    """1-3 sentence explanation including operational implication."""
+    severity: str = "info"  # 'info' | 'watch' | 'warn'
+    source_citation: Optional[str] = None
+
+
 class SoilSnapshot(BaseModel):
     """Per-block soil analysis snapshot with status-vs-target flags.
 
@@ -196,6 +256,27 @@ class SoilSnapshot(BaseModel):
     # range-bar visual. One entry per surfacable soil parameter (only
     # those with sufficiency thresholds in the catalog appear here).
     nutrient_status: list[NutrientStatusEntry] = Field(default_factory=list)
+
+    # Smart ratio-by-ratio interpretation — one entry per agronomically-
+    # relevant ratio or saturation parameter, with state, direct effect,
+    # bound nutrients, and recommended action. Populated from
+    # `ratio_interpreter.interpret_all_ratios`. Replaces the bare numeric
+    # ratio rendering that the old renderer surfaced — now every ratio
+    # tells the agronomist WHAT IT MEANS, not just whether it breached
+    # a threshold.
+    ratio_interpretations: list[RatioInterpretationOut] = Field(default_factory=list)
+
+    # 2-3 sentence collapse of all ratio interpretations + nutrients-at-risk
+    # list. Drives the renderer's 'Cation Balance — Summary' callout and
+    # feeds the future product selector's 'must include foliar X' filter
+    # for bound nutrients.
+    ratio_summary: Optional[RatioHolisticSummaryOut] = None
+
+    # Crop-specific qualitative notes — Cl-sensitive, S-critical,
+    # acid-intolerant, high-Ca-demand, etc. Sourced from `crop_calc_flags`
+    # + the canonical crop knowledge base. Drives the new-direction
+    # 'Notes' renderer section AND product selector filters.
+    crop_notes: list[CropNote] = Field(default_factory=list)
 
     # "Three loudest signals" — agronomist narrative, engine-derived
     headline_signals: list[str] = Field(default_factory=list)
