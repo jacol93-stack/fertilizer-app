@@ -1,0 +1,35 @@
+-- ============================================================
+-- 117: Subtropical large fill — Avocado, Banana, Mango, Litchi,
+--      Pineapple, Pecan
+-- ============================================================
+-- Per-crop sources:
+--   * Avocado: Köhne 1990 SAAGA YB 13 + Du Plessis & Koen 1992 +
+--     Wolstenholme & Sheard 2011 + Bingham 1968 (T1/T3 SA-canonical)
+--   * Banana: Haifa Banana Crop Guide + NSW DPI Cavendish + ARC-ITSC
+--     SA Banana Cultivation + Lahav & Turner 1983/89 leaf-S (T2/T3)
+--   * Mango: Quaggio 1996 IAC + Galan Sauco 2020 + A&L Handbook +
+--     Mudo et al. 2020 leaf-B (T2/T3)
+--   * Litchi: Menzel & Simpson 1992 ACOTANC RFCA Archives + ALGA
+--     Lychee Field Guide + RFCA SA Lychee Manual 1995 (T2/T1)
+--   * Pineapple: Hawaii CTAHR PNM4 + F&N-7 + Teixeira 2009 Acta Hort
+--     822:15 (T2/T3)
+--   * Pecan: FERTASA 5.8.2 Schmidt 2021 + NMSU H-658 + UGA Pecan
+--     Bulletin 1304 + Wells 2017 + Schoeman 2017 trace cross-applied (T1/T2)
+--
+-- Net additions:
+--   31 cited soil bands across 6 crops
+--   8 leaf-norm gap fills (Litchi 6, Mango B, Banana S)
+--   3 nutrient_removal rows (Mango, Pecan kernel + Pecan trace)
+--
+-- pH (KCl) for Avocado + Mango + Litchi DERIVED from H2O − 0.5
+-- (FERTASA convention) since no direct citrus-style pH(KCl) source
+-- found for these crops.
+--
+-- Genuine gaps:
+--   * Litchi pop_per_ha (engine 400, Begemann 2014 SALGA stats imply
+--     ~200/ha actual SA spacing) — flagged for agronomist
+--   * SA-direct Mango FERTASA 5.7.3 chapter status unclear
+--   * Mo soil + leaf + removal universally
+--   * `chloride_sensitive` calc flag (Avocado avoid KCl/MOP) — schema gap
+--
+-- Applied via python supabase admin client.

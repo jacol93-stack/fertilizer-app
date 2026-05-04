@@ -1,0 +1,34 @@
+-- ============================================================
+-- 115: Cereals priority fill — Maize, Wheat, Sweetcorn, Sorghum, Barley
+-- ============================================================
+-- High-priority subset of full cereals data fill (full pass deferred —
+-- the FERTASA Vol 5 rate-table cells need OCR work + per-region splits
+-- that the agent flagged as the highest-leverage missing data).
+--
+-- Critical fixes:
+--   1. Maize (genus) crop_requirements: ALL ZEROS — every block under
+--      "Maize" (without dryland/irrigated variant) silently returned
+--      no per-ton scaling. Set to FERTASA 5.4.4 dryland mid-band defaults.
+--   2. Sweetcorn pop_per_ha: 0 → 50000. FERTASA Tab 5.4.5.2 indexes
+--      N rate by population, so this column is engine-load-bearing.
+--   3. Sweetcorn Ca/Mg/S/B/Zn per-ton: zeros → maize 5.4.4 mid-band
+--      cross-applied (sweetcorn is same Zea mays species).
+--   4. Sorghum pop_per_ha: 0 → 150000 (Grain SA / DAFF Sorghum Guide).
+--   5. Barley pop_per_ha: 0 → 3 million plants/ha (matches Oat).
+--
+-- Soil bands:
+--   * Wheat: 8 cited bands (FERTASA 5.4.3.1, 5.4.3.2 — pH KCl, P-Bray-1,
+--     P-citric, K, S, B, Cu)
+--   * Maize × 3 variants: 5 cited bands each (FERTASA 5.4.4 + ARC-GCI
+--     MIG 2017 Tab 5)
+--
+-- Deferred for later migration:
+--   * FERTASA 5.4.4 maize P + K rate-table cells (~189 cells extractable
+--     from maize_old_guidelines_ocr.txt)
+--   * Wheat FS dryland N table 5.4.3.1.1 (image-only OCR pending)
+--   * Sorghum + Oat + Barley leaf norms (Pacific Seeds Guide for sorghum;
+--     wheat × 0.65 derivation for oat/barley per FERTASA 5.4.3.2.2 prose)
+--   * Malting barley protein-cap N ceiling — schema gap
+--     (n_protein_cap_kg_ha column needed on crop_calc_flags)
+--
+-- Applied via python supabase admin client.

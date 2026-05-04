@@ -1,0 +1,33 @@
+-- ============================================================
+-- 113: Hortgro deciduous fruit data fill
+--      Apple, Pear, Apricot, Cherry, Nectarine, Peach, Plum
+-- ============================================================
+-- Critical findings + fixes:
+--   1. Migration 041 (Cheng/Stassen/CDFA-cited stages) was NEVER
+--      APPLIED to live. All 7 deciduous crops were running on legacy
+--      seed_growth_stages.sql values. Apple was over-allocating
+--      mid-summer N (40%) and under-allocating bloom+fruit set (20%).
+--      This migration applies 041's cited stage splits.
+--   2. Nectarine + Cherry crop_requirements per-ton coefficients
+--      were ALL ZEROS. Engine silently mis-calculating per-ton
+--      scaling for those crops on every block. Filled from CDFA
+--      Peach & Nectarine (treats as same species) + WSU Sweet Cherry.
+--   3. Apple + Pear Y1 age factor 0.20 → 0.14 per Cheng 2013 Cornell
+--      + Marini 2003 Virginia Tech. ~40% over-application on year-1
+--      pome trees (same pattern as Macadamia migration 108).
+--   4. Cherry perennial_age_factors was empty — engine had NO scaling
+--      for year-1 cherry trees (mature rate applied to seedlings).
+--      Added 4-row schedule per WSU.
+--
+-- Plus 44 cited soil bands across 7 crops (Cheng 2013 + WSU + Wisconsin
+-- Ext + NSW DPI + Cornell + UC ANR + CDFA + Tagliavini 2002).
+--
+-- Genuine gaps (no source found):
+--   * Per-cultivar yield benchmarks (Hortgro members-only)
+--   * pH (KCl) direct citations (currently derived from H2O − 0.5)
+--   * Apple high_ca_demand_for_quality calc flag (schema gap)
+--   * WSU leaf S 0.01% Apple/Pear bands look like decimal misprints
+--     (Cheng/IPNI publish 0.10-0.30% — flagged, no override without
+--     second SA source)
+--
+-- Applied via python supabase admin client (mirrors 110/111 pattern).

@@ -1,6 +1,6 @@
 # Crop Data Coverage Audit
 
-_Generated 2026-05-04 14:14 UTC. 82 crops in `crop_requirements`._
+_Generated 2026-05-04 18:21 UTC. 82 crops in `crop_requirements`._
 _Regenerate: `python sapling-api/scripts/generate_crop_coverage.py`_
 
 Every blank cell or `_needs source_` marker is a literature search. When a citation lands, add the row to the appropriate table and rerun this script — the gap will close on the next diff.
@@ -11,11 +11,11 @@ Counts are rows in each per-crop table.
 
 | Crop | base reqs | soil bands | growth stages | rate cells | leaf norms | removal | age factors | yield bench | calc flags | methods |
 |---|---|---|---|---|---|---|---|---|---|---|
-| [Apple](#apple) | 1 | 1 | 5 | 0 | 11 | 1 | 5 | 1 | 0 | 3 |
-| [Apricot](#apricot) | 1 | 0 | 5 | 0 | 11 | 0 | 4 | 1 | 0 | 3 |
+| [Apple](#apple) | 1 | 8 | 5 | 0 | 11 | 1 | 5 | 1 | 0 | 3 |
+| [Apricot](#apricot) | 1 | 5 | 5 | 0 | 11 | 0 | 4 | 1 | 0 | 3 |
 | [Asparagus](#asparagus) | 1 | 0 | 4 | 12 | 5 | 2 | 0 | 1 | 0 | 3 |
-| [Avocado](#avocado) | 1 | 9 | 5 | 0 | 15 | 1 | 5 | 9 | 0 | 3 |
-| [Banana](#banana) | 1 | 1 | 4 | 15 | 10 | 1 | 2 | 1 | 0 | 3 |
+| [Avocado](#avocado) | 1 | 10 | 5 | 0 | 15 | 1 | 5 | 9 | 0 | 3 |
+| [Banana](#banana) | 1 | 7 | 4 | 15 | 11 | 1 | 2 | 1 | 0 | 3 |
 | [Barley](#barley) | 1 | 0 | 4 | 0 | 0 | 3 | 0 | 0 | 0 | 3 |
 | [Bean (Dry)](#bean-dry) | 1 | 0 | 4 | 60 | 0 | 2 | 0 | 2 | 0 | 4 |
 | [Bean (Green)](#bean-green) | 1 | 0 | 4 | 7 | 0 | 0 | 0 | 0 | 0 | 4 |
@@ -28,47 +28,47 @@ Counts are rows in each per-crop table.
 | [Canola](#canola) | 1 | 1 | 5 | 21 | 13 | 1 | 0 | 2 | 0 | 4 |
 | [Carrot](#carrot) | 1 | 0 | 4 | 7 | 6 | 0 | 0 | 1 | 0 | 4 |
 | [Cassava](#cassava) | 1 | 1 | 0 | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
-| [Cherry](#cherry) | 1 | 0 | 5 | 0 | 11 | 1 | 0 | 1 | 0 | 0 |
+| [Cherry](#cherry) | 1 | 5 | 5 | 0 | 11 | 1 | 4 | 1 | 0 | 0 |
 | [Chillies](#chillies) | 1 | 0 | 0 | 7 | 0 | 0 | 0 | 2 | 0 | 0 |
 | [Citrus](#citrus) | 1 | 16 | 0 | 0 | 11 | 0 | 5 | 10 | 0 | 0 |
 | [Citrus (Grapefruit)](#citrus-grapefruit) | 1 | 0 | 5 | 0 | 12 | 1 | 5 | 0 | 0 | 3 |
-| [Citrus (Lemon)](#citrus-lemon) | 1 | 0 | 5 | 0 | 12 | 1 | 5 | 0 | 0 | 3 |
+| [Citrus (Lemon)](#citrus-lemon) | 1 | 0 | 4 | 0 | 12 | 1 | 5 | 0 | 0 | 3 |
 | [Citrus (Navel)](#citrus-navel) | 1 | 0 | 5 | 0 | 12 | 1 | 5 | 0 | 0 | 3 |
-| [Citrus (Soft Citrus)](#citrus-soft-citrus) | 1 | 0 | 5 | 0 | 9 | 1 | 5 | 0 | 0 | 3 |
+| [Citrus (Soft Citrus)](#citrus-soft-citrus) | 1 | 0 | 5 | 0 | 12 | 1 | 5 | 0 | 0 | 3 |
 | [Citrus (Valencia)](#citrus-valencia) | 1 | 0 | 5 | 0 | 11 | 1 | 5 | 0 | 0 | 3 |
 | [Coffee](#coffee) | 1 | 2 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
 | [Cotton](#cotton) | 1 | 1 | 4 | 24 | 8 | 2 | 0 | 2 | 0 | 4 |
-| [Fig](#fig) | 1 | 0 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
+| [Fig](#fig) | 1 | 5 | 5 | 0 | 11 | 1 | 5 | 3 | 0 | 3 |
 | [Garlic](#garlic) | 1 | 5 | 4 | 10 | 11 | 1 | 0 | 3 | 0 | 4 |
 | [Gem Squash](#gem-squash) | 1 | 0 | 0 | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
 | [Groundnut](#groundnut) | 1 | 1 | 4 | 6 | 0 | 4 | 0 | 0 | 0 | 3 |
-| [Guava](#guava) | 1 | 0 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
+| [Guava](#guava) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 3 | 0 | 3 |
 | [Honeybush](#honeybush) | 1 | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 |
 | [Kiwi](#kiwi) | 1 | 8 | 7 | 0 | 12 | 1 | 6 | 5 | 1 | 3 |
 | [Lentils](#lentils) | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 3 |
 | [Lettuce](#lettuce) | 1 | 0 | 3 | 7 | 6 | 0 | 0 | 1 | 0 | 3 |
-| [Litchi](#litchi) | 1 | 1 | 5 | 0 | 5 | 0 | 4 | 0 | 0 | 3 |
+| [Litchi](#litchi) | 1 | 10 | 5 | 0 | 11 | 0 | 4 | 0 | 0 | 3 |
 | [Lucerne](#lucerne) | 1 | 3 | 5 | 106 | 9 | 2 | 0 | 2 | 0 | 3 |
 | [Macadamia](#macadamia) | 1 | 16 | 4 | 5 | 13 | 4 | 5 | 11 | 0 | 3 |
-| [Maize](#maize) | 1 | 1 | 4 | 0 | 11 | 1 | 0 | 2 | 0 | 0 |
-| [Maize (dryland)](#maize-dryland) | 1 | 0 | 4 | 72 | 0 | 0 | 0 | 0 | 0 | 4 |
-| [Maize (irrigated)](#maize-irrigated) | 1 | 0 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 5 |
-| [Mango](#mango) | 1 | 0 | 5 | 0 | 10 | 0 | 4 | 1 | 0 | 3 |
-| [Nectarine](#nectarine) | 1 | 0 | 5 | 0 | 11 | 0 | 0 | 1 | 0 | 0 |
+| [Maize](#maize) | 1 | 6 | 4 | 0 | 11 | 1 | 0 | 2 | 0 | 0 |
+| [Maize (dryland)](#maize-dryland) | 1 | 5 | 4 | 72 | 0 | 0 | 0 | 0 | 0 | 4 |
+| [Maize (irrigated)](#maize-irrigated) | 1 | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 5 |
+| [Mango](#mango) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 1 | 0 | 3 |
+| [Nectarine](#nectarine) | 1 | 7 | 5 | 0 | 11 | 1 | 0 | 1 | 0 | 0 |
 | [Oat](#oat) | 1 | 0 | 4 | 0 | 0 | 3 | 0 | 0 | 0 | 0 |
 | [Olive](#olive) | 1 | 2 | 5 | 3 | 4 | 1 | 4 | 2 | 0 | 3 |
 | [Onion](#onion) | 1 | 0 | 4 | 7 | 0 | 0 | 0 | 1 | 0 | 5 |
-| [Passion Fruit](#passion-fruit) | 1 | 0 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
+| [Passion Fruit](#passion-fruit) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 3 | 0 | 3 |
 | [Pea](#pea) | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | [Pea (Green)](#pea-green) | 1 | 0 | 0 | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
-| [Peach](#peach) | 1 | 0 | 5 | 0 | 11 | 1 | 4 | 1 | 0 | 3 |
-| [Pear](#pear) | 1 | 1 | 5 | 0 | 11 | 1 | 5 | 1 | 0 | 3 |
-| [Pecan](#pecan) | 1 | 2 | 5 | 0 | 11 | 0 | 5 | 0 | 0 | 3 |
+| [Peach](#peach) | 1 | 7 | 5 | 0 | 11 | 1 | 4 | 1 | 0 | 3 |
+| [Pear](#pear) | 1 | 8 | 5 | 0 | 11 | 1 | 5 | 1 | 0 | 3 |
+| [Pecan](#pecan) | 1 | 9 | 5 | 0 | 11 | 2 | 5 | 0 | 0 | 3 |
 | [Pepper (Bell)](#pepper-bell) | 1 | 1 | 4 | 7 | 0 | 0 | 0 | 0 | 0 | 3 |
-| [Persimmon](#persimmon) | 1 | 0 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| [Pineapple](#pineapple) | 1 | 2 | 4 | 2 | 11 | 1 | 0 | 2 | 0 | 3 |
-| [Plum](#plum) | 1 | 0 | 5 | 0 | 11 | 1 | 4 | 1 | 0 | 3 |
-| [Pomegranate](#pomegranate) | 1 | 0 | 5 | 1 | 0 | 0 | 0 | 0 | 0 | 3 |
+| [Persimmon](#persimmon) | 1 | 4 | 5 | 0 | 11 | 0 | 4 | 2 | 0 | 0 |
+| [Pineapple](#pineapple) | 1 | 4 | 4 | 2 | 11 | 1 | 0 | 2 | 0 | 3 |
+| [Plum](#plum) | 1 | 6 | 5 | 0 | 11 | 1 | 4 | 1 | 0 | 3 |
+| [Pomegranate](#pomegranate) | 1 | 7 | 5 | 1 | 11 | 1 | 5 | 4 | 0 | 3 |
 | [Potato](#potato) | 1 | 3 | 4 | 126 | 11 | 1 | 0 | 0 | 0 | 5 |
 | [Pumpkin](#pumpkin) | 1 | 0 | 4 | 7 | 0 | 0 | 0 | 1 | 0 | 4 |
 | [Raspberry](#raspberry) | 1 | 1 | 0 | 4 | 11 | 0 | 0 | 2 | 1 | 0 |
@@ -82,7 +82,7 @@ Counts are rows in each per-crop table.
 | [Sweet Melon](#sweet-melon) | 1 | 0 | 0 | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
 | [Sweet Potato](#sweet-potato) | 1 | 0 | 4 | 7 | 0 | 0 | 0 | 0 | 0 | 3 |
 | [Sweetcorn](#sweetcorn) | 1 | 0 | 4 | 71 | 0 | 3 | 0 | 0 | 0 | 5 |
-| [Table Grape](#table-grape) | 1 | 0 | 5 | 0 | 7 | 1 | 4 | 1 | 0 | 3 |
+| [Table Grape](#table-grape) | 1 | 7 | 5 | 0 | 7 | 1 | 4 | 1 | 0 | 3 |
 | [Tea](#tea) | 1 | 2 | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
 | [Tobacco](#tobacco) | 1 | 2 | 4 | 38 | 0 | 0 | 0 | 1 | 0 | 3 |
 | [Tobacco (Burley)](#tobacco-burley) | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
@@ -91,8 +91,8 @@ Counts are rows in each per-crop table.
 | [Tobacco (Light air-cured)](#tobacco-light-air-cured) | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
 | [Tomato](#tomato) | 1 | 1 | 4 | 0 | 11 | 3 | 0 | 4 | 0 | 3 |
 | [Watermelon](#watermelon) | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
-| [Wheat](#wheat) | 1 | 1 | 4 | 47 | 10 | 3 | 0 | 2 | 0 | 4 |
-| [Wine Grape](#wine-grape) | 1 | 1 | 5 | 0 | 8 | 1 | 4 | 2 | 0 | 3 |
+| [Wheat](#wheat) | 1 | 9 | 4 | 47 | 10 | 3 | 0 | 2 | 0 | 4 |
+| [Wine Grape](#wine-grape) | 1 | 7 | 5 | 0 | 8 | 1 | 4 | 2 | 0 | 3 |
 
 
 ---
@@ -135,19 +135,19 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | — | 5.5 | 6.3 | 7 | DERIVED from H2O − 0.5 (FERTASA 2016 offset). T2 (derived). |
+| pH (H2O) | — | 6 | 6.8 | 7.5 | Cheng 2013 NYFQ + Wisconsin Ext Mature Apple Trees. T2. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 10 | 20 | 40 | 80 | Wisconsin Ext apple + Cheng 2013 (>80 ppm risks Zn antagonism). T2. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
+| K | 80 | 150 | 250 | 400 | Cheng 2013 NYFQ + WSU Tree Fruit (NH4OAc). T2 cross-confirmed. |
 | Ca | 300 | 700 | 2500 | 5000 | Higher Ca threshold for fruit quality; Ca prevents bitter pit. |
-| **Mg** | — | — | — | — | _needs source_ |
+| Mg | 60 | 120 | 250 | 500 | Cheng 2013 + Cornell Soil Health 2018. T2. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | _needs source_ |
+| B | 0.3 | 0.5 | 1.5 | 3 | WSU Tree Fruit + Wisconsin Ext (hot-water). T2. |
+| Zn | 1 | 2 | 8 | 25 | WSU Tree Fruit + IPNI Better Crops apple Zn. T2. |
 | **Fe** | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | _needs source_ |
 | **Cu** | — | — | — | — | _needs source_ |
@@ -159,11 +159,11 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | # | Stage | Months | Apps | N % | P % | K % | Ca % | Mg % | Method | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | Post-harvest recovery | 4–5 | 1 | 10 | 5 | 5 | 5 | 5 | broadcast | Replenish reserves after harvest |
-| 2 | Dormancy | 6–7 | 1 | 5 | 5 | 5 | 5 | 5 | broadcast | Minimal uptake, base amendments |
-| 3 | Bud break & bloom | 8–9 | 2 | 20 | 25 | 15 | 15 | 15 | fertigation | P for root flush, B for pollination |
-| 4 | Fruit set & growth | 10–12 | 3 | 40 | 40 | 35 | 45 | 45 | fertigation | Peak N and Ca for cell division and fruit quality |
-| 5 | Maturation | 1–3 | 2 | 25 | 25 | 40 | 30 | 30 | fertigation | K for colour, sugar and firmness |
+| 1 | Dormancy | 6–8 | 0 | 0 | 5 | 0 | 5 | 5 | broadcast | Cheng 2013 Cornell. N/K uptake minimal. P broadcast now. |
+| 2 | Bud break & bloom | 9–9 | 1 | 25 | 20 | 10 | 15 | 15 | fertigation | Early N drives spur-leaf area. B for fruit set. |
+| 3 | Cell division / fruit set | 10–11 | 3 | 35 | 25 | 25 | 35 | 30 | fertigation | Cheng 2013 Fig 1A: peak N demand 4-6 weeks post-full-bloom. |
+| 4 | Cell expansion / fruit sizing | 12–1 | 3 | 25 | 25 | 40 | 30 | 30 | fertigation | K-dominant window. N tapered to protect storage quality and Ca partitioning (Lötze). |
+| 5 | Post-harvest recovery | 2–5 | 1 | 15 | 25 | 25 | 15 | 20 | broadcast | Cheng 2013: N reserves for next spring spur leaves. |
 
 **Rate-table cells** (`fertilizer_rate_tables`)
 
@@ -196,11 +196,11 @@ _No rows._
 
 | Age label | Age range (yr) | General | N | P | K | Notes |
 |---|---|---|---|---|---|---|
-| Year 1-2 | 0–1 | 0.2 | 0.2 | 0.25 | 0.15 | Establishment; minimal nutrition |
-| Year 3-4 | 2–3 | 0.4 | 0.4 | 0.45 | 0.35 | Frame development |
-| Year 5-6 | 4–5 | 0.65 | 0.65 | 0.65 | 0.6 | First bearing |
-| Year 7 | 6–6 | 0.85 | 0.85 | 0.85 | 0.8 | Pre-mature bearing |
-| Year 8+ | 7–99 | 1 | 1 | 1 | 1 | Full bearing |
+| Year 1 | 0–1 | 0.14 | 0.14 | 0.15 | 0.13 | Cheng 2013 Cornell + Marini 2003 Virginia Tech HORT-310: 25 g N/tree at year 1 vs 175 g mature = 0.14. Engine prior 0.20 over-applied 43%. T2. |
+| Year 2 | 2–2 | 0.3 | 0.3 | 0.35 | 0.28 | Cheng 2013 + Marini 2003: 50 g N/tree = 0.29. T2. |
+| Year 3-4 | 3–4 | 0.55 | 0.55 | 0.6 | 0.5 | Cheng 2013 frame development. T2. |
+| Year 5-6 | 5–6 | 0.8 | 0.8 | 0.85 | 0.75 | Cheng 2013 first bearing → pre-mature. T2. |
+| Year 7+ | 7–99 | 1 | 1 | 1 | 1 | Cheng 2013: full bearing 175 g N/tree. T2. |
 
 **Yield benchmarks** (`crop_yield_benchmarks`)
 
@@ -258,18 +258,18 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | — | 6 | 7 | 7.5 | DERIVED from H2O − 0.5. T2 (derived). |
+| pH (H2O) | — | 6.5 | 7.5 | 8 | UC ANR Apricot Production. Most pH-tolerant of stone fruit. T2. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 10 | 20 | 40 | 80 | UC ANR Apricot + CDFA Stone Fruit. T2. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
+| K | 80 | 150 | 250 | 400 | UC ANR Apricot + Tagliavini 2002 Acta Hort 594. T2 cross-confirmed. |
 | **Ca** | — | — | — | — | _needs source_ |
 | **Mg** | — | — | — | — | _needs source_ |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | _needs source_ |
+| B | 0.3 | 0.5 | 1.5 | 2 | UC ANR Apricot. More B-sensitive than peach. T2. |
 | **Zn** | — | — | — | — | _needs source_ |
 | **Fe** | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | _needs source_ |
@@ -282,11 +282,11 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | # | Stage | Months | Apps | N % | P % | K % | Ca % | Mg % | Method | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | Post-harvest recovery | 2–3 | 1 | 10 | 5 | 5 | 5 | 5 | broadcast | Rebuild reserves after early harvest |
-| 2 | Dormancy | 4–6 | 1 | 5 | 5 | 5 | 5 | 5 | broadcast | Winter rest, minimal demand |
-| 3 | Bud break & bloom | 7–8 | 2 | 20 | 30 | 15 | 15 | 15 | fertigation | Early bloomer; P for roots, B for set |
-| 4 | Fruit set & growth | 9–10 | 3 | 40 | 35 | 35 | 45 | 45 | fertigation | Rapid fruit growth; high N, Ca |
-| 5 | Maturation | 11–1 | 2 | 25 | 25 | 40 | 30 | 30 | fertigation | K for sugar; reduce N |
+| 1 | Dormancy | 5–6 | 0 | 0 | 5 | 5 | 5 | 5 | broadcast | Klein Karoo dominant. Earliest stone fruit. |
+| 2 | Bud break & bloom | 7–8 | 1 | 20 | 25 | 15 | 15 | 15 | fertigation | B critical at bloom (Hortgro Stone). |
+| 3 | Fruit set & pit hardening | 9–10 | 2 | 35 | 25 | 30 | 30 | 25 | fertigation | Short 90-day cycle → most nutrients needed before Nov. |
+| 4 | Ripening & harvest | 11–12 | 2 | 20 | 25 | 35 | 30 | 30 | fertigation | K for sugar/flavour final 3-4 weeks. |
+| 5 | Post-harvest recovery | 1–4 | 1 | 25 | 20 | 15 | 20 | 25 | broadcast | Long Jan-Apr recovery window. |
 
 **Rate-table cells** (`fertilizer_rate_tables`)
 
@@ -508,7 +508,7 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4 | 4.9 | 6 | 7 | DERIVED from Köhne 1990 H2O − 0.5 (FERTASA convention). Wolstenholme & Sheard 2011 SAAGA Part 1. T1 derived. |
 | pH (H2O) | 4.5 | 5.4 | 6.5 | 7.5 | Köhne 1990 SAAGA YB 13 Table 2 (T1). FERTASA 5.7.1 target 6.0 sits in the Optimal band. Du Plessis & Koen 1992 trial baseline 6.15. |
 | **N (total)** | — | — | — | — | _needs source_ |
 | P (Bray-1) | 20 | 29 | 90 | 129 | Köhne 1990 SAAGA YB 13 Table 2 (T1). FERTASA 5.7.1 prose target ~25 mg/kg sits in the same Optimal band. |
@@ -643,15 +643,15 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4.5 | 5 | 5.5 | 6.5 | Haifa Banana Crop Guide + NSW DPI Cavendish. T2. |
+| pH (H2O) | 5 | 5.5 | 6 | 7 | Haifa Banana Tab 22 + ARC-ITSC SA Banana Cultivation. T2. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 10 | 20 | 60 | 100 | Haifa Banana Tab 22 preferred levels. T2. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
 | K | 80 | 150 | 300 | 500 | Very high K feeder; K critical for bunch weight and fruit quality. |
-| **Ca** | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | _needs source_ |
+| Ca | 400 | 800 | 2000 | 3000 | Haifa Banana Tab 22 (Ca 4-10 meq/100g). T2. |
+| Mg | 60 | 120 | 360 | 500 | Haifa Banana Tab 22 (Mg 1-3 meq/100g). T2. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
 | **B** | — | — | — | — | _needs source_ |
@@ -662,6 +662,8 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | **Mo** | — | — | — | — | _needs source_ |
 | **Org C** | — | — | — | — | _needs source_ |
 | **CEC** | — | — | — | — | _needs source_ |
+
+_Extra rows on this crop outside the canonical soil schema:_ `EC (saturated paste)`
 
 **Growth stages** (`crop_growth_stages`)
 
@@ -701,7 +703,7 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | K | 3rd fully expanded leaf | Shooting / flowering | — | 3.5–5.4 | 5.5 | Yara Australia banana + Haifa Banana |
 | Ca | 3rd fully expanded leaf | Shooting / flowering | — | 0.25–1.2 | 1.5 | Yara Australia banana + Haifa Banana |
 | Mg | 3rd fully expanded leaf | Shooting / flowering | — | 0.27–0.6 | 0.7 | Yara Australia banana + Haifa Banana |
-| **S** | — | — | — | — | — | _needs source_ |
+| S | 3rd leaf from top | mid-cycle | 0.16 | 0.16–0.3 | 0.5 | Lahav & Turner 1983/1989 — sufficient 0.16-0.30%. T3. |
 | B | 3rd fully expanded leaf | Shooting / flowering | — | 20–40 | 60 | Yara Australia banana + Haifa Banana |
 | Zn | 3rd fully expanded leaf | Shooting / flowering | — | 20–30 | 40 | Yara Australia banana + Haifa Banana |
 | Fe | 3rd fully expanded leaf | Shooting / flowering | — | 81–150 | 200 | Yara Australia banana + Haifa Banana |
@@ -755,7 +757,7 @@ _No rows._
 | Parent crop | — |
 | Default yield | 4 |
 | Yield unit | t grain/ha |
-| Population / ha | 0 |
+| Population / ha | 3000000 |
 | Years to bearing | — |
 | Years to full bearing | — |
 | N (target/uptake) | 22 |
@@ -2243,20 +2245,20 @@ _No rows._
 | Default yield | 15 |
 | Yield unit | t fruit/ha |
 | Population / ha | 500 |
-| Years to bearing | — |
-| Years to full bearing | — |
-| N (target/uptake) | 0 |
-| P | 0 |
-| K | 0 |
-| Ca | 0 |
-| Mg | 0 |
-| S | 0 |
-| B | 0 |
-| Zn | 0 |
-| Fe | 0 |
-| Mn | 0 |
-| Cu | 0 |
-| Mo | 0 |
+| Years to bearing | 4 |
+| Years to full bearing | 7 |
+| N (target/uptake) | 4.5 |
+| P | 0.9 |
+| K | 6 |
+| Ca | 0.5 |
+| Mg | 0.4 |
+| S | 0.4 |
+| B | 0.05 |
+| Zn | 0.03 |
+| Fe | 0.1 |
+| Mn | 0.03 |
+| Cu | 0.01 |
+| Mo | 0.005 |
 | Customer-ready flag | True |
 
 **Soil sufficiency bands** (`crop_sufficiency_overrides`)
@@ -2265,18 +2267,18 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | — | 6 | 6.5 | 7 | DERIVED from H2O − 0.5. T2 (derived). |
+| pH (H2O) | — | 6.5 | 7 | 7.5 | WSU Sweet Cherry. Cherry tighter pH band than peach. T2. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 10 | 20 | 40 | 80 | WSU Sweet Cherry. T2 (single source). |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
+| K | 80 | 150 | 250 | 400 | WSU Sweet Cherry. T2. |
 | **Ca** | — | — | — | — | _needs source_ |
 | **Mg** | — | — | — | — | _needs source_ |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | _needs source_ |
+| B | 0.3 | 0.5 | 1.5 | 2 | WSU Sweet Cherry. B critical for fruit set; narrow toxicity. T2. |
 | **Zn** | — | — | — | — | _needs source_ |
 | **Fe** | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | _needs source_ |
@@ -2289,11 +2291,11 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | # | Stage | Months | Apps | N % | P % | K % | Ca % | Mg % | Method | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | Post-harvest recovery | 1–2 | 1 | 10 | 5 | 5 | 5 | 5 | broadcast | Replenish after harvest |
-| 2 | Dormancy | 3–6 | 1 | 5 | 5 | 5 | 5 | 5 | broadcast | Winter rest; chill accumulation |
-| 3 | Bud break & bloom | 7–8 | 2 | 20 | 30 | 15 | 15 | 15 | fertigation | P for root flush; B for set |
-| 4 | Fruit development | 9–10 | 3 | 40 | 35 | 35 | 45 | 45 | fertigation | Ca for cracking prevention |
-| 5 | Ripening | 11–12 | 2 | 25 | 25 | 40 | 30 | 30 | fertigation | K for colour and sugar |
+| 1 | Dormancy | 5–7 | 0 | 0 | 10 | 5 | 5 | 5 | broadcast | WSU: cherry lightest feeder in stone group. P winter-applied. |
+| 2 | Bud break & bloom | 8–9 | 1 | 25 | 25 | 20 | 20 | 20 | fertigation | WSU: most uptake between bloom and rapid vegetative growth. |
+| 3 | Fruit set & cell division | 10–10 | 2 | 30 | 25 | 30 | 30 | 25 | fertigation | Fast cell division (~60-80 days). Peak uptake. |
+| 4 | Ripening & harvest | 11–12 | 2 | 15 | 20 | 30 | 25 | 25 | fertigation | WSU: stop N ≥1 month before harvest. |
+| 5 | Post-harvest recovery | 1–4 | 1 | 30 | 20 | 15 | 20 | 25 | broadcast | Long 4-month post-harvest → heavy reserve build. |
 
 **Rate-table cells** (`fertilizer_rate_tables`)
 
@@ -2320,11 +2322,16 @@ _No rows._
 
 | Part | Per | N | P | K | Ca | Mg | S | Source / notes |
 |---|---|---|---|---|---|---|---|---|
-| fruit | kg per t fresh fruit | 1.5 | 0.3 | 2 | 0.16 | 0.13 | 0.13 | WSU Sweet Cherry + WSU Nutrient Management Sweet Cherries |
+| fruit | kg/t fresh fruit | 1.5 | 0.3 | 2 | 0.16 | 0.13 | 0.13 | WSU Sweet Cherry Tbl 1 + WSU Nutrient Management Sweet Cherries |
 
 **Perennial age factors** (`perennial_age_factors`)
 
-_No rows._
+| Age label | Age range (yr) | General | N | P | K | Notes |
+|---|---|---|---|---|---|---|
+| Year 1-2 | 0–1 | 0.2 | 0.2 | 0.25 | 0.18 | WSU Sweet Cherry orchard establishment. Year 1-2 establishment. |
+| Year 3-4 | 2–3 | 0.45 | 0.45 | 0.5 | 0.4 | WSU: early bearing on Gisela rootstock. |
+| Year 5 | 4–4 | 0.75 | 0.75 | 0.8 | 0.7 | WSU: pre-mature bearing. |
+| Year 6+ | 5–99 | 1 | 1 | 1 | 1 | WSU: full bearing 5-6 yr Gisela / 7 yr Mazzard. |
 
 **Yield benchmarks** (`crop_yield_benchmarks`)
 
@@ -2759,11 +2766,10 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | # | Stage | Months | Apps | N % | P % | K % | Ca % | Mg % | Method | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | Post-harvest recovery | 5–6 | 1 | 15 | 20 | 10 | 15 | 15 | broadcast | Root flush, replenish reserves [aliased from Citrus (Valencia)] |
-| 2 | Pre-bloom & bud development | 7–8 | 2 | 25 | 30 | 15 | 20 | 20 | fertigation | Critical B + Zn foliar at bud break [aliased from Citrus (Valencia)] |
-| 3 | Flowering & fruit set | 9–10 | 2 | 25 | 20 | 20 | 25 | 25 | fertigation | Avoid excess N — causes fruit drop [aliased from Citrus (Valencia)] |
-| 4 | Fruit development | 11–1 | 3 | 25 | 20 | 35 | 25 | 25 | fertigation | High K demand for fruit sizing and quality [aliased from Citrus (Valencia)] |
-| 5 | Maturation & colour break | 2–4 | 1 | 10 | 10 | 20 | 15 | 15 | fertigation | Reduce N to avoid rind disorders, K for rind colour [aliased from Citrus (Valencia)] |
+| 1 | Winter rest / pruning | 6–7 | 5 | 5 | 10 | 5 | 5 | 5 | broadcast | Lemon flushes year-round; Eureka SA harvests Apr-Aug primarily. Migration 116 corrects 037 Valencia-clone clobber. |
+| 2 | Major spring flush + bloom | 8–10 | 1 | 30 | 30 | 25 | 30 | 25 | fertigation | Eureka spring flush Aug-Oct. T1 (SA grower observation, CRI Citrus Academy NQ2). |
+| 3 | Summer flush + fruit fill | 11–1 | 2 | 35 | 30 | 35 | 35 | 35 | fertigation | Continued flushing through summer; multiple fruit cohorts. T1. |
+| 4 | Autumn fruit colour + harvest | 2–5 | 2 | 30 | 30 | 35 | 30 | 35 | fertigation | Apr-Aug primary harvest; K for skin colour. T1. |
 
 **Rate-table cells** (`fertilizer_rate_tables`)
 
@@ -2880,11 +2886,11 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | # | Stage | Months | Apps | N % | P % | K % | Ca % | Mg % | Method | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | Post-harvest recovery | 5–6 | 1 | 15 | 20 | 10 | 15 | 15 | broadcast | Root flush, replenish reserves [aliased from Citrus (Valencia)] |
-| 2 | Pre-bloom & bud development | 7–8 | 2 | 25 | 30 | 15 | 20 | 20 | fertigation | Critical B + Zn foliar at bud break [aliased from Citrus (Valencia)] |
-| 3 | Flowering & fruit set | 9–10 | 2 | 25 | 20 | 20 | 25 | 25 | fertigation | Avoid excess N — causes fruit drop [aliased from Citrus (Valencia)] |
-| 4 | Fruit development | 11–1 | 3 | 25 | 20 | 35 | 25 | 25 | fertigation | High K demand for fruit sizing and quality [aliased from Citrus (Valencia)] |
-| 5 | Maturation & colour break | 2–4 | 1 | 10 | 10 | 20 | 15 | 15 | fertigation | Reduce N to avoid rind disorders, K for rind colour [aliased from Citrus (Valencia)] |
+| 1 | Pre-flush dormancy | 6–7 | 0 | 5 | 10 | 0 | 5 | 5 | broadcast | Navel pre-flush. Migration 116 corrects 037 Valencia-clone clobber. Navel harvests Apr-Jul (3 months earlier than Valencia). |
+| 2 | Bloom + spring flush | 8–9 | 1 | 25 | 25 | 15 | 25 | 25 | fertigation | Bloom Aug-Sep. T1 CRI Citrus Academy NQ2 §3.5. |
+| 3 | Cell division + early fruit fill | 10–12 | 2 | 35 | 30 | 35 | 30 | 30 | fertigation | Cell division Oct-Dec. T1. |
+| 4 | Maturation + early harvest | 1–4 | 2 | 25 | 25 | 35 | 30 | 30 | fertigation | Apr-Jul harvest; K for sugar/colour. T1. |
+| 5 | Post-harvest reserve | 5–5 | 1 | 10 | 10 | 15 | 10 | 10 | broadcast | Reserve build before next dormancy. T1. |
 
 **Rate-table cells** (`fertilizer_rate_tables`)
 
@@ -3001,11 +3007,11 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | # | Stage | Months | Apps | N % | P % | K % | Ca % | Mg % | Method | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | Post-harvest recovery | 5–6 | 1 | 15 | 20 | 10 | 15 | 15 | broadcast | Root flush, replenish reserves [aliased from Citrus (Valencia)] |
-| 2 | Pre-bloom & bud development | 7–8 | 2 | 25 | 30 | 15 | 20 | 20 | fertigation | Critical B + Zn foliar at bud break [aliased from Citrus (Valencia)] |
-| 3 | Flowering & fruit set | 9–10 | 2 | 25 | 20 | 20 | 25 | 25 | fertigation | Avoid excess N — causes fruit drop [aliased from Citrus (Valencia)] |
-| 4 | Fruit development | 11–1 | 3 | 25 | 20 | 35 | 25 | 25 | fertigation | High K demand for fruit sizing and quality [aliased from Citrus (Valencia)] |
-| 5 | Maturation & colour break | 2–4 | 1 | 10 | 10 | 20 | 15 | 15 | fertigation | Reduce N to avoid rind disorders, K for rind colour [aliased from Citrus (Valencia)] |
+| 1 | Pre-flush dormancy | 6–7 | 0 | 5 | 10 | 0 | 5 | 5 | broadcast | Soft Citrus pre-flush. Migration 116 corrects 037 Valencia-clone clobber. Mar-Jul harvest (earliest citrus). |
+| 2 | Bloom | 8–9 | 1 | 25 | 25 | 15 | 25 | 25 | fertigation | Bloom Aug-Sep — same window as Navel. T1 CRI + Lovatt 2013 HortScience Clementine. |
+| 3 | Cell division + fruit fill | 10–12 | 2 | 35 | 30 | 40 | 30 | 30 | fertigation | Lovatt 2013: K bumped 40% in cell-division stage for Clementine. T1. |
+| 4 | Maturation + harvest | 1–3 | 2 | 25 | 25 | 35 | 30 | 30 | fertigation | Mar-Jul harvest; alternate-bearing risk on Nadorcott. T1. |
+| 5 | Post-harvest | 4–5 | 1 | 10 | 10 | 10 | 10 | 10 | broadcast | Reserve build. T1. |
 
 **Rate-table cells** (`fertilizer_rate_tables`)
 
@@ -3015,9 +3021,9 @@ _No rows._
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
+| N | leaf | spring flush | 2.3 | 2.3–2.6 | 3 | FERTASA 5.3.2 Mandarin row + Lovatt 2013 HortScience 48(6) Clementine cross-validation. T1. |
+| P | leaf | spring flush | 0.1 | 0.1–0.14 | 0.2 | FERTASA 5.3.2 Mandarin row. T1. |
+| K | leaf | spring flush | 0.7 | 0.7–1.1 | 1.5 | FERTASA 5.3.2 Mandarin row + Lovatt 2013 cross-check. T1. |
 | Ca | 4-7 mo leaf | Mar-May | 3.49 | 3.5–6 | 7.01 | 5.3.2 |
 | Mg | 4-7 mo leaf | Mar-May | 0.34 | 0.35–0.5 | 0.76 | 5.3.2 |
 | S | 4-7 mo leaf | Mar-May | 0.19 | 0.2–0.3 | 0.51 | 5.3.2 |
@@ -3476,17 +3482,17 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 5.4 | 5.9 | 6.9 | 7.4 | DERIVED from H2O − 0.6 offset. T2 (derived). |
+| pH (H2O) | 6 | 6.5 | 7.5 | 8 | Yara Fig Crop Guide + UC ANR Fig Production. Tolerates alkaline; pH 6.0-7.8 ideal. T2. |
 | **N (total)** | — | — | — | — | _needs source_ |
 | **P (Bray-1)** | — | — | — | — | _needs source_ |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
-| **P (Olsen)** | — | — | — | — | _needs source_ |
+| P (Olsen) | 8 | 15 | 40 | 80 | Mediterranean fig orchards baseline (UC ANR + Israeli Volcani). T2. |
 | **K** | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | _needs source_ |
+| Ca | 800 | 1500 | 5000 | 10000 | High-Ca tolerance is a Ficus carica trademark. Soliman et al. 2018 Egypt J Hort 45. T3. |
 | **Mg** | — | — | — | — | _needs source_ |
 | **S** | — | — | — | — | _needs source_ |
-| **Na** | — | — | — | — | _needs source_ |
+| Na | — | 200 | 600 | 1200 | Cl/Na tolerance high; salt-tolerant rootstocks tolerate ECe 4 dS/m. FAO Salinity Handbook 1985 + Yara. T2. |
 | **B** | — | — | — | — | _needs source_ |
 | **Zn** | — | — | — | — | _needs source_ |
 | **Fe** | — | — | — | — | _needs source_ |
@@ -3514,30 +3520,42 @@ _No rows._
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| N | mid-shoot full leaf | post-harvest | 1.7 | 2–2.5 | 2.8 | Yara Fig Crop Guide + Marondedze et al. 2020 Acta Hort 1310:215. T2. |
+| P | mid-shoot full leaf | post-harvest | 0.1 | 0.15–0.25 | 0.35 | Yara Fig Crop Guide + Marondedze et al. 2020 Acta Hort 1310:215. T2. |
+| K | mid-shoot full leaf | post-harvest | 1.2 | 1.5–2.5 | 3 | Yara Fig Crop Guide + Marondedze et al. 2020 Acta Hort 1310:215. T2. |
+| Ca | mid-shoot full leaf | post-harvest | 1.5 | 2.5–4 | 5 | Yara Fig Crop Guide + Marondedze et al. 2020 Acta Hort 1310:215. T2. |
+| Mg | mid-shoot full leaf | post-harvest | 0.4 | 0.5–1 | 1.5 | Yara Fig Crop Guide + Marondedze et al. 2020 Acta Hort 1310:215. T2. |
+| S | mid-shoot full leaf | post-harvest | 0.15 | 0.2–0.4 | 0.55 | Yara Fig Crop Guide + Marondedze et al. 2020 Acta Hort 1310:215. T2. |
+| B | mid-shoot full leaf | post-harvest | 25 | 30–80 | 120 | Yara Fig Crop Guide + Marondedze et al. 2020 Acta Hort 1310:215. T2. |
+| Zn | mid-shoot full leaf | post-harvest | 18 | 20–50 | 70 | Yara Fig Crop Guide + Marondedze et al. 2020 Acta Hort 1310:215. T2. |
+| Fe | mid-shoot full leaf | post-harvest | 80 | 100–250 | 350 | Yara Fig Crop Guide + Marondedze et al. 2020 Acta Hort 1310:215. T2. |
+| Mn | mid-shoot full leaf | post-harvest | 30 | 40–150 | 250 | Yara Fig Crop Guide + Marondedze et al. 2020 Acta Hort 1310:215. T2. |
+| Cu | mid-shoot full leaf | post-harvest | 5 | 7–20 | 30 | Yara Fig Crop Guide + Marondedze et al. 2020 Acta Hort 1310:215. T2. |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
-_No rows._
+| Part | Per | N | P | K | Ca | Mg | S | Source / notes |
+|---|---|---|---|---|---|---|---|---|
+| fruit | kg/t fresh fruit | 4.5 | 0.6 | 5.5 | 1.8 | 0.7 | 0.35 | Migration 112 |
 
 **Perennial age factors** (`perennial_age_factors`)
 
-_No rows._
+| Age label | Age range (yr) | General | N | P | K | Notes |
+|---|---|---|---|---|---|---|
+| Year 1 | 0–1 | 0.2 | 0.2 | 0.15 | 0.2 | Yara Fig + DAFF Fig Production Guide 2018. Bears year 2, full year 5. |
+| Year 2 | 2–2 | 0.45 | 0.45 | 0.4 | 0.45 | Yara Fig. |
+| Year 3 | 3–3 | 0.7 | 0.7 | 0.65 | 0.7 | Yara Fig. |
+| Year 4 | 4–4 | 0.9 | 0.9 | 0.85 | 0.9 | Yara Fig. |
+| Year 5+ | 5–99 | 1 | 1 | 1 | 1 | Yara Fig — full bearing. |
 
 **Yield benchmarks** (`crop_yield_benchmarks`)
 
-_No rows._
+| Cultivar | Region | Water regime | Low t/ha | Typical t/ha | High t/ha | Unit | Source |
+|---|---|---|---|---|---|---|---|
+| — | SA | dryland | 6 | 8 | 12 | t fresh fruit/ha | DAFF Fig Production Guide 2018. |
+| — | SA | irrigated | 12 | 15 | 20 | t fresh fruit/ha | DAFF + Subtrop industry note. |
+| Brown Turkey | Mediterranean | irrigated | 15 | 18 | 25 | t fresh fruit/ha | UC ANR + Yara. |
 
 **Calc flags** (`crop_calc_flags`)
 
@@ -3954,15 +3972,15 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4.9 | 5.4 | 6.9 | 7.4 | DERIVED from H2O − 0.6 offset. T2 (derived). |
+| pH (H2O) | 5.5 | 6 | 7.5 | 8 | ICAR Lucknow Guava Manual 2018 + Yara Guava Crop Guide. Wide tolerance. T2. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 8 | 15 | 30 | 60 | Embrapa Goiabeira (Natale et al. 2009 Rev Bras Frut 31:1142). T2. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | _needs source_ |
+| K | 80 | 120 | 250 | 400 | Embrapa + ICAR. T2. |
+| Ca | 600 | 1000 | 3000 | 6000 | Natale et al. 2009 Rev Bras Frut. T2. |
+| Mg | 80 | 120 | 250 | 400 | Natale et al. 2009. T2. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
 | **B** | — | — | — | — | _needs source_ |
@@ -3992,30 +4010,41 @@ _No rows._
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| N | 3rd-4th leaf pair | fruit set | 1.4 | 1.6–2.4 | 2.8 | ICAR Indian J Hort 74:381 Singh et al. 2017 + Embrapa Natale et al. 2009. T2. |
+| P | 3rd-4th leaf pair | fruit set | 0.14 | 0.16–0.3 | 0.4 | ICAR Indian J Hort 74:381 Singh et al. 2017 + Embrapa Natale et al. 2009. T2. |
+| K | 3rd-4th leaf pair | fruit set | 1.4 | 1.6–2.5 | 3.5 | ICAR Indian J Hort 74:381 Singh et al. 2017 + Embrapa Natale et al. 2009. T2. |
+| Ca | 3rd-4th leaf pair | fruit set | 0.8 | 1–2 | 3 | ICAR Indian J Hort 74:381 Singh et al. 2017 + Embrapa Natale et al. 2009. T2. |
+| Mg | 3rd-4th leaf pair | fruit set | 0.2 | 0.25–0.45 | 0.6 | ICAR Indian J Hort 74:381 Singh et al. 2017 + Embrapa Natale et al. 2009. T2. |
+| S | 3rd-4th leaf pair | fruit set | 0.18 | 0.2–0.35 | 0.5 | ICAR Indian J Hort 74:381 Singh et al. 2017 + Embrapa Natale et al. 2009. T2. |
+| B | 3rd-4th leaf pair | fruit set | 25 | 30–60 | 100 | ICAR Indian J Hort 74:381 Singh et al. 2017 + Embrapa Natale et al. 2009. T2. |
+| Zn | 3rd-4th leaf pair | fruit set | 18 | 20–40 | 60 | ICAR Indian J Hort 74:381 Singh et al. 2017 + Embrapa Natale et al. 2009. T2. |
+| Fe | 3rd-4th leaf pair | fruit set | 70 | 80–200 | 300 | ICAR Indian J Hort 74:381 Singh et al. 2017 + Embrapa Natale et al. 2009. T2. |
+| Mn | 3rd-4th leaf pair | fruit set | 30 | 40–150 | 250 | ICAR Indian J Hort 74:381 Singh et al. 2017 + Embrapa Natale et al. 2009. T2. |
+| Cu | 3rd-4th leaf pair | fruit set | 5 | 7–20 | 30 | ICAR Indian J Hort 74:381 Singh et al. 2017 + Embrapa Natale et al. 2009. T2. |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
-_No rows._
+| Part | Per | N | P | K | Ca | Mg | S | Source / notes |
+|---|---|---|---|---|---|---|---|---|
+| fruit | kg/t fresh fruit | 6.5 | 1 | 7.5 | 1.5 | 0.6 | 0.4 | Migration 112 |
 
 **Perennial age factors** (`perennial_age_factors`)
 
-_No rows._
+| Age label | Age range (yr) | General | N | P | K | Notes |
+|---|---|---|---|---|---|---|
+| Year 1-2 | 0–2 | 0.2 | 0.2 | 0.2 | 0.2 | ICAR Lucknow Manual 2018. Bears year 3 from cutting, full year 5. |
+| Year 3 | 3–3 | 0.5 | 0.5 | 0.5 | 0.5 | ICAR Lucknow Manual 2018. |
+| Year 4 | 4–4 | 0.8 | 0.8 | 0.8 | 0.8 | ICAR Lucknow Manual 2018. |
+| Year 5+ | 5–99 | 1 | 1 | 1 | 1 | ICAR Lucknow Manual 2018 — full bearing. |
 
 **Yield benchmarks** (`crop_yield_benchmarks`)
 
-_No rows._
+| Cultivar | Region | Water regime | Low t/ha | Typical t/ha | High t/ha | Unit | Source |
+|---|---|---|---|---|---|---|---|
+| Fan Retief | SA | irrigated | 18 | 25 | 35 | t fresh fruit/ha | ARC LNR Nelspruit guava trial (Schoeman 2014 SA Subtrop). |
+| Allahabad Safeda | India | irrigated | 25 | 35 | 50 | t fresh fruit/ha | ICAR Lucknow Manual 2018. |
+| — | SA | dryland | 8 | 12 | 18 | t fresh fruit/ha | DAFF Guava Production Guide 2014. |
 
 **Calc flags** (`crop_calc_flags`)
 
@@ -4538,22 +4567,22 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4.5 | 5 | 6 | 6.5 | Menzel & Simpson 1992 ACOTANC: H2O 5.8-6.5 minus 0.5. T2 derived. |
 | pH (H2O) | 5 | 5.8 | 6.5 | 7 | ALGA: litchi prefers slightly acidic soil, pH 5.8-6.5. Above 7.0 = micronutrient lock-up (Fe, Mn, Zn). |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 30 | 60 | 200 | 350 | Menzel & Simpson 1992: 100-300 mg/kg. T2. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | _needs source_ |
+| K | 100 | 200 | 400 | 600 | Menzel & Simpson 1992 (0.5-1.0 meq/100g converted). T2. |
+| Ca | 300 | 600 | 1000 | 1600 | Menzel & Simpson 1992 (3.0-5.0 meq/100g converted). T2. |
+| Mg | 120 | 240 | 480 | 720 | Menzel & Simpson 1992 (2.0-4.0 meq/100g converted). T2. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | _needs source_ |
+| B | 0.3 | 1 | 2 | 4 | Menzel & Simpson 1992. T2. |
+| Zn | 0.5 | 2 | 15 | 30 | Menzel & Simpson 1992. T2. |
 | **Fe** | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | _needs source_ |
+| Mn | 5 | 10 | 50 | 100 | Menzel & Simpson 1992. T2. |
+| Cu | 0.5 | 1 | 3 | 6 | Menzel & Simpson 1992. T2. |
 | **Mo** | — | — | — | — | _needs source_ |
 | **Org C** | — | — | — | — | _needs source_ |
 | **CEC** | — | — | — | — | _needs source_ |
@@ -4581,12 +4610,12 @@ _No rows._
 | K | Recently mature leaves | 1-2 weeks post-panicle | 0.7 | 0.7–1.1 | — | ALGA Lychee Field Guide |
 | Ca | Recently mature leaves | 1-2 weeks post-panicle | 0.6 | 0.6–1 | — | ALGA Lychee Field Guide |
 | Mg | Recently mature leaves | 1-2 weeks post-panicle | 0.3 | 0.3–0.5 | — | ALGA Lychee Field Guide |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| S | leaf | fruit set | 0.15 | 0.18–0.3 | 0.5 | Menzel & Simpson 1992 ACOTANC. T2. |
+| B | leaf | fruit set | 20 | 25–60 | 80 | Menzel & Simpson 1992. T2. |
+| Zn | leaf | fruit set | 12 | 15–30 | 50 | Menzel & Simpson 1992. T2. |
+| Fe | leaf | fruit set | 40 | 50–100 | 200 | Menzel & Simpson 1992. T2. |
+| Mn | leaf | fruit set | 80 | 100–250 | 500 | Menzel & Simpson 1992. T2. |
+| Cu | leaf | fruit set | 8 | 10–25 | 40 | Menzel & Simpson 1992. T2. |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
@@ -5007,18 +5036,18 @@ _No rows._
 | Population / ha | 60000 |
 | Years to bearing | — |
 | Years to full bearing | — |
-| N (target/uptake) | 0 |
-| P | 0 |
-| K | 0 |
-| Ca | 0 |
-| Mg | 0 |
-| S | 0 |
-| B | 0 |
-| Zn | 0 |
-| Fe | 0 |
-| Mn | 0 |
-| Cu | 0 |
-| Mo | 0 |
+| N (target/uptake) | 25 |
+| P | 4 |
+| K | 5 |
+| Ca | 3 |
+| Mg | 2.5 |
+| S | 2.5 |
+| B | 0.05 |
+| Zn | 0.1 |
+| Fe | 0.2 |
+| Mn | 0.1 |
+| Cu | 0.02 |
+| Mo | 0.005 |
 | Customer-ready flag | True |
 
 **Soil sufficiency bands** (`crop_sufficiency_overrides`)
@@ -5027,15 +5056,15 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4 | 4.5 | 5.5 | 6.5 | FERTASA 5.4.4: ≥4.5; optimum 4.8-5.5. T1. |
+| pH (H2O) | 4.5 | 5 | 6 | 7 | DERIVED from KCl + 0.5. T1 derived. |
 | **N (total)** | — | — | — | — | _needs source_ |
 | **P (Bray-1)** | — | — | — | — | _needs source_ |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
+| K | 40 | 80 | 120 | 300 | FERTASA 5.4.4: 80-120 sufficient. T1. |
 | **Ca** | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | _needs source_ |
+| Mg | — | 50 | 200 | — | FERTASA 5.4.4: ≥50 mg/kg explicitly. T1. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
 | **B** | — | — | — | — | _needs source_ |
@@ -5046,6 +5075,8 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | **Mo** | — | — | — | — | _needs source_ |
 | **Org C** | — | — | — | — | _needs source_ |
 | **CEC** | — | — | — | — | _needs source_ |
+
+_Extra rows on this crop outside the canonical soil schema:_ `Acid Saturation`
 
 **Growth stages** (`crop_growth_stages`)
 
@@ -5140,15 +5171,15 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4 | 4.5 | 5.5 | 6.5 | FERTASA 5.4.4: ≥4.5; optimum 4.8-5.5. T1. |
+| pH (H2O) | 4.5 | 5 | 6 | 7 | DERIVED from KCl + 0.5. T1 derived. |
 | **N (total)** | — | — | — | — | _needs source_ |
 | **P (Bray-1)** | — | — | — | — | _needs source_ |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
+| K | 40 | 80 | 120 | 300 | FERTASA 5.4.4: 80-120 sufficient. T1. |
 | **Ca** | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | _needs source_ |
+| Mg | — | 50 | 200 | — | FERTASA 5.4.4: ≥50 mg/kg explicitly. T1. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
 | **B** | — | — | — | — | _needs source_ |
@@ -5159,6 +5190,8 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | **Mo** | — | — | — | — | _needs source_ |
 | **Org C** | — | — | — | — | _needs source_ |
 | **CEC** | — | — | — | — | _needs source_ |
+
+_Extra rows on this crop outside the canonical soil schema:_ `Acid Saturation`
 
 **Growth stages** (`crop_growth_stages`)
 
@@ -5326,15 +5359,15 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4 | 4.5 | 5.5 | 6.5 | FERTASA 5.4.4: ≥4.5; optimum 4.8-5.5. T1. |
+| pH (H2O) | 4.5 | 5 | 6 | 7 | DERIVED from KCl + 0.5. T1 derived. |
 | **N (total)** | — | — | — | — | _needs source_ |
 | **P (Bray-1)** | — | — | — | — | _needs source_ |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
+| K | 40 | 80 | 120 | 300 | FERTASA 5.4.4: 80-120 sufficient. T1. |
 | **Ca** | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | _needs source_ |
+| Mg | — | 50 | 200 | — | FERTASA 5.4.4: ≥50 mg/kg explicitly. T1. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
 | **B** | — | — | — | — | _needs source_ |
@@ -5345,6 +5378,8 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | **Mo** | — | — | — | — | _needs source_ |
 | **Org C** | — | — | — | — | _needs source_ |
 | **CEC** | — | — | — | — | _needs source_ |
+
+_Extra rows on this crop outside the canonical soil schema:_ `Acid Saturation`
 
 **Growth stages** (`crop_growth_stages`)
 
@@ -5441,15 +5476,15 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 5 | 5.5 | 6 | 7 | DERIVED from Quaggio 1996 H2O − 0.5. T2 derived. |
+| pH (H2O) | 5.5 | 6 | 6.5 | 7.5 | Quaggio 1996 IAC Tech Bull 100 + Galan Sauco 2020. T2. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 6 | 12 | 25 | 40 | Galan Sauco 2020 Mango Tab + Quaggio 1996 IAC. T2. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | _needs source_ |
+| K | 60 | 120 | 240 | 480 | Quaggio 1996 (cmolc converted to mg/kg). T2. |
+| Ca | 400 | 800 | 1600 | 2400 | Quaggio 1996 (cmolc 2-4-8-12 converted). T2. |
+| Mg | 60 | 120 | 360 | 600 | Quaggio 1996. T2. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
 | **B** | — | — | — | — | _needs source_ |
@@ -5485,7 +5520,7 @@ _No rows._
 | Ca | 6-8 mo old leaf | Pre-flowering or post-harvest | — | 2–3.5 | 5 | Quaggio 1996 + Haifa Mango |
 | Mg | 6-8 mo old leaf | Pre-flowering or post-harvest | — | 0.25–0.5 | 0.8 | Quaggio 1996 + Haifa Mango |
 | S | 6-8 mo old leaf | Pre-flowering or post-harvest | — | 0.09–0.18 | 0.25 | Quaggio 1996 + Hundal et al. 2005 DRIS |
-| **B** | — | — | — | — | — | _needs source_ |
+| B | leaf | flowering | 25 | 30–100 | 150 | Mudo et al. 2020 + Pretest 2008 Acta Hort 509: B-critical for fruit set on Tommy Atkins. T3. |
 | Zn | 6-8 mo old leaf | Pre-flowering or post-harvest | — | 20–40 | 100 | Quaggio 1996 + Haifa Mango |
 | Fe | 6-8 mo old leaf | Pre-flowering or post-harvest | — | 50–200 | — | Quaggio 1996 + Haifa Mango |
 | Mn | 6-8 mo old leaf | Pre-flowering or post-harvest | — | 50–100 | — | Quaggio 1996 + Haifa Mango |
@@ -5494,7 +5529,9 @@ _No rows._
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
-_No rows._
+| Part | Per | N | P | K | Ca | Mg | S | Source / notes |
+|---|---|---|---|---|---|---|---|---|
+| fruit | kg/t fresh fruit | 6.5 | 0.74 | 6.2 | 5.5 | 3 | — | A&L Handbook + Kynoch RSA via mango.org Lit Rev |
 
 **Perennial age factors** (`perennial_age_factors`)
 
@@ -5539,20 +5576,20 @@ _No rows._
 | Default yield | 25 |
 | Yield unit | t fruit/ha |
 | Population / ha | 500 |
-| Years to bearing | — |
-| Years to full bearing | — |
-| N (target/uptake) | 0 |
-| P | 0 |
-| K | 0 |
-| Ca | 0 |
-| Mg | 0 |
-| S | 0 |
-| B | 0 |
-| Zn | 0 |
-| Fe | 0 |
-| Mn | 0 |
-| Cu | 0 |
-| Mo | 0 |
+| Years to bearing | 3 |
+| Years to full bearing | 5 |
+| N (target/uptake) | 4 |
+| P | 0.5 |
+| K | 5.5 |
+| Ca | 1 |
+| Mg | 0.5 |
+| S | 0.3 |
+| B | 0.05 |
+| Zn | 0.03 |
+| Fe | 0.1 |
+| Mn | 0.03 |
+| Cu | 0.01 |
+| Mo | 0.005 |
 | Customer-ready flag | True |
 
 **Soil sufficiency bands** (`crop_sufficiency_overrides`)
@@ -5561,18 +5598,18 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | — | 5.5 | 6.3 | 7 | DERIVED from H2O − 0.5. T2 (derived). |
+| pH (H2O) | — | 6 | 6.8 | 7.5 | Cloned from Peach (same species P. persica). CDFA Peach & Nectarine + WSU. T2. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 10 | 20 | 40 | 80 | Cloned from Peach. T2. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | _needs source_ |
+| K | 80 | 150 | 250 | 400 | Cloned from Peach. T2. |
+| Ca | 300 | 600 | 2000 | 4000 | Cloned from Peach. T2. |
+| Mg | 60 | 120 | 250 | 500 | Cloned from Peach. T2. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | _needs source_ |
+| B | 0.3 | 0.5 | 1.5 | 2.5 | Cloned from Peach. T2. |
 | **Zn** | — | — | — | — | _needs source_ |
 | **Fe** | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | _needs source_ |
@@ -5585,11 +5622,11 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | # | Stage | Months | Apps | N % | P % | K % | Ca % | Mg % | Method | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | Post-harvest recovery | 2–3 | 1 | 10 | 5 | 5 | 5 | 5 | broadcast | Restore reserves |
-| 2 | Dormancy | 4–6 | 1 | 5 | 5 | 5 | 5 | 5 | broadcast | Winter rest |
-| 3 | Bud break & bloom | 7–8 | 2 | 20 | 30 | 15 | 15 | 15 | fertigation | P for root flush; B for pollination |
-| 4 | Fruit growth | 9–10 | 3 | 40 | 35 | 35 | 45 | 45 | fertigation | Ca critical for stone fruit |
-| 5 | Ripening & harvest | 11–1 | 2 | 25 | 25 | 40 | 30 | 30 | fertigation | K for colour and firmness |
+| 1 | Dormancy | 5–6 | 0 | 0 | 5 | 5 | 5 | 5 | broadcast | Krige & Stassen 2008 Donnarine — identical biology to peach. |
+| 2 | Bud break & bloom | 7–8 | 1 | 15 | 20 | 15 | 15 | 15 | fertigation | Same as peach. |
+| 3 | Fruit set & pit hardening | 9–10 | 2 | 30 | 25 | 25 | 30 | 25 | fertigation | Same as peach. |
+| 4 | Cell expansion & ripening | 11–1 | 3 | 30 | 25 | 40 | 30 | 30 | fertigation | Same as peach. |
+| 5 | Post-harvest recovery | 2–4 | 1 | 25 | 25 | 15 | 20 | 25 | broadcast | Same as peach. |
 
 **Rate-table cells** (`fertilizer_rate_tables`)
 
@@ -5614,7 +5651,9 @@ _No rows._
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
-_No rows._
+| Part | Per | N | P | K | Ca | Mg | S | Source / notes |
+|---|---|---|---|---|---|---|---|---|
+| fruit | kg/t fresh fruit | 1.25 | 0.15 | 1.7 | 0.18 | 0.1 | — | CDFA Peach & Nectarine (treats them identically) |
 
 **Perennial age factors** (`perennial_age_factors`)
 
@@ -6035,15 +6074,15 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4.4 | 4.9 | 5.9 | 6.4 | DERIVED from H2O − 0.6 offset. T2 (derived). |
+| pH (H2O) | 5 | 5.5 | 6.5 | 7 | Borges & Lima 2003 Embrapa Maracujazeiro + Yara Passion Fruit. T2. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 8 | 15 | 30 | 60 | Borges & Lima 2003 Embrapa. T2. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | _needs source_ |
+| K | 80 | 120 | 250 | 400 | Borges & Lima 2003. T2. |
+| Ca | 500 | 800 | 2500 | 5000 | Borges et al. 2006 Rev Bras Frut 28. T2. |
+| Mg | 80 | 120 | 250 | 400 | Borges et al. 2006. T2. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
 | **B** | — | — | — | — | _needs source_ |
@@ -6073,30 +6112,41 @@ _No rows._
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| N | 4th leaf from apex on fruiting branch | fruit development | 4 | 4.5–5.5 | 6 | Embrapa Borges & Lima 2003 + Carvalho et al. 2002 Rev Bras Frut 24:469. T2. |
+| P | 4th leaf from apex on fruiting branch | fruit development | 0.2 | 0.25–0.35 | 0.45 | Embrapa Borges & Lima 2003 + Carvalho et al. 2002 Rev Bras Frut 24:469. T2. |
+| K | 4th leaf from apex on fruiting branch | fruit development | 1.5 | 2–3 | 4 | Embrapa Borges & Lima 2003 + Carvalho et al. 2002 Rev Bras Frut 24:469. T2. |
+| Ca | 4th leaf from apex on fruiting branch | fruit development | 1.5 | 2–3.5 | 4.5 | Embrapa Borges & Lima 2003 + Carvalho et al. 2002 Rev Bras Frut 24:469. T2. |
+| Mg | 4th leaf from apex on fruiting branch | fruit development | 0.25 | 0.3–0.5 | 0.7 | Embrapa Borges & Lima 2003 + Carvalho et al. 2002 Rev Bras Frut 24:469. T2. |
+| S | 4th leaf from apex on fruiting branch | fruit development | 0.25 | 0.3–0.5 | 0.7 | Embrapa Borges & Lima 2003 + Carvalho et al. 2002 Rev Bras Frut 24:469. T2. |
+| B | 4th leaf from apex on fruiting branch | fruit development | 30 | 35–80 | 120 | Embrapa Borges & Lima 2003 + Carvalho et al. 2002 Rev Bras Frut 24:469. T2. |
+| Zn | 4th leaf from apex on fruiting branch | fruit development | 25 | 30–60 | 100 | Embrapa Borges & Lima 2003 + Carvalho et al. 2002 Rev Bras Frut 24:469. T2. |
+| Fe | 4th leaf from apex on fruiting branch | fruit development | 100 | 120–250 | 400 | Embrapa Borges & Lima 2003 + Carvalho et al. 2002 Rev Bras Frut 24:469. T2. |
+| Mn | 4th leaf from apex on fruiting branch | fruit development | 80 | 100–250 | 500 | Embrapa Borges & Lima 2003 + Carvalho et al. 2002 Rev Bras Frut 24:469. T2. |
+| Cu | 4th leaf from apex on fruiting branch | fruit development | 5 | 7–15 | 25 | Embrapa Borges & Lima 2003 + Carvalho et al. 2002 Rev Bras Frut 24:469. T2. |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
-_No rows._
+| Part | Per | N | P | K | Ca | Mg | S | Source / notes |
+|---|---|---|---|---|---|---|---|---|
+| fruit (yellow) | kg/t fresh fruit | 3.5 | 0.45 | 6 | 0.6 | 0.3 | 0.3 | Migration 112 |
 
 **Perennial age factors** (`perennial_age_factors`)
 
-_No rows._
+| Age label | Age range (yr) | General | N | P | K | Notes |
+|---|---|---|---|---|---|---|
+| Year 1 | 0–1 | 0.5 | 0.55 | 0.55 | 0.45 | Borges & Lima 2003. First-year vine — 50-60% of mature N supports vine + first crop. 2-3 year economic life. |
+| Year 2 | 2–2 | 1 | 1 | 1 | 1 | Borges & Lima 2003 — full bearing. |
+| Year 3 | 3–3 | 1 | 1 | 1 | 1 | Borges & Lima 2003 — full bearing; some decline. |
+| Year 4+ | 4–99 | 0.7 | 0.7 | 0.7 | 0.7 | Borges & Lima 2003 — economic life ending; replant trigger. |
 
 **Yield benchmarks** (`crop_yield_benchmarks`)
 
-_No rows._
+| Cultivar | Region | Water regime | Low t/ha | Typical t/ha | High t/ha | Unit | Source |
+|---|---|---|---|---|---|---|---|
+| Yellow | Brazil | irrigated | 25 | 35 | 50 | t fresh fruit/ha | Embrapa Borges & Lima 2003. |
+| Purple Granadilla | SA Mpumalanga | irrigated | 12 | 15 | 25 | t fresh fruit/ha | DAFF Granadilla Production Guide 2010. |
+| Yellow | SA Lowveld | irrigated | 15 | 20 | 30 | t fresh fruit/ha | ARC LNR Nelspruit subtrop bulletin. |
 
 **Calc flags** (`crop_calc_flags`)
 
@@ -6367,18 +6417,18 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | — | 5.5 | 6.3 | 7 | DERIVED from H2O − 0.5. T2 (derived). |
+| pH (H2O) | — | 6 | 6.8 | 7.5 | CDFA Peach & Nectarine + WSU Tree Fruit. T2 cross-confirmed. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 10 | 20 | 40 | 80 | CDFA Peach & Nectarine + WSU. T2 cross-confirmed. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | _needs source_ |
+| K | 80 | 150 | 250 | 400 | CDFA Peach + WSU (NH4OAc). T2 cross-confirmed. |
+| Ca | 300 | 600 | 2000 | 4000 | CDFA Peach (peach less Ca-sensitive than pome — pit-split is partition-driven). T2. |
+| Mg | 60 | 120 | 250 | 500 | CDFA Peach. T2. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | _needs source_ |
+| B | 0.3 | 0.5 | 1.5 | 2.5 | CDFA Peach. Peach B-sensitive — lower toxicity ceiling than pome. T2. |
 | **Zn** | — | — | — | — | _needs source_ |
 | **Fe** | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | _needs source_ |
@@ -6391,11 +6441,11 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | # | Stage | Months | Apps | N % | P % | K % | Ca % | Mg % | Method | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | Post-harvest recovery | 3–4 | 1 | 10 | 5 | 5 | 5 | 5 | broadcast | Replenish reserves |
-| 2 | Dormancy | 5–6 | 1 | 5 | 5 | 5 | 5 | 5 | broadcast | Winter rest |
-| 3 | Bud break & bloom | 7–8 | 2 | 20 | 30 | 15 | 15 | 15 | fertigation | P for roots; B for set |
-| 4 | Fruit growth | 9–11 | 3 | 40 | 35 | 35 | 45 | 45 | fertigation | Ca for pit-split prevention |
-| 5 | Ripening & harvest | 12–2 | 2 | 25 | 25 | 40 | 30 | 30 | fertigation | K for colour and firmness |
+| 1 | Dormancy | 5–6 | 0 | 0 | 5 | 5 | 5 | 5 | broadcast | CDFA: N uptake minimal during dormancy. |
+| 2 | Bud break & bloom | 7–8 | 1 | 15 | 20 | 15 | 15 | 15 | fertigation | Haifa: ~15% K at leaf emergence, 20% at flowering. |
+| 3 | Fruit set & cell division (incl pit hardening) | 9–10 | 2 | 30 | 25 | 25 | 30 | 25 | fertigation | Compressed 90-day bloom→harvest window. |
+| 4 | Cell expansion & ripening | 11–1 | 3 | 30 | 25 | 40 | 30 | 30 | fertigation | CDFA: end fertigation 50 days before harvest. |
+| 5 | Post-harvest recovery | 2–4 | 1 | 25 | 25 | 15 | 20 | 25 | broadcast | Haifa: post-harvest 45-60 kg N/ha to rebuild reserves. |
 
 **Rate-table cells** (`fertilizer_rate_tables`)
 
@@ -6489,19 +6539,19 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | — | 5.5 | 6.3 | 7 | DERIVED from H2O − 0.5. T2 (derived). |
+| pH (H2O) | — | 6 | 6.8 | 7.5 | NSW DPI Primefact 85 + Cornell Pear. T2 cross-confirmed. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 10 | 20 | 40 | 80 | NSW DPI Primefact 85 + Wisconsin Ext apple/pear. T2. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
+| K | 80 | 150 | 250 | 400 | NSW DPI + WSU Tree Fruit. T2 cross-confirmed. |
 | Ca | 300 | 700 | 2500 | 5000 | Higher Ca threshold; Ca prevents cork spot and internal breakdown. |
-| **Mg** | — | — | — | — | _needs source_ |
+| Mg | 60 | 120 | 250 | 500 | Cornell Pear soil interpretation. T2. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | _needs source_ |
+| B | 0.3 | 0.5 | 1.5 | 3 | NSW DPI Primefact 85. Pear B critical for pollination. T2. |
+| Zn | 1 | 2 | 8 | 25 | NSW DPI Primefact 85. T2. |
 | **Fe** | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | _needs source_ |
 | **Cu** | — | — | — | — | _needs source_ |
@@ -6513,11 +6563,11 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | # | Stage | Months | Apps | N % | P % | K % | Ca % | Mg % | Method | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | Post-harvest recovery | 4–5 | 1 | 10 | 5 | 5 | 5 | 5 | broadcast | Replenish tree reserves |
-| 2 | Dormancy | 6–7 | 1 | 5 | 5 | 5 | 5 | 5 | broadcast | Chill requirement critical |
-| 3 | Bud break & bloom | 8–9 | 2 | 20 | 25 | 15 | 15 | 15 | fertigation | P for root flush; B for pollination |
-| 4 | Fruit set & growth | 10–12 | 3 | 40 | 40 | 35 | 45 | 45 | fertigation | Ca for cork spot prevention |
-| 5 | Maturation | 1–3 | 2 | 25 | 25 | 40 | 30 | 30 | fertigation | K for sugar and firmness |
+| 1 | Dormancy | 6–8 | 0 | 0 | 5 | 0 | 5 | 5 | broadcast | Stassen & North 2008 Forelle + apple biology. P broadcast. |
+| 2 | Bud break & bloom | 9–10 | 1 | 25 | 20 | 10 | 15 | 15 | fertigation | Pear has higher B demand at bloom than apple. |
+| 3 | Cell division / fruit set | 10–11 | 3 | 35 | 25 | 25 | 35 | 30 | fertigation | Peak vegetative + fruit N demand. |
+| 4 | Cell expansion | 12–2 | 3 | 25 | 25 | 40 | 30 | 30 | fertigation | K-heavy. Forelle/Packham benefit from K for flesh texture and blush. |
+| 5 | Post-harvest recovery | 3–5 | 1 | 15 | 25 | 25 | 15 | 20 | broadcast | Reserve N build. |
 
 **Rate-table cells** (`fertilizer_rate_tables`)
 
@@ -6550,11 +6600,11 @@ _No rows._
 
 | Age label | Age range (yr) | General | N | P | K | Notes |
 |---|---|---|---|---|---|---|
-| Year 1-2 | 0–1 | 0.2 | 0.2 | 0.25 | 0.15 | Establishment |
-| Year 3-4 | 2–3 | 0.4 | 0.4 | 0.45 | 0.35 | Frame development |
-| Year 5-6 | 4–5 | 0.65 | 0.65 | 0.65 | 0.6 | First bearing |
-| Year 7 | 6–6 | 0.85 | 0.85 | 0.85 | 0.8 | Pre-mature bearing |
-| Year 8+ | 7–99 | 1 | 1 | 1 | 1 | Full bearing |
+| Year 1 | 0–1 | 0.14 | 0.14 | 0.15 | 0.13 | Cheng 2013 Cornell + Marini 2003 Virginia Tech HORT-310: 25 g N/tree at year 1 vs 175 g mature = 0.14. Engine prior 0.20 over-applied 43%. T2. |
+| Year 2 | 2–2 | 0.3 | 0.3 | 0.35 | 0.28 | Cheng 2013 + Marini 2003: 50 g N/tree = 0.29. T2. |
+| Year 3-4 | 3–4 | 0.55 | 0.55 | 0.6 | 0.5 | Cheng 2013 frame development. T2. |
+| Year 5-6 | 5–6 | 0.8 | 0.8 | 0.85 | 0.75 | Cheng 2013 first bearing → pre-mature. T2. |
+| Year 7+ | 7–99 | 1 | 1 | 1 | 1 | Cheng 2013: full bearing 175 g N/tree. T2. |
 
 **Yield benchmarks** (`crop_yield_benchmarks`)
 
@@ -6612,16 +6662,16 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4.5 | 5 | 6 | 7 | FERTASA 5.8.2 Schmidt 2021 narrative + NMSU H-658. T1 derived. |
+| pH (H2O) | 5 | 5.5 | 6.5 | 7.5 | FERTASA 5.8.2 Schmidt 2021 + NMSU H-658. T1+T2. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 10 | 20 | 40 | 80 | NMSU H-658 + Mississippi State P3055 + UGA Pecan. T2. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | _needs source_ |
+| K | 50 | 100 | 200 | 400 | UGA Pecan Crop Code + Schmidt 2021 narrative. T2. |
+| Ca | 250 | 400 | 1500 | 3000 | Schmidt 2021 cross-applies mac chapter (FERTASA 5.8.1). T1 cross-applied. |
+| Mg | 60 | 100 | 250 | 500 | Schmidt 2021 cross-applies mac chapter. T1 cross-applied. |
+| S | 5 | 10 | 25 | 50 | Generic pecan, T2. |
 | **Na** | — | — | — | — | _needs source_ |
 | B | 0.3 | 0.8 | 1.5 | 2.5 | Elevated B requirement for nut fill and kernel quality. |
 | Zn | 1 | 2.5 | 7 | 12 | Very high Zn requirement; most common nutritional disorder in pecans. |
@@ -6665,7 +6715,10 @@ _No rows._
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
-_No rows._
+| Part | Per | N | P | K | Ca | Mg | S | Source / notes |
+|---|---|---|---|---|---|---|---|---|
+| in-shell | kg/t in-shell | 50 | 5 | 15 | 6 | 5 | — | UGA Cooperative Extension Bulletin 1304 + Wells 2017 |
+| total trace | kg/t in-shell | — | — | — | — | — | — | Schoeman 2017 SAMAC FERTASA Symposium (cross-applied to pecan) |
 
 **Perennial age factors** (`perennial_age_factors`)
 
@@ -6829,20 +6882,20 @@ _No rows._
 | Default yield | 25 |
 | Yield unit | t fruit/ha |
 | Population / ha | 500 |
-| Years to bearing | — |
-| Years to full bearing | — |
-| N (target/uptake) | 0 |
-| P | 0 |
-| K | 0 |
-| Ca | 0 |
-| Mg | 0 |
-| S | 0 |
-| B | 0 |
-| Zn | 0 |
-| Fe | 0 |
-| Mn | 0 |
-| Cu | 0 |
-| Mo | 0 |
+| Years to bearing | 4 |
+| Years to full bearing | 7 |
+| N (target/uptake) | 4 |
+| P | 0.5 |
+| K | 5 |
+| Ca | 1.5 |
+| Mg | 0.5 |
+| S | 0.3 |
+| B | 0.04 |
+| Zn | 0.03 |
+| Fe | 0.1 |
+| Mn | 0.04 |
+| Cu | 0.01 |
+| Mo | 0.005 |
 | Customer-ready flag | True |
 
 **Soil sufficiency bands** (`crop_sufficiency_overrides`)
@@ -6851,14 +6904,14 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4.9 | 5.4 | 6.4 | 6.9 | DERIVED from H2O − 0.6 offset. T3 (derived). |
+| pH (H2O) | 5.5 | 6 | 7 | 7.5 | Bellini & Giordani 2005 Acta Hort 685 (Italian persimmon symposium). Tighter band than fig/pomegranate. T3. |
 | **N (total)** | — | — | — | — | _needs source_ |
 | **P (Bray-1)** | — | — | — | — | _needs source_ |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
-| **P (Olsen)** | — | — | — | — | _needs source_ |
+| P (Olsen) | 8 | 12 | 30 | 60 | George et al. 1997 Acta Hort 436. T3. |
 | **K** | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | _needs source_ |
+| Ca | 800 | 1200 | 3500 | 6000 | Italian calcicole tendency. Bellini & Giordani 2005. T3. |
 | **Mg** | — | — | — | — | _needs source_ |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
@@ -6889,17 +6942,17 @@ _No rows._
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| N | mid-shoot leaf | mid-summer | 1.8 | 2–2.5 | 3 | George et al. 1997 Acta Hort 436 Persimmon Symposium + Bellini & Giordani 2005 Acta Hort 685. T3. |
+| P | mid-shoot leaf | mid-summer | 0.1 | 0.12–0.2 | 0.3 | George et al. 1997 Acta Hort 436 Persimmon Symposium + Bellini & Giordani 2005 Acta Hort 685. T3. |
+| K | mid-shoot leaf | mid-summer | 1.2 | 1.5–2.5 | 3.5 | George et al. 1997 Acta Hort 436 Persimmon Symposium + Bellini & Giordani 2005 Acta Hort 685. T3. |
+| Ca | mid-shoot leaf | mid-summer | 1 | 1.2–2.5 | 3.5 | George et al. 1997 Acta Hort 436 Persimmon Symposium + Bellini & Giordani 2005 Acta Hort 685. T3. |
+| Mg | mid-shoot leaf | mid-summer | 0.3 | 0.35–0.6 | 0.9 | George et al. 1997 Acta Hort 436 Persimmon Symposium + Bellini & Giordani 2005 Acta Hort 685. T3. |
+| S | mid-shoot leaf | mid-summer | 0.15 | 0.18–0.35 | 0.5 | George et al. 1997 Acta Hort 436 Persimmon Symposium + Bellini & Giordani 2005 Acta Hort 685. T3. |
+| B | mid-shoot leaf | mid-summer | 25 | 30–50 | 80 | George et al. 1997 Acta Hort 436 Persimmon Symposium + Bellini & Giordani 2005 Acta Hort 685. T3. |
+| Zn | mid-shoot leaf | mid-summer | 15 | 20–40 | 60 | George et al. 1997 Acta Hort 436 Persimmon Symposium + Bellini & Giordani 2005 Acta Hort 685. T3. |
+| Fe | mid-shoot leaf | mid-summer | 70 | 80–150 | 250 | George et al. 1997 Acta Hort 436 Persimmon Symposium + Bellini & Giordani 2005 Acta Hort 685. T3. |
+| Mn | mid-shoot leaf | mid-summer | 30 | 40–150 | 350 | George et al. 1997 Acta Hort 436 Persimmon Symposium + Bellini & Giordani 2005 Acta Hort 685. T3. |
+| Cu | mid-shoot leaf | mid-summer | 5 | 6–15 | 25 | George et al. 1997 Acta Hort 436 Persimmon Symposium + Bellini & Giordani 2005 Acta Hort 685. T3. |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
@@ -6908,11 +6961,19 @@ _No rows._
 
 **Perennial age factors** (`perennial_age_factors`)
 
-_No rows._
+| Age label | Age range (yr) | General | N | P | K | Notes |
+|---|---|---|---|---|---|---|
+| Year 1-2 | 0–2 | 0.15 | 0.15 | 0.15 | 0.15 | George et al. 1997 — bears year 4, full year 7. Slow establishment. |
+| Year 3 | 3–3 | 0.3 | 0.3 | 0.3 | 0.3 | George et al. 1997. |
+| Year 4-6 | 4–6 | 0.65 | 0.65 | 0.65 | 0.65 | George et al. 1997. |
+| Year 7+ | 7–99 | 1 | 1 | 1 | 1 | George et al. 1997 — full bearing. |
 
 **Yield benchmarks** (`crop_yield_benchmarks`)
 
-_No rows._
+| Cultivar | Region | Water regime | Low t/ha | Typical t/ha | High t/ha | Unit | Source |
+|---|---|---|---|---|---|---|---|
+| Triumph | SA WC | irrigated | 18 | 25 | 35 | t fresh fruit/ha | Hortgro Persimmon industry summary 2022 (Subtrop). |
+| Fuyu | Italy + Israel | irrigated | 25 | 35 | 50 | t fresh fruit/ha | Bellini & Giordani 2005 Acta Hort 685. |
 
 **Calc flags** (`crop_calc_flags`)
 
@@ -6963,10 +7024,10 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | pH (KCl) | 3.8 | 4.2 | 5.5 | 6 | Acidophilic crop; optimal pH 4.5-5.5 KCl. |
 | pH (H2O) | 4.3 | 4.7 | 6 | 6.5 | Acidophilic crop; optimal pH 5.0-6.0 H2O. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 5 | 12 | 30 | 60 | Hawaii CTAHR PNM4. T2. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
+| K | 40 | 80 | 150 | 300 | CTAHR pineapple low-K threshold. T2. |
 | **Ca** | — | — | — | — | _needs source_ |
 | **Mg** | — | — | — | — | _needs source_ |
 | **S** | — | — | — | — | _needs source_ |
@@ -7080,18 +7141,18 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | — | 5.5 | 6.3 | 7 | DERIVED from H2O − 0.5. T2 (derived). |
+| pH (H2O) | — | 6 | 6.8 | 7.5 | CDFA Prune & Plum + WSU Tree Fruit. T2 cross-confirmed. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 10 | 20 | 40 | 80 | CDFA Prune & Plum + WSU. T2 cross-confirmed. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | _needs source_ |
+| K | 80 | 150 | 250 | 400 | CDFA Prune & Plum + WSU. T2 cross-confirmed. |
+| Ca | 300 | 600 | 2000 | 4000 | CDFA Prune & Plum (similar to peach; lower than pome). T2. |
 | **Mg** | — | — | — | — | _needs source_ |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | _needs source_ |
+| B | 0.3 | 0.5 | 1.5 | 2.5 | CDFA Prune & Plum. T2. |
 | **Zn** | — | — | — | — | _needs source_ |
 | **Fe** | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | _needs source_ |
@@ -7104,11 +7165,11 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | # | Stage | Months | Apps | N % | P % | K % | Ca % | Mg % | Method | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | Post-harvest recovery | 3–4 | 1 | 10 | 5 | 5 | 5 | 5 | broadcast | Restore reserves |
-| 2 | Dormancy | 5–6 | 1 | 5 | 5 | 5 | 5 | 5 | broadcast | Chill accumulation |
-| 3 | Bud break & bloom | 7–8 | 2 | 20 | 30 | 15 | 15 | 15 | fertigation | P for roots; B for pollination |
-| 4 | Fruit growth | 9–11 | 3 | 40 | 35 | 35 | 45 | 45 | fertigation | Ca for skin quality |
-| 5 | Ripening & harvest | 12–2 | 2 | 25 | 25 | 40 | 30 | 30 | fertigation | K for colour and sugar |
+| 1 | Dormancy | 5–7 | 0 | 0 | 5 | 5 | 5 | 5 | broadcast | WC Paarl/Wellington/Stellenbosch dominant. 93% Japanese plum. |
+| 2 | Bud break & bloom | 8–9 | 1 | 20 | 25 | 15 | 15 | 15 | fertigation | Songold/Sapphire/Laetitia/African Delight/Angeleno. |
+| 3 | Fruit set & cell division | 10–11 | 2 | 30 | 25 | 25 | 30 | 25 | fertigation | Peak vegetative + fruit demand. |
+| 4 | Cell expansion & ripening | 12–2 | 3 | 25 | 25 | 40 | 30 | 30 | fertigation | K drives skin colour + brix in Songold/Angeleno. |
+| 5 | Post-harvest recovery | 3–4 | 1 | 25 | 20 | 15 | 20 | 25 | broadcast | Restore reserves. |
 
 **Rate-table cells** (`fertilizer_rate_tables`)
 
@@ -7202,17 +7263,17 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4.9 | 5.9 | 6.9 | 7.9 | DERIVED from H2O − 0.6 offset. T2 (derived). |
+| pH (H2O) | 5.5 | 6.5 | 7.5 | 8.5 | Yara Pomegranate Crop Guide + Iranian Pomegranate Research Centre Yazd: extreme alkaline tolerance. T2. |
 | **N (total)** | — | — | — | — | _needs source_ |
 | **P (Bray-1)** | — | — | — | — | _needs source_ |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
-| **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | _needs source_ |
+| P (Olsen) | 8 | 12 | 30 | 60 | ICAR-NRC Pomegranate Solapur Guidelines 2017 + Haifa Pomegranate. T2. |
+| K | 100 | 150 | 300 | 500 | ICAR-NRC Solapur 2017. T2. |
+| Ca | 800 | 1500 | 5000 | 10000 | Wonderful in calcareous soils (Holland et al. 2009 Hort Reviews 35 — Israel Volcani). T2. |
 | **Mg** | — | — | — | — | _needs source_ |
 | **S** | — | — | — | — | _needs source_ |
-| **Na** | — | — | — | — | _needs source_ |
+| Na | — | 200 | 800 | 2000 | Pomegranate tolerates ECe 6 dS/m; salt tolerance high. Holland et al. 2009 + Day & Wilkins 2011 UC ANR. T2. |
 | **B** | — | — | — | — | _needs source_ |
 | **Zn** | — | — | — | — | _needs source_ |
 | **Fe** | — | — | — | — | _needs source_ |
@@ -7221,6 +7282,8 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 | **Mo** | — | — | — | — | _needs source_ |
 | **Org C** | — | — | — | — | _needs source_ |
 | **CEC** | — | — | — | — | _needs source_ |
+
+_Extra rows on this crop outside the canonical soil schema:_ `Acid Saturation`
 
 **Growth stages** (`crop_growth_stages`)
 
@@ -7242,30 +7305,43 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Element | Part | Timing | Low ≤ | Sufficient | Excess ≥ | Source / notes |
 |---|---|---|---|---|---|---|
-| **N** | — | — | — | — | — | _needs source_ |
-| **P** | — | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | — | _needs source_ |
-| **Zn** | — | — | — | — | — | _needs source_ |
-| **Fe** | — | — | — | — | — | _needs source_ |
-| **Mn** | — | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | — | _needs source_ |
+| N | non-bearing twig leaf | fruit-set 60-90d post-bloom | 1.5 | 1.8–2.5 | 3 | ICAR-NRC Solapur Pomegranate Production Manual 2017 + Holland et al. 2009 Hort Reviews 35 + Yara Pomegranate. T2. |
+| P | non-bearing twig leaf | fruit-set 60-90d post-bloom | 0.1 | 0.12–0.2 | 0.3 | ICAR-NRC Solapur Pomegranate Production Manual 2017 + Holland et al. 2009 Hort Reviews 35 + Yara Pomegranate. T2. |
+| K | non-bearing twig leaf | fruit-set 60-90d post-bloom | 0.7 | 0.9–1.6 | 2.5 | ICAR-NRC Solapur Pomegranate Production Manual 2017 + Holland et al. 2009 Hort Reviews 35 + Yara Pomegranate. T2. |
+| Ca | non-bearing twig leaf | fruit-set 60-90d post-bloom | 1.5 | 2–3.5 | 5 | ICAR-NRC Solapur Pomegranate Production Manual 2017 + Holland et al. 2009 Hort Reviews 35 + Yara Pomegranate. T2. |
+| Mg | non-bearing twig leaf | fruit-set 60-90d post-bloom | 0.2 | 0.25–0.5 | 0.75 | ICAR-NRC Solapur Pomegranate Production Manual 2017 + Holland et al. 2009 Hort Reviews 35 + Yara Pomegranate. T2. |
+| S | non-bearing twig leaf | fruit-set 60-90d post-bloom | 0.15 | 0.18–0.3 | 0.45 | ICAR-NRC Solapur Pomegranate Production Manual 2017 + Holland et al. 2009 Hort Reviews 35 + Yara Pomegranate. T2. |
+| B | non-bearing twig leaf | fruit-set 60-90d post-bloom | 25 | 30–60 | 100 | ICAR-NRC Solapur Pomegranate Production Manual 2017 + Holland et al. 2009 Hort Reviews 35 + Yara Pomegranate. T2. |
+| Zn | non-bearing twig leaf | fruit-set 60-90d post-bloom | 18 | 20–40 | 60 | ICAR-NRC Solapur Pomegranate Production Manual 2017 + Holland et al. 2009 Hort Reviews 35 + Yara Pomegranate. T2. |
+| Fe | non-bearing twig leaf | fruit-set 60-90d post-bloom | 70 | 80–200 | 350 | ICAR-NRC Solapur Pomegranate Production Manual 2017 + Holland et al. 2009 Hort Reviews 35 + Yara Pomegranate. T2. |
+| Mn | non-bearing twig leaf | fruit-set 60-90d post-bloom | 25 | 30–100 | 200 | ICAR-NRC Solapur Pomegranate Production Manual 2017 + Holland et al. 2009 Hort Reviews 35 + Yara Pomegranate. T2. |
+| Cu | non-bearing twig leaf | fruit-set 60-90d post-bloom | 5 | 7–15 | 25 | ICAR-NRC Solapur Pomegranate Production Manual 2017 + Holland et al. 2009 Hort Reviews 35 + Yara Pomegranate. T2. |
 | **Mo** | — | — | — | — | — | _needs source_ |
 
 **Nutrient removal** (`fertasa_nutrient_removal`)
 
-_No rows._
+| Part | Per | N | P | K | Ca | Mg | S | Source / notes |
+|---|---|---|---|---|---|---|---|---|
+| fruit | kg/t fresh fruit | 5 | 0.6 | 7 | 1.2 | 0.4 | 0.3 | Migration 112 |
 
 **Perennial age factors** (`perennial_age_factors`)
 
-_No rows._
+| Age label | Age range (yr) | General | N | P | K | Notes |
+|---|---|---|---|---|---|---|
+| Year 1 | 0–1 | 0.15 | 0.15 | 0.15 | 0.15 | ICAR-NRC Solapur 2017 + Day & Wilkins 2011. Bears year 3, full year 5. |
+| Year 2 | 2–2 | 0.3 | 0.3 | 0.3 | 0.3 | ICAR-NRC Solapur 2017. |
+| Year 3 | 3–3 | 0.55 | 0.55 | 0.55 | 0.55 | ICAR-NRC Solapur 2017. |
+| Year 4 | 4–4 | 0.8 | 0.8 | 0.8 | 0.8 | ICAR-NRC Solapur 2017. |
+| Year 5+ | 5–99 | 1 | 1 | 1 | 1 | ICAR-NRC Solapur 2017 — full bearing. |
 
 **Yield benchmarks** (`crop_yield_benchmarks`)
 
-_No rows._
+| Cultivar | Region | Water regime | Low t/ha | Typical t/ha | High t/ha | Unit | Source |
+|---|---|---|---|---|---|---|---|
+| Wonderful | SA WC | irrigated | 18 | 25 | 35 | t fresh fruit/ha | SA Pomegranate Producers Assoc 2019 industry summary. |
+| Acra | SA WC | irrigated | 15 | 22 | 30 | t fresh fruit/ha | SAPPA 2019. |
+| Wonderful | California | irrigated | 25 | 35 | 50 | t fresh fruit/ha | Day & Wilkins 2011 UC ANR ACTAHO. |
+| Bhagwa | India | irrigated | 18 | 25 | 35 | t fresh fruit/ha | ICAR-NRC Solapur Manual 2017. |
 
 **Calc flags** (`crop_calc_flags`)
 
@@ -7892,7 +7968,7 @@ _No rows._
 | Parent crop | — |
 | Default yield | 5 |
 | Yield unit | t grain/ha |
-| Population / ha | 0 |
+| Population / ha | 150000 |
 | Years to bearing | — |
 | Years to full bearing | — |
 | N (target/uptake) | 22 |
@@ -9006,21 +9082,21 @@ _No rows._
 | Parent crop | — |
 | Default yield | 20 |
 | Yield unit | t fresh cobs/ha |
-| Population / ha | 0 |
+| Population / ha | 50000 |
 | Years to bearing | — |
 | Years to full bearing | — |
 | N (target/uptake) | 8.3 |
 | P | 1 |
 | K | 5.6 |
-| Ca | 0 |
-| Mg | 0 |
-| S | 0 |
-| B | 0 |
-| Zn | 0 |
-| Fe | 0 |
-| Mn | 0 |
-| Cu | 0 |
-| Mo | 0 |
+| Ca | 2 |
+| Mg | 1.5 |
+| S | 1 |
+| B | 0.04 |
+| Zn | 0.08 |
+| Fe | 0.15 |
+| Mn | 0.08 |
+| Cu | 0.015 |
+| Mo | 0.003 |
 | Customer-ready flag | True |
 
 **Soil sufficiency bands** (`crop_sufficiency_overrides`)
@@ -9199,9 +9275,9 @@ _No rows._
 | Population / ha | 2200 |
 | Years to bearing | — |
 | Years to full bearing | — |
-| N (target/uptake) | 4.5 |
+| N (target/uptake) | 4 |
 | P | 0.6 |
-| K | 6 |
+| K | 3.4 |
 | Ca | 2 |
 | Mg | 0.6 |
 | S | 0.4 |
@@ -9219,18 +9295,18 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4.5 | 5.5 | 6.5 | 7.5 | SATI Ch 3 p20 (Raath & Conradie). T1. |
+| pH (H2O) | 5 | 6 | 7 | 8 | DERIVED from KCl + 1.0 (SATI offset). T1 derived. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 8 | 25 | 35 | 70 | SATI Ch 3 Tbl 1. T1. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
-| **Ca** | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | _needs source_ |
+| K | 40 | 80 | 200 | 400 | Raath SATI Ch 3 Tbl 2: Orange River 120 max — higher than wine grape because juice pH is not a fresh-export concern. T1. |
+| Ca | 200 | 360 | 1500 | 3000 | Raath SATI Ch 3 Tbl 3 (same as wine grape). T1. |
+| Mg | 30 | 40 | 250 | 500 | Raath SATI Ch 3 Tbl 3. T1. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | _needs source_ |
+| B | 0.2 | 0.3 | 1 | 2 | Raath SATI Ch 3 Tbl 5. T1. |
 | **Zn** | — | — | — | — | _needs source_ |
 | **Fe** | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | _needs source_ |
@@ -9274,7 +9350,7 @@ _No rows._
 
 | Part | Per | N | P | K | Ca | Mg | S | Source / notes |
 |---|---|---|---|---|---|---|---|---|
-| fruit | kg per t fresh fruit | 6 | 0.66 | 5.4 | 1.6 | 0.6 | 0.6 | Haifa Vineyard fertilization + Yara SA Table Grape |
+| fruit | kg/t fresh fruit | 4 | 0.65 | 3.4 | 2.07 | 0.83 | 0.6 | Conradie, Raath, Mulidzi & Howell 2022 SAJEV 43(1) |
 
 **Perennial age factors** (`perennial_age_factors`)
 
@@ -10259,22 +10335,22 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4.5 | 4.8 | 5.5 | 6.5 | FERTASA 5.4.3.1: <4.8 needs lime. WC minimum 5.0. T1. |
+| pH (H2O) | 5 | 5.3 | 6 | 7 | DERIVED from KCl + 0.5. T1 derived. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
-| **P (Citric acid)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 5 | 18 | 30 | 60 | FERTASA 5.4.3.1.2 banding: <5 deficient, 18-30 optimal. T1. |
+| P (Citric acid) | 60 | 80 | 120 | 200 | FERTASA 5.4.3.1.3 banding. T1. |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| **K** | — | — | — | — | _needs source_ |
+| K | 40 | 80 | 120 | 250 | FERTASA 5.4.3.1: NH4OAc 80-120 sufficient. T1. |
 | **Ca** | — | — | — | — | _needs source_ |
 | **Mg** | — | — | — | — | _needs source_ |
-| **S** | — | — | — | — | _needs source_ |
+| S | — | 10 | 20 | — | FERTASA 5.4.3.2.3: <10 mg/kg = include S. T1. |
 | **Na** | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | _needs source_ |
+| B | — | 0.5 | 1 | — | FERTASA 5.4.3.2.7 hot-water B. T1. |
 | Zn | 0.8 | 2 | 6 | 12 | Elevated Zn requirement; Zn deficiency common in SA wheat soils. |
 | **Fe** | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | _needs source_ |
-| **Cu** | — | — | — | — | _needs source_ |
+| Cu | — | 0.5 | 1 | — | FERTASA 5.4.3.2.7 EDTA-Cu. T1. |
 | **Mo** | — | — | — | — | _needs source_ |
 | **Org C** | — | — | — | — | _needs source_ |
 | **CEC** | — | — | — | — | _needs source_ |
@@ -10408,7 +10484,7 @@ _No rows._
 | Years to bearing | — |
 | Years to full bearing | — |
 | N (target/uptake) | 5 |
-| P | 0.7 |
+| P | 0.6 |
 | K | 5.5 |
 | Ca | 2.5 |
 | Mg | 0.8 |
@@ -10427,18 +10503,18 @@ _Engine merges these on top of universal `soil_sufficiency`. Bold rows are gaps 
 
 | Parameter | Very Low ≤ | Low ≤ | Optimal ≤ | High ≤ | Source / notes |
 |---|---|---|---|---|---|
-| **pH (KCl)** | — | — | — | — | _needs source_ |
-| **pH (H2O)** | — | — | — | — | _needs source_ |
+| pH (KCl) | 4.5 | 5.5 | 6.5 | 7.5 | Raath & Conradie SATI Ch 3 p20: optimal 5.5-6.5. T1. |
+| pH (H2O) | 5 | 6 | 7 | 8 | DERIVED from KCl + 1.0 (SATI offset, grape-specific). T1 derived. |
 | **N (total)** | — | — | — | — | _needs source_ |
-| **P (Bray-1)** | — | — | — | — | _needs source_ |
+| P (Bray-1) | 8 | 20 | 35 | 70 | Raath SATI Ch 3 Tbl 1: sandy 20 / loamy 25 / clayey 30 mg/kg minimum. T1. |
 | **P (Citric acid)** | — | — | — | — | _needs source_ |
 | **P (Olsen)** | — | — | — | — | _needs source_ |
-| K | 30 | 60 | 160 | 300 | Excess K raises juice pH, reducing wine quality. Moderate K preferred. |
-| **Ca** | — | — | — | — | _needs source_ |
-| **Mg** | — | — | — | — | _needs source_ |
+| K | 30 | 60 | 100 | 150 | Raath SATI Ch 3 Tbl 2 max norms — Coastal 70, Breede 80, Olifants/Karoo 100. EXCESS RAISES JUICE pH — wine quality cap. T1. |
+| Ca | 200 | 360 | 1500 | 3000 | Raath SATI Ch 3 Tbl 3: 360 sandy / 500 clayey minimum. T1. |
+| Mg | 30 | 40 | 250 | 500 | Raath SATI Ch 3 Tbl 3. Ca:Mg ≤ 6 ratio rule. T1. |
 | **S** | — | — | — | — | _needs source_ |
 | **Na** | — | — | — | — | _needs source_ |
-| **B** | — | — | — | — | _needs source_ |
+| B | 0.2 | 0.3 | 1 | 2 | Raath SATI Ch 3 Tbl 5: ≥0.3 mg/kg hot-water minimum. T1. |
 | **Zn** | — | — | — | — | _needs source_ |
 | **Fe** | — | — | — | — | _needs source_ |
 | **Mn** | — | — | — | — | _needs source_ |

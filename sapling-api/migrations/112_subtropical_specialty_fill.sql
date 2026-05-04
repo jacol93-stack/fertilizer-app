@@ -1,0 +1,19 @@
+-- ============================================================
+-- 112: Subtropical specialty fruit data fill
+--      Fig, Guava, Passion Fruit, Persimmon, Pomegranate
+-- ============================================================
+-- Per-crop sources (mostly T2 international — SA literature thin
+-- on niche subtropicals):
+--   * Fig: Yara Fig + UC ANR + Soliman 2018 + Marondedze 2020 Acta Hort
+--   * Guava: ICAR Lucknow Manual 2018 + Embrapa Natale 2009 + Singh 2017
+--   * Passion Fruit: Embrapa Borges & Lima 2003 + Carvalho 2002
+--   * Persimmon: George 1997 Acta Hort 436 + Bellini & Giordani 2005
+--   * Pomegranate: ICAR-NRC Solapur 2017 + Holland 2009 + Day & Wilkins 2011
+--
+-- Persimmon crop_requirements: filled per-ton coefficients
+-- (was all zeros — engine couldn't scale to yield).
+--
+-- pH (KCl) rows DERIVED from H2O − 0.6 offset; flagged in notes.
+--
+-- Applied via python supabase admin client (mirrors 110/111 pattern).
+-- See commit body for line-by-line application detail.

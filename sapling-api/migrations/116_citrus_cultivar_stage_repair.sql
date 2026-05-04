@@ -1,0 +1,34 @@
+-- ============================================================
+-- 116: Citrus cultivar growth-stage repair (CRITICAL bug)
+-- ============================================================
+-- Root cause:
+--   Migration 037 (March 2026) cloned Valencia growth stages to all
+--   citrus cultivar variants ('Citrus (Lemon)', 'Citrus (Navel)',
+--   'Citrus (Soft Citrus)', etc.) for "data integrity". This silently
+--   overwrote the cultivar-specific phenology that migration 041
+--   had carefully cited from CRI Citrus Academy NQ2 §3.5.
+--
+-- Net effect (under the new "show nutrient requirements per stage"
+-- direction this is more impactful, not less):
+--   * Lemon: year-round bearer with 4 distinct flushes — engine treated
+--     it as single-flush, single-harvest crop (Valencia Jul-Sep)
+--   * Navel: harvests Apr-Jul (3 months earlier than Valencia) — engine
+--     timed K window 3 months too late
+--   * Soft Citrus (Clementine/Tango/Nadorcott): harvests Mar-Jul
+--     (earliest of all citrus) — same K-window mistiming
+--   * Grapefruit (Star Ruby): retained correct stages from migration 042
+--   * Valencia: retained correct stages
+--
+-- This migration:
+--   1. Replaces Valencia-cloned stages with cultivar-specific phenology
+--      for Lemon, Navel, Soft Citrus.
+--   2. Adds N/P/K leaf-norm rows for Soft Citrus (FERTASA 5.3.2 Mandarin
+--      row + Lovatt 2013 HortScience 48(6) Clementine cross-validation).
+--      These were missing from the table — Soft Citrus blocks falling
+--      back to Valencia bands which under-flag K (Valencia low_max=0.89,
+--      Soft Citrus mandarin low_max=0.69).
+--
+-- Sources: CRI Citrus Academy NQ2 §3.5 + Lovatt 2013 HortScience 48(6):
+-- 699-704 + general SA grower observation. T1.
+--
+-- Applied via python supabase admin client (mirrors 110/111 pattern).

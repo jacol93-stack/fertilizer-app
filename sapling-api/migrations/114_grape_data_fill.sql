@@ -1,0 +1,29 @@
+-- ============================================================
+-- 114: Grape data fill — Wine Grape + Table Grape
+-- ============================================================
+-- Critical correction:
+--   Table Grape crop_requirements N 6.0 → 4.0 kg/t (50% over-application
+--   bug at typical 25-35 t/ha yields). Source: Conradie, Raath, Mulidzi
+--   & Howell 2022 SAJEV 43(1) Sultanina at Lower Orange River
+--   (Augrabies + Blouputs sites). T1 SA-canonical.
+--
+--   Same paper: Table Grape K 5.4 → 3.4 kg/t.
+--
+-- Wine Grape per-ton P 0.45 → 0.6 (Raath SATI Ch 5 p49: "0.7 kg P/t").
+--
+-- Soil bands (14 cited rows total): Raath SATI handbook Ch 3 Tables
+-- 1-5. Wine Grape K capped tighter (60-100 max) than Table Grape
+-- (80-200 max) because excess K raises wine juice pH and damages
+-- wine quality — table grape has no juice-pH concern for fresh export.
+--
+-- pH (H2O) rows use SATI's grape-specific 1.0-unit KCl/H2O offset
+-- (per Raath & Conradie SATI Ch 3 p20 explicit) — NOT the FERTASA
+-- 0.5-unit offset used elsewhere in the engine. Documented in row notes.
+--
+-- Genuine gaps:
+--   * S petiole/blade norms (Conradie/SATI/CDFA all silent)
+--   * Cu/Zn/Mo soil "high"/"excess" thresholds (SATI publishes floor only)
+--   * Saayman 1995 Barlinka N rate ceiling (<105 kg N/ha) — schema gap
+--     (no `n_rate_ceiling_kg_per_ha` column on crop_calc_flags)
+--
+-- Applied via python supabase admin client (mirrors 110/111 pattern).
