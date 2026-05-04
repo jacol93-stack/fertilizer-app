@@ -140,9 +140,16 @@ class OrchestratorInput:
     # Sufficiency catalog rows (soil_sufficiency, soil_parameter_map) —
     # used to populate per-block NutrientStatusEntry on the output
     # snapshot so the UI can render 'value vs ideal' range bars without
-    # re-fetching from the DB. Pass-through; the orchestrator does no
-    # work with these beyond reading optimal bands per parameter.
+    # re-fetching from the DB.
+    #
+    # `crop_override_rows` carries the full crop_sufficiency_overrides
+    # table; the orchestrator merges it with `sufficiency_rows` per-crop
+    # via `merge_sufficiency_for_crop` so the visible "ideal" bands
+    # actually reflect crop-specific bands (e.g. Macadamia K 85-145
+    # tighter than the generic 80-150). Without this the report shows
+    # universal generic bands for every crop.
     sufficiency_rows: Optional[list[dict]] = None
+    crop_override_rows: Optional[list[dict]] = None
     param_map_rows: Optional[list[dict]] = None
     # cluster_id → list of source BlockInputs that fed the aggregate.
     # When supplied, the orchestrator runs soil-side reasoning (factor
@@ -288,11 +295,21 @@ def build_programme(inputs: OrchestratorInput) -> ProgrammeArtifact:
         # exactly — usually just pH (KCl) — and every other lab
         # parameter (K / Ca / Mg / P / S / saturations) silently drops
         # out, leaving the agronomist staring at "no NPK, no ratios".
-        from app.services.soil_engine import normalise_soil_values
+        from app.services.soil_engine import normalise_soil_values, merge_sufficiency_for_crop
         normalised_params = normalise_soil_values(src.soil_parameters)
+        # Layer crop overrides on the universal sufficiency rows so the
+        # range bars show crop-tuned ideal bands (e.g. Macadamia K 85-145)
+        # rather than the generic-for-all-crops fallback. Per-block crop
+        # in case the programme spans mixed crops (rare today, but the
+        # data model allows it).
+        merged_sufficiency = merge_sufficiency_for_crop(
+            inputs.sufficiency_rows or [],
+            inputs.crop_override_rows or [],
+            inputs.crop,
+        )
         nutrient_status = _build_nutrient_status(
             soil_parameters=normalised_params,
-            sufficiency_rows=inputs.sufficiency_rows or [],
+            sufficiency_rows=merged_sufficiency,
             param_map_rows=inputs.param_map_rows or [],
             lab_method=src.lab_method,
         )
@@ -909,17 +926,23 @@ def _build_nutrient_status(
     if not soil_parameters or not sufficiency_rows:
         return []
 
+    from app.services.soil_canonicaliser import canonicalise_parameter_name
+
+    # Index by canonical name on both sides so labels that differ in
+    # unit suffix or wording ("K", "K (exchangeable)", "Potassium")
+    # collapse to the same key — otherwise an override row keyed
+    # differently from its lab counterpart silently fails to match.
     suff_by_param: dict[str, dict] = {}
     for r in sufficiency_rows:
         key = r.get("parameter")
         if isinstance(key, str):
-            suff_by_param[key] = r
+            suff_by_param[canonicalise_parameter_name(key)] = r
     nutrient_by_soil_param: dict[str, str] = {}
     for r in param_map_rows:
         sp = r.get("soil_parameter") or r.get("parameter")
         nut = r.get("nutrient")
         if isinstance(sp, str) and isinstance(nut, str):
-            nutrient_by_soil_param[sp] = nut
+            nutrient_by_soil_param[canonicalise_parameter_name(sp)] = canonicalise_parameter_name(nut)
 
     entries: list[NutrientStatusEntry] = []
     seen_keys: set[str] = set()
@@ -927,11 +950,12 @@ def _build_nutrient_status(
         if raw_value is None or not isinstance(raw_value, (int, float)):
             continue
         value = float(raw_value)
+        canonical_param = canonicalise_parameter_name(soil_param)
         # Direct match → use the soil parameter's own row. Otherwise
         # try the catalog mapping (e.g. P_Mehlich3 → P).
-        suff = suff_by_param.get(soil_param)
+        suff = suff_by_param.get(canonical_param)
         if not suff:
-            mapped = nutrient_by_soil_param.get(soil_param)
+            mapped = nutrient_by_soil_param.get(canonical_param)
             if mapped:
                 suff = suff_by_param.get(mapped)
         if not suff:

@@ -107,28 +107,28 @@ CANONICAL_PARAMETERS: dict[str, ParamSpec] = {
     # ── Cations (mg/kg canonical — matches existing engine assumption) ─
     "K": ParamSpec(
         canonical_unit="mg/kg",
-        aliases=("K", "Potassium", "Exchangeable K", "K exch"),
+        aliases=("K", "Potassium", "Exchangeable K", "K exch", "K (exchangeable)"),
         accepted_units={"mg/kg": 1.0, "ppm": 1.0, "cmol_c/kg": _K_EQ, "cmol/kg": _K_EQ, "meq/100g": _K_EQ},
         plausible_range=(1.0, 5000.0),
         category="cation_absolute",
     ),
     "Ca": ParamSpec(
         canonical_unit="mg/kg",
-        aliases=("Ca", "Calcium", "Exchangeable Ca", "Ca exch"),
+        aliases=("Ca", "Calcium", "Exchangeable Ca", "Ca exch", "Ca (exchangeable)"),
         accepted_units={"mg/kg": 1.0, "ppm": 1.0, "cmol_c/kg": _CA_EQ, "cmol/kg": _CA_EQ, "meq/100g": _CA_EQ},
         plausible_range=(10.0, 20000.0),
         category="cation_absolute",
     ),
     "Mg": ParamSpec(
         canonical_unit="mg/kg",
-        aliases=("Mg", "Magnesium", "Exchangeable Mg", "Mg exch"),
+        aliases=("Mg", "Magnesium", "Exchangeable Mg", "Mg exch", "Mg (exchangeable)"),
         accepted_units={"mg/kg": 1.0, "ppm": 1.0, "cmol_c/kg": _MG_EQ, "cmol/kg": _MG_EQ, "meq/100g": _MG_EQ},
         plausible_range=(1.0, 5000.0),
         category="cation_absolute",
     ),
     "Na": ParamSpec(
         canonical_unit="mg/kg",
-        aliases=("Na", "Sodium", "Exchangeable Na", "Na exch"),
+        aliases=("Na", "Sodium", "Exchangeable Na", "Na exch", "Na (exchangeable)"),
         accepted_units={"mg/kg": 1.0, "ppm": 1.0, "cmol_c/kg": _NA_EQ, "cmol/kg": _NA_EQ, "meq/100g": _NA_EQ},
         plausible_range=(0.1, 5000.0),
         category="cation_absolute",
@@ -653,6 +653,23 @@ def canonicalise_soil_values(
 
 
 # ── Convenience helpers for callers ─────────────────────────────────
+
+
+def canonicalise_parameter_name(name: str) -> str:
+    """Resolve a parameter label (lab-data key, sufficiency-row name,
+    override-row name) to its canonical form. Returns the input verbatim
+    when no alias matches — so unknown columns survive without dropping.
+
+    Used by the merging code in `soil_engine.merge_sufficiency_for_crop`
+    to make sure rows keyed `'K'`, `'K (exchangeable)'`, `'Exchangeable K'`,
+    `'Potassium'` collapse into the same canonical entry instead of
+    fragmenting and silently disabling crop overrides.
+    """
+    if not name:
+        return name
+    label_no_unit, _ = _split_label_and_unit(str(name))
+    canonical = _resolve_canonical(label_no_unit)
+    return canonical if canonical else str(name)
 
 
 def list_canonical_parameters() -> list[dict]:

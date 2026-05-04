@@ -664,41 +664,18 @@ def _suggest_filename(title: Optional[str], farm_name: Optional[str]) -> str:
 def _load_sufficiency_rows(sb, crop: str) -> list[dict]:
     """Soil sufficiency thresholds for the crop.
 
-    Strategy mirrors the orchestrator's catalog loader:
-      1. Start with the generic `soil_sufficiency` table — covers pH,
-         Ca, Mg, P, S, Na and all the parameters that don't vary by
-         crop. This is the base layer.
-      2. Layer crop-specific rows from `crop_sufficiency_overrides` on
-         top — for Macadamia, that's B / K / N / Zn with crop-tuned
-         optimal bands. Override-row values replace the generic values
-         for the same `parameter`.
-      3. If the cultivar variant has no overrides of its own, fall
-         back to the parent-genus crop name (mirrors the orchestrator's
-         parent-variant fallback for "Citrus (Valencia)" → "Citrus").
-
-    Without the generic base layer the soil report rendered K-only on
-    Macadamia analyses (the override table only has 4 macadamia rows).
+    Thin wrapper that loads the two source tables and delegates merging
+    to `merge_sufficiency_for_crop`. The helper handles canonical-name
+    normalisation (so an override keyed `'K (exchangeable)'` collapses
+    onto the generic `'K'` row instead of fragmenting), genus fallback
+    for cultivar variants, and the "non-None override fields shadow
+    generic" semantics.
     """
-    base_crop = crop.split("(")[0].strip() if "(" in crop else crop
+    from app.services.soil_engine import merge_sufficiency_for_crop
 
     generic = sb.table("soil_sufficiency").select("*").execute().data or []
-
-    overrides = sb.table("crop_sufficiency_overrides").select("*").eq("crop", crop).execute().data or []
-    if not overrides and base_crop != crop:
-        overrides = sb.table("crop_sufficiency_overrides").select("*").eq("crop", base_crop).execute().data or []
-
-    by_param: dict[str, dict] = {}
-    for r in generic:
-        p = r.get("parameter")
-        if p:
-            by_param[p] = dict(r)
-    for r in overrides:
-        p = r.get("parameter")
-        if p:
-            existing = by_param.get(p, {})
-            existing.update({k: v for k, v in r.items() if v is not None})
-            by_param[p] = existing
-    return list(by_param.values())
+    overrides_all = sb.table("crop_sufficiency_overrides").select("*").execute().data or []
+    return merge_sufficiency_for_crop(generic, overrides_all, crop)
 
 
 def _load_param_map_rows(sb) -> list[dict]:

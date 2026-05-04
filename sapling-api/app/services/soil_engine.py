@@ -48,6 +48,61 @@ def normalise_soil_values(soil_values: dict | None) -> dict:
             out[canonical] = v
     return out
 
+
+def merge_sufficiency_for_crop(
+    generic_rows: list[dict] | None,
+    override_rows: list[dict] | None,
+    crop: str,
+) -> list[dict]:
+    """Build the per-crop sufficiency catalog by overlaying crop-specific
+    rows from `crop_sufficiency_overrides` on top of the universal
+    `soil_sufficiency` table.
+
+    Both row sources are normalised through `canonicalise_parameter_name`
+    before merging — so rows keyed 'K', 'K (exchangeable)', 'Potassium',
+    or 'Exchangeable K' collapse into the same canonical entry. Without
+    this, an override keyed 'K (exchangeable)' would silently fail to
+    shadow a generic row keyed 'K' (the bug that motivated this helper).
+
+    Crop matching tries the exact `crop` first, then the parent genus
+    ('Citrus (Valencia)' → 'Citrus') so cultivar variants inherit the
+    genus override unless they have their own row.
+
+    Returns one merged row per canonical parameter, with the override's
+    non-None fields layered on top of the generic. The returned `parameter`
+    field is always canonical, regardless of how either source labelled it.
+    """
+    from app.services.soil_canonicaliser import canonicalise_parameter_name
+
+    base_crop = crop.split("(")[0].strip() if "(" in crop else crop
+
+    by_param: dict[str, dict] = {}
+    for r in generic_rows or []:
+        p = r.get("parameter")
+        if not isinstance(p, str):
+            continue
+        canonical = canonicalise_parameter_name(p)
+        merged = {**r, "parameter": canonical}
+        by_param[canonical] = merged
+
+    crop_overrides = [r for r in (override_rows or []) if r.get("crop") == crop]
+    if not crop_overrides and base_crop != crop:
+        crop_overrides = [r for r in (override_rows or []) if r.get("crop") == base_crop]
+
+    for r in crop_overrides:
+        p = r.get("parameter")
+        if not isinstance(p, str):
+            continue
+        canonical = canonicalise_parameter_name(p)
+        existing = by_param.get(canonical, {"parameter": canonical})
+        for k, v in r.items():
+            if v is not None:
+                existing[k] = v
+        existing["parameter"] = canonical
+        by_param[canonical] = existing
+
+    return list(by_param.values())
+
 SOIL_CLASSIFICATIONS = ["Very Low", "Low", "Optimal", "High", "Very High"]
 
 NUTRIENT_GROUP_MAP = {

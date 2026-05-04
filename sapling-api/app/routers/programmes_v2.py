@@ -290,6 +290,7 @@ async def build_programme_endpoint(
         water_values=request.water_values,
         application_months=request.application_months,
         sufficiency_rows=catalog.sufficiency_rows,
+        crop_override_rows=catalog.crop_override_rows,
         param_map_rows=catalog.param_map_rows,
         cluster_sources=cluster_sources,
         pre_computed_assumptions=pre_computed_assumptions,

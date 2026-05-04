@@ -16,6 +16,7 @@ import pytest
 
 from app.services.soil_canonicaliser import (
     CANONICAL_PARAMETERS,
+    canonicalise_parameter_name,
     canonicalise_soil_values,
     list_canonical_parameters,
 )
@@ -305,3 +306,38 @@ def test_only_unparseable_inputs_returns_empty_with_warnings():
     result = canonicalise_soil_values({"K (mg/kg)": "??"})
     assert result.values == {}
     assert len(result.diagnostics) == 1
+
+
+# ── canonicalise_parameter_name (public helper) ────────────────────
+
+
+def test_canonicalise_parameter_name_collapses_exchangeable_aliases():
+    # Citrus override row was keyed "K (exchangeable)" while generic
+    # soil_sufficiency uses "K" — silently disabled the override. Lock
+    # in the alias so future merges collapse them onto the same key.
+    assert canonicalise_parameter_name("K (exchangeable)") == "K"
+    assert canonicalise_parameter_name("Ca (exchangeable)") == "Ca"
+    assert canonicalise_parameter_name("Mg (exchangeable)") == "Mg"
+    assert canonicalise_parameter_name("Na (exchangeable)") == "Na"
+
+
+def test_canonicalise_parameter_name_keeps_method_qualifiers_distinct():
+    # pH (KCl) and pH (H2O) ARE different parameters — different scales.
+    # Don't collapse them to a generic "pH".
+    assert canonicalise_parameter_name("pH (KCl)") == "pH (KCl)"
+    assert canonicalise_parameter_name("pH (H2O)") == "pH (H2O)"
+    # Same for P-extraction methods.
+    assert canonicalise_parameter_name("P (Bray-1)") == "P (Bray-1)"
+    assert canonicalise_parameter_name("P (Olsen)") == "P (Olsen)"
+
+
+def test_canonicalise_parameter_name_handles_word_aliases():
+    assert canonicalise_parameter_name("Potassium") == "K"
+    assert canonicalise_parameter_name("Exchangeable K") == "K"
+    assert canonicalise_parameter_name("Magnesium") == "Mg"
+
+
+def test_canonicalise_parameter_name_passes_unknown_through():
+    # Custom lab columns survive without being dropped.
+    assert canonicalise_parameter_name("Custom Index") == "Custom Index"
+    assert canonicalise_parameter_name("") == ""
