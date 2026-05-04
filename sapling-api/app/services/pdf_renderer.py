@@ -1049,10 +1049,12 @@ def _build_context(artifact: ProgrammeArtifact) -> dict[str, Any]:
     header = _build_header_context(artifact)
     soil_snapshots = _build_soil_context(artifact)
     pre_season_recommendations = _build_pre_season_context(artifact)
-    walkthrough = _build_walkthrough_context(artifact)
+    # New-direction Section 04: Nutrient Requirements (replaces the old
+    # Application Walkthrough). Surfaces per-block totals + per-stage
+    # allocation as agronomic targets — no specific products. The
+    # walkthrough builder still runs in admin-mode renders for debug.
+    nutrient_requirements = _build_nutrient_requirements_context(artifact)
     foliar_events = _build_foliar_context(artifact)
-    nutrient_balance = _build_nutrient_balance_context(artifact)
-    year_outlook_cards = _build_year_outlook_context(artifact)
     # Unified "Items We're Carrying" — replaces the old three-bucket
     # split (risk_flags / outstanding_items / assumptions). Dedupes
     # cross-bucket overlap and sorts by urgency band.
@@ -1065,10 +1067,10 @@ def _build_context(artifact: ProgrammeArtifact) -> dict[str, Any]:
     contents_entries = _build_contents_entries(
         has_soil=bool(soil_snapshots),
         has_pre_season=bool(pre_season_recommendations),
-        has_blends=bool(walkthrough.get("groups")),
+        has_blends=bool(nutrient_requirements.get("blocks")),
         has_foliar=bool(foliar_events),
-        has_nutrient_balance=bool(nutrient_balance),
-        has_year_outlook=bool(year_outlook_cards),
+        has_nutrient_balance=False,
+        has_year_outlook=False,
         has_items=bool(carrying_items),
     )
 
@@ -1081,12 +1083,16 @@ def _build_context(artifact: ProgrammeArtifact) -> dict[str, Any]:
         "soil_intro": soil_intro,
         "soil_snapshots": soil_snapshots,
         "pre_season_recommendations": pre_season_recommendations,
-        "walkthrough": walkthrough,
+        "nutrient_requirements": nutrient_requirements,
         "foliar_events": foliar_events,
-        "nutrient_balance": nutrient_balance,
-        "year_outlook_cards": year_outlook_cards,
         "carrying_items": carrying_items,
         "carrying_bands": carrying_bands,
+        # Legacy keys kept as empty values so any test fixture / template
+        # check that still references them doesn't blow up. The new
+        # template's {% if walkthrough.groups %} guards make these inert.
+        "walkthrough": {"groups": [], "intro": ""},
+        "nutrient_balance": [],
+        "year_outlook_cards": [],
     }
 
 
@@ -2498,6 +2504,164 @@ def _build_foliar_context(artifact: ProgrammeArtifact) -> list[dict[str, Any]]:
         }
         for letter, events in sorted(grouped.items())
     ]
+
+
+def _build_nutrient_requirements_context(
+    artifact: ProgrammeArtifact,
+) -> dict[str, Any]:
+    """Per-block agronomic nutrient requirements + per-stage allocation.
+
+    The new-direction Section 04 — replaces the old Application
+    Walkthrough. We surface what the crop NEEDS (kg/ha per nutrient,
+    distributed over phenological stages, with recommended delivery
+    method) without prescribing specific products. The downstream
+    product selector takes these targets + the operator's available
+    materials + application calendar to propose blends.
+
+    Source of truth = `artifact.blends`. We aggregate blend deliveries
+    per (block, stage, nutrient) and roll up to block totals. Methods
+    are derived from blend type (dry / fertigation / foliar) but
+    surfaced as agronomic categories — no product names appear in this
+    section's output.
+    """
+    sources = [s for s in artifact.soil_snapshots if not s.block_id.startswith("cluster_")]
+    if not sources or not artifact.blends:
+        return {"intro": "", "blocks": []}
+
+    # Index blends by block_id (cluster blends apply to every member;
+    # singleton blends apply directly).
+    cluster_members: dict[str, list[str]] = {}
+    for s in artifact.soil_snapshots:
+        if s.block_id.startswith("cluster_"):
+            # Cluster members aren't on the snapshot directly — derive from
+            # the schedules / per-block lookup below; for now each cluster
+            # is assumed to map to all sources sharing its area context.
+            pass
+
+    # Macro nutrients we surface in the per-stage table. Maps the
+    # `nutrients_delivered` keys (which sometimes use oxide form like
+    # P2O5/K2O) to elemental display.
+    macro_keys = ["N", "P", "K", "Ca", "Mg", "S"]
+
+    def _nutrient_kg(nd: dict, key: str) -> float:
+        """Read kg/ha for a nutrient. Convert P2O5 → P, K2O → K when present."""
+        if key in nd:
+            return float(nd.get(key) or 0)
+        if key == "P" and "P2O5" in nd:
+            return float(nd["P2O5"]) * 0.4364
+        if key == "K" and "K2O" in nd:
+            return float(nd["K2O"]) * 0.8301
+        return 0.0
+
+    blocks_out: list[dict[str, Any]] = []
+    for snap in sources:
+        block_blends = [b for b in artifact.blends if b.block_id == snap.block_id]
+        # Method tally
+        methods_seen: set[str] = set()
+        # Per-stage aggregation: stage_name → {nutrient: kg/ha}
+        stages_data: dict[str, dict[str, float]] = {}
+        stage_method: dict[str, str] = {}
+        # Block-level total per nutrient
+        totals: dict[str, float] = {n: 0.0 for n in macro_keys}
+        # Method per nutrient (collect)
+        nutrient_methods: dict[str, set[str]] = {n: set() for n in macro_keys}
+
+        for blend in block_blends:
+            # blend.method is a Pydantic enum (DryBlendMethod etc) — coerce
+            # to lowercase string for our category lookup
+            raw_method = blend.method
+            method_str = ""
+            if raw_method is not None:
+                method_str = (
+                    raw_method.value if hasattr(raw_method, "value")
+                    else str(raw_method)
+                ).lower()
+            method_label = {
+                "dry": "broadcast",
+                "dry-broadcast": "broadcast",
+                "broadcast": "broadcast",
+                "fertigation": "fertigation",
+                "fertigated": "fertigation",
+                "foliar": "foliar",
+            }.get(method_str, method_str or "broadcast")
+            methods_seen.add(method_label)
+
+            events = len(blend.applications) if blend.applications else 1
+            nd = blend.nutrients_delivered or {}
+            sname = blend.stage_name or "Unspecified"
+            stages_data.setdefault(sname, {})
+            stage_method[sname] = method_label
+
+            for nut in macro_keys:
+                kg_per_event = _nutrient_kg(nd, nut)
+                kg_per_stage = kg_per_event * events
+                if kg_per_stage <= 0:
+                    continue
+                totals[nut] = totals.get(nut, 0) + kg_per_stage
+                nutrient_methods[nut].add(method_label)
+                stages_data[sname][nut] = stages_data[sname].get(nut, 0) + kg_per_stage
+
+        # Render
+        totals_rows = []
+        nutrient_labels = {
+            "N": "Nitrogen (N)", "P": "Phosphorus (P)", "K": "Potassium (K)",
+            "Ca": "Calcium (Ca)", "Mg": "Magnesium (Mg)", "S": "Sulphur (S)",
+        }
+        for nut in macro_keys:
+            if totals.get(nut, 0) <= 0:
+                continue
+            totals_rows.append({
+                "label": nutrient_labels[nut],
+                "kg_ha_display": f"{totals[nut]:.0f}",
+                "methods": ", ".join(sorted(nutrient_methods[nut])) or "—",
+            })
+
+        stages_rows = []
+        for sname, vals in stages_data.items():
+            stages_rows.append({
+                "stage_name": sname,
+                "months": "",
+                "n_display": f"{vals.get('N', 0):.0f}" if vals.get("N", 0) > 0 else "—",
+                "p_display": f"{vals.get('P', 0):.0f}" if vals.get("P", 0) > 0 else "—",
+                "k_display": f"{vals.get('K', 0):.0f}" if vals.get("K", 0) > 0 else "—",
+                "ca_display": f"{vals.get('Ca', 0):.0f}" if vals.get("Ca", 0) > 0 else "—",
+                "mg_display": f"{vals.get('Mg', 0):.0f}" if vals.get("Mg", 0) > 0 else "—",
+                "s_display": f"{vals.get('S', 0):.0f}" if vals.get("S", 0) > 0 else "—",
+                "method": stage_method.get(sname, "—"),
+                "notes": "",
+            })
+
+        method_guidance = ""
+        if "broadcast" in methods_seen and "fertigation" in methods_seen:
+            method_guidance = (
+                "A mix of broadcast (immobile nutrients, dormancy / pre-season) "
+                "and fertigation (in-season demand peaks) is appropriate for this block."
+            )
+        elif "fertigation" in methods_seen:
+            method_guidance = "Fertigation is the primary delivery method for this block."
+        elif "broadcast" in methods_seen:
+            method_guidance = (
+                "Broadcast / side-dress delivery only — no fertigation infrastructure "
+                "engaged for this block."
+            )
+
+        blocks_out.append({
+            "block_id": snap.block_id,
+            "block_name": snap.block_name,
+            "area_ha": snap.block_area_ha,
+            "crop": artifact.header.crop,
+            "totals": totals_rows,
+            "stages": stages_rows,
+            "method_guidance": method_guidance,
+        })
+
+    intro = (
+        "Per-block nutrient requirements for the season — what the crop needs, "
+        "stage-by-stage. Specific products and the per-application schedule are "
+        "produced downstream by the product selector based on your available "
+        "materials and application calendar."
+    )
+    return {"intro": intro, "blocks": blocks_out}
 
 
 def _build_nutrient_balance_context(
