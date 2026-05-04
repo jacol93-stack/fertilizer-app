@@ -779,10 +779,20 @@ def _ratio_finding_views_from_dicts(
         severity = f.get("severity") or "info"
         message = _strip_source_refs(f.get("message") or "")
         action = _strip_source_refs(f.get("recommended_action") or "") if f.get("recommended_action") else ""
-        # Reasonable target_display
+        # target_display direction: a flagged finding always has its
+        # value on the wrong side of the threshold, so the side tells
+        # us which bound it is. value > threshold → upper-bound breach
+        # → "≤ T" (e.g. P:Zn ≤ 150, Al sat ≤ 5%). value < threshold →
+        # lower-bound breach → "≥ T" (e.g. Ca:Mg ≥ 3). Equal or no
+        # threshold → blank.
         if threshold is not None:
             try:
-                target_display = f"≤ {float(threshold):g}"
+                t_num = float(threshold)
+                v_num = float(value) if value is not None else t_num
+                if v_num < t_num:
+                    target_display = f"≥ {t_num:g}"
+                else:
+                    target_display = f"≤ {t_num:g}"
             except (TypeError, ValueError):
                 target_display = ""
         else:
